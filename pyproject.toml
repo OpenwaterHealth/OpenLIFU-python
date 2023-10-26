@@ -1,0 +1,12 @@
+[project]
+name = "open_pyfus"
+version = "0.1.0"
+description = "Openwater Focused Ultrasound Toolkit"
+dependencies = [
+    "xarray",
+    "numpy",
+    "matplotlib",
+    "pandas",
+    "scipy",
+    "vtk"
+]

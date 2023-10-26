@@ -6,6 +6,7 @@ from pyfus import geo
 from typing import Any, Tuple, Optional
 from pyfus.util.units import getunitconversion
 from pyfus.xdc import Transducer
+import xarray as xa
 
 @dataclass
 class Pulse:

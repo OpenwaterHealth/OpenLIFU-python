@@ -20,7 +20,7 @@ class Element:
     roll: float = 0
     w: float = field(repr=False, default = 1)
     l: float = field(repr=False, default = 1)
-    impulse_response: np.ndarray = field(repr=False, default=np.array(1))
+    impulse_response: np.ndarray = field(repr=False, default_factory=lambda: np.array([1]))
     impulse_dt: float = field(repr=False, default = 1)
     pin: int = -1
     units: str = "mm"
@@ -193,7 +193,7 @@ class Transducer:
     elements: Tuple[Element] = ()
     frequency: float = 400.6e3
     units: str = "m"
-    matrix: np.ndarray = np.eye(4)
+    matrix: np.ndarray = field(default_factory=lambda: np.eye(4))
     attrs: Dict[str, Any] = field(default_factory= lambda: {})
 
     def __post_init__(self):
