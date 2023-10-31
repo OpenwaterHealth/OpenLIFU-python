@@ -8,5 +8,7 @@ dependencies = [
     "matplotlib",
     "pandas",
     "scipy",
-    "vtk"
+    "vtk",
+    "h5py",
+    "opencv-contrib-python"
 ]

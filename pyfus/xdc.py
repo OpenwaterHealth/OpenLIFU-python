@@ -25,6 +25,12 @@ class Element:
     pin: int = -1
     units: str = "mm"
 
+    def __post_init__(self):
+        if isinstance(self.impulse_response, Iterable):
+            self.impulse_response = np.array(self.impulse_response, dtype=np.float64)
+        else:
+            self.impulse_response = np.array([self.impulse_response], dtype=np.float64)
+
     def calc_output(self, input_signal, dt):
         if len(self.impulse_response) == 1:
             return input_signal * self.impulse_response
@@ -104,10 +110,12 @@ class Element:
         if units == "rad":
             az = self.az
             el = self.el
+            roll = self.roll
         elif units == "deg":
             az = np.degrees(self.az)
             el = np.degrees(self.el)
-        return az, el
+            roll = np.degrees(self.roll)
+        return az, el, roll
 
     def interp_impulse_response(self, dt=None):
         if dt is None:
@@ -203,10 +211,19 @@ class Transducer:
         self.matrix = np.array(self.matrix, dtype=np.float64)
         for element in self.elements:
             element.rescale(self.units, inplace=True)
-
-    def by_id(self, id):
-        return [transducer for transducer in self if transducer.id == id]
-
+    
+    def calc_output(self, input_signal, dt, delays: np.ndarray = None, apod: np.ndarray = None):
+        if delays is None:
+            delays = np.zeros(self.numelements())
+        if apod is None:
+            apod = np.ones(self.numelements())
+        outputs = [np.concatenate([np.zeros(int(delay/dt)), a*element.calc_output(input_signal, dt)],axis=0) for element, delay, a, in zip(self.elements, delays, apod)]
+        max_len = max([len(o) for o in outputs])
+        output_signal = np.zeros([self.numelements(), max_len])
+        for i, o in enumerate(outputs):
+            output_signal[i, :len(o)] = o
+        return output_signal
+    
     def copy(self):
         return copy.deepcopy(self)
 
@@ -282,6 +299,15 @@ class Transducer:
             matrix = np.eye(4)
         self.rescale(units=prev_units, inplace=True)
         return [element.get_corners(units=units, matrix=matrix) for element in self.elements]
+  
+    def get_positions(self, transform=True, units=None):
+        units = self.units if units is None else units
+        if transform:
+            matrix = self.get_matrix(units=units)
+        else:
+            matrix = np.eye(4)
+        positions = [element.get_position(units=units, matrix=matrix) for element in self.elements]
+        return np.array(positions)
 
     def get_matrix(self, units=None):
         units = self.units if units is None else units

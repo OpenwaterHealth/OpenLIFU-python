@@ -29,11 +29,13 @@ class Point:
     def copy(self):
         return copy.deepcopy(self)
 
-    def get_position(self, dim=None):
+    def get_position(self, dim=None, units: Optional[str] =None):
+        units = self.units if units is None else units
+        scl = getunitconversion(self.units, units)
         if dim is None:
-            return self.position
+            return self.position*scl
         else:
-            return self.position[self.dims.index(dim)]
+            return self.position[self.dims.index(dim)]*scl
 
     def get_matrix(self, origin: np.ndarray = np.eye(4), center_on_point: bool = False, local: bool = False):
         pos = np.dot(np.linalg.inv(origin), np.append(self.position, 1.0))[:3]

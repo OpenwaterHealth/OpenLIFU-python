@@ -6,11 +6,29 @@ from typing import List
 import pyfus.xdc as xdc
 import numpy as np
 import logging
+import h5py
+import glob
 
 class Database:
     def __init__(self, path):
         self.path = path
         self.logger = logging.getLogger(__name__)
+
+    def add_gridweights(self, transducer_id, grid_hash, grid_weights, on_conflict="error"):
+        grid_hashes = self.get_gridweight_hashes(transducer_id)
+        if grid_hash in grid_hashes:
+            if on_conflict == "error":
+                raise ValueError(f"Grid weights with hash {grid_hash} already exists for transducer {transducer_id}.")
+            elif on_conflict == "overwrite":
+                self.logger.warning(f"Overwriting grid weights with hash {grid_hash} for transducer {transducer_id}.")
+            elif on_conflict == "skip":
+                self.logger.info(f"Skipping grid weights with hash {grid_hash} for transducer {transducer_id} as it already exists.")
+            else:
+                raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
+        gridweight_filename = self.get_gridweights_filename(transducer_id, grid_hash)
+        with h5py.File(gridweight_filename, "w") as f:
+            f.create_dataset("grid_weights", data=grid_weights)
+        self.logger.info(f"Added grid weights with hash {grid_hash} for transducer {transducer_id} to the database.")
 
     def add_plan(self, treatment_plan, on_conflict="error"):
         # Check if the treatment plan ID already exists in the database
@@ -190,6 +208,11 @@ class Database:
         # Implement the logic to choose a subject
         pass
 
+    def get_gridweight_hashes(self, transducer_id):
+        transducer_dir = os.path.join(self.path, 'transducers', transducer_id)
+        gridfiles = glob.glob(os.path.join(transducer_dir, f'{transducer_id}_gridweights_*.h5'))
+        return [os.path.splitext(os.path.basename(f))[0].split('_')[-1] for f in gridfiles]
+
     def get_session_table(self, subject_id, options=None):
         # Implement the logic to get session table
         pass
@@ -319,6 +342,12 @@ class Database:
             self.logger.warning("Transducers file not found.")
             return []
 
+    def load_gridweights(self, transducer_id, grid_hash):    
+        gridweight_filename = self.get_gridweights_filename(transducer_id, grid_hash)
+        with h5py.File(gridweight_filename, "r") as f:
+            grid_weights = f["grid_weights"][:]
+        return grid_weights
+    
     def load_subject(self, subject_id, options=None):
         subject_filename = self.get_subject_filename(subject_id)
         subject = Subject.from_file(subject_filename)
@@ -451,6 +480,9 @@ class Database:
 
     def get_connected_transducer_filename(self):
         return os.path.join(self.path, 'transducers', 'connected_transducer.txt')
+
+    def get_gridweights_filename(self, transducer_id, grid_hash):
+        return os.path.join(self.path, 'transducers', transducer_id, f'{transducer_id}_gridweights_{grid_hash}.h5')
 
     def get_plans_filename(self):
         return os.path.join(self.path, 'plans', 'plans.json')
