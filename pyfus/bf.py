@@ -79,7 +79,7 @@ class FocalPattern(ABC):
 @dataclass
 class SingleFocus(FocalPattern):
     def get_targets(self, target: geo.Point):
-        return target
+        return [target.copy()]
 
     def num_foci(self):
         return 1
@@ -186,7 +186,7 @@ class SimulationGrid:
     def get_max_distance(self, arr: Transducer, units: Optional[str] = None):
         units = self.units if units is None else units
         corners = self.get_corners(units=units)
-        distances = np.array([[el.distance_to_point(corner) for corner in corners.T] for el in arr.rescale(units).elements])
+        distances = np.array([[el.distance_to_point(corner, units=units) for corner in corners.T] for el in arr.elements])
         max_distance = np.max(distances)
         return max_distance
     

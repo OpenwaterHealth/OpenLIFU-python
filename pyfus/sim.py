@@ -102,13 +102,10 @@ def run_simulation(arr: xdc.Transducer,
     grid_weights = None
     if load_gridweights and db is not None:
         h = hash_array_kgrid(kgrid, karray)
-        print(h)
         available_hashes = db.get_gridweight_hashes(arr.id)
-        print(available_hashes)
         if h in available_hashes:
             logging.info("Loading grid weights")
             grid_weights = db.load_gridweights(arr.id, h)
-            print(grid_weights)
     if grid_weights is None:
         logging.info("Calculating grid weights")
         grid_weights = np.array([karray.get_element_grid_weights(kgrid, i) for i in range(karray.number_elements)])
@@ -124,7 +121,10 @@ def run_simulation(arr: xdc.Transducer,
                             data_cast='single'
                         )
     execution_options = SimulationExecutionOptions(is_gpu_simulation=True)
-    output = kspaceFirstOrder3D(kgrid, medium, source, sensor,
+    output = kspaceFirstOrder3D(kgrid=kgrid, 
+                                source=source, 
+                                sensor=sensor, 
+                                medium=medium, 
                                 simulation_options=simulation_options,
                                 execution_options=execution_options)
     return output

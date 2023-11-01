@@ -19,12 +19,6 @@ class Point:
         if len(self.position) != len(self.dims):
             raise ValueError("Position and dims must have same length.")
         self.position = np.array(self.position).reshape(3)
-
-    def __iter__(self):
-        return iter([self])
-    
-    def __next__(self):
-        raise StopIteration
     
     def copy(self):
         return copy.deepcopy(self)
@@ -77,34 +71,22 @@ class Point:
         actor.GetProperty().SetColor(self.color)
         return actor
 
-    def rescale(self, units: str, inplace: bool =False):
-        if inplace:
-            pt = self
-        else:
-            pt = self.copy()
-        scl = getunitconversion(pt.units, units)
-        pt.position = pt.position * scl
-        pt.radius = pt.radius * scl
-        pt.units = units
-        if not inplace:
-            return pt
+    def rescale(self, units: str):
+        scl = getunitconversion(self.units, units)
+        self.position = self.position * scl
+        self.radius = self.radius * scl
+        self.units = units
 
     def transform(self, 
                   matrix: np.ndarray, 
                   units: Optional[str] = None, 
-                  new_dims: Optional[Tuple[str, str, str]]=None, 
-                  inplace: bool =False):
-        if inplace:
-            pt = self
-        else:
-            pt = self.copy()
+                  new_dims: Optional[Tuple[str, str, str]]=None):
         if units is not None:
-            pt.rescale(units)
-        pt.position = np.dot(matrix, np.append(pt.position, 1.0))[:3]
+            self.rescale(units)
+        self.position = np.dot(matrix, np.append(self.position, 1.0))[:3]
         if new_dims is not None:
-            pt.dims = new_dims
-        if not inplace:
-            return pt
+            self.dims = new_dims
+
 
     def to_dict(self):
         return {"id": self.id,

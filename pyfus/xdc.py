@@ -41,21 +41,15 @@ class Element:
     def copy(self):
         return copy.deepcopy(self)
 
-    def rescale(self, units, inplace=False):
-        if inplace:
-            el = self
-        else:
-            el = self.copy()
-        if el.units != units:
-            scl = getunitconversion(el.units, units)
-            el.x *= scl
-            el.y *= scl
-            el.z *= scl
-            el.w *= scl
-            el.l *= scl
-            el.units = units
-        if not inplace:
-            return el
+    def rescale(self, units):
+        if self.units != units:
+            scl = getunitconversion(self.units, units)
+            self.x *= scl
+            self.y *= scl
+            self.z *= scl
+            self.w *= scl
+            self.l *= scl
+            self.units = units
 
     def get_position(self, units=None, matrix=np.eye(4)):
         units = self.units if units is None else units
@@ -91,7 +85,8 @@ class Element:
             corner.append(xyz1[j, :] * scl)
         return np.array(corner            )
 
-    def get_matrix(self):
+    def get_matrix(self, units=None):
+        units = self.units if units is None else units
         Raz = np.array([[np.cos(self.az), 0, np.sin(self.az)],
                         [0, 1, 0],
                         [-np.sin(self.az), 0, np.cos(self.az)]])
@@ -101,8 +96,8 @@ class Element:
         Rroll = np.array([[np.cos(self.roll), -np.sin(self.roll), 0],
                             [np.sin(self.roll), np.cos(self.roll), 0],
                             [0, 0, 1]])
-        
-        m = np.concatenate((np.dot(Raz, np.dot(Rel,Rroll)), [[self.x], [self.y], [self.z]]), axis=1)
+        pos = self.get_position(units=units)
+        m = np.concatenate((np.dot(Raz, np.dot(Rel,Rroll)), pos.reshape([3,1])), axis=1)
         m = np.concatenate((m, [[0, 0, 0, 1]]), axis=0)
         return m
 
@@ -133,19 +128,17 @@ class Element:
 
     def distance_to_point(self, point, units=None, matrix=np.eye(4)):
         units = self.units if units is None else units
-        prev_units = self.units
-        self.rescale(units, inplace=True)
-        pos = np.array([self.x, self.y, self.z, 1])
-        m = self.get_matrix()
+        pos = np.concatenate([self.get_position(units=units), [1]])
+        m = self.get_matrix(units=units)
         gm = np.dot(matrix, m)
-        gpos = np.dot(matrix, pos)
+        gpos = np.dot(gm, pos)
         vec = point - gpos[:3]
         dist = np.linalg.norm(vec, 2)
-        self.rescale(prev_units, inplace=True)
         return dist
 
-    def angle_to_point(self, point, units="rad", matrix=np.eye(4)):
-        m = self.get_matrix()
+    def angle_to_point(self, point, units=None, return_as="rad", matrix=np.eye(4)):
+        units = self.units if units is None else units
+        m = self.get_matrix(units=units)
         gm = np.dot(matrix, m)
         v1 = point - gm[:3, 3]
         v2 = gm[:3, 2]
@@ -153,13 +146,13 @@ class Element:
         v2 = v2 / np.linalg.norm(v2, 2)
         vcross = np.cross(v1, v2)
         theta = np.arcsin(np.linalg.norm(vcross, 2))
-        if units == "deg":
+        if return_as == "deg":
             theta = np.degrees(theta)
         return theta
     
     def set_matrix(self, matrix, units=None):
         if units is not None:
-            self.rescale(units, inplace=True)
+            self.rescale(units)
         x, y, z, az, el, roll = matrix2xyz(matrix)
         self.x = x
         self.y = y
@@ -210,7 +203,7 @@ class Transducer:
             self.name = self.id
         self.matrix = np.array(self.matrix, dtype=np.float64)
         for element in self.elements:
-            element.rescale(self.units, inplace=True)
+            element.rescale(self.units)
     
     def calc_output(self, input_signal, dt, delays: np.ndarray = None, apod: np.ndarray = None):
         if delays is None:
@@ -233,10 +226,7 @@ class Transducer:
              facecolor=[0,1,1], 
              facealpha=0.5):
         units = self.units if units is None else units
-        prev_units = self.units
-        self.rescale(units=units, inplace=True)
-        actor = self.get_actor(transform=transform, facecolor=facecolor, facealpha=facealpha)
-        self.rescale(units=prev_units, inplace=True)
+        actor = self.get_actor(units=units, transform=transform, facecolor=facecolor, facealpha=facealpha)
         renderWindow = vtk.vtkRenderWindow()
         renderer = vtk.vtkRenderer()
         renderWindow.AddRenderer(renderer)
@@ -246,8 +236,9 @@ class Transducer:
         renderWindow.Render()
         renderWindowInteractor.Start()
 
-    def get_actor(self, transform=False, facecolor=[0,1,1], facealpha=0.5):
-        polydata = self.get_polydata(transform=transform, facecolor=facecolor, facealpha=facealpha)
+    def get_actor(self, units=None, transform=False, facecolor=[0,1,1], facealpha=0.5):
+        units = self.units if units is None else units
+        polydata = self.get_polydata(units=units, transform=transform, facecolor=facecolor, facealpha=facealpha)
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputData(polydata)
         actor = vtk.vtkActor()
@@ -255,7 +246,8 @@ class Transducer:
         actor.GetProperty().SetInterpolationToFlat()
         return actor
 
-    def get_polydata(self, transform=False, facecolor=[0,1,1], facealpha=0.5):
+    def get_polydata(self, units=None, transform=False, facecolor=[0,1,1], facealpha=0.5):
+        units = self.units if units is None else units
         N = self.numelements()
         points = vtk.vtkPoints()
         points.SetNumberOfPoints(4*N)
@@ -265,11 +257,11 @@ class Transducer:
         color = (np.array([*facecolor, facealpha])*255).astype(np.uint8)
         point_index = 0
         if transform:
-            matrix = self.get_matrix()
+            matrix = self.get_matrix(units=units)
         else:
             matrix = np.eye(4)
         for el in self.elements:
-            corners = el.get_corners(matrix=matrix)
+            corners = el.get_corners(matrix=matrix, units=units)
             rect = vtk.vtkQuad()
             point_ids = rect.GetPointIds()
             for i in range(4):
@@ -291,13 +283,10 @@ class Transducer:
 
     def get_corners(self, transform=True, units=None):
         units = self.units if units is None else units
-        prev_units = self.units
-        self.rescale(units=units, inplace=True)
         if transform:
-            matrix = self.matrix
+            matrix = self.get_matrix(units=units)
         else:
             matrix = np.eye(4)
-        self.rescale(units=prev_units, inplace=True)
         return [element.get_corners(units=units, matrix=matrix) for element in self.elements]
   
     def get_positions(self, transform=True, units=None):
@@ -317,8 +306,6 @@ class Transducer:
 
     def get_unit_vectors(self, transform=True, scale=1, units=None):
         units = self.units if units is None else units
-        prev_units = self.units
-        self.rescale(units=units, inplace=True)
         unit_vectors = [
             [[0, 0, 0], [1, 0, 0]],
             [[0, 0, 0], [0, 1, 0]],
@@ -326,59 +313,44 @@ class Transducer:
         ]
         unit_vectors = [[v * scale for v in uv] for uv in unit_vectors]
         if transform:
-            matrix = self.matrix
+            matrix = self.get_matrix(units=units)
             unit_vectors = [(np.dot(matrix, np.concatenate([np.array(uv).T, np.ones([1,2])], 0))[:3,:].T).tolist() for uv in unit_vectors]
-        self.rescale(units=prev_units, inplace=True)
         return [np.array(uv).transpose() for uv in unit_vectors]
 
-    def merge(self, list_of_transducers, inplace=False):
-        if inplace:
-            merged_array = self
-        else:
-            merged_array = self.copy()
+    @staticmethod
+    def merge(list_of_transducers):
+        merged_array = list_of_transducers[0].copy()
         ref_matrix = merged_array.get_matrix()
-        for arr in list_of_transducers:
-            xform_array = arr.transform(np.dot(np.linalg.inv(arr.get_matrix()),ref_matrix), transform_elements=True)
+        for arr in list_of_transducers[1:]:
+            xform_array = arr.copy()
+            xform_array.transform(np.dot(np.linalg.inv(arr.get_matrix()),ref_matrix), transform_elements=True)
             merged_array.elements += xform_array.elements
-        if not inplace:
-            return merged_array
+        return merged_array
         
     def numelements(self):
         return len(self.elements)
 
-    def rescale(self, units, inplace=False):
-        if inplace:
-            array = self
-        else:
-            array = self.copy()
-        if array.units != units:
-            for element in array.elements:
-                element.rescale(units, inplace=True)
-            scl = getunitconversion(array.units, units)
-            array.matrix[0:3, 3] *= scl
-            array.units = units
-        if not inplace:
-            return array
-
+    def rescale(self, units):
+        if self.units != units:
+            for element in self.elements:
+                element.rescale(units)
+            scl = getunitconversion(self.units, units)
+            self.matrix[0:3, 3] *= scl
+            self.units = units
+        
     def to_dict(self):
         d = self.__dict__.copy()
         d["elements"] = [element.__dict__ for element in d["elements"]]
         return d
 
-    def transform(self, matrix, units=None, transform_elements: bool=False, inplace: bool=False):
-        if inplace:
-            trans = self
-        else:
-            trans = self.copy()
+    def transform(self, matrix, units=None, transform_elements: bool=False):
         if units is not None:
-            trans.rescale(units, inplace=True)
+            self.rescale(units)
         if transform_elements:
-            for el in trans.elements:
+            for el in self.elements:
                 el.set_matrix(np.dot(np.linalg.inv(matrix), el.get_matrix()))
             else:
-                trans.matrix = np.dot(trans.matrix, np.linalg.inv(matrix))
-        if not inplace:
-            return trans
+                self.matrix = np.dot(self.matrix, np.linalg.inv(matrix))
 
     @staticmethod
     def from_file(filename):

@@ -10,5 +10,6 @@ dependencies = [
     "scipy",
     "vtk",
     "h5py",
-    "opencv-contrib-python"
+    "opencv-contrib-python",
+    "crc"
 ]
