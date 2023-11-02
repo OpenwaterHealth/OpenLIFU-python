@@ -10,19 +10,17 @@ from kwave.ksource import kSource
 from kwave.kspaceFirstOrder3D import kspaceFirstOrder3D
 from kwave.options.simulation_execution_options import SimulationExecutionOptions
 from kwave.utils.kwave_array import kWaveArray
-from kwave.utils.plot import voxel_plot
-from kwave.utils.signals import tone_burst
 from crc import Crc32, Calculator
 import json
-import h5py
 from typing import List, Dict, Any, Tuple, Optional
 import logging
 import xarray as xa
 import numpy as np
 
 def get_kgrid(coords: xa.Coordinates, t_end = 0, dt = 0, sound_speed_ref=1500):
+    scl = getunitconversion(coords['lat'].attrs['units'], 'm')
     sz = [len(coord) for coord in coords.values()]
-    dx = [np.diff(coord)[0] for coord in coords.values()]
+    dx = [np.diff(coord)[0]*scl for coord in coords.values()]
     kgrid = kWaveGrid(sz, dx)
     if dt == 0 or t_end == 0:
         kgrid.makeTime(sound_speed_ref)
@@ -48,8 +46,9 @@ def get_karray(arr: xdc.Transducer,
     return karray
 
 def get_medium(params: xa.Dataset):
-    return kWaveMedium(sound_speed=params['sound_speed'].attrs['ref_value'], 
+    medium= kWaveMedium(sound_speed=params['sound_speed'].attrs['ref_value'], 
                        density=params['density'].attrs['ref_value'])
+    return medium
 
 def get_sensor(kgrid, record=['p_max','p_min']):
     sensor_mask = np.ones([kgrid.Nx, kgrid.Ny, kgrid.Nz])
@@ -98,7 +97,7 @@ def run_simulation(arr: xdc.Transducer,
     array_offset =[-float(coord.mean())*scl for coord in params.coords.values()]
     karray = get_karray(arr, translation=array_offset)
     medium = get_medium(params)
-    sensor = get_sensor(kgrid, record=['p_max'])
+    sensor = get_sensor(kgrid, record=['p_max', 'p_min'])
     grid_weights = None
     if load_gridweights and db is not None:
         h = hash_array_kgrid(kgrid, karray)
@@ -127,4 +126,19 @@ def run_simulation(arr: xdc.Transducer,
                                 medium=medium, 
                                 simulation_options=simulation_options,
                                 execution_options=execution_options)
-    return output
+    logging.info('Simulation Complete')
+    sz = list(params.coords.sizes.values())
+    p_max = xa.DataArray(output['p_max'].reshape(sz, order='F'),
+                         coords=params.coords,
+                         name='p_max', 
+                         attrs={'units':'Pa', 'long_name':'PPP'})
+    p_min = xa.DataArray(-1*output['p_min'].reshape(sz, order='F'),
+                         coords=params.coords,
+                         name='p_min', 
+                         attrs={'units':'Pa', 'long_name':'PNP'})
+    #intensity = xa.DataArray(1e-4*output['I'].reshape(sz, order='F'),
+    #                     coords=params.coords,
+    #                     name='I', 
+    #                     attrs={'units':'W/cm^2', 'long_name':'Intensity'})
+    ds = xa.Dataset({'p_max':p_max, 'p_min':p_min})
+    return ds, output

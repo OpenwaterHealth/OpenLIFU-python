@@ -70,6 +70,11 @@ class FocalPattern(ABC):
     def num_foci(self):
         pass
 
+    def to_dict(self):
+        d = self.__dict__.copy()
+        d['class'] = self.__class__.__name__
+        return d
+
     @staticmethod
     def from_dict(d):
         d = d.copy()
@@ -309,6 +314,11 @@ class DelayMethod(ABC):
     def calc_delays(self, arr: Transducer, target: geo.Point, params: xa.Dataset):
         pass
 
+    def to_dict(self):
+        d = self.__dict__.copy()
+        d['class'] = self.__class__.__name__
+        return d
+    
     @staticmethod
     def from_dict(d):
         d = d.copy()
@@ -329,6 +339,11 @@ class ApodizationMethod:
     def calc_apodization(self, arr: Transducer, target: geo.Point, params: xa.Dataset):
         pass
 
+    def to_dict(self):
+        d = self.__dict__.copy()
+        d['class'] = self.__class__.__name__
+        return d
+    
     @staticmethod
     def from_dict(d):
         d = d.copy()
