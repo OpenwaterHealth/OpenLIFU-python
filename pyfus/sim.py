@@ -136,9 +136,10 @@ def run_simulation(arr: xdc.Transducer,
                          coords=params.coords,
                          name='p_min', 
                          attrs={'units':'Pa', 'long_name':'PNP'})
-    #intensity = xa.DataArray(1e-4*output['I'].reshape(sz, order='F'),
-    #                     coords=params.coords,
-    #                     name='I', 
-    #                     attrs={'units':'W/cm^2', 'long_name':'Intensity'})
-    ds = xa.Dataset({'p_max':p_max, 'p_min':p_min})
+    Z = params['density'].data*params['sound_speed'].data
+    intensity = xa.DataArray(1e-4*output['p_min'].reshape(sz, order='F')**2/(2*Z),
+                         coords=params.coords,
+                         name='I', 
+                         attrs={'units':'W/cm^2', 'long_name':'Intensity'})
+    ds = xa.Dataset({'p_max':p_max, 'p_min':p_min, 'ita':intensity})
     return ds, output

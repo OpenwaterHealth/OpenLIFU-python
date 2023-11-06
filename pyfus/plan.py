@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 import pyfus.bf as bf
+import json
 
 @dataclass
 class Plan:
@@ -24,5 +25,23 @@ class Plan:
         d["bf_plan"] = bf.BeamformingPlan.from_dict(d.get("bf_plan", {}))
         return Plan(**d)
 
-
-
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "pulse": self.pulse.to_dict(),
+            "sequence": self.sequence.to_dict(),
+            "focal_pattern": self.focal_pattern.to_dict(),
+            "sim_grid": self.sim_grid.to_dict(),
+            "bf_plan": self.bf_plan.to_dict(),
+            "param_constraints": self.param_constraints,
+            "target_constraints": self.target_constraints,
+            "analysis_options": self.analysis_options,
+        }
+    
+    @staticmethod
+    def from_file(filename):
+        with open(filename, "r") as f:
+            d = json.load(f)
+        return Plan.from_dict(d)

@@ -3,7 +3,7 @@ import os
 import json
 import scipy.io
 from typing import List
-import pyfus.xdc as xdc
+import pyfus
 import numpy as np
 import logging
 import h5py
@@ -47,12 +47,12 @@ class Database:
                 raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
 
         # Serialize the treatment plan to JSON
-        plan_data = treatment_plan.to_json()
+        plan_dict = treatment_plan.to_dict()
 
         # Save the treatment plan to a JSON file
         plan_filename = self.get_plan_filename(plan_id)
         with open(plan_filename, "w") as f:
-            json.dump(plan_data, f)
+            json.dump(plan_dict, f)
 
         # Update the list of plan IDs
         if plan_id not in plan_ids:
@@ -370,7 +370,7 @@ class Database:
 
     def load_standoff(self, transducer_id, standoff_id="standoff"):
         standoff_filename = self.get_standoff_filename(transducer_id, standoff_id)
-        standoff = xdc.Standoff.from_file(standoff_filename)
+        standoff = pyfus.xdc.Standoff.from_file(standoff_filename)
         return standoff
 
     def load_system(self, sys_id=None):
@@ -381,13 +381,13 @@ class Database:
 
     def load_transducer(self, transducer_id):
         transducer_filename = self.get_transducer_filename(transducer_id)
-        transducer = xdc.Transducer.from_file(transducer_filename)
+        transducer = pyfus.xdc.Transducer.from_file(transducer_filename)
         return transducer
 
     def load_transducer_standoff(self, trans, coords, options=None):
         options = options or {}
         standoff_filename = self.get_standoff_filename(trans.id, "standoff_anchors")
-        standoff = xdc.Standoff.from_file(standoff_filename)
+        standoff = pyfus.xdc.Standoff.from_file(standoff_filename)
         # Implement the logic to generate binary mask using standoff and coordinates
         mask = generate_standoff_mask(standoff, coords, options)
         return mask
@@ -395,7 +395,7 @@ class Database:
     def load_plan(self, plan_id):
         plan_filename = self.get_plan_filename(plan_id)
         if os.path.isfile(plan_filename):
-            plan = TreatmentPlan.from_file(plan_filename)
+            plan = pyfus.plan.Plan.from_file(plan_filename)
             self.logger.info(f"Loaded plan {plan_id}")
             return plan
         else:
