@@ -11,5 +11,6 @@ dependencies = [
     "vtk",
     "h5py",
     "opencv-contrib-python",
-    "crc"
+    "crc",
+    "nibabel"
 ]
