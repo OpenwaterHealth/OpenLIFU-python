@@ -130,8 +130,7 @@ class Element:
         units = self.units if units is None else units
         pos = np.concatenate([self.get_position(units=units), [1]])
         m = self.get_matrix(units=units)
-        gm = np.dot(matrix, m)
-        gpos = np.dot(gm, pos)
+        gpos = np.dot(matrix, pos)
         vec = point - gpos[:3]
         dist = np.linalg.norm(vec, 2)
         return dist

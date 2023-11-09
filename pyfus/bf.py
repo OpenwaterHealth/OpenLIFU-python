@@ -188,6 +188,18 @@ class SimulationGrid:
         extents = [self.x_extent, self.y_extent, self.z_extent]
         return np.array([extents[self.dims.index(dim)] for dim in dims])*scl       
     
+    def get_max_cycle_offset(self, arr:xdc.Transducer, frequency: Optional[float] = None, delays: Optional[np.ndarray]=None, zmin: float =10e-3):    
+        frequency = arr.frequency if frequency is None else frequency
+        delays = np.zeros(arr.numelements()) if delays is None else delays
+        coords = self.get_coords(units="m")
+        cvals = [coords['lat'], coords['ele'], coords['ax'].sel(ax=slice(zmin, None))]
+        ndg = np.meshgrid(*cvals)
+        dists = [np.sqrt((ndg[0]-pos[0])**2 + (ndg[1]-pos[1])**2 + (ndg[2]-pos[2])**2) for pos in arr.get_positions(units="m")]
+        tof = [dist/self.c0 + delays[i] for i, dist in enumerate(dists)]
+        dtof = np.array(tof).max(axis=0) - np.array(tof).min(axis=0)
+        max_cycle_offset = dtof.max()*frequency
+        return max_cycle_offset
+
     def get_max_distance(self, arr: Transducer, units: Optional[str] = None):
         units = self.units if units is None else units
         corners = self.get_corners(units=units)
@@ -311,7 +323,7 @@ class MaterialReference:
 @dataclass
 class DelayMethod(ABC):
     @abstractmethod
-    def calc_delays(self, arr: Transducer, target: geo.Point, params: xa.Dataset):
+    def calc_delays(self, arr: Transducer, target: geo.Point, params: xa.Dataset, transform: bool = True):
         pass
 
     def to_dict(self):
@@ -327,16 +339,22 @@ class DelayMethod(ABC):
     
 @dataclass
 class DirectDelays(DelayMethod):
-    def calc_delays(self, arr: Transducer, target: geo.Point, params: xa.Dataset):
+    def calc_delays(self, arr: Transducer, target: geo.Point, params: xa.Dataset, transform: bool = True):
         c = params['sound_speed'].attrs['ref_value']
-        tof = np.linalg.norm(target.get_position(units="m") - arr.get_positions(units="m"), axis=1) / c
+        target_pos = target.get_position(units="m")
+        matrix = arr.get_matrix(units="m") if transform else np.eye(4)
+        dists = np.array([el.distance_to_point(target_pos, units="m", matrix=matrix) for el in arr.elements])
+        tof = dists / c
+        #print(tof)
+        #tof = np.linalg.norm(target.get_position(units="m") - arr.get_positions(units="m", transform=transform), axis=1) / c
+        #print(tof)
         delays = max(tof) - tof
         return delays
 
 @dataclass
 class ApodizationMethod:
     @abstractmethod
-    def calc_apodization(self, arr: Transducer, target: geo.Point, params: xa.Dataset):
+    def calc_apodization(self, arr: Transducer, target: geo.Point, params: xa.Dataset, transform: bool = True):
         pass
 
     def to_dict(self):
@@ -353,8 +371,20 @@ class ApodizationMethod:
 @dataclass
 class UniformApodization(ApodizationMethod):
     value = 1
-    def calc_apodization(self, arr: Transducer, target: geo.Point, params: xa.Dataset):
+    def calc_apodization(self, arr: Transducer, target: geo.Point, params: xa.Dataset, transform: bool = True):
         return np.full(arr.numelements(), self.value)
+
+@dataclass
+class MaxAngleApodization(ApodizationMethod):
+    max_angle: float = 30.0
+    units: str = "deg"
+    def calc_apodization(self, arr: Transducer, target: geo.Point, params: xa.Dataset, transform: bool = True):
+        target_pos = target.get_position(units="m")
+        matrix = arr.get_matrix(units="m") if transform else np.eye(4)
+        angles = np.array([el.angle_to_point(target_pos, units="m", matrix=matrix) for el in arr.elements])
+        apod = np.zeros(arr.numelements())
+        apod[angles <= self.max_angle] = 1
+        return apod
 
 @dataclass
 class SegmentationMethod:

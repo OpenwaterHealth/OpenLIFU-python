@@ -30,11 +30,12 @@ def get_kgrid(coords: xa.Coordinates, t_end = 0, dt = 0, sound_speed_ref=1500):
     return kgrid
 
 def get_karray(arr: xdc.Transducer, 
-               bli_tolerance: float = 0.5,
+               bli_tolerance: float = 0.05,
                upsampling_rate: int = 5,
                translation: List[float] = [0.,0.,0.],
                rotation: List[float] = [0.,0.,0.]):
-    karray = kWaveArray(bli_tolerance=bli_tolerance, upsampling_rate=upsampling_rate)
+    karray = kWaveArray(bli_tolerance=bli_tolerance, upsampling_rate=upsampling_rate,
+                        single_precision=True)
     for el in arr.elements:
         ele_pos = list(el.get_position(units="m"))
         ele_w, ele_l = el.get_size(units="m")
@@ -83,9 +84,13 @@ def run_simulation(arr: xdc.Transducer,
                    amplitude: float = 1,
                    dt: float = 0,
                    t_end: float = 0,
+                   grid_weights: Optional[np.ndarray] = None,
                    load_gridweights: bool = True,
                    save_gridweights: bool = True,
-                   db = None):
+                   db = None,
+                   bli_tolerance: float = 0.05,
+                   upsampling_rate: int = 5,
+):
     delays = delays if delays is not None else np.zeros(arr.numelements())
     apod = apod if apod is not None else np.ones(arr.numelements())
     kgrid = get_kgrid(params.coords, dt=dt, t_end=t_end)
@@ -95,11 +100,13 @@ def run_simulation(arr: xdc.Transducer,
     pcoords = params.coords['lat'].attrs['units']
     scl = getunitconversion(pcoords, 'm')
     array_offset =[-float(coord.mean())*scl for coord in params.coords.values()]
-    karray = get_karray(arr, translation=array_offset)
+    karray = get_karray(arr, 
+                        translation=array_offset,
+                        bli_tolerance=bli_tolerance,
+                        upsampling_rate=upsampling_rate)
     medium = get_medium(params)
     sensor = get_sensor(kgrid, record=['p_max', 'p_min'])
-    grid_weights = None
-    if load_gridweights and db is not None:
+    if grid_weights is None and load_gridweights and db is not None:
         h = hash_array_kgrid(kgrid, karray)
         available_hashes = db.get_gridweight_hashes(arr.id)
         if h in available_hashes:
