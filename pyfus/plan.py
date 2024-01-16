@@ -45,3 +45,5 @@ class Plan:
         with open(filename, "r") as f:
             d = json.load(f)
         return Plan.from_dict(d)
+    
+

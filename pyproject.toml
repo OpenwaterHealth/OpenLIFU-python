@@ -12,5 +12,6 @@ dependencies = [
     "h5py",
     "opencv-contrib-python",
     "crc",
-    "nibabel"
+    "nibabel",
+    "sphinx"
 ]
