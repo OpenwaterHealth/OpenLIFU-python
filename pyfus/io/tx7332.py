@@ -131,7 +131,7 @@ class TX7332:
         mask = (1 << width) - 1
         if value < 0 or value > mask:
             raise ValueError(f"Value {value} does not fit in {width} bits")
-        return (reg_value & ~(mask << lsb)) | ((value & mask) << lsb)
+        return (reg_value & ~(mask << lsb)) | ((int(value) & mask) << lsb)
 
     def set_register(self, address, value:int, lsb:int=0, width: Optional[int]=None):
         """
@@ -447,7 +447,14 @@ class TX7332:
                         per_levels.append(levels[i])
                         samples = 0
             if len(per_levels) <= MAX_PATTERN_PERIODS:
-                return per_levels, per_lengths, clk_div_n
+                t = (np.arange(np.sum(np.array(per_lengths)+2))*(1/clk_n)).tolist()
+                y = np.concatenate([[yi]*(ni+2) for yi,ni in zip(per_levels, per_lengths)]).tolist()
+                pattern = {'levels': per_levels, 
+                           'lengths': per_lengths, 
+                           'clk_div_n': clk_div_n,
+                           't': t,
+                           'y': y}
+                return pattern
             else:
                 clk_div_n += 1
         raise ValueError(f"Pattern requires too many periods ({len(per_levels)} > {MAX_PATTERN_PERIODS})")
@@ -471,7 +478,10 @@ class TX7332:
         """
         if profile not in PATTERN_PROFILES:
             raise ValueError(f"Invalid profile {profile}.")
-        levels, lengths, clk_div_n = self.calc_pulse_pattern(frequency, duty_cycle)
+        pattern = self.calc_pulse_pattern(frequency, duty_cycle)
+        levels = pattern['levels']
+        lengths = pattern['lengths']
+        clk_div_n = pattern['clk_div_n']
         nperiods = len(levels)
         clk_div = 2**clk_div_n
         clk_n = self.bf_clk / clk_div
@@ -483,10 +493,14 @@ class TX7332:
         if cycles > (MAX_REPEAT+1):
             # Use elastic repeat
             pulse_duration_samples = cycles * self.bf_clk / frequency
-            repeat = 1
+            repeat = 0
             elastic_repeat = int(pulse_duration_samples / 16)
             period_samples = int(clk_n / frequency)
-            cycles = 16*elastic_repeat * (1 / self.bf_clk) / period_samples
+            cycles = 16*elastic_repeat / period_samples
+            y = pattern['y']*int(cycles+1)
+            y = y[:(16*elastic_repeat)]
+            y = y + ([0]*tail_count)
+            t = np.arange(len(y))*(1/clk_n)
             elastic_mode = 1
             if elastic_repeat > MAX_ELASTIC_REPEAT:
                 raise ValueError(f"Pattern duration too long for elastic repeat")
@@ -494,6 +508,9 @@ class TX7332:
             repeat = cycles-1
             elastic_repeat = 0        
             elastic_mode = 0
+            y = pattern['y']*(repeat+1)
+            y = y + [0]*tail_count
+            t = np.arange(len(y))*(1/clk_n)
         reg_mode =  0x02000003
         reg_mode = self._set_register_value(reg_mode, clk_div_n, lsb=3, width=3)
         reg_mode = self._set_register_value(reg_mode, int(invert), lsb=6, width=1)
@@ -521,6 +538,12 @@ class TX7332:
             'tail_count': tail_count,
             'invert': invert,
             'clk_div': clk_div,
+            'repeat': repeat,
+            'elastic_repeat': elastic_repeat,
+            'elastic_mode': elastic_mode,
+            't': t,
+            'y': y,
+            'pattern': pattern,
             'registers': registers,
             'pattern_registers': pattern_registers}
 
