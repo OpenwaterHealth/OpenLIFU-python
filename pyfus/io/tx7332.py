@@ -573,3 +573,18 @@ class TX7332:
         self.pulse_profile = profile
         for addr, value in self.pulse_profiles[profile]['registers'].items():
             self.set_register(addr, value)
+
+    def get_global_registers(self, pulse_profile: Optional[int] = None, delay_profile: Optional[int] = None):
+        """
+        Gets the values of all global registers
+        
+        :param pulse_profile: Pulse profile number
+        :param delay_profile: Delay profile number
+        :returns: Dictionary of global register addresses and values
+        """
+        registers = {address: self.registers[address] for address in ADDRESSES_GLOBAL}
+        if pulse_profile is not None:
+            registers.update(self.pulse_profiles[pulse_profile]['registers'])
+        if delay_profile is not None:
+            registers.update(self.delay_profiles[delay_profile]['registers'])
+        return registers
