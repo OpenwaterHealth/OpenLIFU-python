@@ -1,3 +1,9 @@
+"""
+Beamforming classes and functions.
+
+This module contains the classes and functions for beamforming.
+"""
+
 import numpy as np
 import pandas as pd
 from dataclasses import dataclass, field
@@ -11,23 +17,53 @@ import logging
 
 @dataclass
 class Pulse:
+    """
+    Class for representing a sinusoidal pulse
+    
+    :ivar frequency: Frequency of the pulse in Hz
+    :ivar amplitude: Amplitude of the pulse in Pa
+    :ivar duration: Duration of the pulse in s
+    """
+
     frequency: float = 1.0 # Hz
     amplitude: float = 1.0 # Pa
     duration: float = 1.0 # s
 
     def calc_pulse(self, t: np.array):
+        """
+        Calculate the pulse at the given times
+        
+        :param t: Array of times to calculate the pulse at (s)
+        :returns: Array of pulse values at the given times
+        """
         return self.amplitude * np.sin(2*np.pi*self.frequency*t)
     
     def calc_time(self, dt: float):
+        """
+        Calculate the time array for the pulse for a particular timestep
+
+        :param dt: Time step (s)
+        :returns: Array of times for the pulse (s)
+        """
         return np.arange(0, self.duration, dt)
     
     def get_table(self):
+        """
+        Get a table of the pulse parameters
+        
+        :returns: Pandas DataFrame of the pulse parameters
+        """
         records = [{"Name": "Frequency", "Value": self.frequency, "Unit": "Hz"},
                    {"Name": "Amplitude", "Value": self.amplitude, "Unit": "Pa"},
                    {"Name": "Duration", "Value": self.duration, "Unit": "s"}]
         return pd.DataFrame.from_records(records)
     
     def to_dict(self):
+        """
+        Convert the pulse to a dictionary
+
+        :returns: Dictionary of the pulse parameters
+        """
         return {"frequency": self.frequency,
                 "amplitude": self.amplitude,
                 "duration": self.duration,
@@ -35,16 +71,35 @@ class Pulse:
     
     @staticmethod
     def from_dict(d):
+        """
+        Create a pulse from a dictionary
+
+        :param d: Dictionary of the pulse parameters
+        :returns: Pulse object
+        """
         return Pulse(frequency=d["frequency"], amplitude=d["amplitude"], duration=d["duration"])
     
 @dataclass
 class Sequence:
+    """
+    Class for representing a sequence of pulses
+
+    :ivar pulse_interval: Interval between pulses in the sequence (s)
+    :ivar pulse_count: Number of pulses in the sequence
+    :ivar pulse_train_interval: Interval between pulse trains in the sequence (s)
+    :ivar pulse_train_count: Number of pulse trains in the sequence
+    """
     pulse_interval: float = 1.0 # s
     pulse_count: int = 1
     pulse_train_interval: float = 1.0 # s
     pulse_train_count: int = 1
 
     def get_table(self):
+        """
+        Get a table of the sequence parameters
+
+        :returns: Pandas DataFrame of the sequence parameters
+        """
         records = [{"Name": "Pulse Interval", "Value": self.pulse_interval, "Unit": "s"},
                    {"Name": "Pulse Count", "Value": self.pulse_count, "Unit": ""},
                    {"Name": "Pulse Train Interval", "Value": self.pulse_train_interval, "Unit": "s"},
@@ -53,6 +108,12 @@ class Sequence:
     
     @staticmethod
     def from_dict(d):
+        """
+        Create a sequence from a dictionary
+
+        :param d: Dictionary of the sequence parameters
+        :returns: Sequence object
+        """
         return Sequence(pulse_interval=d["pulse_interval"], 
                         pulse_count=d["pulse_count"],
                         pulse_train_interval=d["pulse_train_interval"], 
@@ -60,43 +121,101 @@ class Sequence:
     
 @dataclass
 class FocalPattern(ABC):
+    """
+    Abstract base class for representing a focal pattern
+
+    :ivar target_pressure: Target pressure of the focal pattern in Pa
+    """
     target_pressure: float = 1.0 # Pa
 
     @abstractmethod
     def get_targets(self, target: geo.Point):
+        """
+        Get the targets of the focal pattern
+        
+        :param target: Target point of the focal pattern
+        :returns: List of target points
+        """
         pass
 
     @abstractmethod
     def num_foci(self):
+        """
+        Get the number of foci in the focal pattern
+
+        :returns: Number of foci
+        """
         pass
 
     def to_dict(self):
+        """
+        Convert the focal pattern to a dictionary
+
+        :returns: Dictionary of the focal pattern parameters
+        """
         d = self.__dict__.copy()
         d['class'] = self.__class__.__name__
         return d
 
     @staticmethod
     def from_dict(d):
+        """
+        Create a focal pattern from a dictionary
+        
+        :param d: Dictionary of the focal pattern parameters
+        :returns: FocalPattern object
+        """
         d = d.copy()
         class_constructor = globals()[d.pop("class")]
         return class_constructor(**d)
 
 @dataclass
 class SingleFocus(FocalPattern):
+    """
+    Class for representing a single focus
+
+    :ivar target_pressure: Target pressure of the focal pattern in Pa
+    """
     def get_targets(self, target: geo.Point):
+        """
+        Get the targets of the focal pattern
+        
+        :param target: Target point of the focal pattern
+        :returns: List of target points
+        """
         return [target.copy()]
 
     def num_foci(self):
+        """
+        Get the number of foci in the focal pattern
+
+        :returns: Number of foci (1)
+        """
         return 1
     
 @dataclass
-class RadialPattern(FocalPattern):
+class WheelPattern(FocalPattern):
+    """
+    Class for representing a wheel pattern
+
+    :ivar target_pressure: Target pressure of the focal pattern in Pa
+    :ivar center: Whether to include the center point of the wheel pattern
+    :ivar num_spokes: Number of spokes in the wheel pattern
+    :ivar spoke_radius: Radius of the spokes in the wheel pattern
+    :ivar units: Units of the wheel pattern parameters
+    """
     center: bool = True
     num_spokes: int = 4
     spoke_radius: float = 1.0 # mm   
     units: str = "mm"
 
     def get_targets(self, target: geo.Point):
+        """
+        Get the targets of the focal pattern
+
+        :param target: Target point of the focal pattern
+        :returns: List of target points
+        """
         if self.center:
             targets = [target.copy()]
             targets[0].id = f"{target.id}_center"
@@ -117,6 +236,11 @@ class RadialPattern(FocalPattern):
         return targets
     
     def num_foci(self):
+        """
+        Get the number of foci in the focal pattern
+        
+        :returns: Number of foci
+        """
         return int(self.center) + self.num_spokes
 
 @dataclass
