@@ -63,7 +63,7 @@ MAX_REPEAT = 2**5-1
 MAX_ELASTIC_REPEAT = 2**16-1
 DEFAULT_TAIL_COUNT = 29
 
-class TX7332:
+class TX7332Registers:
     def __init__(self, bf_clk:float=64e6):
         """
         Initializes the TX7332 object with the specified clock frequency.

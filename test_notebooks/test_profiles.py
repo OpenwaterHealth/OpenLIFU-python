@@ -1,8 +1,8 @@
-from pyfus.io.tx7332 import TX7332
+from pyfus.io.tx7332 import TX7332Registers
 import matplotlib.pyplot as plt
 import numpy as np
 
-tx = TX7332()
+tx = TX7332Registers()
 delays = np.arange(32)*1e-6
 profile = 1
 tx.set_delay_profile(delays=delays, units='s', profile=profile)
