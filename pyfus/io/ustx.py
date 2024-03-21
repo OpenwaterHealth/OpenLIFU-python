@@ -228,11 +228,11 @@ class DelayProfile:
     units: str = 's'
 
     def __post_init__(self):
-        self.numelements = len(self.delays)
+        self.num_elements = len(self.delays)
         if self.apodizations is None:
-            self.apodizations = [1]*self.numelements
-        if len(self.apodizations) != self.numelements:
-            raise ValueError(f"Apodizations list must have {NUM_CHANNELS} elements")
+            self.apodizations = [1]*self.num_elements
+        if len(self.apodizations) != self.num_elements:
+            raise ValueError(f"Apodizations list must have {self.num_elements} elements")
         if self.index not in DELAY_PROFILES:
             raise ValueError(f"Invalid Profile {self.index}")
             
@@ -272,7 +272,7 @@ class Tx7332Registers:
                 raise ValueError(f"Pulse profile {self.active_pulse_profile} not found")
 
     def add_delay_profile(self, p: DelayProfile, activate: Optional[bool]=None):
-        if p.numelements != NUM_CHANNELS:
+        if p.num_elements != NUM_CHANNELS:
             raise ValueError(f"Delay profile must have {NUM_CHANNELS} elements")
         profiles = [p.index for p in self.delay_profiles]
         if p.index in profiles:
@@ -468,16 +468,17 @@ class Tx7332Registers:
 
 @dataclass
 class TxModule:
-    address: int = 0x0
+    i2c_addr: int = 0x0
     bf_clk: int = DEFAULT_CLK_FREQ
     delay_profiles: List[DelayProfile] = field(default_factory=list)
     pulse_profiles: List[PulseProfile] = field(default_factory=list)
     active_delay_profile: Optional[int] = None
     active_pulse_profile: Optional[int] = None
+    num_transmitters: int = NUM_TRANSMITTERS
 
     def __post_init__(self):
-        self.transmitters = tuple([Tx7332Registers(bf_clk=self.bf_clk) for _ in range(NUM_TRANSMITTERS)])
-
+        self.transmitters = tuple([Tx7332Registers(bf_clk=self.bf_clk) for _ in range(self.num_transmitters)])
+        
     def add_pulse_profile(self, p: PulseProfile, activate: Optional[bool]=None):
         """
         Add a pulse profile
@@ -505,8 +506,8 @@ class TxModule:
         :param p: Delay profile
         :param activate: Activate the delay profile
         """
-        if p.numelements != NUM_CHANNELS*NUM_TRANSMITTERS:
-            raise ValueError(f"Delay profile must have {NUM_CHANNELS*NUM_TRANSMITTERS} elements")
+        if p.num_elements != NUM_CHANNELS*self.num_transmitters:
+            raise ValueError(f"Delay profile must have {NUM_CHANNELS*self.num_transmitters} elements")
         profiles = [p.index for p in self.delay_profiles]
         if p.index in profiles:
             i = profiles.index(p.index)
