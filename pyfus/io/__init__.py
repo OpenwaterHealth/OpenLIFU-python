@@ -1,1 +1,1 @@
-from .tx7332 import TX7332Registers
+from .ustx import TxModule, DelayProfile, PulseProfile
