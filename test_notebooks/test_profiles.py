@@ -1,11 +1,11 @@
-from pyfus.io.tx7332 import TX7332Registers
+from pyfus.io.tx7332 import TX7332Registers_Old
 import matplotlib.pyplot as plt
 import numpy as np
 
-tx = TX7332Registers()
+tx = TX7332Registers_Old()
 delays = np.arange(32)*1e-6
 profile = 1
-tx.set_delay_profile(delays=delays, units='s', profile=profile)
+tx.create_delay_profile(delays=delays, units='s', profile=profile)
 prof = tx.get_delay_profile(profile=profile)
 print("[DELAY_CTRL]:")
 for addr, val in prof['registers'].items():

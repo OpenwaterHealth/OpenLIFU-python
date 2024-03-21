@@ -1,8 +1,8 @@
-from pyfus.io.tx7332 import TX7332Registers
+from pyfus.io.tx7332 import TX7332Registers_Old
 import matplotlib.pyplot as plt
 import numpy as np
 
-tx = TX7332Registers()
+tx = TX7332Registers_Old()
 for duty_cycle in [0,.1,.25,.33,0.5,.66,.75,.9,1]:
     y,n,clk_div = tx.calc_pulse_pattern(100e3, duty_cycle)
     clk_freq = tx.bf_clk/(2**clk_div)
