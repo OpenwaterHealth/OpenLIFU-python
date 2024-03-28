@@ -501,23 +501,28 @@ class Tx7332Registers:
             raise ValueError(f"No delay profile selected")
         if self.active_pulse_profile is None:
             raise ValueError(f"No pulse profile selected")
-        if profiles == "all":
-            addresses = ADDRESSES
-        else:
-            addresses = ADDRESSES_GLOBAL
-        registers = {addr:0x0 for addr in addresses}        
+        registers = {addr:0x0 for addr in ADDRESSES_GLOBAL}        
         registers.update(self.get_delay_control_registers())
         registers.update(self.get_pulse_control_registers())
         if profiles == "active":
-            registers.update(self.get_delay_data_registers())
-            registers.update(self.get_pulse_data_registers())
+            delay_data = self.get_delay_data_registers(pack=pack, pack_single=pack_single)
+            pulse_data = self.get_pulse_data_registers(pack=pack, pack_single=pack_single)    
         else:
+            if profiles == "all":
+                delay_data = {addr:0x0 for addr in ADDRESSES_DELAY_DATA}
+                pulse_data = {addr:0x0 for addr in ADDRESSES_PATTERN_DATA}
+            else:
+                delay_data = {}
+                pulse_data = {}
             for delay_profile in self.delay_profiles:
-                registers.update(self.get_delay_data_registers(index=delay_profile.index))
+                delay_data.update(self.get_delay_data_registers(index=delay_profile.index, pack=pack, pack_single=pack_single))
             for pulse_profile in self.pulse_profiles:
-                registers.update(self.get_pulse_data_registers(index=pulse_profile.index))
+                pulse_data.update(self.get_pulse_data_registers(index=pulse_profile.index, pack=pack, pack_single=pack_single))
         if pack:
-            registers = pack_registers(registers, pack_single=pack_single)
+            delay_data = pack_registers(delay_data, pack_single=pack_single)
+            pulse_data = pack_registers(pulse_data, pack_single=pack_single)
+        registers.update(delay_data)
+        registers.update(pulse_data)
         return registers
 
 @dataclass
