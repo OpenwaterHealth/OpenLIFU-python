@@ -40,7 +40,8 @@ ADDRESSES_PATTERN_DATA = [i for i in range(0x120, 0x19F+1)]
 ADDRESSES = ADDRESSES_GLOBAL + ADDRESSES_DELAY_DATA + ADDRESSES_PATTERN_DATA
 NUM_CHANNELS = 32
 MAX_REGISTER = 0x19F
-REGISTER_WIDTH = 32
+REGISTER_BYTES = 4
+REGISTER_WIDTH = REGISTER_BYTES*8
 DELAY_ORDER = [[32, 30],
                [28, 26],
                [24, 22],
@@ -219,7 +220,54 @@ def get_pattern_location(period:int, profile:int=1):
 
 def print_dict(d):
     for addr, val in sorted(d.items()):
-        print(f'0x{addr:X}:x{val:08X}')
+        if isinstance(val, list):
+            for i, v in enumerate(val):
+                print(f'0x{addr:X}[+{i:d}]:x{v:08X}')
+        else:
+            print(f'0x{addr:X}:x{val:08X}')
+
+def pack_registers(regs, pack_single:bool=False):
+    """
+    Packs registers into contiguous blocks
+    
+    :param regs: Dictionary of registers
+    :param pack_single: Pack single registers into arrays. Default True. 
+    :returns: Dictionary of packed registers.
+    """
+    addresses = sorted(regs.keys())
+    if len(addresses) == 0:
+        return {}
+    last_addr = -255
+    burst_addr = -255
+    packed = {}
+    for addr in addresses:
+        if addr == last_addr+1 and burst_addr in packed:
+            packed[burst_addr].append(regs[addr])
+        else:
+            packed[addr] = [regs[addr]]
+            burst_addr = addr
+        last_addr = addr
+    if not pack_single:
+        for addr, val in packed.items():
+            if len(val) == 1:
+                packed[addr] = val[0]
+    return packed
+
+def swap_byte_order(regs):
+    """
+    Swaps the byte order of the registers
+    
+    :param regs: Dictionary of registers
+    :returns: Dictionary of registers with swapped byte order
+    """
+    swapped = {}
+    for addr, val in regs.items():
+        if isinstance(val, list):
+            swapped[addr] = [int.from_bytes(v.to_bytes(REGISTER_BYTES, 'big'), 'little') for v in val]
+        else:
+            swapped[addr] = int.from_bytes(val.to_bytes(REGISTER_BYTES, 'big'), 'little')
+    return swapped
+
 @dataclass
 class DelayProfile:
     index: int
@@ -403,7 +451,7 @@ class Tx7332Registers:
                      ADDRESS_PATTERN_SEL_G2: reg_pat_sel}
         return registers
 
-    def get_delay_data_registers(self, index: Optional[int]=None) -> Dict[int,int]:
+    def get_delay_data_registers(self, index: Optional[int]=None, pack: bool=False, pack_single: bool=False) -> Dict[int,int]:
         if index is None:
             index = self.active_delay_profile
         delay_profile = self.get_delay_profile(index)
@@ -414,9 +462,11 @@ class Tx7332Registers:
                 data_registers[address] = 0
             delay_value = int(delay_profile.delays[channel-1] * getunitconversion(delay_profile.units, 's') * self.bf_clk)
             data_registers[address] = set_register_value(data_registers[address], delay_value, lsb=lsb, width=DELAY_WIDTH)
+        if pack:
+            data_registers = pack_registers(data_registers, pack_single=pack_single)
         return data_registers    
     
-    def get_pulse_data_registers(self, index: Optional[int]=None) -> Dict[int,int]:
+    def get_pulse_data_registers(self, index: Optional[int]=None, pack: bool=False, pack_single: bool=False) -> Dict[int,int]:
         if index is None:
             index = self.active_pulse_profile
         pulse_profile = self.get_pulse_profile(index)
@@ -438,9 +488,11 @@ class Tx7332Registers:
                 data_registers[address] = 0
             data_registers[address] = set_register_value(data_registers[address], 0b111, lsb=lsb_lvl, width=PATTERN_LEVEL_WIDTH)
             data_registers[address] = set_register_value(data_registers[address], 0, lsb=lsb_length, width=PATTERN_LENGTH_WIDTH)
+        if pack:
+            data_registers = pack_registers(data_registers, pack_single=pack_single)
         return data_registers
 
-    def get_registers(self, profiles: ProfileOpts = "set") -> Dict[int,int]:
+    def get_registers(self, profiles: ProfileOpts = "set", pack: bool=False, pack_single: bool=False) -> Dict[int,int]:
         if len(self.delay_profiles) == 0:
             raise ValueError(f"No delay profiles have been set")
         if len(self.pulse_profiles) == 0:
@@ -464,6 +516,8 @@ class Tx7332Registers:
                 registers.update(self.get_delay_data_registers(index=delay_profile.index))
             for pulse_profile in self.pulse_profiles:
                 registers.update(self.get_pulse_data_registers(index=pulse_profile.index))
+        if pack:
+            registers = pack_registers(registers, pack_single=pack_single)
         return registers
 
 @dataclass
@@ -630,7 +684,7 @@ class TxModule:
             for pp in self.pulse_profiles:
                 tx.add_pulse_profile(pp, activate = pp.index == self.active_pulse_profile)
 
-    def get_registers(self, profiles: ProfileOpts = "set", recompute: bool = False) -> List[Dict[int,int]]:
+    def get_registers(self, profiles: ProfileOpts = "set", recompute: bool = False, pack: bool=False, pack_single:bool=False) -> List[Dict[int,int]]:
         """
         Get the registers for all transmitters
 
@@ -641,7 +695,7 @@ class TxModule:
         if recompute:
             self.recompute_delay_profiles()
             self.recompute_pulse_profiles()
-        return [tx.get_registers(profiles) for tx in self.transmitters]
+        return [tx.get_registers(profiles, pack=pack, pack_single=pack_single) for tx in self.transmitters]
     
     def get_delay_control_registers(self, index:Optional[int]=None) -> List[Dict[int,int]]:
         """
@@ -665,7 +719,7 @@ class TxModule:
             index = self.active_pulse_profile
         return [tx.get_pulse_control_registers(index) for tx in self.transmitters]
     
-    def get_delay_data_registers(self, index:Optional[int]=None) -> List[Dict[int,int]]:
+    def get_delay_data_registers(self, index:Optional[int]=None, pack: bool=False, pack_single: bool=False) -> List[Dict[int,int]]:
         """
         Get the delay data registers for all transmitters
 
@@ -674,9 +728,9 @@ class TxModule:
         """
         if index is None:
             index = self.active_delay_profile
-        return [tx.get_delay_data_registers(index) for tx in self.transmitters]
+        return [tx.get_delay_data_registers(index, pack=pack, pack_single=pack_single) for tx in self.transmitters]
     
-    def get_pulse_data_registers(self, index:Optional[int]=None) -> List[Dict[int,int]]:
+    def get_pulse_data_registers(self, index:Optional[int]=None, pack: bool=False, pack_single: bool=False) -> List[Dict[int,int]]:
         """
         Get the pulse data registers for all transmitters
 
@@ -685,7 +739,7 @@ class TxModule:
         """
         if index is None:
             index = self.active_pulse_profile
-        return [tx.get_pulse_data_registers(index) for tx in self.transmitters]
+        return [tx.get_pulse_data_registers(index, pack=pack, pack_single=pack_single) for tx in self.transmitters]
     
 @dataclass
 class TxArray:
@@ -855,7 +909,7 @@ class TxArray:
         for dp in self.delay_profiles:
             self.add_delay_profile(dp, activate = dp.index == self.active_delay_profile)
 
-    def get_registers(self, profiles: ProfileOpts = "set", recompute: bool = False) -> Dict[int, List[Dict[int,int]]]:
+    def get_registers(self, profiles: ProfileOpts = "set", recompute: bool = False, pack: bool=False, pack_single: bool=False) -> Dict[int, List[Dict[int,int]]]:
         """
         Get the registers for all modules
 
@@ -866,7 +920,7 @@ class TxArray:
         if recompute:
             self.recompute_delay_profiles()
             self.recompute_pulse_profiles()
-        return {addr:module.get_registers(profiles) for addr, module in self.modules.items()}
+        return {addr:module.get_registers(profiles, pack=pack, pack_single=pack_single) for addr, module in self.modules.items()}
     
     def get_delay_control_registers(self, index:Optional[int]=None) -> Dict[int, List[Dict[int,int]]]:
         """
@@ -890,7 +944,7 @@ class TxArray:
             index = self.active_pulse_profile
         return {addr:module.get_pulse_control_registers(index) for addr, module in self.modules.items()}
     
-    def get_delay_data_registers(self, index:Optional[int]=None) -> Dict[int, List[Dict[int,int]]]:
+    def get_delay_data_registers(self, index:Optional[int]=None, pack: bool=False, pack_single: bool=False) -> Dict[int, List[Dict[int,int]]]:
         """
         Get the delay data registers for all modules
 
@@ -899,9 +953,9 @@ class TxArray:
         """
         if index is None:
             index = self.active_delay_profile
-        return {addr:module.get_delay_data_registers(index) for addr, module in self.modules.items()}
+        return {addr:module.get_delay_data_registers(index, pack=pack, pack_single=pack_single) for addr, module in self.modules.items()}
     
-    def get_pulse_data_registers(self, index:Optional[int]=None) -> Dict[int, List[Dict[int,int]]]:
+    def get_pulse_data_registers(self, index:Optional[int]=None, pack: bool=False, pack_single: bool=False) -> Dict[int, List[Dict[int,int]]]:
         """
         Get the pulse data registers for all modules
 
@@ -910,5 +964,5 @@ class TxArray:
         """
         if index is None:
             index = self.active_pulse_profile
-        return {addr:module.get_pulse_data_registers(index) for addr, module in self.modules.items()}
+        return {addr:module.get_pulse_data_registers(index, pack=pack, pack_single=pack_single) for addr, module in self.modules.items()}
     
