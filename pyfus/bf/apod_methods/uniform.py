@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import xarray as xa
 import numpy as np
 from pyfus import Transducer, Point
-from pyfus.beamforming.apod_methods import ApodizationMethod
+from pyfus.bf.apod_methods import ApodizationMethod
 
 @dataclass
 class Uniform(ApodizationMethod):

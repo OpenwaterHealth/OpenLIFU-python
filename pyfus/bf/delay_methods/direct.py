@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import xarray as xa
 import numpy as np
 from pyfus import Transducer, Point
-from pyfus.beamforming.delay_methods import DelayMethod
+from pyfus.bf.delay_methods import DelayMethod
 from typing import ClassVar
 
 @dataclass

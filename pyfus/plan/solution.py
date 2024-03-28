@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
 @dataclass
-class TreatmentSolution:
+class Solution:
     id: str = "solution"
     name: str = "Solution"

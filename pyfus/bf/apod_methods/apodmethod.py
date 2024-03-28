@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import xarray as xa
 from pyfus import Transducer
 from pyfus import Point
-from pyfus.beamforming import apod_methods
+from pyfus.bf import apod_methods
 
 @dataclass
 class ApodizationMethod(ABC):

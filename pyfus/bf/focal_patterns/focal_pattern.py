@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pyfus.geo import Point
-from pyfus.beamforming import focal_patterns
+from pyfus.bf import focal_patterns
 
 @dataclass
 class FocalPattern(ABC):

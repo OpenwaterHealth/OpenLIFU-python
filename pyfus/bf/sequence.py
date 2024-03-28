@@ -40,3 +40,14 @@ class Sequence:
                         pulse_count=d["pulse_count"],
                         pulse_train_interval=d["pulse_train_interval"], 
                         pulse_train_count=d["pulse_train_count"])
+    
+    def to_dict(self):
+        """
+        Convert the sequence to a dictionary
+
+        :returns: Dictionary of the sequence parameters
+        """
+        return {"pulse_interval": self.pulse_interval, 
+                "pulse_count": self.pulse_count,
+                "pulse_train_interval": self.pulse_train_interval, 
+                "pulse_train_count": self.pulse_train_count}

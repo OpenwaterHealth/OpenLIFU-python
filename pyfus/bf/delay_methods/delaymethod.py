@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import xarray as xa
 from pyfus import Transducer
 from pyfus import Point
-from pyfus.beamforming import delay_methods
+from pyfus.bf import delay_methods
 
 @dataclass
 class DelayMethod(ABC):
