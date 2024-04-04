@@ -63,13 +63,13 @@ for row, channels in enumerate(DELAY_ORDER):
     for i, channel in enumerate(channels):
         DELAY_CHANNEL_MAP[channel] = {'row': row, 'lsb': 16*(1-i)}
 DELAY_PROFILE_OFFSET = 16
-DELAY_PROFILES = [i for i in range(1, 17)]
+DELAY_PROFILE_INDICES = [i for i in range(1, 17)]
 DELAY_WIDTH = 13
 APODIZATION_CHANNEL_ORDER = [17, 19, 21, 23, 25, 27, 29, 31, 18, 20, 22, 24, 26, 28, 30, 32, 1, 3, 5, 7, 9, 11, 13, 15, 2, 4, 6, 8, 10, 12, 14, 16]
 DEFAULT_PATTERN_DUTY_CYCLE = 0.66
 PATTERN_PROFILE_OFFSET = 4
 NUM_PATTERN_PROFILES = 32
-PATTERN_PROFILES = [i for i in range(1, NUM_PATTERN_PROFILES+1)]
+PATTERN_PROFILE_INDICES = [i for i in range(1, NUM_PATTERN_PROFILES+1)]
 MAX_PATTERN_PERIODS = 16
 PATTERN_PERIOD_ORDER = [[1, 2, 3, 4],
                  [5, 6, 7, 8],
@@ -99,7 +99,7 @@ def get_delay_location(channel:int, profile:int=1):
     if channel not in DELAY_CHANNEL_MAP:
         raise ValueError(f"Invalid channel {channel}.")
     channel_map = DELAY_CHANNEL_MAP[channel]
-    if profile not in DELAY_PROFILES:
+    if profile not in DELAY_PROFILE_INDICES:
         raise ValueError(f"Invalid Profile {profile}")
     address = ADDRESSES_DELAY_DATA[0] + (profile-1) * DELAY_PROFILE_OFFSET + channel_map['row']
     lsb = channel_map['lsb']
@@ -211,7 +211,7 @@ def get_pattern_location(period:int, profile:int=1):
     """
     if period not in PATTERN_MAP:
         raise ValueError(f"Invalid period {period}.")
-    if profile not in PATTERN_PROFILES:
+    if profile not in PATTERN_PROFILE_INDICES:
         raise ValueError(f"Invalid profile {profile}.")
     address = ADDRESSES_PATTERN_DATA[0] + (profile-1) * PATTERN_PROFILE_OFFSET + PATTERN_MAP[period]['row']
     lsb_lvl = PATTERN_MAP[period]['lsb_lvl']
@@ -281,7 +281,7 @@ class DelayProfile:
             self.apodizations = [1]*self.num_elements
         if len(self.apodizations) != self.num_elements:
             raise ValueError(f"Apodizations list must have {self.num_elements} elements")
-        if self.index not in DELAY_PROFILES:
+        if self.index not in DELAY_PROFILE_INDICES:
             raise ValueError(f"Invalid Profile {self.index}")
             
 @dataclass
@@ -294,7 +294,7 @@ class PulseProfile:
     invert: bool=False
     
     def __post_init__(self):
-        if self.index not in PATTERN_PROFILES:
+        if self.index not in PATTERN_PROFILE_INDICES:
             raise ValueError(f"Invalid profile {self.index}.")
         
 @dataclass
@@ -302,98 +302,104 @@ class Tx7332Registers:
     bf_clk: float = DEFAULT_CLK_FREQ
     delay_profiles: List[DelayProfile] = field(default_factory=list)
     pulse_profiles: List[PulseProfile] = field(default_factory=list)
-    active_delay_profile: Optional[int] = None
-    active_pulse_profile: Optional[int] = None
+    active_delay_index: Optional[int] = None
+    active_pulse_index: Optional[int] = None
 
     def __post_init__(self):
-        delay_profile_indices = [p.index for p in self.delay_profiles]
+        delay_profile_indices = self.delay_profile_indices()
         if len(delay_profile_indices) != len(set(delay_profile_indices)):
             raise ValueError(f"Duplicate delay profiles found")
-        if self.active_delay_profile is not None:
-            if self.active_delay_profile not in delay_profile_indices:
-                raise ValueError(f"Delay profile {self.active_delay_profile} not found")
-        pulse_profile_indices = [p.index for p in self.pulse_profiles]
+        if self.active_delay_index is not None:
+            if self.active_delay_index not in delay_profile_indices:
+                raise ValueError(f"Delay profile {self.active_delay_index} not found")
+        pulse_profile_indices = self.pulse_profile_indices()
         if len(pulse_profile_indices) != len(set(pulse_profile_indices)):
             raise ValueError(f"Duplicate pulse profiles found")
-        if self.active_pulse_profile is not None:
-            if self.active_pulse_profile not in pulse_profile_indices:
-                raise ValueError(f"Pulse profile {self.active_pulse_profile} not found")
+        if self.active_pulse_index is not None:
+            if self.active_pulse_index not in pulse_profile_indices:
+                raise ValueError(f"Pulse profile {self.active_pulse_index} not found")
 
-    def add_delay_profile(self, p: DelayProfile, activate: Optional[bool]=None):
-        if p.num_elements != NUM_CHANNELS:
+    def add_delay_profile(self, delay_profile: DelayProfile, activate: Optional[bool]=None):
+        if delay_profile.num_elements != NUM_CHANNELS:
             raise ValueError(f"Delay profile must have {NUM_CHANNELS} elements")
-        profiles = [p.index for p in self.delay_profiles]
-        if p.index in profiles:
-            i = profiles.index(p.index)
-            self.delay_profiles[i] = p
+        indices = self.delay_profile_indices()
+        if delay_profile.index in indices:
+            i = indices.index(delay_profile.index)
+            self.delay_profiles[i] = delay_profile
         else:
-            self.delay_profiles.append(p)
+            self.delay_profiles.append(delay_profile)
         if activate is None:
-            activate = self.active_delay_profile is None
+            activate = self.active_delay_index is None
         if activate:
-            self.active_delay_profile = p.index
+            self.active_delay_index = delay_profile.index
 
-    def add_pulse_profile(self, p: PulseProfile, activate: Optional[bool]=None):
-        profiles = [p.index for p in self.pulse_profiles]
-        if p.index in profiles:
-            i = profiles.index(p.index)
-            self.pulse_profiles[i] = p
+    def add_pulse_profile(self, pulse_profile: PulseProfile, activate: Optional[bool]=None):
+        indices = self.pulse_profile_indices()
+        if pulse_profile.index in indices:
+            i = indices.index(pulse_profile.index)
+            self.pulse_profiles[i] = pulse_profile
         else:
-            self.pulse_profiles.append(p)
+            self.pulse_profiles.append(pulse_profile)
         if activate is None:
-            activate = self.active_pulse_profile is None
+            activate = self.active_pulse_index is None
         if activate:
-            self.active_pulse_profile = p.index
+            self.active_pulse_index = pulse_profile.index
 
-    def remove_delay_profile(self, profile:int):
-        profiles = [p.index for p in self.delay_profiles]
-        if profile not in profiles:
-            raise ValueError(f"Delay profile {profile} not found")
-        index = profiles.index(profile)
+    def remove_delay_profile(self, index:int):
+        indices = self.delay_profile_indices()
+        if index not in indices:
+            raise ValueError(f"Delay profile {index} not found")
+        index = indices.index(index)
         del self.delay_profiles[index]
-        if self.active_delay_profile == profile:
-            self.active_delay_profile = None
+        if self.active_delay_index == index:
+            self.active_delay_index = None
 
-    def remove_pulse_profile(self, profile:int):
-        profiles = [p.index for p in self.pulse_profiles]
-        if profile not in profiles:
-            raise ValueError(f"Pulse profile {profile} not found")
-        index = profiles.index(profile)
+    def remove_pulse_profile(self, index:int):
+        indices = self.pulse_profile_indices()
+        if index not in indices:
+            raise ValueError(f"Pulse profile {index} not found")
+        index = indices.index(index)
         del self.pulse_profiles[index]
-        if self.active_pulse_profile == profile:
-            self.active_pulse_profile = None
+        if self.active_pulse_index == index:
+            self.active_pulse_index = None
 
-    def get_delay_profile(self, profile: Optional[int]=None) -> DelayProfile:
-        if profile is None:
-            profile = self.active_delay_profile
-        profiles = [p.index for p in self.delay_profiles]
-        if profile not in profiles:
-            raise ValueError(f"Delay profile {profile} not found")
-        index = profiles.index(profile)
+    def get_delay_profile(self, index: Optional[int]=None) -> DelayProfile:
+        if index is None:
+            index = self.active_delay_index
+        indices = self.delay_profile_indices()
+        if index not in indices:
+            raise ValueError(f"Delay profile {index} not found")
+        index = indices.index(index)
         return self.delay_profiles[index]
 
-    def get_pulse_profile(self, profile: Optional[int]=None) -> PulseProfile:
-        if profile is None:
-            profile = self.active_pulse_profile
-        profiles = [p.index for p in self.pulse_profiles]
-        if profile not in profiles:
-            raise ValueError(f"Pulse profile {profile} not found")
-        index = profiles.index(profile)
+    def delay_profile_indices(self) -> List[int]:
+        return [p.index for p in self.delay_profiles]
+
+    def get_pulse_profile(self, index: Optional[int]=None) -> PulseProfile:
+        if index is None:
+            index = self.active_pulse_index
+        indices = self.pulse_profile_indices()
+        if index not in indices:
+            raise ValueError(f"Pulse profile {index} not found")
+        index = indices.index(index)
         return self.pulse_profiles[index]
     
+    def pulse_profile_indices(self) -> List[int]:
+        return [p.index for p in self.pulse_profiles]
+    
     def activate_delay_profile(self, index:int):
-        if index not in [p.index for p in self.delay_profiles]:
+        if index not in self.delay_profile_indices():
             raise ValueError(f"Delay profile {index} not found")
-        self.active_delay_profile = index
+        self.active_delay_index = index
 
     def activate_pulse_profile(self, index:int):
-        if index not in [p.index for p in self.pulse_profiles]:
+        if index not in self.pulse_profile_indices():
             raise ValueError(f"Pulse profile {index} not found")
-        self.active_pulse_profile = index
+        self.active_pulse_index = index
 
     def get_delay_control_registers(self, index: Optional[int]=None) -> Dict[int,int]:
         if index is None:
-            index = self.active_delay_profile
+            index = self.active_delay_index
         delay_profile = self.get_delay_profile(index)
         apod_register = 0
         for i, apod in enumerate(delay_profile.apodizations):
@@ -406,9 +412,9 @@ class Tx7332Registers:
     
     def get_pulse_control_registers(self, index: Optional[int]=None) -> Dict[int,int]:
         if index is None:
-            index = self.active_pulse_profile
+            index = self.active_pulse_index
         pulse_profile = self.get_pulse_profile(index)
-        if pulse_profile.index not in PATTERN_PROFILES:
+        if pulse_profile.index not in PATTERN_PROFILE_INDICES:
             raise ValueError(f"Invalid profile {pulse_profile.index}.")
         pattern = calc_pulse_pattern(pulse_profile.frequency, pulse_profile.duty_cycle, bf_clk=self.bf_clk)
         clk_div_n = pattern['clk_div_n']
@@ -453,7 +459,7 @@ class Tx7332Registers:
 
     def get_delay_data_registers(self, index: Optional[int]=None, pack: bool=False, pack_single: bool=False) -> Dict[int,int]:
         if index is None:
-            index = self.active_delay_profile
+            index = self.active_delay_index
         delay_profile = self.get_delay_profile(index)
         data_registers = {}
         for channel in range(1, NUM_CHANNELS+1):
@@ -468,7 +474,7 @@ class Tx7332Registers:
     
     def get_pulse_data_registers(self, index: Optional[int]=None, pack: bool=False, pack_single: bool=False) -> Dict[int,int]:
         if index is None:
-            index = self.active_pulse_profile
+            index = self.active_pulse_index
         pulse_profile = self.get_pulse_profile(index)
         data_registers = {}
         pattern = calc_pulse_pattern(pulse_profile.frequency, pulse_profile.duty_cycle, bf_clk=self.bf_clk)
@@ -497,9 +503,9 @@ class Tx7332Registers:
             raise ValueError(f"No delay profiles have been set")
         if len(self.pulse_profiles) == 0:
             raise ValueError(f"No pulse profiles have been set")
-        if self.active_delay_profile is None:
+        if self.active_delay_index is None:
             raise ValueError(f"No delay profile selected")
-        if self.active_pulse_profile is None:
+        if self.active_pulse_index is None:
             raise ValueError(f"No pulse profile selected")
         registers = {addr:0x0 for addr in ADDRESSES_GLOBAL}        
         registers.update(self.get_delay_control_registers())
@@ -531,58 +537,58 @@ class TxModule:
     bf_clk: int = DEFAULT_CLK_FREQ
     delay_profiles: List[DelayProfile] = field(default_factory=list)
     pulse_profiles: List[PulseProfile] = field(default_factory=list)
-    active_delay_profile: Optional[int] = None
-    active_pulse_profile: Optional[int] = None
+    active_delay_index: Optional[int] = None
+    active_pulse_index: Optional[int] = None
     num_transmitters: int = NUM_TRANSMITTERS
 
     def __post_init__(self):
         self.transmitters = tuple([Tx7332Registers(bf_clk=self.bf_clk) for _ in range(self.num_transmitters)])
         
-    def add_pulse_profile(self, p: PulseProfile, activate: Optional[bool]=None):
+    def add_pulse_profile(self, pulse_profile: PulseProfile, activate: Optional[bool]=None):
         """
         Add a pulse profile
 
         :param p: Pulse profile
         :param activate: Activate the pulse profile
         """
-        profiles = [p.index for p in self.pulse_profiles]
-        if p.index in profiles:
-            i = profiles.index(p.index)
-            self.pulse_profiles[i] = p
+        indices = self.pulse_profile_indices()
+        if pulse_profile.index in indices:
+            i = indices.index(pulse_profile.index)
+            self.pulse_profiles[i] = pulse_profile
         else:
-            self.pulse_profiles.append(p)
+            self.pulse_profiles.append(pulse_profile)
         if activate is None:
-            activate = self.active_pulse_profile is None
+            activate = self.active_pulse_index is None
         if activate:
-            self.active_pulse_profile = p.index
+            self.active_pulse_index = pulse_profile.index
         for tx in self.transmitters:
-            tx.add_pulse_profile(p, activate = activate)        
+            tx.add_pulse_profile(pulse_profile, activate = activate)        
         
-    def add_delay_profile(self, p: DelayProfile, activate: Optional[bool]=None):
+    def add_delay_profile(self, delay_profile: DelayProfile, activate: Optional[bool]=None):
         """
         Add a delay profile
         
         :param p: Delay profile
         :param activate: Activate the delay profile
         """
-        if p.num_elements != NUM_CHANNELS*self.num_transmitters:
+        if delay_profile.num_elements != NUM_CHANNELS*self.num_transmitters:
             raise ValueError(f"Delay profile must have {NUM_CHANNELS*self.num_transmitters} elements")
-        profiles = [p.index for p in self.delay_profiles]
-        if p.index in profiles:
-            i = profiles.index(p.index)
-            self.delay_profiles[i] = p
+        indices = self.delay_profile_indices()
+        if delay_profile.index in indices:
+            i = indices.index(delay_profile.index)
+            self.delay_profiles[i] = delay_profile
         else:
-            self.delay_profiles.append(p)
+            self.delay_profiles.append(delay_profile)
         if activate is None:
-            activate = self.active_delay_profile is None
+            activate = self.active_delay_index is None
         if activate:
-            self.active_delay_profile = p.index
+            self.active_delay_index = delay_profile.index
         for i, tx in enumerate(self.transmitters):
             start_channel = i*NUM_CHANNELS
             indices = np.arange(start_channel, start_channel+NUM_CHANNELS, dtype=int)
-            tx_delays = np.array(p.delays)[indices].tolist()
-            tx_apodizations = np.array(p.apodizations)[indices].tolist()
-            txp = DelayProfile(p.index, tx_delays, tx_apodizations, p.units)
+            tx_delays = np.array(delay_profile.delays)[indices].tolist()
+            tx_apodizations = np.array(delay_profile.apodizations)[indices].tolist()
+            txp = DelayProfile(delay_profile.index, tx_delays, tx_apodizations, delay_profile.units)
             tx.add_delay_profile(txp, activate = activate)
 
     def remove_delay_profile(self, index:int):
@@ -591,13 +597,13 @@ class TxModule:
 
         :param index: Delay profile number
         """
-        profiles = [p.index for p in self.delay_profiles]
-        if index not in profiles:
+        indices = self.delay_profile_indices()
+        if index not in indices:
             raise ValueError(f"Delay profile {index} not found")
-        i = profiles.index(index)
+        i = indices.index(index)
         del self.delay_profiles[i]
-        if self.active_delay_profile == index:
-            self.active_delay_profile = None
+        if self.active_delay_index == index:
+            self.active_delay_index = None
         for tx in self.transmitters:
             tx.remove_delay_profile(index)
 
@@ -607,13 +613,13 @@ class TxModule:
         
         :param index: Pulse profile number
         """
-        profiles = [p.index for p in self.pulse_profiles]
-        if index not in profiles:
+        indices = self.pulse_profile_indices()
+        if index not in indices:
             raise ValueError(f"Pulse profile {index} not found")
-        i = profiles.index(index)
+        i = indices.index(index)
         del self.pulse_profiles[i]
-        if self.active_pulse_profile == index:
-            self.active_pulse_profile = None
+        if self.active_pulse_index == index:
+            self.active_pulse_index = None
         for tx in self.transmitters:
             tx.remove_pulse_profile(index)
 
@@ -625,13 +631,21 @@ class TxModule:
         :return: Delay profile
         """
         if index is None:
-            index = self.active_delay_profile
-        profiles = [p.index for p in self.delay_profiles]
-        if index not in profiles:
+            index = self.active_delay_index
+        indices = self.delay_profile_indices()
+        if index not in indices:
             raise ValueError(f"Delay profile {index} not found")
-        i = profiles.index(index)
+        i = indices.index(index)
         return self.delay_profiles[i]        
     
+    def delay_profile_indices(self) -> List[int]:
+        """
+        Get the delay profile indices
+        
+        :return: List of delay profile indices
+        """
+        return [p.index for p in self.delay_profiles]
+
     def get_pulse_profile(self, index:Optional[int]=None) -> PulseProfile:
         """
         Retrieve a pulse profile
@@ -640,13 +654,21 @@ class TxModule:
         :return: Pulse profile
         """
         if index is None:
-            index = self.active_pulse_profile
-        profiles = [p.index for p in self.pulse_profiles]
-        if index not in profiles:
+            index = self.active_pulse_index
+        indices = self.pulse_profile_indices()
+        if index not in indices:
             raise ValueError(f"Pulse profile {index} not found")
-        i = profiles.index(index)
+        i = indices.index(index)
         return self.pulse_profiles[i]
     
+    def pulse_profile_indices(self) -> List[int]:
+        """
+        Get the pulse profile indices
+        
+        :return: List of pulse profile indices
+        """
+        return [p.index for p in self.pulse_profiles]
+
     def activate_delay_profile(self, index:int=1):
         """
         Activates a delay profile
@@ -655,7 +677,7 @@ class TxModule:
         """
         for tx in self.transmitters:
             tx.activate_delay_profile(index)  
-        self.active_delay_profile = index
+        self.active_delay_index = index
 
     def activate_pulse_profile(self, index:int=1):
         """
@@ -665,35 +687,35 @@ class TxModule:
         """
         for tx in self.transmitters:
             tx.activate_pulse_profile(index)
-        self.active_pulse_profile = index
+        self.active_pulse_index = index
 
     def recompute_delay_profiles(self):
         """
-        Recompute the delay profiles
+        Recompute the delay indices
         """
         for tx in self.transmitters:
             indices = [p.index for p in tx.delay_profiles]
             for index in indices:
                 tx.remove_delay_profile(index)
         for dp in self.delay_profiles:
-            self.add_delay_profile(dp, activate = dp.index == self.active_delay_profile)
+            self.add_delay_profile(dp, activate = dp.index == self.active_delay_index)
 
     def recompute_pulse_profiles(self):
         """
-        Recompute the pulse profiles
+        Recompute the pulse indices
         """
         for tx in self.transmitters:
             indices = [p.index for p in tx.pulse_profiles]
             for index in indices:
                 tx.remove_pulse_profile(index)
             for pp in self.pulse_profiles:
-                tx.add_pulse_profile(pp, activate = pp.index == self.active_pulse_profile)
+                tx.add_pulse_profile(pp, activate = pp.index == self.active_pulse_index)
 
     def get_registers(self, profiles: ProfileOpts = "set", recompute: bool = False, pack: bool=False, pack_single:bool=False) -> List[Dict[int,int]]:
         """
         Get the registers for all transmitters
 
-        :param profiles: Profile options
+        :param indices: Profile options
         :param recompute: Recompute the registers
         :return: List of registers for each transmitter
         """
@@ -710,7 +732,7 @@ class TxModule:
         :return: List of delay control registers for each transmitter
         """
         if index is None:
-            index = self.active_delay_profile
+            index = self.active_delay_index
         return [tx.get_delay_control_registers(index) for tx in self.transmitters]
     
     def get_pulse_control_registers(self, index:Optional[int]=None) -> List[Dict[int,int]]:
@@ -721,7 +743,7 @@ class TxModule:
         :return: List of pulse control registers for each transmitter
         """
         if index is None:
-            index = self.active_pulse_profile
+            index = self.active_pulse_index
         return [tx.get_pulse_control_registers(index) for tx in self.transmitters]
     
     def get_delay_data_registers(self, index:Optional[int]=None, pack: bool=False, pack_single: bool=False) -> List[Dict[int,int]]:
@@ -732,7 +754,7 @@ class TxModule:
         :return: List of delay data registers for each transmitter
         """
         if index is None:
-            index = self.active_delay_profile
+            index = self.active_delay_index
         return [tx.get_delay_data_registers(index, pack=pack, pack_single=pack_single) for tx in self.transmitters]
     
     def get_pulse_data_registers(self, index:Optional[int]=None, pack: bool=False, pack_single: bool=False) -> List[Dict[int,int]]:
@@ -743,7 +765,7 @@ class TxModule:
         :return: List of pulse data registers for each transmitter
         """
         if index is None:
-            index = self.active_pulse_profile
+            index = self.active_pulse_index
         return [tx.get_pulse_data_registers(index, pack=pack, pack_single=pack_single) for tx in self.transmitters]
     
 @dataclass
@@ -770,9 +792,9 @@ class TxArray:
         :param p: Pulse profile
         :param activate: Activate the pulse profile
         """
-        profiles = [p.index for p in self.pulse_profiles]
-        if p.index in profiles:
-            i = profiles.index(p.index)
+        indices = self.pulse_profile_indices()
+        if p.index in indices:
+            i = indices.index(p.index)
             self.pulse_profiles[i] = p
         else:
             self.pulse_profiles.append(p)
@@ -792,9 +814,9 @@ class TxArray:
         """
         if p.num_elements != NUM_CHANNELS*self.num_transmitters*self.num_modules:
             raise ValueError(f"Delay profile must have {NUM_CHANNELS*self.num_transmitters*self.num_modules} elements")
-        profiles = [p.index for p in self.delay_profiles]
-        if p.index in profiles:
-            i = profiles.index(p.index)
+        indices = self.delay_profile_indices()
+        if p.index in indices:
+            i = indices.index(p.index)
             self.delay_profiles[i] = p
         else:
             self.delay_profiles.append(p)
@@ -816,10 +838,10 @@ class TxArray:
         
         :param index: Pulse profile number
         """
-        profiles = [p.index for p in self.pulse_profiles]
-        if index not in profiles:
+        indices = self.pulse_profile_indices()
+        if index not in indices:
             raise ValueError(f"Pulse profile {index} not found")
-        i = profiles.index(index)
+        i = indices.index(index)
         del self.pulse_profiles[i]
         if self.active_pulse_profile == index:
             self.active_pulse_profile = None
@@ -832,10 +854,10 @@ class TxArray:
 
         :param index: Delay profile number
         """
-        profiles = [p.index for p in self.delay_profiles]
-        if index not in profiles:
+        indices = self.delay_profile_indices()
+        if index not in indices:
             raise ValueError(f"Delay profile {index} not found")
-        i = profiles.index(index)
+        i = indices.index(index)
         del self.delay_profiles[i]
         if self.active_delay_profile == index:
             self.active_delay_profile = None
@@ -851,12 +873,20 @@ class TxArray:
         """
         if index is None:
             index = self.active_pulse_profile
-        profiles = [p.index for p in self.pulse_profiles]
-        if index not in profiles:
+        indices = self.pulse_profile_indices()
+        if index not in indices:
             raise ValueError(f"Pulse profile {index} not found")
-        i = profiles.index(index)
+        i = indices.index(index)
         return self.pulse_profiles[i]
     
+    def pulse_profile_indices(self) -> List[int]:
+        """
+        Get the pulse profile indices
+        
+        :return: List of pulse profile indices
+        """
+        return [p.index for p in self.pulse_profiles]
+
     def get_delay_profile(self, index:Optional[int]=None) -> DelayProfile:
         """
         Retrieve a delay profile
@@ -866,11 +896,19 @@ class TxArray:
         """
         if index is None:
             index = self.active_delay_profile
-        profiles = [p.index for p in self.delay_profiles]
-        if index not in profiles:
+        indices = self.delay_profile_indices()
+        if index not in indices:
             raise ValueError(f"Delay profile {index} not found")
-        i = profiles.index(index)
+        i = indices.index(index)
         return self.delay_profiles[i]
+    
+    def delay_profile_indices(self) -> List[int]:
+        """
+        Get the delay profile indices
+        
+        :return: List of delay profile indices
+        """
+        return [p.index for p in self.delay_profiles]
 
     def activate_pulse_profile(self, index:int=1):
         """
@@ -894,7 +932,7 @@ class TxArray:
 
     def recompute_pulse_profiles(self):
         """
-        Recompute the pulse profiles
+        Recompute the pulse indices
         """
         for module in self.modules.values():
             indices = [p.index for p in module.pulse_profiles]
@@ -905,7 +943,7 @@ class TxArray:
 
     def recompute_delay_profiles(self):
         """
-        Recompute the delay profiles
+        Recompute the delay indices
         """
         for module in self.modules.values():
             indices = [p.index for p in module.delay_profiles]
