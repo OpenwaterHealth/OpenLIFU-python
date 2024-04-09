@@ -218,7 +218,7 @@ def get_pattern_location(period:int, profile:int=1):
     lsb_period = PATTERN_MAP[period]['lsb_period']
     return address, lsb_lvl, lsb_period
 
-def print_dict(d):
+def print_regs(d):
     for addr, val in sorted(d.items()):
         if isinstance(val, list):
             for i, v in enumerate(val):
