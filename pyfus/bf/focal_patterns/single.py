@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from pyfus.beamforming.focal_patterns import FocalPattern
+from pyfus.bf.focal_patterns import FocalPattern
 from pyfus.geo import Point
 
 @dataclass

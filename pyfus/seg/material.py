@@ -43,15 +43,15 @@ class Material:
     def get_materials(material_id="all", as_dict=True):
         material_id = ("water", "tissue", "skull", "air", "standoff") if material_id == "all" else material_id
         if isinstance(material_id, tuple) or  isinstance(material_id, list):
-            return {m: Material.get_materials(m, as_dict=False) for m in material_id}
+            materials = {m: Material.get_materials(m, as_dict=False) for m in material_id}
         elif material_id in MATERIALS:
-            return MATERIALS[material_id]            
+            materials = MATERIALS[material_id]            
         else:
             raise ValueError(f"Material {material_id} not found.")
         if as_dict:
-            return {m.id: m}
+            return {materials.id: materials}
         else:
-            return m
+            return materials
 
     def from_dict(self, d):
         if isinstance(d, list) or isinstance(d, tuple):

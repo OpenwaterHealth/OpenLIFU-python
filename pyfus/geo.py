@@ -87,7 +87,6 @@ class Point:
         if new_dims is not None:
             self.dims = new_dims
 
-
     def to_dict(self):
         return {"id": self.id,
                 "name": self.name,
