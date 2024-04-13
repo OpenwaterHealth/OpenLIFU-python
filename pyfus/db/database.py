@@ -395,7 +395,7 @@ class Database:
     def load_plan(self, plan_id):
         plan_filename = self.get_plan_filename(plan_id)
         if os.path.isfile(plan_filename):
-            plan = pyfus.plan.Plan.from_file(plan_filename)
+            plan = pyfus.Protocol.from_file(plan_filename)
             self.logger.info(f"Loaded plan {plan_id}")
             return plan
         else:
