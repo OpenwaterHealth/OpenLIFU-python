@@ -53,11 +53,14 @@ class Material:
         else:
             return materials
 
-    def from_dict(self, d):
+    @staticmethod
+    def from_dict(d):
         if isinstance(d, list) or isinstance(d, tuple):
             return {dd['id']: Material.from_dict(dd) for dd in d}
-        elif isinstance(str):
+        elif isinstance(d, str):
             return Material.get_materials(d, as_dict=False)
+        elif isinstance(d, Material):
+            return d
         else:
             return Material(**d)
 

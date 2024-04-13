@@ -4,6 +4,7 @@ from typing import Optional
 from pyfus.seg.material import Material, MATERIALS
 import xarray as xa
 import numpy as np
+from pyfus.seg import seg_methods
 
 @dataclass
 class SegmentationMethod:
@@ -20,7 +21,7 @@ class SegmentationMethod:
     @staticmethod
     def from_dict(d):
         if isinstance(d, str):
-            import pyfus.seg.seg_methods
+            import pyfus.seg.seg_methods        
             if d == "water":
                 return pyfus.seg.seg_methods.Water()
             elif d == "tissue":
@@ -29,7 +30,9 @@ class SegmentationMethod:
                 return pyfus.seg.seg_methods.SegmentMRI()
         else:
             d = d.copy()
-            class_constructor = globals()[d.pop("class")]
+            short_classname = d.pop("class")
+            module_dict = seg_methods.__dict__
+            class_constructor = module_dict[short_classname]
             return class_constructor(**d)
 
     def _material_indices(self, materials: Optional[dict] = None):

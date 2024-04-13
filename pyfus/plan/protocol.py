@@ -1,4 +1,5 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, InitVar
+from typing import List
 from pyfus import bf, sim, seg, xdc, geo
 import json
 import xarray as xa
@@ -17,7 +18,7 @@ class Protocol:
     seg_method: seg.SegmentationMethod = field(default_factory=seg.seg_methods.Water)
     param_constraints: dict = field(default_factory=dict)
     target_constraints: dict = field(default_factory=dict)
-    analysis_options: dict = field(default_factory=dict)
+    analysis_options: dict = field(default_factory=dict)    
 
     @staticmethod
     def from_dict(d):
@@ -27,7 +28,10 @@ class Protocol:
         d["sim_setup"] = sim.SimSetup.from_dict(d.get("sim_setup", {}))
         d["delay_method"] = bf.DelayMethod.from_dict(d.get("delay_method", {}))
         d["apod_method"] = bf.ApodizationMethod.from_dict(d.get("apod_method", {}))
-        d["seg_method"] = seg.SegmentationMethod.from_dict(d.get("seg_method", {}))        
+        seg_method_dict = d.get("seg_method", {})
+        if "materials" in d:
+            seg_method_dict["materials"] = seg.Material.from_dict(d.pop("materials"))
+        d["seg_method"] = seg.SegmentationMethod.from_dict(seg_method_dict)        
         return Protocol(**d)
 
     def to_dict(self):
