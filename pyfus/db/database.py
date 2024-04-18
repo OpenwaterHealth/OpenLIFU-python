@@ -3,18 +3,24 @@ import os
 import json
 import scipy.io
 from typing import List
-import pyfus
 import numpy as np
 import logging
 import h5py
 import glob
+from typing import Literal, Optional
+from pyfus.plan import Protocol, Solution
+from pyfus.db import Subject
+OnConflictOpts = Literal['error', 'overwrite', 'skip']
+
 
 class Database:
-    def __init__(self, path):
-        self.path = path
+    def __init__(self, path: Optional[str] = None):
+        if path is None:
+            path = Database.get_default_path()
+        self.path = os.path.normpath(path)
         self.logger = logging.getLogger(__name__)
 
-    def add_gridweights(self, transducer_id, grid_hash, grid_weights, on_conflict="error"):
+    def add_gridweights(self, transducer_id: str, grid_hash: str, grid_weights, on_conflict: OnConflictOpts =b"error"):
         grid_hashes = self.get_gridweight_hashes(transducer_id)
         if grid_hash in grid_hashes:
             if on_conflict == "error":
@@ -30,36 +36,36 @@ class Database:
             f.create_dataset("grid_weights", data=grid_weights)
         self.logger.info(f"Added grid weights with hash {grid_hash} for transducer {transducer_id} to the database.")
 
-    def add_plan(self, treatment_plan, on_conflict="error"):
-        # Check if the treatment plan ID already exists in the database
-        plan_id = treatment_plan.id
-        plan_ids = self.get_plan_ids()
+    def add_protocol(self, protocol: Protocol, on_conflict: OnConflictOpts = "error"):
+        # Check if the sonication protocol ID already exists in the database
+        protocol_id = protocol.id
+        protocol_ids = self.get_protocol_ids()
         
-        if plan_id in plan_ids:
+        if protocol_id in protocol_ids:
             if on_conflict == "error":
-                raise ValueError(f"Plan with ID {plan_id} already exists in the database.")
+                raise ValueError(f"Protocol with ID {protocol_id} already exists in the database.")
             elif on_conflict == "overwrite":
-                self.logger.warning(f"Overwriting plan with ID {plan_id} in the database.")
+                self.logger.warning(f"Overwriting Protocol with ID {protocol_id} in the database.")
             elif on_conflict == "skip":
-                self.logger.info(f"Skipping plan with ID {plan_id} as it already exists in the database.")
-                return  # Skip adding the plan
+                self.logger.info(f"Skipping Protocol with ID {protocol_id} as it already exists in the database.")
+                return  # Skip adding the Protocol
             else:
                 raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
 
-        # Serialize the treatment plan to JSON
-        plan_dict = treatment_plan.to_dict()
+        # Serialize the sonication protocol to JSON
+        protocol_dict = protocol.to_dict()
 
-        # Save the treatment plan to a JSON file
-        plan_filename = self.get_plan_filename(plan_id)
-        with open(plan_filename, "w") as f:
-            json.dump(plan_dict, f)
+        # Save the sonication protocol to a JSON file
+        protocol_filename = self.get_protocol_filename(protocol_id)
+        with open(protocol_filename, "w") as f:
+            json.dump(protocol_dict, f)
 
-        # Update the list of plan IDs
-        if plan_id not in plan_ids:
-            plan_ids.append(plan_id)
-            self.write_plan_ids(plan_ids)
+        # Update the list of Protocol IDs
+        if protocol_id not in protocol_ids:
+            protocol_ids.append(protocol_id)
+            self.write_protocol_ids(protocol_ids)
 
-        self.logger.info(f"Added treatment plan with ID {plan_id} to the database.")
+        self.logger.info(f"Added Sonication Protocol with ID {protocol_id} to the database.")
 
 
     def add_session(self, subject, session, on_conflict="error"):
@@ -80,13 +86,9 @@ class Database:
             else:
                 raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
 
-        # Serialize the session to JSON
-        session_data = session.to_json()
-
         # Save the session to a JSON file
         session_filename = self.get_session_filename(subject.id, session_id)
-        with open(session_filename, "w") as f:
-            json.dump(session_data, f)
+        session.to_file(session_filename)
 
         # Update the list of session IDs for the subject
         if session_id not in session_ids:
@@ -110,10 +112,8 @@ class Database:
             else:
                 raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
 
-        subject_data = subject.to_json()
         subject_filename = self.get_subject_filename(subject_id)
-        with open(subject_filename, "w") as f:
-            json.dump(subject_data, f)
+        subject.to_file(subject_filename)
 
         if subject_id not in subject_ids:
             subject_ids.append(subject_id)
@@ -121,7 +121,7 @@ class Database:
 
         self.logger.info(f"Added subject with ID {subject_id} to the database.")
 
-    def add_transducer(self, transducer, on_conflict="error"):
+    def add_transducer(self, transducer, on_conflict: OnConflictOpts="error"):
         transducer_id = transducer.id
         transducer_ids = self.get_transducer_ids()
 
@@ -136,10 +136,8 @@ class Database:
             else:
                 raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
 
-        transducer_data = transducer.to_json()
         transducer_filename = self.get_transducer_filename(transducer_id)
-        with open(transducer_filename, "w") as f:
-            json.dump(transducer_data, f)
+        transducer.to_file(transducer_filename)
 
         if transducer_id not in transducer_ids:
             transducer_ids.append(transducer_id)
@@ -249,17 +247,17 @@ class Database:
             self.logger.warning("Connected transducer file not found.")
             return None
 
-    def get_plan_ids(self):
-        plans_filename = self.get_plans_filename()
+    def get_protocol_ids(self):
+        protocols_filename = self.get_protocols_filename()
 
-        if os.path.isfile(plans_filename):
-            with open(plans_filename, "r") as file:
-                plan_data = json.load(file)
-                plan_ids = plan_data.get("plan_ids", [])
-            self.logger.info("Plan IDs: %s", plan_ids)
-            return plan_ids
+        if os.path.isfile(protocols_filename):
+            with open(protocols_filename, "r") as file:
+                protocol_data = json.load(file)
+                protocol_ids = protocol_data.get("protocol_ids", [])
+            self.logger.info("Protocol IDs: %s", protocol_ids)
+            return protocol_ids
         else:
-            self.logger.warning("Plans file not found.")
+            self.logger.warning("Protocols file not found.")
             return []
 
     def get_session_ids(self, subject_id):
@@ -282,7 +280,7 @@ class Database:
             with open(solutions_filename, "r") as file:
                 solution_data = json.load(file)
             solutions = [
-                TreatmentSolution.from_dict(solution_dict) for solution_dict in solution_data
+                Solution.from_dict(solution_dict) for solution_dict in solution_data
             ]
             self.logger.info("Solutions for subject %s, session %s: %s", subject_id, session_id, solutions)
             return solutions
@@ -336,6 +334,8 @@ class Database:
             with open(transducers_filename, "r") as file:
                 transducer_data = json.load(file)
                 transducer_ids = transducer_data.get("transducer_ids", [])
+            if not isinstance(transducer_ids, list):
+                transducer_ids = [transducer_ids]
             self.logger.info("Transducer IDs: %s", transducer_ids)
             return transducer_ids
         else:
@@ -370,7 +370,7 @@ class Database:
 
     def load_standoff(self, transducer_id, standoff_id="standoff"):
         standoff_filename = self.get_standoff_filename(transducer_id, standoff_id)
-        standoff = pyfus.xdc.Standoff.from_file(standoff_filename)
+        standoff = Standoff.from_file(standoff_filename)
         return standoff
 
     def load_system(self, sys_id=None):
@@ -380,42 +380,43 @@ class Database:
         return sys
 
     def load_transducer(self, transducer_id):
+        from pyfus.xdc import Transducer
         transducer_filename = self.get_transducer_filename(transducer_id)
-        transducer = pyfus.xdc.Transducer.from_file(transducer_filename)
+        transducer = Transducer.from_file(transducer_filename)
         return transducer
 
     def load_transducer_standoff(self, trans, coords, options=None):
         options = options or {}
         standoff_filename = self.get_standoff_filename(trans.id, "standoff_anchors")
-        standoff = pyfus.xdc.Standoff.from_file(standoff_filename)
+        standoff = Standoff.from_file(standoff_filename)
         # Implement the logic to generate binary mask using standoff and coordinates
         mask = generate_standoff_mask(standoff, coords, options)
         return mask
 
-    def load_plan(self, plan_id):
-        plan_filename = self.get_plan_filename(plan_id)
-        if os.path.isfile(plan_filename):
-            plan = pyfus.Protocol.from_file(plan_filename)
-            self.logger.info(f"Loaded plan {plan_id}")
-            return plan
+    def load_protocol(self, protocol_id):
+        protocol_filename = self.get_protocol_filename(protocol_id)
+        if os.path.isfile(protocol_filename):
+            protocol = Protocol.from_file(protocol_filename)
+            self.logger.info(f"Loaded Protocol {protocol_id}")
+            return protocol
         else:
-            self.logger.error(f"Plan file not found for ID: {plan_id}")
-            raise FileNotFoundError(f"Plan file not found for ID: {plan_id}")
+            self.logger.error(f"Protocol file not found for ID: {protocol_id}")
+            raise FileNotFoundError(f"Protocol file not found for ID: {protocol_id}")
 
-    def load_all_plans(self):
-        plans_filename = self.get_plans_filename()
-        if os.path.isfile(plans_filename):
-            with open(plans_filename, 'r') as file:
+    def load_all_protocols(self):
+        protocols_filename = self.get_protocols_filename()
+        if os.path.isfile(protocols_filename):
+            with open(protocols_filename, 'r') as file:
                 data = json.load(file)
-                plan_ids = data.get('plan_ids', [])
-            plans = []
-            for plan_id in plan_ids:
-                plan = self.load_plan(plan_id)
-                plans.append(plan)
-            return plans
+                protocol_ids = data.get('protocol_ids', [])
+            protocols = []
+            for protocol_id in protocol_ids:
+                protocol = self.load_protocol(protocol_id)
+                protocols.append(protocol)
+            return protocols
         else:
-            self.logger.error("Plans file not found.")
-            raise FileNotFoundError("Plans file not found.")
+            self.logger.error("Protocols file not found.")
+            raise FileNotFoundError("Protocols file not found.")
 
     def load_session(self, subject, session_id, options=None):
         if options is None:
@@ -441,9 +442,9 @@ class Database:
             raise FileNotFoundError(f"Session file not found for ID: {session_id}")
 
 
-    def load_solution(self, session, plan_id, target_id):
-        solution_filename_json = self.get_solution_filename(session.subject_id, session.id, plan_id, target_id, ext="json")
-        solution_filename_mat = self.get_solution_filename(session.subject_id, session.id, plan_id, target_id, ext="mat")
+    def load_solution(self, session, protocol_id, target_id):
+        solution_filename_json = self.get_solution_filename(session.subject_id, session.id, protocol_id, target_id, ext="json")
+        solution_filename_mat = self.get_solution_filename(session.subject_id, session.id, protocol_id, target_id, ext="mat")
 
         if os.path.isfile(solution_filename_json) and os.path.isfile(solution_filename_mat):
             # Load from JSON file
@@ -455,12 +456,12 @@ class Database:
             # Extract any additional data from the MAT file as needed
 
             # Pass the loaded JSON data as keyword arguments to TreatmentSolution constructor
-            solution = TreatmentSolution(**json_data)
-            self.logger.info(f"Loaded solution for Plan {plan_id}, Target {target_id}")
+            solution = Solution(**json_data)
+            self.logger.info(f"Loaded solution for Protocol {protocol_id}, Target {target_id}")
             return solution
         else:
-            self.logger.error(f"Solution files not found for Plan {plan_id}, Target {target_id}")
-            raise FileNotFoundError(f"Solution files not found for Plan {plan_id}, Target {target_id}")
+            self.logger.error(f"Solution files not found for Protocol {protocol_id}, Target {target_id}")
+            raise FileNotFoundError(f"Solution files not found for Protocol {protocol_id}, Target {target_id}")
 
     def set_connected_transducer(self, trans, options=None):
         trans_id = trans.id
@@ -484,11 +485,11 @@ class Database:
     def get_gridweights_filename(self, transducer_id, grid_hash):
         return os.path.join(self.path, 'transducers', transducer_id, f'{transducer_id}_gridweights_{grid_hash}.h5')
 
-    def get_plans_filename(self):
-        return os.path.join(self.path, 'plans', 'plans.json')
+    def get_protocols_filename(self):
+        return os.path.join(self.path, 'protocols', 'protocols.json')
 
-    def get_plan_filename(self, plan_id):
-        return os.path.join(self.path, 'plans', plan_id, f'{plan_id}.json')
+    def get_protocol_filename(self, protocol_id):
+        return os.path.join(self.path, 'protocols', protocol_id, f'{protocol_id}.json')
 
     def get_session_dir(self, subject_id, session_id):
         return os.path.join(self.get_subject_dir(subject_id), 'sessions', session_id)
@@ -499,9 +500,9 @@ class Database:
     def get_sessions_filename(self, subject_id):
         return os.path.join(self.get_subject_dir(subject_id), 'sessions', 'sessions.json')
 
-    def get_solution_filename(self, subject_id, session_id, plan_id, target_id, ext='mat'):
+    def get_solution_filename(self, subject_id, session_id, protocol_id, target_id, ext='mat'):
         session_dir = self.get_session_dir(subject_id, session_id)
-        return os.path.join(session_dir, 'solutions', plan_id, f'{target_id}.{ext}')
+        return os.path.join(session_dir, 'solutions', protocol_id, f'{target_id}.{ext}')
 
     def get_solutions_filename(self, subject_id, session_id):
         session_dir = self.get_session_dir(subject_id, session_id)
@@ -535,11 +536,11 @@ class Database:
         subject_dir = self.get_subject_dir(subject_id)
         return os.path.join(subject_dir, 'volumes', f'{volume_id}.mat')
 
-    def write_plan_ids(self, plan_ids):
-        plan_data = {'plan_ids': plan_ids}
-        plans_filename = self.get_plans_filename()
-        with open(plans_filename, 'w') as f:
-            json.dump(plan_data, f)
+    def write_protocol_ids(self, protocol_ids):
+        protocol_data = {'protocol_ids': protocol_ids}
+        protocols_filename = self.get_protocols_filename()
+        with open(protocols_filename, 'w') as f:
+            json.dump(protocol_data, f)
 
     def write_session_ids(self, subject_id, session_ids):
         session_data = {'session_ids': session_ids}
@@ -561,10 +562,18 @@ class Database:
 
     @staticmethod
     def get_default_user_dir():
-        # Implement the logic to get the default user directory
-        pass
+        """
+        Get the default user directory for the database
+        
+        :returns: Default user directory
+        """
+        return os.path.expanduser("~")
 
     @staticmethod
     def get_default_path(options=None):
-        # Implement the logic to get the default database path
-        pass
+        """
+        Get the default path for the database
+        
+        :returns: Default path for the database
+        """
+        return os.path.join(Database.get_default_user_dir(), "Documents", "db")

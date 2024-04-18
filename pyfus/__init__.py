@@ -5,9 +5,8 @@ pyFUS: Python Focused Ultrasound
 This package contains the modules for pyFUS.
 """
 
-from pyfus.db import (
-    Database
-)
+#from . import bf, db, io, plan, seg, sim, xdc, geo
+
 
 from pyfus.geo import (
     Point
@@ -49,4 +48,6 @@ from pyfus.sim import (
     SimSetup
 )
 
-from . import bf, db, io, plan, seg, sim, xdc, geo
+from pyfus.db import (
+    Database
+)

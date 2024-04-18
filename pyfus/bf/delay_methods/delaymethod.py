@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 import xarray as xa
-from pyfus import Transducer
-from pyfus import Point
+from pyfus.xdc import Transducer
+from pyfus.geo import Point
 from pyfus.bf import delay_methods
 
 @dataclass

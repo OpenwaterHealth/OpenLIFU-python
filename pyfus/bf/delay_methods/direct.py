@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 import xarray as xa
 import numpy as np
-from pyfus import Transducer, Point
+from pyfus.xdc import Transducer
+from pyfus.geo import Point
 from pyfus.bf.delay_methods import DelayMethod
 from typing import ClassVar, Optional
 
