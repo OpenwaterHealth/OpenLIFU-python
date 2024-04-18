@@ -175,6 +175,21 @@ class Element:
         self.el = el
         self.roll = roll
 
+    def to_dict(self):
+        return {"index": self.index, 
+                "x": self.x, 
+                "y": self.y, 
+                "z": self.z, 
+                "az": self.az, 
+                "el": self.el, 
+                "roll": self.roll, 
+                "w": self.w, 
+                "l": self.l, 
+                "impulse_response": self.impulse_response.tolist(), 
+                "impulse_dt": self.impulse_dt, 
+                "pin": self.pin, 
+                "units": self.units}
+
     @staticmethod
     def from_dict(d):
         if isinstance(d, dict):

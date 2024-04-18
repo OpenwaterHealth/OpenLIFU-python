@@ -78,13 +78,17 @@ class Transducer:
         cell_array = vtk.vtkCellArray()
         colors = vtk.vtkUnsignedCharArray()
         colors.SetNumberOfComponents(4)
-        color = (np.array([*facecolor, facealpha])*255).astype(np.uint8)
+        facecolor = np.array(facecolor)
+        if facecolor.ndim == 1:
+            facecolors = np.tile((np.array([*facecolor, facealpha])*255).astype(np.uint8), (N, 1))
+        else:
+            facecolors = np.array([np.array([*fc, facealpha])*255 for fc in facecolor]).astype(np.uint8)
         point_index = 0
         if transform:
             matrix = self.get_matrix(units=units)
         else:
             matrix = np.eye(4)
-        for el in self.elements:
+        for el, color in zip(self.elements, facecolors):
             corners = el.get_corners(matrix=matrix, units=units)
             rect = vtk.vtkQuad()
             point_ids = rect.GetPointIds()
@@ -164,8 +168,13 @@ class Transducer:
         
     def to_dict(self):
         d = self.__dict__.copy()
-        d["elements"] = [element.__dict__ for element in d["elements"]]
+        d["elements"] = [element.to_dict() for element in d["elements"]]
+        d["matrix"] = d["matrix"].tolist()
         return d
+    
+    def to_file(self, filename):
+        from pyfus.util.json import to_json
+        to_json(self.to_dict(), filename)
 
     def transform(self, matrix, units=None, transform_elements: bool=False):
         if units is not None:
@@ -186,6 +195,7 @@ class Transducer:
     def from_dict(d, **kwargs):
         d = d.copy()
         d["elements"] = Element.from_dict(d["elements"])
+        d["matrix"] = np.array(d["matrix"])
         return Transducer(**d, **kwargs)
 
     @staticmethod
