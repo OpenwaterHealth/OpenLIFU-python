@@ -1,6 +1,9 @@
 from dataclasses import dataclass, field
 from typing import Tuple, Optional, List, Dict, Literal
 from pyfus.util.units import getunitconversion
+from .core import UART
+from .tx7332_if import TX7332_IF
+from .ctrl_if import CTRL_IF
 import numpy as np
 import logging
 
@@ -304,6 +307,7 @@ class Tx7332Registers:
     _pulse_profiles_list: List[PulseProfile] = field(default_factory=list)
     active_delay_profile: Optional[int] = None
     active_pulse_profile: Optional[int] = None
+    interface: Optional[TX7332_IF] = None
 
     def __post_init__(self):
         delay_profiles = self.configured_delay_profiles()
@@ -769,7 +773,7 @@ class TxModule:
         return [tx.get_pulse_data_registers(profile, pack=pack, pack_single=pack_single) for tx in self.transmitters]
     
 @dataclass
-class TxArray:
+class TxController:
     i2c_addresses: Tuple[int] = (0x0,)
     bf_clk: int = DEFAULT_CLK_FREQ
     modules: Dict = field(default_factory=dict)
@@ -778,12 +782,27 @@ class TxArray:
     active_delay_profile: Optional[int] = None
     active_pulse_profile: Optional[int] = None
     num_transmitters: int = NUM_TRANSMITTERS
+    uart_connection: Optional[UART] = None
+    interface: Optional[CTRL_IF] = None
 
     def __post_init__(self):
         if len(set(self.i2c_addresses)) != len(self.i2c_addresses):
             raise ValueError(f"Duplicate I2C addresses found")
         self.modules = {addr:TxModule(i2c_addr=addr, bf_clk=self.bf_clk, num_transmitters=self.num_transmitters) for addr in self.i2c_addresses}
         self.num_modules = len(self.modules)
+
+    @staticmethod
+    def enumerate_i2c_addresses(comport):
+        s = UART(comport, timeout=5)
+        ustx_ctrl = CTRL_IF(s)
+        ustx_ctrl.enum_i2c_devices()
+        for afe_device in ustx_ctrl.afe_devices:
+            rUartPacket = afe_device.enum_tx7332_devices()
+        afe_dict = {afe.i2c_addr:afe for afe in ustx_ctrl.afe_devices}
+        txctrl = TxController(i2c_addresses=tuple(afe_dict.keys()), uart_connection=s, interface=ustx_ctrl)
+        for addr, module in txctrl.modules.items():
+            for txdevice in module.transmitters:
+                txdevice.interface = None ##WIP
 
     def add_pulse_profile(self, pulse_profile: PulseProfile, activate: Optional[bool]=None):
         """
