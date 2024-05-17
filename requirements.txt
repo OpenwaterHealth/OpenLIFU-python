@@ -1,0 +1,11 @@
+pyserial
+crcmod
+ipykernel
+ipywidgets
+python-dotenv
+numpy
+vtk
+crc
+pandas
+xarray
+PyQt5

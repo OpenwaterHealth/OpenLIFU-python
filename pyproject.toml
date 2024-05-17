@@ -21,5 +21,6 @@ dependencies = [
 include-package-data = false
 
 [tool.setuptools.packages.find]
+include = ["ow_ustx*"]
 include = ["pyfus*"]
 exclude = ["test*", "env*"]

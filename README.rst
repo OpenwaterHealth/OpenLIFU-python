@@ -16,10 +16,21 @@ Create Virtual Environment
 ``cd open_pyfus``
 ``C:\Users\<uname>\AppData\Local\Programs\Python\Python311\python.exe -m venv env``
 
-Install project (editable)
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+Install Requirements
+^^^^^^^^^^^^^^^^^^^^
 ``.\env\Scripts\activate``
-``pip install -e .``
+
+``pip install -r requirements.txt``
+
+Run Demo Application
+^^^^^^^^^^^^^^^^^^^^
+``python DemoApplication.py``
+
+Run Notebook
+^^^^^^^^^^^^^^^^^^^^
+``jupyter notebook``
+
+``open_pyfus\Demo_Notebook.ipynb``
 
 Disclaimer
 ----------
