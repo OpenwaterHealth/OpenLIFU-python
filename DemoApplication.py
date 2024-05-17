@@ -208,7 +208,7 @@ class App(QWidget):
         focus = np.array([left, front, down]) #set focus #left, front, down 
         pulse_profile = PulseProfile(profile=1, frequency=frequency, cycles=cycles)
         afe_dict = {afe.i2c_addr:afe for afe in self.ustx_ctrl.afe_devices}
-        arr = Transducer.from_file(R"M2.json")
+        arr = Transducer.from_file(R"pinmap.json")
         arr.elements = np.array(arr.elements)[np.argsort([el.pin for el in arr.elements])].tolist()
         distances = np.sqrt(np.sum((focus - arr.get_positions(units="mm"))**2, 1))
         tof = distances*1e-3 / 1500
