@@ -97,7 +97,7 @@ class UART:
         """
         log.info(f"Connecting to COM port at {port} speed {baud_rate}")
         self.ser = serial.Serial(port, baud_rate, timeout=timeout)
-        self.ser.timeout = 0.01 # 10 ms timeout fix for read_until where end byte is in CRC
+        self.ser.timeout = 0.1 # 100 ms timeout fix for read_until where end byte is in CRC
         self.read_buffer = []
         self.align = align
 
