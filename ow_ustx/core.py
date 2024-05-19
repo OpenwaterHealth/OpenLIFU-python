@@ -87,7 +87,7 @@ class UartPacket:
         
 class UART:
     """Handles UART communication."""
-    def __init__(self, port: str, baud_rate=921600, timeout=60, align=0):
+    def __init__(self, port: str, baud_rate=921600, timeout=10, align=0):
         """
         Initialize the UART communication.
 
@@ -97,6 +97,7 @@ class UART:
         """
         log.info(f"Connecting to COM port at {port} speed {baud_rate}")
         self.ser = serial.Serial(port, baud_rate, timeout=timeout)
+        self.ser.timeout = 0.01 # 10 ms timeout fix for read_until where end byte is in CRC
         self.read_buffer = []
         self.align = align
 
@@ -131,6 +132,7 @@ class UART:
         packet.extend(crc_value.to_bytes(2, 'big'))
         packet.append(OW_END_BYTE)
         
+        # print(f"TX LENGTH: {len(packet)}")
         self._tx(packet)
         self._rx()
         return self.read_buffer
@@ -160,7 +162,8 @@ class UART:
     def _rx(self):
         """Receive data."""
         try:
-            data = self.ser.read_until(bytes([OW_END_BYTE]))
+            # data = self.ser.read_until(bytes([OW_END_BYTE]))
+            data = self.ser.readall() # change to read all instead of read_until end byte
             if data:
                 # log.debug(f"RX: {data.hex()}")
                 self.read_buffer.extend(data)

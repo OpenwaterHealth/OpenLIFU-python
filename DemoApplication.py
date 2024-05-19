@@ -176,6 +176,14 @@ class App(QWidget):
             self.ustx_ctrl = CTRL_IF(comm_port)
             if self.ustx_ctrl is not None:
                 print("USTx controller initialized")
+                r = self.ustx_ctrl.ping()  # Ping the device
+                try:
+                    parsedResp = UartPacket(buffer=r)
+                    print("Received From Controller Packet ID: ", parsedResp.id)
+                except ValueError as e:
+                    print("{0}".format(e))
+                    sys.exit(0)
+
                 # enumerate devices
                 print("Enumerate I2C Devices")
                 self.ustx_ctrl.enum_i2c_devices()

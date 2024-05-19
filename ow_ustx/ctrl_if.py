@@ -65,6 +65,8 @@ class CTRL_IF:
         time.sleep(self._delay)
         response = self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CMD_ECHO, data=data)
         self.uart.clear_buffer()
+        # print("length of response: ", len(response))
+        # format_and_print_hex(response)
         # handle response
         return response
     
