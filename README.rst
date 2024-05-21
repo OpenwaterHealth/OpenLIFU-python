@@ -10,6 +10,15 @@ Installation
 Requirements
 ^^^^^^^^^^^^
 Python 3.11
+USTX v2 
+USB Type-C cable
+12VDC Power Supply Barrel Jack
+High Voltage Power Supply (HVPS)    
+
+Power Supply Connection
+^^^^^^^^^^^^^^^^^^^^^^^
+12VDC Power Supply Barrel Jack connect to bottom board
+HVPS connect to top board MOLEX connector Red Wire = +HV, Black Wire = Common Ground, Yellow Wire = -HV
 
 Create Virtual Environment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
