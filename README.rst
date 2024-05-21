@@ -36,7 +36,10 @@ Install Requirements
 
 Run Demo Application
 ^^^^^^^^^^^^^^^^^^^^
+NOTE: Pin mapping for the demo application can be changed by modifying pinmap.json file
+
 ``python DemoApplication.py``
+
 
 Run Notebook
 ^^^^^^^^^^^^^^^^^^^^
