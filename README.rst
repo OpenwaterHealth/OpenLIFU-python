@@ -20,7 +20,10 @@ Install Requirements
 ^^^^^^^^^^^^^^^^^^^^
 ``.\env\Scripts\activate``
 
+``pip install --upgrade pip setuptools``
 ``pip install -r requirements.txt``
+
+
 
 Run Demo Application
 ^^^^^^^^^^^^^^^^^^^^
