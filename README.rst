@@ -18,7 +18,7 @@ High Voltage Power Supply (HVPS)
 Power Supply Connection
 ^^^^^^^^^^^^^^^^^^^^^^^
 12VDC Power Supply Barrel Jack connect to bottom board
-HVPS connect to top board MOLEX connector Red Wire = +HV, Black Wire = Common Ground, Yellow Wire = -HV
+HVPS connect to top board MOLEX connector Red Wire = -HV, Black Wire = Common Ground, Yellow Wire = +HV
 
 Create Virtual Environment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
