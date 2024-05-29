@@ -5,11 +5,6 @@ pyFUS: Python Focused Ultrasound
 This package contains the modules for pyFUS.
 """
 
-#from . import bf, db, io, plan, seg, sim, xdc, geo
-
-#from . import bf, db, io, plan, seg, sim, xdc, geo
-
-
 from pyfus.geo import (
     Point
 )
