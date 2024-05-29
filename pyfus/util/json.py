@@ -32,7 +32,7 @@ class PYFUSEncoder(json.JSONEncoder):
 
 def to_json(obj, filename):
     dirname = os.path.dirname(filename)
-    if not os.path.exists(dirname):
+    if dirname and not os.path.exists(dirname):
         os.makedirs(dirname)
     with open(filename, 'w') as file:
         json.dump(obj, file, cls=PYFUSEncoder, indent=4)    

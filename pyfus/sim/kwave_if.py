@@ -61,10 +61,7 @@ def get_source(kgrid, karray, source_sig, grid_weights=None):
     logging.info("Getting binary mask")
     source.p_mask = karray.get_array_binary_mask(kgrid)
     logging.info("Getting distributed source signal")
-    if grid_weights is None:
-        source.p = karray.get_distributed_source_signal(kgrid, source_sig)
-    else:
-        source.p = karray.get_distributed_source_signal(kgrid, source_sig, grid_weights=grid_weights)
+    source.p = karray.get_distributed_source_signal(kgrid, source_sig, grid_weights=grid_weights)
     return source
 
 def hash_array_kgrid(kgrid, karray):
@@ -97,9 +94,9 @@ def run_simulation(arr: xdc.Transducer,
     delays = delays if delays is not None else np.zeros(arr.numelements())
     apod = apod if apod is not None else np.ones(arr.numelements())
     kgrid = get_kgrid(params.coords, dt=dt, t_end=t_end)
-    source_t = np.arange(0, cycles / freq, kgrid.dt)
-    source_p = amplitude * np.sin(2 * np.pi * freq * source_t)
-    source_mat = arr.calc_output(source_p, kgrid.dt, delays, apod)
+    t = np.arange(0, cycles / freq, kgrid.dt)
+    input_signal = amplitude * np.sin(2 * np.pi * freq * t)
+    source_mat = arr.calc_output(input_signal, kgrid.dt, delays, apod)
     pcoords = params.coords['lat'].attrs['units']
     scl = getunitconversion(pcoords, 'm')
     array_offset =[-float(coord.mean())*scl for coord in params.coords.values()]
@@ -121,10 +118,7 @@ def run_simulation(arr: xdc.Transducer,
     if save_gridweights and db is not None:
         logging.info("Saving grid weights")
         db.add_gridweights(arr.id, h, grid_weights, on_conflict='overwrite')
-    if load_gridweights:
-        source = get_source(kgrid, karray, source_mat, grid_weights=grid_weights)
-    else:
-        source = get_source(kgrid, karray, source_mat)
+    source = get_source(kgrid, karray, source_mat, grid_weights=grid_weights)
     logging.info("Running simulation")
     simulation_options = SimulationOptions(
                             pml_auto=True,
@@ -154,9 +148,5 @@ def run_simulation(arr: xdc.Transducer,
                          coords=params.coords,
                          name='I', 
                          attrs={'units':'W/cm^2', 'long_name':'Intensity'})
-    source_signal = xa.DataArray(source_p, dims=['t'], coords={'t':xa.DataArray(source_t, dims=['t'], attrs={'units':'s'})},
-                          name='source', attrs={'units':'Pa', 'long_name':'Source Signal'})
     ds = xa.Dataset({'p_max':p_max, 'p_min':p_min, 'ita':intensity})
-    ds.attrs['source'] = source_signal
-    ds.attrs['output'] = output
-    return ds
+    return ds, output

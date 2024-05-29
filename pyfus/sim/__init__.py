@@ -1,3 +1,3 @@
 from .sim_setup import SimSetup
-from .kwave import run_simulation
-from . import kwave
+from .kwave_if import run_simulation
+from . import kwave_if
