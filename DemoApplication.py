@@ -188,7 +188,11 @@ class App(QWidget):
         print(f'Setting registers: Left={left}, Front={front}, Down={down}, Frequency={frequency}, Cycles={cycles}')
         focus = np.array([left, front, down])
         pulse_profile = PulseProfile(profile=1, frequency=frequency, cycles=cycles)
-        afe_dict = {afe.i2c_addr: afe for afe in self.ustx_ctrl.afe_devices}
+        
+        first_afe = self.ustx_ctrl.afe_devices[0]
+        afe_dict = {first_afe.i2c_addr: first_afe}
+        # afe_dict = {afe.i2c_addr: afe for afe in self.ustx_ctrl.afe_devices}
+        
         arr = Transducer.from_file(R"pinmap.json")
         arr.elements = np.array(arr.elements)[np.argsort([el.pin for el in arr.elements])].tolist()
         distances = np.sqrt(np.sum((focus - arr.get_positions(units="mm")) ** 2, 1))
