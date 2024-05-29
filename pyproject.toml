@@ -13,5 +13,13 @@ dependencies = [
     "opencv-contrib-python",
     "crc",
     "nibabel",
-    "sphinx"
+    "sphinx",
+    "ipykernel"
 ]
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+include = ["pyfus*"]
+exclude = ["test*", "env*"]

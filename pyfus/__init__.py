@@ -5,21 +5,8 @@ pyFUS: Python Focused Ultrasound
 This package contains the modules for pyFUS.
 """
 
-from . import xdc
-from . import plan
-from . import bf
-from . import geo
-from . import util
-from . import sim
+#from . import bf, db, io, plan, seg, sim, xdc, geo
 
-from pyfus.db import (
-    Database
-)
-
-from pyfus.planning import (
-    TreatmentPlan,
-    TreatmentSolution
-)
 
 from pyfus.geo import (
     Point
@@ -29,8 +16,15 @@ from pyfus.xdc import (
     Transducer
 )
 
-from pyfus.materials import (
+from pyfus.plan import (
+    Protocol,
+    Solution
+)
+
+from pyfus.seg import (
     Material,
+    SegmentationMethod,
+    seg_methods,
     MATERIALS,
     WATER,
     TISSUE,
@@ -39,10 +33,21 @@ from pyfus.materials import (
     STANDOFF
 )
 
-from pyfus.beamforming import (
+from pyfus.bf import (
     DelayMethod,
     ApodizationMethod,
     Pulse,
     Sequence,
-    FocalPattern
+    FocalPattern,
+    focal_patterns,
+    delay_methods,
+    apod_methods
+)
+
+from pyfus.sim import (
+    SimSetup
+)
+
+from pyfus.db import (
+    Database
 )
