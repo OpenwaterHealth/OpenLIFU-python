@@ -188,17 +188,15 @@ class App(QWidget):
         print(f'Setting registers: Left(X)={left}, Front(Y)={front}, Down(Z)={down}, Frequency={frequency}, Cycles={cycles}')
         focus = np.array([left, front, down])
         pulse_profile = PulseProfile(profile=1, frequency=frequency, cycles=cycles)
-        
-        first_afe = self.ustx_ctrl.afe_devices[0]
-        afe_dict = {first_afe.i2c_addr: first_afe}
-        # afe_dict = {afe.i2c_addr: afe for afe in self.ustx_ctrl.afe_devices}
-        
+        afe_dict = {afe.i2c_addr: afe for afe in self.ustx_ctrl.afe_devices}        
         arr = Transducer.from_file(R"pinmap.json")
         arr.elements = np.array(arr.elements)[np.argsort([el.pin for el in arr.elements])].tolist()
         distances = np.sqrt(np.sum((focus - arr.get_positions(units="mm")) ** 2, 1))
         tof = distances * 1e-3 / 1500
         delays = tof.max() - tof
-        txa = TxArray(i2c_addresses=list(afe_dict.keys()))
+        i2c_addresses = list(afe_dict.keys())
+        i2c_addresses = i2c_addresses[:arr.numelements()/64]
+        txa = TxArray(i2c_addresses=i2c_addresses)
         array_delay_profile = DelayProfile(1, delays.tolist())
         txa.add_delay_profile(array_delay_profile)
         txa.add_pulse_profile(pulse_profile)
