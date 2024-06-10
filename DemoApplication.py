@@ -195,7 +195,7 @@ class App(QWidget):
         tof = distances * 1e-3 / 1500
         delays = tof.max() - tof
         i2c_addresses = list(afe_dict.keys())
-        i2c_addresses = i2c_addresses[:arr.numelements()/64]
+        i2c_addresses = i2c_addresses[:int(arr.numelements()/64)]
         txa = TxArray(i2c_addresses=i2c_addresses)
         array_delay_profile = DelayProfile(1, delays.tolist())
         txa.add_delay_profile(array_delay_profile)
