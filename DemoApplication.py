@@ -33,9 +33,9 @@ class App(QWidget):
         self.left_input.setText('0')
         self.front_input.setText('0')
         self.down_input.setText('0')
-        beam_focus_layout.addRow('Left:', self.left_input)
-        beam_focus_layout.addRow('Front:', self.front_input)
-        beam_focus_layout.addRow('Down:', self.down_input)
+        beam_focus_layout.addRow('Left(X):', self.left_input)
+        beam_focus_layout.addRow('Front(Y):', self.front_input)
+        beam_focus_layout.addRow('Down(Z):', self.down_input)
         beam_focus_group.setLayout(beam_focus_layout)
         main_layout.addWidget(beam_focus_group)
 
@@ -185,7 +185,7 @@ class App(QWidget):
         down = int(self.down_input.text())
         frequency = float(self.frequency_input.text())
         cycles = int(self.cycles_input.text())
-        print(f'Setting registers: Left={left}, Front={front}, Down={down}, Frequency={frequency}, Cycles={cycles}')
+        print(f'Setting registers: Left(X)={left}, Front(Y)={front}, Down(Z)={down}, Frequency={frequency}, Cycles={cycles}')
         focus = np.array([left, front, down])
         pulse_profile = PulseProfile(profile=1, frequency=frequency, cycles=cycles)
         
