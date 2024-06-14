@@ -1,5 +1,5 @@
 [project]
-name = "open_pyfus"
+name = "openlifu"
 version = "0.1.0"
 description = "Openwater Focused Ultrasound Toolkit"
 dependencies = [

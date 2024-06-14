@@ -1,5 +1,5 @@
-Welcome to open-PYFUS's documentation!
-=========================================   
+Welcome to openlifu's documentation!
+=========================================
 
 .. toctree::
    :maxdepth: 2
