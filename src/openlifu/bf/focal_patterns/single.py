@@ -12,7 +12,7 @@ class SinglePoint(FocalPattern):
     def get_targets(self, target: Point):
         """
         Get the targets of the focal pattern
-        
+
         :param target: Target point of the focal pattern
         :returns: List of target points
         """

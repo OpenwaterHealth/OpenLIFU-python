@@ -18,7 +18,7 @@ class Protocol:
     seg_method: seg.SegmentationMethod = field(default_factory=seg.seg_methods.Water)
     param_constraints: dict = field(default_factory=dict)
     target_constraints: dict = field(default_factory=dict)
-    analysis_options: dict = field(default_factory=dict)    
+    analysis_options: dict = field(default_factory=dict)
 
     @staticmethod
     def from_dict(d):
@@ -31,7 +31,7 @@ class Protocol:
         seg_method_dict = d.get("seg_method", {})
         if "materials" in d:
             seg_method_dict["materials"] = seg.Material.from_dict(d.pop("materials"))
-        d["seg_method"] = seg.SegmentationMethod.from_dict(seg_method_dict)        
+        d["seg_method"] = seg.SegmentationMethod.from_dict(seg_method_dict)
         return Protocol(**d)
 
     def to_dict(self):
@@ -50,13 +50,13 @@ class Protocol:
             "target_constraints": self.target_constraints,
             "analysis_options": self.analysis_options,
         }
-    
+
     @staticmethod
     def from_file(filename):
         with open(filename, "r") as f:
             d = json.load(f)
         return Protocol.from_dict(d)
-    
+
     def beamform(self, arr: xdc.Transducer, target:geo.Point, params: xa.Dataset):
         delays = self.delay_method.calc_delays(arr, target, params)
         apod = self.apod_method.calc_apodization(arr, target, params)

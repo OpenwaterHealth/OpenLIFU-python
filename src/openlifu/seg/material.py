@@ -11,7 +11,7 @@ class Material:
     attenuation: float = 0.0 # dB/cm/MHz
     specific_heat: float = 4182.0 # J/kg/K
     thermal_conductivity: float = 0.598 # W/m/K
-    param_ids: Tuple[str] = field(default_factory= lambda: ("sound_speed", "density", "attenuation", "specific_heat", "thermal_conductivity"), init=False, repr=False) 
+    param_ids: Tuple[str] = field(default_factory= lambda: ("sound_speed", "density", "attenuation", "specific_heat", "thermal_conductivity"), init=False, repr=False)
 
     @classmethod
     def param_info(cls, param_id: str):
@@ -38,14 +38,14 @@ class Material:
         if param_id not in self.param_ids:
             raise ValueError(f"Parameter {param_id} not found.")
         return self.__getattribute__(param_id)
-    
+
     @staticmethod
     def get_materials(material_id="all", as_dict=True):
         material_id = ("water", "tissue", "skull", "air", "standoff") if material_id == "all" else material_id
         if isinstance(material_id, tuple) or  isinstance(material_id, list):
             materials = {m: Material.get_materials(m, as_dict=False) for m in material_id}
         elif material_id in MATERIALS:
-            materials = MATERIALS[material_id]            
+            materials = MATERIALS[material_id]
         else:
             raise ValueError(f"Material {material_id} not found.")
         if as_dict:

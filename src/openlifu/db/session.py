@@ -53,7 +53,7 @@ class Session:
     def from_dict(d):
         """
         Create a session from a dictionary
-        
+
         :param d: Dictionary of session parameters
         :returns: Session object
         """
@@ -82,11 +82,11 @@ class Session:
             elif isinstance(d['markers'], Point):
                 d['markers'] = [d['markers']]
         return Session(**d)
-    
+
     def to_dict(self):
         """
         Convert the session to a dictionary
-        
+
         :returns: Dictionary of session parameters
         """
         d = self.__dict__.copy()
@@ -97,11 +97,11 @@ class Session:
         d['targets'] = [p.to_dict() for p in d['targets']]
         d['markers'] = [p.to_dict() for p in d['markers']]
         return d
-    
+
     def to_file(self, filename):
         """
         Save the session to a file
-        
+
         :param filename: Name of the file
         """
         from openlifu.util.json import to_json

@@ -10,7 +10,7 @@ from openlifu.seg import seg_methods
 class SegmentationMethod:
     materials: dict = field(default_factory=lambda: MATERIALS.copy())
     ref_material: str = "water"
-    
+
     def __post_init__(self):
         if self.ref_material not in self.materials.keys():
             raise ValueError(f"Reference material {self.ref_material} not found.")
@@ -21,7 +21,7 @@ class SegmentationMethod:
     @staticmethod
     def from_dict(d):
         if isinstance(d, str):
-            import openlifu.seg.seg_methods        
+            import openlifu.seg.seg_methods
             if d == "water":
                 return openlifu.seg.seg_methods.Water()
             elif d == "tissue":
@@ -38,7 +38,7 @@ class SegmentationMethod:
     def _material_indices(self, materials: Optional[dict] = None):
         materials = self.materials if materials is None else materials
         return {material_id: i for i, material_id in enumerate(materials.keys())}
-    
+
     def _map_params(self, seg: xa.DataArray, materials: Optional[dict] = None):
         materials = self.materials if materials is None else materials
         material_dict = self._material_indices(materials=materials)
@@ -53,25 +53,25 @@ class SegmentationMethod:
             params[param_id] = param
         params.attrs['ref_material'] = ref_mat
         return params
-    
+
     def seg_params(self, volume: xa.DataArray, materials: Optional[dict] = None):
         materials = self.materials if materials is None else materials
         seg = self._segment(volume)
         params = self._map_params(seg, materials=materials)
         return params
-    
+
     def ref_params(self, coords: xa.Coordinates):
        seg = self._ref_segment(coords)
        params = self._map_params(seg)
        return params
-    
+
     def _ref_segment(self, coords: xa.Coordinates):
        material_dict = self._material_indices()
        m_idx = material_dict[self.ref_material]
        sz = list(coords.sizes.values())
        seg = xa.DataArray(np.full(sz, m_idx, dtype=int), coords=coords)
        return seg
-    
+
     def to_dict(self):
         d = self.__dict__.copy()
         d['class'] = self.__class__.__name__

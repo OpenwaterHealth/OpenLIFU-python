@@ -28,8 +28,8 @@ ADDRESSES_GLOBAL = [ADDRESS_GLOBAL_MODE,
                     ADDRESS_DYNPWR_1,
                     ADDRESS_LDO_PWR_2,
                     ADDRESS_TRSW_TURNON,
-                    ADDRESS_DELAY_SEL, 
-                    ADDRESS_PATTERN_MODE, 
+                    ADDRESS_DELAY_SEL,
+                    ADDRESS_PATTERN_MODE,
                     ADDRESS_PATTERN_REPEAT,
                     ADDRESS_PATTERN_SEL_G1,
                     ADDRESS_PATTERN_SEL_G2,
@@ -91,7 +91,7 @@ ProfileOpts = Literal['active', 'configured', 'all']
 def get_delay_location(channel:int, profile:int=1):
     """
     Gets the address and least significant bit of a delay
-    
+
     :param channel: Channel number
     :param profile: Delay profile number
     :returns: Register address and least significant bit of the delay location
@@ -149,7 +149,7 @@ def calc_pulse_pattern(frequency:float, duty_cycle:float=DEFAULT_PATTERN_DUTY_CY
     :returns: Tuple of lists of levels and lengths, and the clock divider setting
     """
     clk_div_n = 0
-    while clk_div_n < 6:        
+    while clk_div_n < 6:
         clk_n = bf_clk / (2**clk_div_n)
         period_samples = int(clk_n / frequency)
         first_half_period_samples = int(period_samples / 2)
@@ -183,7 +183,7 @@ def calc_pulse_pattern(frequency:float, duty_cycle:float=DEFAULT_PATTERN_DUTY_CY
                     else:
                         per_lengths.append(MAX_PATTERN_PERIOD_LENGTH)
                         samples -= (MAX_PATTERN_PERIOD_LENGTH+2)
-                    per_levels.append(levels[i])    
+                    per_levels.append(levels[i])
                 else:
                     per_lengths.append(samples-2)
                     per_levels.append(levels[i])
@@ -191,8 +191,8 @@ def calc_pulse_pattern(frequency:float, duty_cycle:float=DEFAULT_PATTERN_DUTY_CY
         if len(per_levels) <= MAX_PATTERN_PERIODS:
             t = (np.arange(np.sum(np.array(per_lengths)+2))*(1/clk_n)).tolist()
             y = np.concatenate([[yi]*(ni+2) for yi,ni in zip(per_levels, per_lengths)]).tolist()
-            pattern = {'levels': per_levels, 
-                        'lengths': per_lengths, 
+            pattern = {'levels': per_levels,
+                        'lengths': per_lengths,
                         'clk_div_n': clk_div_n,
                         't': t,
                         'y': y}
@@ -229,9 +229,9 @@ def print_regs(d):
 def pack_registers(regs, pack_single:bool=False):
     """
     Packs registers into contiguous blocks
-    
+
     :param regs: Dictionary of registers
-    :param pack_single: Pack single registers into arrays. Default True. 
+    :param pack_single: Pack single registers into arrays. Default True.
     :returns: Dictionary of packed registers.
     """
     addresses = sorted(regs.keys())
@@ -256,7 +256,7 @@ def pack_registers(regs, pack_single:bool=False):
 def swap_byte_order(regs):
     """
     Swaps the byte order of the registers
-    
+
     :param regs: Dictionary of registers
     :returns: Dictionary of registers with swapped byte order
     """
@@ -283,7 +283,7 @@ class DelayProfile:
             raise ValueError(f"Apodizations list must have {self.num_elements} elements")
         if self.profile not in VALID_DELAY_PROFILES:
             raise ValueError(f"Invalid Profile {self.profile}")
-            
+
 @dataclass
 class PulseProfile:
     profile: int
@@ -292,11 +292,11 @@ class PulseProfile:
     duty_cycle: float=DEFAULT_PATTERN_DUTY_CYCLE
     tail_count: int=DEFAULT_TAIL_COUNT
     invert: bool=False
-    
+
     def __post_init__(self):
         if self.profile not in VALID_PATTERN_PROFILES:
             raise ValueError(f"Invalid profile {self.profile}.")
-        
+
 @dataclass
 class Tx7332Registers:
     bf_clk: float = DEFAULT_CLK_FREQ
@@ -383,10 +383,10 @@ class Tx7332Registers:
             raise ValueError(f"Pulse profile {profile} not found")
         profile = profiles.index(profile)
         return self._pulse_profiles_list[profile]
-    
+
     def configured_pulse_profiles(self) -> List[int]:
         return [p.profile for p in self._pulse_profiles_list]
-    
+
     def activate_delay_profile(self, profile:int):
         if profile not in self.configured_delay_profiles():
             raise ValueError(f"Delay profile {profile} not configured")
@@ -407,9 +407,9 @@ class Tx7332Registers:
         delay_sel_register = 0
         delay_sel_register = set_register_value(delay_sel_register, delay_profile.profile-1, lsb=12, width=4)
         delay_sel_register = set_register_value(delay_sel_register, delay_profile.profile-1, lsb=28, width=4)
-        return {ADDRESS_DELAY_SEL: delay_sel_register, 
+        return {ADDRESS_DELAY_SEL: delay_sel_register,
                 ADDRESS_APODIZATION: apod_register}
-    
+
     def get_pulse_control_registers(self, profile: Optional[int]=None) -> Dict[int,int]:
         if profile is None:
             profile = self.active_pulse_profile
@@ -437,7 +437,7 @@ class Tx7332Registers:
                 raise ValueError(f"Pattern duration too long for elastic repeat")
         else:
             repeat = cycles-1
-            elastic_repeat = 0        
+            elastic_repeat = 0
             elastic_mode = 0
             y = pattern['y']*(repeat+1)
             y = np.array(y + [0]*pulse_profile.tail_count)
@@ -450,7 +450,7 @@ class Tx7332Registers:
         reg_repeat = set_register_value(reg_repeat, elastic_mode, lsb=11, width=1)
         reg_repeat = set_register_value(reg_repeat, elastic_repeat, lsb=12, width=16)
         reg_pat_sel = 0
-        reg_pat_sel = set_register_value(reg_pat_sel, pulse_profile.profile-1, lsb=0, width=6)        
+        reg_pat_sel = set_register_value(reg_pat_sel, pulse_profile.profile-1, lsb=0, width=6)
         registers = {ADDRESS_PATTERN_MODE: reg_mode,
                      ADDRESS_PATTERN_REPEAT: reg_repeat,
                      ADDRESS_PATTERN_SEL_G1: reg_pat_sel,
@@ -470,8 +470,8 @@ class Tx7332Registers:
             data_registers[address] = set_register_value(data_registers[address], delay_value, lsb=lsb, width=DELAY_WIDTH)
         if pack:
             data_registers = pack_registers(data_registers, pack_single=pack_single)
-        return data_registers    
-    
+        return data_registers
+
     def get_pulse_data_registers(self, profile: Optional[int]=None, pack: bool=False, pack_single: bool=False) -> Dict[int,int]:
         if profile is None:
             profile = self.active_pulse_profile
@@ -507,12 +507,12 @@ class Tx7332Registers:
             raise ValueError(f"No delay profile activated")
         if self.active_pulse_profile is None:
             raise ValueError(f"No pulse profile activated")
-        registers = {addr:0x0 for addr in ADDRESSES_GLOBAL}        
+        registers = {addr:0x0 for addr in ADDRESSES_GLOBAL}
         registers.update(self.get_delay_control_registers())
         registers.update(self.get_pulse_control_registers())
         if profiles == "active":
             delay_data = self.get_delay_data_registers(pack=pack, pack_single=pack_single)
-            pulse_data = self.get_pulse_data_registers(pack=pack, pack_single=pack_single)    
+            pulse_data = self.get_pulse_data_registers(pack=pack, pack_single=pack_single)
         else:
             if profiles == "all":
                 delay_data = {addr:0x0 for addr in ADDRESSES_DELAY_DATA}
@@ -543,7 +543,7 @@ class TxModule:
 
     def __post_init__(self):
         self.transmitters = tuple([Tx7332Registers(bf_clk=self.bf_clk) for _ in range(self.num_transmitters)])
-        
+
     def add_pulse_profile(self, pulse_profile: PulseProfile, activate: Optional[bool]=None):
         """
         Add a pulse profile
@@ -562,12 +562,12 @@ class TxModule:
         if activate:
             self.active_pulse_profile = pulse_profile.profile
         for tx in self.transmitters:
-            tx.add_pulse_profile(pulse_profile, activate = activate)        
-        
+            tx.add_pulse_profile(pulse_profile, activate = activate)
+
     def add_delay_profile(self, delay_profile: DelayProfile, activate: Optional[bool]=None):
         """
         Add a delay profile
-        
+
         :param p: Delay profile
         :param activate: Activate the delay profile
         """
@@ -610,7 +610,7 @@ class TxModule:
     def remove_pulse_profile(self, profile:int):
         """
         Remove a pulse profile
-        
+
         :param profile: Pulse profile number
         """
         profiles = self.configured_pulse_profiles()
@@ -636,12 +636,12 @@ class TxModule:
         if profile not in profiles:
             raise ValueError(f"Delay profile {profile} not found")
         i = profiles.index(profile)
-        return self._delay_profiles_list[i]        
-    
+        return self._delay_profiles_list[i]
+
     def _configured_delay_profiles(self) -> List[int]:
         """
         Get the configured delay profiles
-        
+
         :return: List of delay profiles
         """
         return [p.profile for p in self._delay_profiles_list]
@@ -660,11 +660,11 @@ class TxModule:
             raise ValueError(f"Pulse profile {profile} not found")
         i = profiles.index(profile)
         return self._pulse_profiles_list[i]
-    
+
     def configured_pulse_profiles(self) -> List[int]:
         """
         Get the configured pulse profiles
-        
+
         :return: List of pulse profiles
         """
         return [p.profile for p in self._pulse_profiles_list]
@@ -672,17 +672,17 @@ class TxModule:
     def activate_delay_profile(self, profile:int=1):
         """
         Activates a delay profile
-        
+
         :param profile: Delay profile number
         """
         for tx in self.transmitters:
-            tx.activate_delay_profile(profile)  
+            tx.activate_delay_profile(profile)
         self.active_delay_profile = profile
 
     def activate_pulse_profile(self, profile:int=1):
         """
         Activates a pulse profile
-        
+
         :param profile: Pulse profile number
         """
         for tx in self.transmitters:
@@ -723,7 +723,7 @@ class TxModule:
             self.recompute_delay_profiles()
             self.recompute_pulse_profiles()
         return [tx.get_registers(profiles, pack=pack, pack_single=pack_single) for tx in self.transmitters]
-    
+
     def get_delay_control_registers(self, profile:Optional[int]=None) -> List[Dict[int,int]]:
         """
         Get the delay control registers for all transmitters
@@ -734,7 +734,7 @@ class TxModule:
         if profile is None:
             profile = self.active_delay_profile
         return [tx.get_delay_control_registers(profile) for tx in self.transmitters]
-    
+
     def get_pulse_control_registers(self, profile:Optional[int]=None) -> List[Dict[int,int]]:
         """
         Get the pulse control registers for all transmitters
@@ -745,7 +745,7 @@ class TxModule:
         if profile is None:
             profile = self.active_pulse_profile
         return [tx.get_pulse_control_registers(profile) for tx in self.transmitters]
-    
+
     def get_delay_data_registers(self, profile:Optional[int]=None, pack: bool=False, pack_single: bool=False) -> List[Dict[int,int]]:
         """
         Get the delay data registers for all transmitters
@@ -756,7 +756,7 @@ class TxModule:
         if profile is None:
             profile = self.active_delay_profile
         return [tx.get_delay_data_registers(profile, pack=pack, pack_single=pack_single) for tx in self.transmitters]
-    
+
     def get_pulse_data_registers(self, profile:Optional[int]=None, pack: bool=False, pack_single: bool=False) -> List[Dict[int,int]]:
         """
         Get the pulse data registers for all transmitters
@@ -767,7 +767,7 @@ class TxModule:
         if profile is None:
             profile = self.active_pulse_profile
         return [tx.get_pulse_data_registers(profile, pack=pack, pack_single=pack_single) for tx in self.transmitters]
-    
+
 @dataclass
 class TxArray:
     i2c_addresses: Tuple[int] = (0x0,)
@@ -804,11 +804,11 @@ class TxArray:
             self.active_pulse_profile = pulse_profile.profile
         for module in self.modules.values():
             module.add_pulse_profile(pulse_profile, activate)
-        
+
     def add_delay_profile(self, delay_profile: DelayProfile, activate: Optional[bool]=None):
         """
         Add a delay profile
-        
+
         :param p: Delay profile
         :param activate: Activate the delay profile
         """
@@ -835,7 +835,7 @@ class TxArray:
     def remove_pulse_profile(self, profile:int):
         """
         Remove a pulse profile
-        
+
         :param profile: Pulse profile number
         """
         profiles = self.configured_pulse_profiles()
@@ -863,7 +863,7 @@ class TxArray:
             self.active_delay_profile = None
         for module in self.modules.values():
             module.remove_delay_profile(profile)
-        
+
     def get_pulse_profile(self, profile:Optional[int]=None) -> PulseProfile:
         """
         Retrieve a pulse profile
@@ -878,11 +878,11 @@ class TxArray:
             raise ValueError(f"Pulse profile {profile} not found")
         i = profiles.index(profile)
         return self._pulse_profiles_list[i]
-    
+
     def configured_pulse_profiles(self) -> List[int]:
         """
         Get the configured pulse profiles
-        
+
         :return: List of pulse profiles
         """
         return [p.profile for p in self._pulse_profiles_list]
@@ -901,11 +901,11 @@ class TxArray:
             raise ValueError(f"Delay profile {profile} not found")
         i = profiles.index(profile)
         return self._delay_profiles_list[i]
-    
+
     def configured_delay_profiles(self) -> List[int]:
         """
         Get the configured delay profiles
-        
+
         :return: List of delay profiles
         """
         return [p.profile for p in self._delay_profiles_list]
@@ -913,21 +913,21 @@ class TxArray:
     def activate_pulse_profile(self, profile:int=1):
         """
         Activates a pulse profile
-        
+
         :param profile: Pulse profile number
         """
         for module in self.modules.values():
             module.activate_pulse_profile(profile)
         self.active_pulse_profile = profile
-    
+
     def activate_delay_profile(self, profile:int=1):
         """
         Activates a delay profile
-        
+
         :param profile: Delay profile number
         """
         for module in self.modules.values():
-            module.activate_delay_profile(profile)  
+            module.activate_delay_profile(profile)
         self.active_delay_profile = profile
 
     def recompute_pulse_profiles(self):
@@ -964,7 +964,7 @@ class TxArray:
             self.recompute_delay_profiles()
             self.recompute_pulse_profiles()
         return {addr:module.get_registers(profiles, pack=pack, pack_single=pack_single) for addr, module in self.modules.items()}
-    
+
     def get_delay_control_registers(self, profile:Optional[int]=None) -> Dict[int, List[Dict[int,int]]]:
         """
         Get the delay control registers for all modules
@@ -975,7 +975,7 @@ class TxArray:
         if profile is None:
             profile = self.active_delay_profile
         return {addr:module.get_delay_control_registers(profile) for addr, module in self.modules.items()}
-    
+
     def get_pulse_control_registers(self, profile:Optional[int]=None) -> Dict[int, List[Dict[int,int]]]:
         """
         Get the pulse control registers for all modules
@@ -986,7 +986,7 @@ class TxArray:
         if profile is None:
             profile = self.active_pulse_profile
         return {addr:module.get_pulse_control_registers(profile) for addr, module in self.modules.items()}
-    
+
     def get_delay_data_registers(self, profile:Optional[int]=None, pack: bool=False, pack_single: bool=False) -> Dict[int, List[Dict[int,int]]]:
         """
         Get the delay data registers for all modules
@@ -997,7 +997,7 @@ class TxArray:
         if profile is None:
             profile = self.active_delay_profile
         return {addr:module.get_delay_data_registers(profile, pack=pack, pack_single=pack_single) for addr, module in self.modules.items()}
-    
+
     def get_pulse_data_registers(self, profile:Optional[int]=None, pack: bool=False, pack_single: bool=False) -> Dict[int, List[Dict[int,int]]]:
         """
         Get the pulse data registers for all modules
@@ -1008,4 +1008,3 @@ class TxArray:
         if profile is None:
             profile = self.active_pulse_profile
         return {addr:module.get_pulse_data_registers(profile, pack=pack, pack_single=pack_single) for addr, module in self.modules.items()}
-    

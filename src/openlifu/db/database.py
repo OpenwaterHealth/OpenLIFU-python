@@ -40,7 +40,7 @@ class Database:
         # Check if the sonication protocol ID already exists in the database
         protocol_id = protocol.id
         protocol_ids = self.get_protocol_ids()
-        
+
         if protocol_id in protocol_ids:
             if on_conflict == "error":
                 raise ValueError(f"Protocol with ID {protocol_id} already exists in the database.")
@@ -342,12 +342,12 @@ class Database:
             self.logger.warning("Transducers file not found.")
             return []
 
-    def load_gridweights(self, transducer_id, grid_hash):    
+    def load_gridweights(self, transducer_id, grid_hash):
         gridweight_filename = self.get_gridweights_filename(transducer_id, grid_hash)
         with h5py.File(gridweight_filename, "r") as f:
             grid_weights = f["grid_weights"][:]
         return grid_weights
-    
+
     def load_subject(self, subject_id, options=None):
         subject_filename = self.get_subject_filename(subject_id)
         subject = Subject.from_file(subject_filename)
@@ -564,7 +564,7 @@ class Database:
     def get_default_user_dir():
         """
         Get the default user directory for the database
-        
+
         :returns: Default user directory
         """
         return os.path.expanduser("~")
@@ -573,7 +573,7 @@ class Database:
     def get_default_path(options=None):
         """
         Get the default path for the database
-        
+
         :returns: Default path for the database
         """
         return os.path.join(Database.get_default_user_dir(), "Documents", "db")

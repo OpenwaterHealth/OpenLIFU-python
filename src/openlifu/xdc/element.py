@@ -1,7 +1,7 @@
 import numpy as np
 from openlifu.util.units import getunitconversion
 from dataclasses import dataclass, field
-from collections.abc import Iterable 
+from collections.abc import Iterable
 from typing import List, Dict, Any, Tuple
 import copy
 
@@ -163,7 +163,7 @@ class Element:
         if return_as == "deg":
             theta = np.degrees(theta)
         return theta
-    
+
     def set_matrix(self, matrix, units=None):
         if units is not None:
             self.rescale(units)
@@ -176,18 +176,18 @@ class Element:
         self.roll = roll
 
     def to_dict(self):
-        return {"index": self.index, 
-                "x": self.x, 
-                "y": self.y, 
-                "z": self.z, 
-                "az": self.az, 
-                "el": self.el, 
-                "roll": self.roll, 
-                "w": self.w, 
-                "l": self.l, 
-                "impulse_response": self.impulse_response.tolist(), 
-                "impulse_dt": self.impulse_dt, 
-                "pin": self.pin, 
+        return {"index": self.index,
+                "x": self.x,
+                "y": self.y,
+                "z": self.z,
+                "az": self.az,
+                "el": self.el,
+                "roll": self.roll,
+                "w": self.w,
+                "l": self.l,
+                "impulse_response": self.impulse_response.tolist(),
+                "impulse_dt": self.impulse_dt,
+                "pin": self.pin,
                 "units": self.units}
 
     @staticmethod

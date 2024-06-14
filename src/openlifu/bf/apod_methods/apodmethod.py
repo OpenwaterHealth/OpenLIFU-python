@@ -15,7 +15,7 @@ class ApodizationMethod(ABC):
         d = self.__dict__.copy()
         d['class'] = self.__class__.__name__
         return d
-    
+
     @staticmethod
     def from_dict(d):
         d = d.copy()

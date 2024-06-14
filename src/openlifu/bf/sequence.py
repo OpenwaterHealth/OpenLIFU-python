@@ -27,7 +27,7 @@ class Sequence:
                    {"Name": "Pulse Train Interval", "Value": self.pulse_train_interval, "Unit": "s"},
                    {"Name": "Pulse Train Count", "Value": self.pulse_train_count, "Unit": ""}]
         return pd.DataFrame.from_records(records)
-    
+
     @staticmethod
     def from_dict(d):
         """
@@ -36,18 +36,18 @@ class Sequence:
         :param d: Dictionary of the sequence parameters
         :returns: Sequence object
         """
-        return Sequence(pulse_interval=d["pulse_interval"], 
+        return Sequence(pulse_interval=d["pulse_interval"],
                         pulse_count=d["pulse_count"],
-                        pulse_train_interval=d["pulse_train_interval"], 
+                        pulse_train_interval=d["pulse_train_interval"],
                         pulse_train_count=d["pulse_train_count"])
-    
+
     def to_dict(self):
         """
         Convert the sequence to a dictionary
 
         :returns: Dictionary of the sequence parameters
         """
-        return {"pulse_interval": self.pulse_interval, 
+        return {"pulse_interval": self.pulse_interval,
                 "pulse_count": self.pulse_count,
-                "pulse_train_interval": self.pulse_train_interval, 
+                "pulse_train_interval": self.pulse_train_interval,
                 "pulse_train_count": self.pulse_train_count}
