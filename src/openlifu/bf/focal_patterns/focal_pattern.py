@@ -16,7 +16,7 @@ class FocalPattern(ABC):
     def get_targets(self, target: Point):
         """
         Get the targets of the focal pattern
-        
+
         :param target: Target point of the focal pattern
         :returns: List of target points
         """
@@ -45,11 +45,11 @@ class FocalPattern(ABC):
     def from_dict(d):
         """
         Create a focal pattern from a dictionary
-        
+
         :param d: Dictionary of the focal pattern parameters
         :returns: FocalPattern object
         """
-        d = d.copy()        
+        d = d.copy()
         short_classname = d.pop("class")
         module_dict = focal_patterns.__dict__
         class_constructor = module_dict[short_classname]

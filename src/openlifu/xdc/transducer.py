@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from openlifu.util.units import getunitconversion
 from dataclasses import dataclass, field
-from collections.abc import Iterable 
+from collections.abc import Iterable
 from typing import List, Dict, Any, Tuple
 import vtk
 import logging
@@ -28,7 +28,7 @@ class Transducer:
         self.matrix = np.array(self.matrix, dtype=np.float64)
         for element in self.elements:
             element.rescale(self.units)
-    
+
     def calc_output(self, input_signal, dt, delays: np.ndarray = None, apod: np.ndarray = None):
         if delays is None:
             delays = np.zeros(self.numelements())
@@ -40,14 +40,14 @@ class Transducer:
         for i, o in enumerate(outputs):
             output_signal[i, :len(o)] = o
         return output_signal
-    
+
     def copy(self):
         return copy.deepcopy(self)
 
-    def draw(self, 
-             units=None, 
-             transform=True, 
-             facecolor=[0,1,1], 
+    def draw(self,
+             units=None,
+             transform=True,
+             facecolor=[0,1,1],
              facealpha=0.5):
         units = self.units if units is None else units
         actor = self.get_actor(units=units, transform=transform, facecolor=facecolor, facealpha=facealpha)
@@ -116,7 +116,7 @@ class Transducer:
         else:
             matrix = np.eye(4)
         return [element.get_corners(units=units, matrix=matrix) for element in self.elements]
-  
+
     def get_positions(self, transform=True, units=None):
         units = self.units if units is None else units
         if transform:
@@ -154,7 +154,7 @@ class Transducer:
             xform_array.transform(np.dot(np.linalg.inv(arr.get_matrix()),ref_matrix), transform_elements=True)
             merged_array.elements += xform_array.elements
         return merged_array
-        
+
     def numelements(self):
         return len(self.elements)
 
@@ -165,13 +165,13 @@ class Transducer:
             scl = getunitconversion(self.units, units)
             self.matrix[0:3, 3] *= scl
             self.units = units
-        
+
     def to_dict(self):
         d = self.__dict__.copy()
         d["elements"] = [element.to_dict() for element in d["elements"]]
         d["matrix"] = d["matrix"].tolist()
         return d
-    
+
     def to_file(self, filename):
         from openlifu.util.json import to_json
         to_json(self.to_dict(), filename)
@@ -221,6 +221,3 @@ class Transducer:
                 units=units
             ))
         return Transducer(elements=elements, id=id, name=name, attrs=attrs)
-    
-
-

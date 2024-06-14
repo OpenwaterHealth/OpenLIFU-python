@@ -58,24 +58,24 @@ class SimSetup:
         coords = xa.Coordinates({dim: np.linspace(extents[i][0], extents[i][1], sizes[i]) for i, dim in enumerate(dims)})
         for i, dim in enumerate(dims):
             coords[dim].attrs['units'] = units
-            coords[dim].attrs['long_name'] = self.names[i]   
+            coords[dim].attrs['long_name'] = self.names[i]
         return coords
-    
+
     def get_corners(self, id: str = "corners", units: Optional[str] = None):
         units = self.units if units is None else units
         scl = getunitconversion(self.units, units)
         xyz = np.array(np.meshgrid(self.x_extent, self.y_extent, self.z_extent, indexing='ij'))
         corners = xyz.reshape(3,-1)
         return corners*scl
-    
+
     def get_extent(self, dims: Optional[str]=None, units: Optional[str] = None):
         dims = self.dims if dims is None else dims
         units = self.units if units is None else units
         scl = getunitconversion(self.units, units)
         extents = [self.x_extent, self.y_extent, self.z_extent]
-        return np.array([extents[self.dims.index(dim)] for dim in dims])*scl       
-    
-    def get_max_cycle_offset(self, arr:Transducer, frequency: Optional[float] = None, delays: Optional[np.ndarray]=None, zmin: float =10e-3):    
+        return np.array([extents[self.dims.index(dim)] for dim in dims])*scl
+
+    def get_max_cycle_offset(self, arr:Transducer, frequency: Optional[float] = None, delays: Optional[np.ndarray]=None, zmin: float =10e-3):
         frequency = arr.frequency if frequency is None else frequency
         delays = np.zeros(arr.numelements()) if delays is None else delays
         coords = self.get_coords(units="m")
@@ -93,19 +93,19 @@ class SimSetup:
         distances = np.array([[el.distance_to_point(corner, units=units) for corner in corners.T] for el in arr.elements])
         max_distance = np.max(distances)
         return max_distance
-    
+
     def get_size(self, dims: Optional[str]=None):
         dims = self.dims if dims is None else dims
         n = [int(np.round(np.diff(ext)/self.spacing))+1 for ext in [self.x_extent, self.y_extent, self.z_extent]]
         return np.array([n[self.dims.index(dim)] for dim in dims]).squeeze()
-    
+
     def get_spacing(self, units: Optional[str] = None):
         units = self.units if units is None else units
         return getunitconversion(self.units, units)*self.spacing
 
     def transform_scene(self, scene, id: Optional[str] = None, name: Optional[str] = None, units: Optional[str] = None):
         raise NotImplementedError
-    
+
     @staticmethod
     def from_dict(d):
         return SimSetup(**d)

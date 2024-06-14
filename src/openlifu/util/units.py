@@ -28,17 +28,17 @@ def getunittype(unit):
 def getunitconversion(from_unit, to_unit, unitratio=None, constant=None):
     if not from_unit:
         return 1.0
-    
+
     if unitratio is not None and constant is not None:
         if '/' not in unitratio:
             raise ValueError('Conversion unit ratio must have a \'/\' symbol')
-        
+
         unitn, unitd = unitratio.split('/')
         type0 = getunittype(from_unit)
         type1 = getunittype(to_unit)
         typen = getunittype(unitn)
         typed = getunittype(unitd)
-        
+
         if type0 == typed and type1 == typen:
             scl = getunitconversion(from_unit, unitd) * constant * getunitconversion(unitn, to_unit)
         elif type0 == typen and type1 == typed:
@@ -50,7 +50,7 @@ def getunitconversion(from_unit, to_unit, unitratio=None, constant=None):
     else:
         slash0 = from_unit.find('/')
         slash1 = to_unit.find('/')
-        
+
         if slash0 != -1 and slash1 != -1:
             num0 = from_unit[:slash0]
             denom0 = from_unit[slash0+1:]
@@ -60,19 +60,19 @@ def getunitconversion(from_unit, to_unit, unitratio=None, constant=None):
         elif slash0 == -1 and slash1 == -1:
             type0 = getunittype(from_unit)
             type1 = getunittype(to_unit)
-            
+
             if type0 != type1:
                 raise ValueError('Unit type mismatch ({}) vs ({})'.format(type0, type1))
-            
+
             if type0 == 'other':
                 if from_unit[-1] != to_unit[-1]:
                     raise ValueError('Cannot convert {} to {}'.format(from_unit, to_unit))
-                
+
                 i = 0
                 while i < min(len(from_unit), len(to_unit)) and from_unit[-i:] == to_unit[-i:]:
                     type = from_unit[-i:]
                     i += 1
-                
+
                 scl0 = getsiscale(from_unit, type)
                 scl1 = getsiscale(to_unit, type)
                 scl = scl0 / scl1
@@ -82,12 +82,12 @@ def getunitconversion(from_unit, to_unit, unitratio=None, constant=None):
                 scl = scl0 / scl1
         else:
             raise ValueError('Unit ratio mismatch ({} vs {})'.format(from_unit, to_unit))
-    
+
     return scl
 
 def getsiscale(unit, type):
     type = type.lower()
-    
+
     if type in ['distance', 'area', 'volume']:
         idx = unit.find('meters')
         if idx == -1:
@@ -99,7 +99,7 @@ def getsiscale(unit, type):
                     idx = unit.rfind('m')
                     if idx == -1:
                         idx = len(unit)
-        
+
     elif type == 'time':
         idx = unit.find('seconds')
         if idx == -1:
@@ -110,25 +110,25 @@ def getsiscale(unit, type):
                     idx = unit.rfind('s')
                     if idx == -1:
                         idx = len(unit)
-        
+
     elif type == 'angle':
         idx = len(unit)
-        
+
     elif type == 'frequency':
         idx = len(unit) - 1
-        
+
     else:
         idx = len(unit) - len(type) + 1
-    
+
     idx = idx
     prefix = unit[:idx]
-    
+
     if not prefix:
         scl = 1.0
     else:
         prefix = prefix.lower()
         scl = 1.0
-        
+
         if prefix == 'pico' or prefix == 'p':
             scl = 1.0e-12
         elif prefix == 'nano' or prefix == 'n':
@@ -162,10 +162,10 @@ def getsiscale(unit, type):
         else:
             if prefix:
                 raise ValueError('Unknown prefix {}'.format(prefix))
-    
+
     if type == 'area':
         scl = scl ** 2.0
     elif type == 'volume':
         scl = scl ** 3.0
-    
+
     return scl

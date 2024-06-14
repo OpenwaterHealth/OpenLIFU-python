@@ -16,7 +16,7 @@ class Wheel(FocalPattern):
     """
     center: bool = True
     num_spokes: int = 4
-    spoke_radius: float = 1.0 # mm   
+    spoke_radius: float = 1.0 # mm
     units: str = "mm"
 
     def get_targets(self, target: Point):
@@ -30,7 +30,7 @@ class Wheel(FocalPattern):
             targets = [target.copy()]
             targets[0].id = f"{target.id}_center"
             targets[0].id = f"{target.id} (Center)"
-        else:    
+        else:
             targets = []
         m = target.get_matrix(center_on_point=True)
         for i in range(self.num_spokes):
@@ -44,11 +44,11 @@ class Wheel(FocalPattern):
                               radius=target.radius)
             targets.append(spoke)
         return targets
-    
+
     def num_foci(self):
         """
         Get the number of foci in the focal pattern
-        
+
         :returns: Number of foci
         """
         return int(self.center) + self.num_spokes

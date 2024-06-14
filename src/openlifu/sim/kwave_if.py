@@ -29,7 +29,7 @@ def get_kgrid(coords: xa.Coordinates, t_end = 0, dt = 0, sound_speed_ref=1500):
         kgrid.setTime(Nt, dt)
     return kgrid
 
-def get_karray(arr: xdc.Transducer, 
+def get_karray(arr: xdc.Transducer,
                bli_tolerance: float = 0.05,
                upsampling_rate: int = 5,
                translation: List[float] = [0.,0.,0.],
@@ -47,7 +47,7 @@ def get_karray(arr: xdc.Transducer,
     return karray
 
 def get_medium(params: xa.Dataset):
-    medium= kWaveMedium(sound_speed=params['sound_speed'].attrs['ref_value'], 
+    medium= kWaveMedium(sound_speed=params['sound_speed'].attrs['ref_value'],
                        density=params['density'].attrs['ref_value'])
     return medium
 
@@ -73,10 +73,10 @@ def hash_array_kgrid(kgrid, karray):
         'BLI_tolerance': karray.bli_tolerance,
         'upsampling_rate': karray.upsampling_rate}
     check = c.checksum(bytes(json.dumps(d), 'utf-8'))
-    return f'{check:x}'    
+    return f'{check:x}'
 
-def run_simulation(arr: xdc.Transducer, 
-                   params: xa.Dataset, 
+def run_simulation(arr: xdc.Transducer,
+                   params: xa.Dataset,
                    delays: Optional[np.ndarray] = None,
                    apod: Optional[np.ndarray] = None,
                    freq: float = 1e6,
@@ -100,7 +100,7 @@ def run_simulation(arr: xdc.Transducer,
     pcoords = params.coords['lat'].attrs['units']
     scl = getunitconversion(pcoords, 'm')
     array_offset =[-float(coord.mean())*scl for coord in params.coords.values()]
-    karray = get_karray(arr, 
+    karray = get_karray(arr,
                         translation=array_offset,
                         bli_tolerance=bli_tolerance,
                         upsampling_rate=upsampling_rate)
@@ -127,26 +127,26 @@ def run_simulation(arr: xdc.Transducer,
                             data_cast='single'
                         )
     execution_options = SimulationExecutionOptions(is_gpu_simulation=True)
-    output = kspaceFirstOrder3D(kgrid=kgrid, 
-                                source=source, 
-                                sensor=sensor, 
-                                medium=medium, 
+    output = kspaceFirstOrder3D(kgrid=kgrid,
+                                source=source,
+                                sensor=sensor,
+                                medium=medium,
                                 simulation_options=simulation_options,
                                 execution_options=execution_options)
     logging.info('Simulation Complete')
     sz = list(params.coords.sizes.values())
     p_max = xa.DataArray(output['p_max'].reshape(sz, order='F'),
                          coords=params.coords,
-                         name='p_max', 
+                         name='p_max',
                          attrs={'units':'Pa', 'long_name':'PPP'})
     p_min = xa.DataArray(-1*output['p_min'].reshape(sz, order='F'),
                          coords=params.coords,
-                         name='p_min', 
+                         name='p_min',
                          attrs={'units':'Pa', 'long_name':'PNP'})
     Z = params['density'].data*params['sound_speed'].data
     intensity = xa.DataArray(1e-4*output['p_min'].reshape(sz, order='F')**2/(2*Z),
                          coords=params.coords,
-                         name='I', 
+                         name='I',
                          attrs={'units':'W/cm^2', 'long_name':'Intensity'})
     ds = xa.Dataset({'p_max':p_max, 'p_min':p_min, 'ita':intensity})
     return ds, output

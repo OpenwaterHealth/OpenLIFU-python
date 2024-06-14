@@ -35,4 +35,4 @@ def to_json(obj, filename):
     if dirname and not os.path.exists(dirname):
         os.makedirs(dirname)
     with open(filename, 'w') as file:
-        json.dump(obj, file, cls=PYFUSEncoder, indent=4)    
+        json.dump(obj, file, cls=PYFUSEncoder, indent=4)

@@ -19,7 +19,7 @@ class Point:
         if len(self.position) != len(self.dims):
             raise ValueError("Position and dims must have same length.")
         self.position = np.array(self.position).reshape(3)
-    
+
     def copy(self):
         return copy.deepcopy(self)
 
@@ -48,7 +48,7 @@ class Point:
         if not local:
             m = np.dot(origin, m)
         return m
-    
+
     def get_polydata(self, transform: np.ndarray = np.eye(4), units=None):
         units = self.units if units is None else units
         colors =  vtk.vtkNamedColors()
@@ -77,9 +77,9 @@ class Point:
         self.radius = self.radius * scl
         self.units = units
 
-    def transform(self, 
-                  matrix: np.ndarray, 
-                  units: Optional[str] = None, 
+    def transform(self,
+                  matrix: np.ndarray,
+                  units: Optional[str] = None,
                   new_dims: Optional[Tuple[str, str, str]]=None):
         if units is not None:
             self.rescale(units)

@@ -34,12 +34,12 @@ class Subject:
     def from_dict(d):
         """
         Create a subject from a dictionary
-        
+
         :param d: Dictionary of subject parameters
         :returns: Subject object
         """
         return Subject(**d)
-    
+
     @staticmethod
     def from_file(filename):
         """
@@ -50,19 +50,19 @@ class Subject:
         """
         with open(filename, 'r') as f:
             return Subject.from_dict(json.load(f))
-        
+
     def to_dict(self):
         """
         Convert the subject to a dictionary
-        
+
         :returns: Dictionary of subject parameters
         """
         return self.__dict__.copy()
-        
+
     def to_file(self, filename):
         """
         Write the subject to a file
-        
+
         :param filename: Name of the file to write
         """
         from openlifu.util.json import to_json
