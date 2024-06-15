@@ -1,21 +1,276 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+
 [project]
 name = "openlifu"
-version = "0.1.0"
+authors = [
+  { name = "Peter Hollender", email = "peterhollender@gmail.com" },
+]
 description = "Openwater Focused Ultrasound Toolkit"
+readme = "README.rst"
+license.file = "LICENSE"
+requires-python = ">=3.11" # TODO: Decrease this version number when resolving #6
+classifiers = [
+  "Development Status :: 1 - Planning",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+#  "Programming Language :: Python :: 3.8", # TODO: Uncomment some of these when resolving #6
+#  "Programming Language :: Python :: 3.9",
+#  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering",
+  "Typing :: Typed",
+]
+dynamic = ["version"]
 dependencies = [
-    "xarray",
-    "numpy",
-    "matplotlib",
-    "pandas",
-    "scipy",
-    "vtk",
-    "h5py",
-    "opencv-contrib-python",
-    "crc",
-    "nibabel",
-    "sphinx",
-    "ipykernel"
+  "xarray",
+  "numpy",
+  "matplotlib",
+  "pandas",
+  "scipy",
+  "vtk",
+  "h5py",
+  "opencv-contrib-python",
+  "crc",
+  "nibabel",
+  "sphinx",
+  "ipykernel",
+  "k-wave-python @ git+https://github.com/peterhollender/k-wave-python@fix_cached_windows_binaries"
 ]
 
-[tool.setuptools]
-include-package-data = false
+# We should remove this section once we resolve the k-wave-python issue
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[project.optional-dependencies]
+test = [
+  "pytest >=6",
+  "pytest-cov >=3",
+]
+dev = [
+  "pytest >=6",
+  "pytest-cov >=3",
+]
+docs = [
+  "sphinx>=7.0",
+  "myst_parser>=0.13",
+  "sphinx_copybutton",
+  "sphinx_autodoc_typehints",
+  "furo>=2023.08.17",
+]
+
+[project.urls]
+Homepage = "https://github.com/OpenwaterHealth/OpenLIFU-python"
+"Bug Tracker" = "https://github.com/OpenwaterHealth/OpenLIFU-python/issues"
+Discussions = "https://github.com/OpenwaterHealth/OpenLIFU-python/discussions"
+Changelog = "https://github.com/OpenwaterHealth/OpenLIFU-python/releases"
+
+
+[tool.hatch]
+version.source = "vcs"
+build.hooks.vcs.version-file = "src/openlifu/_version.py"
+
+[tool.hatch.envs.default]
+features = ["test"]
+scripts.test = "pytest {args}"
+
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
+xfail_strict = true
+filterwarnings = [
+  "error",
+]
+log_cli_level = "INFO"
+testpaths = [
+  "tests",
+]
+
+
+[tool.coverage]
+run.source = ["openlifu"]
+report.exclude_also = [
+  '\.\.\.',
+  'if typing.TYPE_CHECKING:',
+]
+
+[tool.mypy]
+files = ["src", "tests"]
+python_version = "3.8"
+warn_unused_configs = true
+strict = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
+warn_unreachable = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[[tool.mypy.overrides]]
+module = "openlifu.*"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+
+[tool.ruff]
+src = ["src"]
+
+[tool.ruff.lint]
+extend-select = [
+  "B",        # flake8-bugbear
+  "I",        # isort
+  "ARG",      # flake8-unused-arguments
+  "C4",       # flake8-comprehensions
+  "EM",       # flake8-errmsg
+  "ICN",      # flake8-import-conventions
+  "G",        # flake8-logging-format
+  "PGH",      # pygrep-hooks
+  "PIE",      # flake8-pie
+  "PL",       # pylint
+  "PT",       # flake8-pytest-style
+  "PTH",      # flake8-use-pathlib
+  "RET",      # flake8-return
+  "RUF",      # Ruff-specific
+  "SIM",      # flake8-simplify
+  "T20",      # flake8-print
+  "UP",       # pyupgrade
+  "YTT",      # flake8-2020
+  "EXE",      # flake8-executable
+  "NPY",      # NumPy specific rules
+  "PD",       # pandas-vet
+]
+ignore = [
+  "PLR09",    # Too many <...>
+  "PLR2004",  # Magic value used in comparison
+  "ISC001",   # Conflicts with formatter
+
+  # Exceptions below are specific to this project.
+  # They may be relaxed later in future code improvements.
+
+  "I002", # Missing required import: `from __future__ import annotations`
+  "E402", # Module level import not at top of file
+  "I001", # Import block is un-sorted or un-formatted
+  "PTH100", # `os.path.abspath()` should be replaced by `Path.resolve()`
+  "F401", # `typing.List` imported but unused
+  "ARG002", # Unused method argument: `id`
+  "RET504", # Unnecessary assignment to `dist` before `return` statement
+  "SIM108", # Use ternary operator `matrix = self.get_matrix(units=units) if transform else np.eye(4)` instead of `if`-`else`-block
+  "PIE790", # Unnecessary `pass` statement
+  "EM102", # Exception must not use an f-string literal, assign to variable first
+  "RET506", # Unnecessary `else` after `raise` statement
+  "G004", # Logging statement uses f-string
+  "EM101", # Exception must not use a string literal, assign to variable first
+  "PTH123", # `open()` should be replaced by `Path.open()`
+  "PTH118", # `os.path.join()` should be replaced by `Path` with `/` operator
+  "PTH207", # Replace `glob` with `Path.glob` or `Path.rglob`
+  "PTH122", # `os.path.splitext()` should be replaced by `Path.suffix`, `Path.stem`, and `Path.parent`
+  "PTH119", # `os.path.basename()` should be replaced by `Path.name`
+  "PTH113", # `os.path.isfile()` should be replaced by `Path.is_file()`
+  "UP015", # Unnecessary open mode parameters
+  "RET505", # Unnecessary `else` after `return` statement
+  "F821", # Undefined name `pyfus`
+  "F841", # Local variable `m` is assigned to but never used
+  "PTH111", # `os.path.expanduser()` should be replaced by `Path.expanduser()`
+  "ARG004", # Unused static method argument: `options`
+  "RUF009", # Do not perform function call `datetime.now` in dataclass defaults
+  "PLR5501", # Use `elif` instead of `else` then `if`, to reduce indentation
+  "B008", # Do not perform function call `np.eye` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  "C416", # Unnecessary `list` comprehension (rewrite using `list()`)
+  "F541", # f-string without any placeholders
+  "B018", # Found useless expression. Either assign it to a variable or remove it.
+  "PLW2901", # `for` loop variable `samples` overwritten by assignment target
+  "T201", # `print` found
+  "SIM102", # Use a single `if` statement instead of nested `if` statements
+  "SIM118", # Use `key not in dict` instead of `key not in dict.keys()`
+  "PLR1701", # Merge `isinstance` calls: `isinstance(d, (list, tuple))`
+  "SIM101", # Multiple `isinstance` calls for `d`, merge into a single call
+  "RET503", # Missing explicit `return` at the end of function able to return non-`None` value
+  "B006", # Do not use mutable data structures for argument defaults
+  "PIE807", # Prefer `dict` over useless lambda
+  "UP008", # Use `super()` instead of `super(__class__, self)`
+  "PTH120", # `os.path.dirname()` should be replaced by `Path.parent`
+  "PTH110", # `os.path.exists()` should be replaced by `Path.exists()`
+  "PTH103", # `os.makedirs()` should be replaced by `Path.mkdir(parents=True)`
+  "SIM114", # Combine `if` branches using logical `or` operator
+  "PIE810", # Call `endswith` once with a `tuple`
+  "UP032", # Use f-string instead of `format` call
+  "EM103", # Exception must not use a `.format()` string directly, assign to variable first
+  "PLW0127", # Self-assignment of variable `idx`
+  "PLR1714", # Consider merging multiple comparisons: `prefix in ('deg', 'degree', 'degrees', '\u00b0')`. Use a `set` if the elements are hashable.
+  "E741", # Ambiguous variable name: `l`
+  "PLW0120", # `else` clause on loop without a `break` statement; remove the `else` and dedent its contents
+  "UP007", # Use `X | Y` for type annotations
+  "UP035", # `typing.List` is deprecated, use `list` instead
+  "UP006", # Use `list` instead of `List` for type annotation
+  "B905", # `zip()` without an explicit `strict=` parameter
+]
+isort.required-imports = ["from __future__ import annotations"]
+# Uncomment if using a _compat.typing backport
+# typing-modules = ["openlifu._compat.typing"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["T20"]
+"noxfile.py" = ["T20"]
+
+
+[tool.pylint]
+py-version = "3.8"
+ignore-paths = [".*/_version.py"]
+reports.output-format = "colorized"
+similarities.ignore-imports = "yes"
+messages_control.disable = [
+  "design",
+  "fixme",
+  "line-too-long",
+  "missing-module-docstring",
+  "missing-function-docstring",
+  "wrong-import-position",
+
+  # Exceptions below are specific to this project.
+  # They may be relaxed later in future code improvements.
+
+  "missing-class-docstring",
+  "no-else-return",
+  "no-member",
+  "invalid-name",
+  "unused-variable",
+  "wrong-import-order",
+  "unnecessary-pass",
+  "unused-import",
+  "superfluous-parens",
+  "consider-iterating-dictionary",
+  "unnecessary-dunder-call",
+  "consider-merging-isinstance",
+  "bad-indentation",
+  "unnecessary-lambda",
+  "reimported",
+  "import-outside-toplevel",
+  "undefined-variable",
+  "inconsistent-return-statements",
+  "arguments-renamed",
+  "ungrouped-imports",
+  "too-many-lines",
+  "unnecessary-comprehension",
+  "redefined-outer-name",
+  "logging-fstring-interpolation",
+  "f-string-without-interpolation",
+  "chained-comparison",
+  "pointless-statement",
+  "consider-using-generator",
+  "dangerous-default-value",
+  "useless-else-on-loop",
+  "unspecified-encoding",
+  "redefined-builtin",
+  "possibly-used-before-assignment",
+  "no-else-raise",
+  "unused-argument",
+  "duplicate-code",
+  "cyclic-import",
+]

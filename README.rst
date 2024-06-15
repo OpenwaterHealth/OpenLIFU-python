@@ -1,5 +1,13 @@
-Home
+openlifu
 ========
+
+|Actions Status| |Documentation Status|
+
+|PyPI version| |PyPI platforms|
+
+|GitHub Discussion|
+
+.. SPHINX-START
 
 ``openlifu`` is a toolbox for planning and controlling focused
 ultrasound treatments. It generally replicates the functionality
@@ -48,3 +56,14 @@ evaluated by the FDA and is not designed for the treatment or diagnosis
 of any disease. It is provided AS-IS, with no warranties. User assumes
 all liability and responsibility for identifying and mitigating risks
 associated with using this software.
+
+.. |Actions Status| image:: https://github.com/OpenwaterHealth/OpenLIFU-python/workflows/CI/badge.svg
+   :target: https://github.com/OpenwaterHealth/OpenLIFU-python/actions
+.. |Documentation Status| image:: https://readthedocs.org/projects/openlifu/badge/?version=latest
+   :target: https://openlifu.readthedocs.io/en/latest/?badge=latest
+.. |PyPI version| image:: https://img.shields.io/pypi/v/openlifu
+   :target: https://pypi.org/project/openlifu/
+.. |PyPI platforms| image:: https://img.shields.io/pypi/pyversions/openlifu
+   :target: https://pypi.org/project/openlifu/
+.. |GitHub Discussion| image:: https://img.shields.io/static/v1?label=Discussions&message=Ask&color=blue&logo=github
+   :target: https://github.com/OpenwaterHealth/OpenLIFU-python/discussions

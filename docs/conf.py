@@ -6,10 +6,12 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'OpenLIFU-Python'
+import importlib.metadata
+
+project = 'openlifu'
 copyright = '2023, Openwater'
 author = 'Openwater'
-release = '0.1'
+version = release = importlib.metadata.version("openlifu")
 
 import os
 import sys
@@ -19,6 +21,7 @@ sys.path.insert(0, os.path.abspath('..'))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    'myst_parser',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.doctest',
@@ -29,10 +32,20 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
-    'sphinx.ext.napoleon',]
+    'sphinx.ext.napoleon',
+]
 
+source_suffix = [".rst", ".md"]
 templates_path = ['_templates']
-exclude_patterns = ['_build', '_templates']
+exclude_patterns = [
+    "_build",
+    "_templates",
+    "**.ipynb_checkpoints",
+    "Thumbs.db",
+    ".DS_Store",
+    ".env",
+    ".venv",
+]
 
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 
@@ -54,3 +67,7 @@ napoleon_use_rtype = True
 
 html_theme = 'alabaster'
 html_static_path = ['_static']
+
+myst_enable_extensions = [
+    "colon_fence",
+]
