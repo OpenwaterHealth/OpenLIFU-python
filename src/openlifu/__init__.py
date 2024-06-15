@@ -1,9 +1,12 @@
 """
-openlifu: Python Focused Ultrasound
-================================
+Copyright (c) 2023 Openwater. All rights reserved.
 
-This package contains the modules for openlifu.
+openlifu: Openwater Focused Ultrasound Toolkit
 """
+
+from __future__ import annotations
+
+from ._version import version as __version__
 
 #from . import bf, db, io, plan, seg, sim, xdc, geo
 
