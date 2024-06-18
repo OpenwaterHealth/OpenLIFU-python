@@ -3,6 +3,12 @@ description of best practices for developing scientific packages.
 
 [spc-dev-intro]: https://learn.scientific-python.org/development/
 
+# Commit and pull request expectations
+
+- Every commit should reference the issue number with which it is associated.
+- Commits should be reasonably granular and semantically atomic.
+- Pull requests should not be squashed upon merging.
+
 # Quick development
 
 The fastest way to start with development is to use nox. If you don't have nox,
