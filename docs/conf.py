@@ -6,7 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'Open-pyFUS'
+project = 'OpenLIFU'
 copyright = '2023, Openwater'
 author = 'Openwater'
 release = '0.1'
