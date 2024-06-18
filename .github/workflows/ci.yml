@@ -45,10 +45,6 @@ jobs:
         python-version: ["3.11", "3.12"] # TODO: Change 3.11 to a lower version when resolving #6
         runs-on: [ubuntu-latest, windows-latest]
 
-        include:
-          - python-version: pypy-3.11
-            runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
         with:
