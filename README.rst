@@ -2,7 +2,7 @@
 Home
 ****
 
-OpenLIFU is a toolbox for planning and controlling focused ultrasound treatments. It generally replicates the functionality developed in the MATLAB `open-TFUS toolbox <https://github.com/OpenwaterHealth/opw_neuromod_sw>`_.
+Open-pyFUS is a toolbox for planning and controlling focused ultrasound treatments. It generally replicates the functionality developed in the MATLAB `open-TFUS toolbox <https://github.com/OpenwaterHealth/opw_neuromod_sw>`_.
 
 Installation
 ------------
@@ -13,7 +13,7 @@ Python 3.11
 
 Create Virtual Environment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
-``cd OpenLIFU-python``
+``cd open_pyfus``
 ``C:\Users\<uname>\AppData\Local\Programs\Python\Python311\python.exe -m venv env``
 
 Install project (editable)

@@ -1,5 +1,5 @@
 [project]
-name = "openlifu"
+name = "open_pyfus"
 version = "0.1.0"
 description = "Openwater Focused Ultrasound Toolkit"
 dependencies = [
@@ -21,6 +21,5 @@ dependencies = [
 include-package-data = false
 
 [tool.setuptools.packages.find]
-where = ["src"]
-include = ["src/openlifu*"]
+include = ["pyfus*"]
 exclude = ["test*", "env*"]
