@@ -43,7 +43,7 @@ dependencies = [
   "nibabel",
   "sphinx",
   "ipykernel",
-  "k-wave-python @ git+https://github.com/peterhollender/k-wave-python@fix_cached_windows_binaries"
+  "k-wave-python @ git+https://github.com/peterhollender/k-wave-python"
 ]
 
 # We should remove this section once we resolve the k-wave-python issue
