@@ -61,7 +61,10 @@ def get_source(kgrid, karray, source_sig, grid_weights=None):
     logging.info("Getting binary mask")
     source.p_mask = karray.get_array_binary_mask(kgrid)
     logging.info("Getting distributed source signal")
-    source.p = karray.get_distributed_source_signal(kgrid, source_sig, grid_weights=grid_weights)
+    if grid_weights is None:
+        source.p = karray.get_distributed_source_signal(kgrid, source_sig)
+    else:
+        source.p = karray.get_distributed_source_signal(kgrid, source_sig, grid_weights=grid_weights)
     return source
 
 def hash_array_kgrid(kgrid, karray):
