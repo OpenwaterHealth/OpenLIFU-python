@@ -74,7 +74,8 @@ def run_simulation(arr: xdc.Transducer,
                    dt: float = 0,
                    t_end: float = 0,
                    bli_tolerance: float = 0.05,
-                   upsampling_rate: int = 5
+                   upsampling_rate: int = 5,
+                   gpu: bool = True
 ):
     delays = delays if delays is not None else np.zeros(arr.numelements())
     apod = apod if apod is not None else np.ones(arr.numelements())
@@ -99,7 +100,7 @@ def run_simulation(arr: xdc.Transducer,
                             save_to_disk=True,
                             data_cast='single'
                         )
-    execution_options = SimulationExecutionOptions(is_gpu_simulation=True)
+    execution_options = SimulationExecutionOptions(is_gpu_simulation=gpu)
     output = kspaceFirstOrder3D(kgrid=kgrid,
                                 source=source,
                                 sensor=sensor,
