@@ -56,24 +56,13 @@ def get_sensor(kgrid, record=['p_max','p_min']):
     sensor = kSensor(sensor_mask, record=record)
     return sensor
 
-def get_source(kgrid, karray, source_sig, grid_weights=None):
+def get_source(kgrid, karray, source_sig):
     source = kSource()
     logging.info("Getting binary mask")
     source.p_mask = karray.get_array_binary_mask(kgrid)
     logging.info("Getting distributed source signal")
-    source.p = karray.get_distributed_source_signal(kgrid, source_sig, grid_weights=grid_weights)
+    source.p = karray.get_distributed_source_signal(kgrid, source_sig)
     return source
-
-def hash_array_kgrid(kgrid, karray):
-    c = Calculator(Crc32.CRC32)
-    d = {'x':kgrid.x_vec.tolist(),
-        'y':kgrid.y_vec.tolist(),
-        'z':kgrid.z_vec.tolist(),
-        'transform': karray.array_transformation.tolist(),
-        'BLI_tolerance': karray.bli_tolerance,
-        'upsampling_rate': karray.upsampling_rate}
-    check = c.checksum(bytes(json.dumps(d), 'utf-8'))
-    return f'{check:x}'
 
 def run_simulation(arr: xdc.Transducer,
                    params: xa.Dataset,
@@ -84,12 +73,9 @@ def run_simulation(arr: xdc.Transducer,
                    amplitude: float = 1,
                    dt: float = 0,
                    t_end: float = 0,
-                   grid_weights: Optional[np.ndarray] = None,
-                   load_gridweights: bool = True,
-                   save_gridweights: bool = True,
-                   db = None,
                    bli_tolerance: float = 0.05,
                    upsampling_rate: int = 5,
+                   gpu: bool = True
 ):
     delays = delays if delays is not None else np.zeros(arr.numelements())
     apod = apod if apod is not None else np.ones(arr.numelements())
@@ -106,19 +92,7 @@ def run_simulation(arr: xdc.Transducer,
                         upsampling_rate=upsampling_rate)
     medium = get_medium(params)
     sensor = get_sensor(kgrid, record=['p_max', 'p_min'])
-    if grid_weights is None and load_gridweights and db is not None:
-        h = hash_array_kgrid(kgrid, karray)
-        available_hashes = db.get_gridweight_hashes(arr.id)
-        if h in available_hashes:
-            logging.info("Loading grid weights")
-            grid_weights = db.load_gridweights(arr.id, h)
-    if grid_weights is None:
-        logging.info("Calculating grid weights")
-        grid_weights = np.array([karray.get_element_grid_weights(kgrid, i) for i in range(karray.number_elements)])
-    if save_gridweights and db is not None:
-        logging.info("Saving grid weights")
-        db.add_gridweights(arr.id, h, grid_weights, on_conflict='overwrite')
-    source = get_source(kgrid, karray, source_mat, grid_weights=grid_weights)
+    source = get_source(kgrid, karray, source_mat)
     logging.info("Running simulation")
     simulation_options = SimulationOptions(
                             pml_auto=True,
@@ -126,7 +100,7 @@ def run_simulation(arr: xdc.Transducer,
                             save_to_disk=True,
                             data_cast='single'
                         )
-    execution_options = SimulationExecutionOptions(is_gpu_simulation=True)
+    execution_options = SimulationExecutionOptions(is_gpu_simulation=gpu)
     output = kspaceFirstOrder3D(kgrid=kgrid,
                                 source=source,
                                 sensor=sensor,
