@@ -188,7 +188,6 @@ ignore = [
   "T201", # `print` found
   "SIM102", # Use a single `if` statement instead of nested `if` statements
   "SIM118", # Use `key not in dict` instead of `key not in dict.keys()`
-  "PLR1701", # Merge `isinstance` calls: `isinstance(d, (list, tuple))`
   "SIM101", # Multiple `isinstance` calls for `d`, merge into a single call
   "RET503", # Missing explicit `return` at the end of function able to return non-`None` value
   "B006", # Do not use mutable data structures for argument defaults
