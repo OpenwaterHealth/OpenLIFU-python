@@ -163,7 +163,7 @@ for addr, rm in reg_dict.items():
         print(f'CONTROL {i}')
         print_regs(r)
     print('')
-    
+
 
 # %%
 print_regs(txa.modules[16].transmitters[1].get_registers(pack=False))

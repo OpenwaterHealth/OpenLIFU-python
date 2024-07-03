@@ -60,8 +60,8 @@ delays, apod = protocol.beamform(arr=arr, target=pts[0], params=params)
 
 
 # %%
-ds = openlifu.sim.run_simulation(arr=arr, 
-        params=params, 
+ds = openlifu.sim.run_simulation(arr=arr,
+        params=params,
         delays=delays,
         apod= apod,
         freq = pulse.frequency,

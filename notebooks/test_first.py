@@ -14,9 +14,9 @@
 # ---
 
 # %% [markdown]
-# Once the environment has been set up, this notebook should be able to be run, cell-by-cell. One issue is that I've made modifications to k-wave-python (to cache and re-use gridweights, which saves a significant amount of time if you are running different simulations using the same array in the same position - it's being discussed in https://github.com/waltsims/k-wave-python/issues/342, but hasn't been merged yet, afaik). 
+# Once the environment has been set up, this notebook should be able to be run, cell-by-cell. One issue is that I've made modifications to k-wave-python (to cache and reuse gridweights, which saves a significant amount of time if you are running different simulations using the same array in the same position - it's being discussed in https://github.com/waltsims/k-wave-python/issues/342, but hasn't been merged yet, afaik).
 #
-# If you have my modified version of k-wave-python, install it with `pip install -e .` from the `k-wave-python` directory. If you don't have my modified version, you can install the original version with `pip install k-wave-python`. If you are using the original version, be sure to set `USE_GRIDWEIGHTS` to `False` in order to prevent `open_pyfus` from trying to use a nonexistent interface for loading the gridweights. 
+# If you have my modified version of k-wave-python, install it with `pip install -e .` from the `k-wave-python` directory. If you don't have my modified version, you can install the original version with `pip install k-wave-python`. If you are using the original version, be sure to set `USE_GRIDWEIGHTS` to `False` in order to prevent `open_pyfus` from trying to use a nonexistent interface for loading the gridweights.
 #
 # Also, if you are using the original version, import `openlifu` takes _way_ longer (45s on my PC), presumably hanging on `import kwave`. For some reason, it wants to re-download the binaries every time, even though they are already present in the the installation directory. I've opened an issue on this: https://github.com/waltsims/k-wave-python/issues/366.
 
@@ -69,8 +69,8 @@ delays, apod = protocol.beamform(arr=arr, target=pts[0], params=params)
 # Now we are ready to run the simulation.  Some custom edits to `k-wave-python` allow for caching of the gridweights, which only need to be computed once for a given grid size and source location.  This can speed up the simulation significantly, especially if a coarse grid that won't take the GPU too long to run is used.
 
 # %%
-(ds, output) = openlifu.sim.run_simulation(arr=arr, 
-        params=params, 
+(ds, output) = openlifu.sim.run_simulation(arr=arr,
+        params=params,
         delays=delays,
         apod= apod,
         freq = pulse.frequency,
