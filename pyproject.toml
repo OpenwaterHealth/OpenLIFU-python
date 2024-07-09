@@ -42,12 +42,8 @@ dependencies = [
   "nibabel",
   "sphinx",
   "ipykernel",
-  "k-wave-python @ git+https://github.com/waltsims/k-wave-python"
+  "k-wave-python>=0.3.4",
 ]
-
-# We should remove this section once we resolve the k-wave-python issue
-[tool.hatch.metadata]
-allow-direct-references = true
 
 [project.optional-dependencies]
 test = [
