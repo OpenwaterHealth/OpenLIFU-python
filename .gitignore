@@ -78,6 +78,7 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+*.ipynb # We use jupytext to avoid mixing notebooks into version control.
 
 # IPython
 profile_default/
