@@ -5,6 +5,7 @@ from openlifu.geo import Point
 from openlifu.xdc import Transducer
 from openlifu.util.strings import sanitize
 import xarray
+import json
 
 @dataclass
 class Session:
@@ -48,6 +49,17 @@ class Session:
             self.markers = [self.markers]
         else:
             self.markers = list(self.markers)
+
+    @staticmethod
+    def from_file(filename):
+        """
+        Create a Session from a file
+
+        :param filename: Name of the file to read
+        :returns: Session object
+        """
+        with open(filename, 'r') as f:
+            return Session.from_dict(json.load(f))
 
     @staticmethod
     def from_dict(d):
