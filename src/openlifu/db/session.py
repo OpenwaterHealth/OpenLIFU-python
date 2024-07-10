@@ -1,11 +1,16 @@
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional, List, Dict, TYPE_CHECKING
 from datetime import datetime
 from openlifu.geo import Point
 from openlifu.xdc import Transducer
 from openlifu.util.strings import sanitize
 import xarray
+import numpy as np
 import json
+
+if TYPE_CHECKING:
+    from openlifu import Database
+
 
 @dataclass
 class Session:
@@ -51,22 +56,24 @@ class Session:
             self.markers = list(self.markers)
 
     @staticmethod
-    def from_file(filename):
+    def from_file(filename, db:'Database'):
         """
         Create a Session from a file
 
         :param filename: Name of the file to read
+        :param db: Database object
         :returns: Session object
         """
         with open(filename, 'r') as f:
-            return Session.from_dict(json.load(f))
+            return Session.from_dict(json.load(f), db)
 
     @staticmethod
-    def from_dict(d):
+    def from_dict(d:Dict, db:'Database'):
         """
         Create a session from a dictionary
 
         :param d: Dictionary of session parameters
+        :param db: Database object
         :returns: Session object
         """
         if 'date' in d:
@@ -76,7 +83,11 @@ class Session:
         if isinstance(d['volume'], dict):
             d['volume'] = xarray.DataArray.from_dict(d['volume'])
         if isinstance(d['transducer'], dict):
-            d['transducer'] = Transducer.from_dict(d['transducer'])
+            transducer_id = d['transducer']['id']
+            transducer  = Transducer.from_file(db.get_transducer_filename(transducer_id))
+            if "matrix" in d['transducer']: # Allow the matrix to be overridden at the Session level
+                transducer.matrix = np.array(d['transducer']["matrix"])
+            d['transducer'] = transducer
         if isinstance(d['targets'], list):
             if len(d['targets'])>0 and isinstance(d['targets'][0], dict):
                 d['targets'] = [Point.from_dict(p) for p in d['targets']]
