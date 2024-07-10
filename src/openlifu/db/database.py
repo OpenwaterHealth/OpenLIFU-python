@@ -9,7 +9,7 @@ import h5py
 import glob
 from typing import Literal, Optional
 from openlifu.plan import Protocol, Solution
-from openlifu.db import Subject
+from openlifu.db import Subject, Session
 OnConflictOpts = Literal['error', 'overwrite', 'skip']
 
 
@@ -425,7 +425,6 @@ class Database:
             raise FileNotFoundError("Protocols file not found.")
 
     def load_session(self, subject, session_id, options=None):
-        raise NotImplementedError("Session.from_file is not yet implemented")
         if options is None:
             options = {}
         session_filename = self.get_session_filename(subject.id, session_id)
