@@ -267,4 +267,5 @@ messages_control.disable = [
   "unused-argument",
   "duplicate-code",
   "cyclic-import",
+  "unreachable", # This is to allow marking of TODO items with a NotImplementedError
 ]
