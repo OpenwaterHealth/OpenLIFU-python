@@ -200,11 +200,11 @@ class Database:
 
     def choose_session(self, subject, options=None):
         # Implement the logic to choose a session
-        pass
+        raise NotImplementedError("Method not yet implemented")
 
     def choose_subject(self, options=None):
         # Implement the logic to choose a subject
-        pass
+        raise NotImplementedError("Method not yet implemented")
 
     def get_gridweight_hashes(self, transducer_id):
         transducer_dir = os.path.join(self.path, 'transducers', transducer_id)
@@ -213,15 +213,15 @@ class Database:
 
     def get_session_table(self, subject_id, options=None):
         # Implement the logic to get session table
-        pass
+        raise NotImplementedError("Method not yet implemented")
 
     def get_subject_table(self, options=None):
         # Implement the logic to get subject table
-        pass
+        raise NotImplementedError("Method not yet implemented")
 
     def load_session_solutions(self, session, options=None):
         # Implement the logic to load session solutions
-        pass
+        raise NotImplementedError("Method not yet implemented")
 
     def get_connected_systems(self):
         connected_system_filename = self.get_connected_system_filename()
@@ -315,6 +315,7 @@ class Database:
             return []
 
     def get_system_info(self, sys_id):
+        raise NotImplementedError("UltrasoundSystem is not yet implemented")
         system_filename = self.get_system_filename(sys_id)
 
         if os.path.isfile(system_filename):
@@ -355,11 +356,13 @@ class Database:
         return subject
 
     def load_volume(self, subject, volume_id):
+        raise NotImplementedError("Volume is not yet implemented")
         volume_filename = self.get_volume_filename(subject.id, volume_id)
         volume = Volume.from_file(volume_filename)
         return volume
 
     def load_volume_attrs(self, subject, volume_ids=None):
+        raise NotImplementedError("Volume is not yet implemented")
         volume_ids = volume_ids or subject.volumes
         attrs = []
         for volume_id in volume_ids:
@@ -369,11 +372,13 @@ class Database:
         return attrs
 
     def load_standoff(self, transducer_id, standoff_id="standoff"):
+        raise NotImplementedError("Standoff is not yet implemented")
         standoff_filename = self.get_standoff_filename(transducer_id, standoff_id)
         standoff = Standoff.from_file(standoff_filename)
         return standoff
 
     def load_system(self, sys_id=None):
+        raise NotImplementedError("UltrasoundSystem is not yet implemented")
         sys_id = sys_id or self.get_connected_systems()
         sys_filename = self.get_system_filename(sys_id)
         sys = UltrasoundSystem.from_file(sys_filename)
@@ -386,6 +391,7 @@ class Database:
         return transducer
 
     def load_transducer_standoff(self, trans, coords, options=None):
+        raise NotImplementedError("Standoff is not yet implemented")
         options = options or {}
         standoff_filename = self.get_standoff_filename(trans.id, "standoff_anchors")
         standoff = Standoff.from_file(standoff_filename)
@@ -419,6 +425,7 @@ class Database:
             raise FileNotFoundError("Protocols file not found.")
 
     def load_session(self, subject, session_id, options=None):
+        raise NotImplementedError("Session.from_file is not yet implemented")
         if options is None:
             options = {}
         session_filename = self.get_session_filename(subject.id, session_id)
