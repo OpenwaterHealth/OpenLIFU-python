@@ -7,6 +7,7 @@ import numpy as np
 import logging
 import h5py
 import glob
+import nibabel as nb
 from typing import Literal, Optional
 from openlifu.plan import Protocol, Solution
 from openlifu.db import Subject
@@ -353,19 +354,91 @@ class Database:
         subject = Subject.from_file(subject_filename)
         self.logger.info(f"Loaded subject {subject_id}")
         return subject
+    
+    @staticmethod
+    def _load_nifti(filename, id=None, name=None, units='mm', dims=['x', 'y', 'z'], dim_names=None, attrs=None):
+        """
+        Create Volume from NIfTI file
 
-    def load_volume(self, subject, volume_id):
+        Parameters:
+        - filename (str): Path to NIfTI file
+        - id (str, optional): Identifier for the volume (Default: None)
+        - name (str, optional): Name of the volume (Default: None)
+        - units (str, optional): Units of spatial dimensions (Default: 'mm')
+        - dims (list of str, optional): Dimension labels (Default: ['x', 'y', 'z'])
+        - dim_names (list of str, optional): Names for dimensions (Default: None)
+        - attrs (dict, optional): Additional attributes for the volume (Default: None)
+
+        Returns:
+        - vol (xarray.DataArray): Volume object
+        """
+        import xarray as xa
+        from openlifu.util.units import getunitconversion
+        img = nb.load(filename)
+        data = img.get_fdata()
+
+        if dim_names is None:
+            dim_names = [dim.title() for dim in dims]
+
+        matrix = np.diag([-1, -1, 1, 1]) @ img.affine
+        scl = 1.0
+
+        if img.header.get_xyzt_units()[0] == 'unknown':
+            scl = 1
+        elif img.header.get_xyzt_units()[0] == 'millimeter':
+            scl = getunitconversion("mm", units)
+        elif img.header.get_xyzt_units()[0] == 'meter':
+            scl = getunitconversion("m", units)
+            matrix[:3, :3] /= 1000
+        else:
+            scl = getunitconversion(img.header.get_xyzt_units()[0].lower(), units)
+
+        dx = np.array(img.header.get_zooms()[:3]) * scl
+        x = [np.arange(0, s * dx, dx) for s, dx in zip(data.shape, dx)]
+
+        coords = []
+        for i in range(3):
+            coords.append(xa.DataArray(x[i], dims=dims[i], attrs={'units': units, 'name': dim_names[i]}))
+
+        if id is None:
+            id = os.path.splitext(os.path.basename(filename))[0]
+        if name is None:
+            name = id.replace("_", " ")
+
+        vol = xa.DataArray(
+            data,
+            dims=dims,
+            name=name,
+            coords={dim: coords[i] for i, dim in enumerate(dims)},
+            attrs=attrs if attrs is not None else {}
+        )
+
+        vol.attrs['matrix'] = matrix
+        vol.attrs['id'] = id
+        vol.attrs['name'] = name
+        vol.attrs['units'] = units
+
+        return vol
+
+    def load_volume(self, subject, volume_id): 
         volume_filename = self.get_volume_filename(subject.id, volume_id)
-        volume = Volume.from_file(volume_filename)
+        volume_attrs = self.load_volume_attrs(subject, volume_id, error_if_missing=False)
+        kwargs = {}
+        for key in ('id', 'name', 'units', 'dims', 'dim_names'):
+            if key in volume_attrs:
+                kwargs[key] = volume_attrs.pop(key)
+        volume = self._load_nifti(volume_filename, **kwargs, attrs=volume_attrs)
         return volume
 
-    def load_volume_attrs(self, subject, volume_ids=None):
-        volume_ids = volume_ids or subject.volumes
-        attrs = []
-        for volume_id in volume_ids:
-            volume_filename = self.get_volume_filename(subject.id, volume_id)
-            volume = Volume.from_file(volume_filename)
-            attrs.append(volume.attrs)
+    def load_volume_attrs(self, subject, volume_id, error_if_missing=True):
+        volume_attrs_filename = self.get_volume_attrs_filename(subject.id, volume_id)
+        if os.path.isfile(volume_attrs_filename):
+            with open(volume_attrs_filename, 'r') as file:
+                attrs = json.load(file)
+        elif error_if_missing:
+            raise FileNotFoundError(f"Volume attributes file not found for ID: {volume_id}")
+        else:
+            attrs = {}
         return attrs
 
     def load_standoff(self, transducer_id, standoff_id="standoff"):
@@ -534,7 +607,11 @@ class Database:
 
     def get_volume_filename(self, subject_id, volume_id):
         subject_dir = self.get_subject_dir(subject_id)
-        return os.path.join(subject_dir, 'volumes', f'{volume_id}.mat')
+        return os.path.join(subject_dir, 'volumes', f'{volume_id}.nii')
+    
+    def get_volume_attrs_filename(self, subject_id, volume_id):
+        subject_dir = self.get_subject_dir(subject_id)
+        return os.path.join(subject_dir, 'volumes', f'{volume_id}.json')
 
     def write_protocol_ids(self, protocol_ids):
         protocol_data = {'protocol_ids': protocol_ids}
