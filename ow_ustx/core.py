@@ -1,14 +1,15 @@
 import json
-import serial
 import logging
+import asyncio
 import time
 from .config import *
 from .utils import util_crc16
-
+from .async_serial import AsyncSerial  # Assuming async_serial.py contains the AsyncSerial class
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger("UART")
+
 class UartPacket:
     def __init__(self, id=None, packet_type=None, command=None, addr=None, reserved=None, data=None, buffer=None):
         if buffer:
@@ -24,32 +25,28 @@ class UartPacket:
             self.crc = self.calculate_crc()
 
     def calculate_crc(self) -> int:
-        # Placeholder for CRC calculation logic
-        # You can replace this with the actual CRC calculation method
         crc_value = 0xFFFF
         packet = bytearray()
         packet.append(OW_START_BYTE)
         packet.extend(self.id.to_bytes(2, 'big'))
         packet.append(self.packet_type)
-        packet.append(self.command)    
-        packet.append(self.addr)    
-        packet.append(self.reserved)    
+        packet.append(self.command)
+        packet.append(self.addr)
+        packet.append(self.reserved)
         packet.extend(self.data_len.to_bytes(2, 'big'))
         if self.data_len > 0:
             packet.extend(self.data)
         crc_value = util_crc16(packet[1:])
-
         return crc_value
 
     def to_bytes(self) -> bytes:
-        """Serialize the UartPacket to a byte buffer."""
         buffer = bytearray()
         buffer.append(OW_START_BYTE)
         buffer.extend(self.id.to_bytes(2, 'big'))
         buffer.append(self.packet_type)
-        buffer.append(self.command)    
-        buffer.append(self.addr)    
-        buffer.append(self.reserved)    
+        buffer.append(self.command)
+        buffer.append(self.addr)
+        buffer.append(self.reserved)
         buffer.extend(self.data_len.to_bytes(2, 'big'))
         if self.data_len > 0:
             buffer.extend(self.data)
@@ -57,7 +54,7 @@ class UartPacket:
         buffer.extend(crc_value.to_bytes(2, 'big'))
         buffer.append(OW_END_BYTE)
         return bytes(buffer)
-    
+
     def from_buffer(self, buffer: bytes):
         if buffer[0] != OW_START_BYTE or buffer[-1] != OW_END_BYTE:
             raise ValueError("Invalid buffer format")
@@ -84,37 +81,31 @@ class UartPacket:
         print("  Data Length:", self.data_len)
         print("  Data:", self.data.hex())
         print("  CRC:", hex(self.crc))
-        
-class UART:
-    """Handles UART communication."""
-    def __init__(self, port: str, baud_rate=921600, timeout=10, align=0):
-        """
-        Initialize the UART communication.
 
-        :param port: COM port string.
-        :param baud_rate: Baud rate for the communication.
-        :param timeout: Timeout for the serial communication.
-        """
+class UART:
+    def __init__(self, port: str, baud_rate=921600, timeout=10, align=0):
         log.info(f"Connecting to COM port at {port} speed {baud_rate}")
-        self.ser = serial.Serial(port, baud_rate, timeout=timeout)
-        self.ser.timeout = 0.1 # 100 ms timeout fix for read_until where end byte is in CRC
-        self.read_buffer = []
+        self.port = port
+        self.baud_rate = baud_rate
+        self.timeout = timeout
         self.align = align
+        self.ser = AsyncSerial(port, baud_rate, timeout)
+        self.read_buffer = []
+
+    async def connect(self):
+        # Already connected via AsyncSerial's __init__
+        pass
 
     def close(self):
-        """Close the serial connection."""
         self.ser.close()
 
-    def send_ustx(self, id=0, packetType=OW_ACK, command=OW_CMD_NOP, addr=0, reserved=0, data = None):
-        """Send data over UART."""
+    async def send_ustx(self, id=0, packetType=OW_ACK, command=OW_CMD_NOP, addr=0, reserved=0, data=None, timeout=10):
         if data:
             if packetType == OW_JSON:
                 payload = json.dumps(data).encode('utf-8')
             else:
-                payload = data # assume a byte buffer
-
+                payload = data
             payload_length = len(payload)
-            
         else:
             payload_length = 0
 
@@ -122,60 +113,59 @@ class UART:
         packet.append(OW_START_BYTE)
         packet.extend(id.to_bytes(2, 'big'))
         packet.append(packetType)
-        packet.append(command)    
-        packet.append(addr)    
-        packet.append(reserved)    
+        packet.append(command)
+        packet.append(addr)
+        packet.append(reserved)
         packet.extend(payload_length.to_bytes(2, 'big'))
         if payload_length > 0:
             packet.extend(payload)
         crc_value = util_crc16(packet[1:])
         packet.extend(crc_value.to_bytes(2, 'big'))
         packet.append(OW_END_BYTE)
-        
-        # print(f"TX LENGTH: {len(packet)}")
-        self._tx(packet)
-        self._rx()
+
+        await self._tx(packet)
+        await self._wait_for_response(timeout)
         return self.read_buffer
 
-    def send(self, buffer):
-        """Send a command and wait for a response."""
-        self._tx(buffer)
-    
-    def read(self):
-        """Read data until the end byte is encountered."""
-        self._rx()
+    async def send(self, buffer):
+        await self._tx(buffer)
+
+    async def read(self):
+        await self._rx()
         return self.read_buffer
-    
-    def _tx(self, data: bytes):
-        """Transmit data."""
+
+    async def _tx(self, data: bytes):
         try:
-            # log.debug(f"TX: {bytes(data).hex()}")
             if self.align > 0:
                 while len(data) % self.align != 0:
                     data += bytes([OW_END_BYTE])
-            self.ser.write(data)
-            self.last_tx=time.monotonic()
-        except serial.SerialException as e:
+            await self.ser.write(data)
+        except Exception as e:
             log.error(f"Error during transmission: {e}")
 
-
-    def _rx(self):
-        """Receive data."""
+    async def _rx(self):
         try:
-            # data = self.ser.read_until(bytes([OW_END_BYTE]))
-            data = self.ser.readall() # change to read all instead of read_until end byte
-            if data:
-                # log.debug(f"RX: {data.hex()}")
-                self.read_buffer.extend(data)
-                self.last_rx=time.monotonic()
-        except serial.SerialException as e:
+            while True:
+                data = await self.ser.read_all()
+                if data:
+                    self.read_buffer.extend(data)
+                    if OW_END_BYTE in data:
+                        break
+        except Exception as e:
             log.error(f"Error during reception: {e}")
-        
+
+    async def _wait_for_response(self, timeout):
+        start_time = time.monotonic()
+        while (time.monotonic() - start_time) < timeout:
+            await self._rx()
+            if self.read_buffer and OW_END_BYTE in self.read_buffer:
+                return
+            await asyncio.sleep(0.1)
+        log.error("Timeout waiting for response")
+
     def clear_buffer(self):
-        """Clear the read buffer."""
         self.read_buffer = []
 
     def print(self):
-        print("    Serial Port: ", self.ser.port)
-        print("    Serial Baud: ", self.ser.baudrate)
-        print("    Serial Parity: ", self.ser.parity)
+        print("    Serial Port: ", self.port)
+        print("    Serial Baud: ", self.baud_rate)
