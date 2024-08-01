@@ -9,3 +9,5 @@ crc
 pandas
 xarray
 PyQt5
+k-Wave-python
+qasync

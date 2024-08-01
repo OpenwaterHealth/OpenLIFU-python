@@ -1,4 +1,3 @@
-# Import necessary modules
 import sys
 import time
 import json
@@ -8,15 +7,20 @@ from PyQt5.QtCore import Qt
 from ow_ustx import list_vcp_with_vid_pid, UART, CTRL_IF, UartPacket
 from pyfus.io.ustx import PulseProfile, DelayProfile, TxArray, print_regs
 from pyfus.xdc import Transducer
+import asyncio
+from qasync import QEventLoop, asyncSlot, QApplication
 
 class App(QWidget):
+
+    CTRL_BOARD = False
+
     def __init__(self):
         super().__init__()
         self.ustx_ctrl = None
         self.configured = False  # System configuration status
         self.trigger_on = False  # Trigger status
         self.initUI()
-
+        
     def initUI(self):
         self.setWindowTitle('Open-LIFU Test App')
         self.setGeometry(100, 100, 640, 480)  # Set window size to 640x480
@@ -121,16 +125,13 @@ class App(QWidget):
 
         # Connect buttons to their functions
         self.reset_button.clicked.connect(self.reset_fields)
-        self.configure_button.clicked.connect(self.set_configuration)
-        self.start_button.clicked.connect(self.start_trigger)
-        self.stop_button.clicked.connect(self.stop_trigger)
+        self.configure_button.clicked.connect(lambda: asyncio.create_task(self.set_configuration()))
+        self.start_button.clicked.connect(lambda: asyncio.create_task(self.start_trigger()))
+        self.stop_button.clicked.connect(lambda: asyncio.create_task(self.stop_trigger()))
 
         # Disable start and stop buttons initially
         self.start_button.setEnabled(False)
         self.stop_button.setEnabled(False)
-
-        # Initialize USTx controller
-        self.init_ustx()
 
         # Show the window
         self.show()
@@ -145,29 +146,35 @@ class App(QWidget):
         print("Device found at port:", com_port)
         return UART(com_port, timeout=5)
 
-    def init_ustx(self):
-        comm_port = self.find_usb_comm()
-        if comm_port is None:
-            print("No device found")
-            return
+    async def async_init(self):
+        await self.init_ustx()
+
+    async def init_ustx(self):
+        if self.CTRL_BOARD:
+            comm_port = self.find_usb_comm()
+            if comm_port is None:
+                print("No device found")
+                return
+        else:
+            comm_port = UART('COM16', timeout=5)
         self.ustx_ctrl = CTRL_IF(comm_port)
         if self.ustx_ctrl is None:
             print("Failed to initialize USTx controller")
             return
         print("USTx controller initialized")
         try:
-            r = self.ustx_ctrl.ping()
+            r = await self.ustx_ctrl.ping()
             parsedResp = UartPacket(buffer=r)
             print("Received From Controller Packet ID:", parsedResp.id)
-            self.get_trigger()
+            await self.get_trigger()
         except ValueError as e:
             print("{0}".format(e))
             sys.exit(0)
         print("Enumerate I2C Devices")
-        self.ustx_ctrl.enum_i2c_devices()
+        await self.ustx_ctrl.enum_i2c_devices()
         print("Enumerate TX7332 Chips on AFE devices")
         for afe_device in self.ustx_ctrl.afe_devices:
-            afe_device.enum_tx7332_devices()
+            await afe_device.enum_tx7332_devices()
 
     def reset_fields(self):
         """Reset all input fields to their default values."""
@@ -178,7 +185,7 @@ class App(QWidget):
         self.cycles_input.setText('3')
         self.trigger_freq_input.setText('0')
 
-    def set_configuration(self):
+    async def set_configuration(self):
         """Function to set registers."""
         left = int(self.left_input.text())
         front = int(self.front_input.text())
@@ -213,14 +220,14 @@ class App(QWidget):
             for i in range(len(module_regs)):
                 device = afe.tx_devices[i]
                 r = module_regs[i]
-                device.write_register(0, 1)
+                await device.write_register(0, 1)
                 for address, value in r.items():
                     if isinstance(value, list):
-                        print(f"0x{i2c_addr:x}[{i}] Writing {len(value)}-value block starting at register 0x{address:X}")
-                        device.write_block(address, value)
+                        print(f"0x{i2c_addr:x}[i] Writing {len(value)}-value block starting at register 0x{address:X}")
+                        await device.write_block(address, value)
                     else:
-                        print(f"0x{i2c_addr:x}[{i}] Writing value 0x{value:X} to register 0x{address:X}")
-                        device.write_register(address, value)
+                        print(f"0x{i2c_addr:x}[i] Writing value 0x{value:X} to register 0x{address:X}")
+                        await device.write_register(address, value)
                     time.sleep(0.1)
         
         self.configured = True
@@ -232,18 +239,18 @@ class App(QWidget):
     def set_trigger_frequency(self):
         new_frequency = int(self.trigger_freq_input.text())
         print(f'Setting trigger frequency: {new_frequency}')
-        self.set_trigger(new_frequency)
+        asyncio.create_task(self.set_trigger(new_frequency))
     
-    def get_trigger(self):
+    async def get_trigger(self):
         """Function to get the current trigger status."""
         if self.ustx_ctrl is not None:
-            trigger_config = self.ustx_ctrl.get_trigger()
+            trigger_config = await self.ustx_ctrl.get_trigger()
             if trigger_config is not None:                
                 self.trigger_freq_input.setText(str(trigger_config.get('TriggerFrequencyHz', 0)))
             return trigger_config
         return False
 
-    def set_trigger(self, new_frequency):
+    async def set_trigger(self, new_frequency):
         """Function to set the trigger status."""
         if self.ustx_ctrl is not None:
             trigger_config = {
@@ -253,19 +260,19 @@ class App(QWidget):
                 "TriggerPulseWidthUsec": 250
             }
             trigger_config["TriggerFrequencyHz"] = new_frequency
-            r = self.ustx_ctrl.set_trigger(data=trigger_config)
+            r = await self.ustx_ctrl.set_trigger(data=trigger_config)
 
-    def start_trigger(self):
+    async def start_trigger(self):
         """Function to handle start trigger."""
         print("Turn Trigger On")
-        self.ustx_ctrl.start_trigger()
+        await self.ustx_ctrl.start_trigger()
         self.trigger_on = True
         self.update_trigger_label()
 
-    def stop_trigger(self):
+    async def stop_trigger(self):
         """Function to handle stop trigger."""
         print("Turn Trigger Off")
-        self.ustx_ctrl.stop_trigger()
+        await self.ustx_ctrl.stop_trigger()
         self.trigger_on = False
         self.update_trigger_label()
 
@@ -280,14 +287,14 @@ class App(QWidget):
 
     def closeEvent(self, event):
         """Function to handle close event."""
-        self.shutdown_ustx()
+        asyncio.create_task(self.shutdown_ustx())
         event.accept()
 
-    def shutdown_ustx(self):
+    async def shutdown_ustx(self):
         """Function to shutdown USTX."""
         print('Shutting down USTX...')
         if self.trigger_on:
-            self.stop_trigger()
+            await self.stop_trigger()
         if self.ustx_ctrl is not None:
             self.ustx_ctrl.uart.close()
 
@@ -296,8 +303,13 @@ def launch_app():
     app = QApplication.instance()
     if app is None:
         app = QApplication(sys.argv)
+    loop = QEventLoop(app)
+    asyncio.set_event_loop(loop)
     ex = App()
-    app.exec_()
+    loop.create_task(ex.async_init())
+    with loop:
+        loop.run_forever()
 
 # Launch the application
-launch_app()
+if __name__ == "__main__":
+    launch_app()
