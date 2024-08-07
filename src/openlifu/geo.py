@@ -1,4 +1,4 @@
-from typing import Any, Tuple, Optional
+from typing import Any, Tuple, Optional, Dict
 import numpy as np
 from dataclasses import dataclass, field
 from openlifu.util.units import getunitconversion
@@ -95,3 +95,18 @@ class Point:
                 "position": self.position.tolist(),
                 "dims": self.dims,
                 "units": self.units}
+
+    @staticmethod
+    def from_dict(point_data:Dict):
+        """Create a Point object from a dictionary."""
+        if "color" in point_data:
+            if len(point_data["color"]) != 3:
+                raise ValueError(f"Color should have three components; got {point_data['color']}.")
+            point_data["color"] = tuple(float(point_data["color"][i]) for i in range(3))
+        if "radius" in point_data:
+            point_data["radius"] = float(point_data["radius"])
+        if "position" in point_data:
+            point_data["position"] = np.array(point_data["position"])
+        if "dims" in point_data:
+            point_data["dims"] = tuple(point_data["dims"])
+        return Point(**point_data)

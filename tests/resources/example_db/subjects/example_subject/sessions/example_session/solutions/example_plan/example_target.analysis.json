@@ -1,0 +1,18 @@
+{
+  "mainlobe_pnp_MPa": 0.99999994,
+  "mainlobe_isppa_Wcm2": 33.3333321,
+  "mainlobe_ispta_mWcm2": 6.66666651,
+  "beamwidth_lat_3dB_mm": 4.56580212813179,
+  "beamwidth_ax_3dB_mm": 36.010904382076696,
+  "beamwidth_lat_6dB_mm": 6.6535180608625621,
+  "beamwidth_ax_6dB_mm": 39.130310962465927,
+  "sidelobe_pnp_MPa": 0.928957939,
+  "sidelobe_isppa_Wcm2": 28.7654324,
+  "global_pnp_MPa": 0.99999994,
+  "global_isppa_Wcm2": 33.3333321,
+  "p0_Pa": 231672.90687561035,
+  "TIC": 0.022197405589496896,
+  "power_W": 0.0028052740834448721,
+  "MI": 1.41421342,
+  "global_ispta_mWcm2": 6.66666651
+}
