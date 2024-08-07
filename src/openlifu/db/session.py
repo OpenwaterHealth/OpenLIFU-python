@@ -86,7 +86,7 @@ class Session:
                 d['volume'] = xarray.DataArray.from_dict(d['volume'])
             elif isinstance(d['volume'], str):
                 d['volume_id'] = d['volume']
-                # If we kept this key then it would assign a string to the volume attribute, which the wrong type:
+                # If we kept this key then it would assign a string to the volume attribute, which is the wrong type:
                 d.pop('volume')
         if isinstance(d['transducer'], dict):
             transducer_id = d['transducer']['id']

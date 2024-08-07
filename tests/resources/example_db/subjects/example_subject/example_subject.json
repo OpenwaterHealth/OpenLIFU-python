@@ -1,0 +1,6 @@
+{
+  "id": "example_subject",
+  "name": "Example Subject",
+  "volumes": ["example_volume"],
+  "attrs": {}
+}
