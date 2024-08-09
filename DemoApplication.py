@@ -12,7 +12,8 @@ from qasync import QEventLoop, asyncSlot, QApplication
 
 class App(QWidget):
 
-    CTRL_BOARD = False
+    CTRL_BOARD = True  # change to false and specify PORT_NAME for Nucleo Board
+    PORT_NAME = "COM16"
 
     def __init__(self):
         super().__init__()
@@ -156,7 +157,7 @@ class App(QWidget):
                 print("No device found")
                 return
         else:
-            comm_port = UART('COM16', timeout=5)
+            comm_port = UART(self.PORT_NAME, timeout=5)
         self.ustx_ctrl = CTRL_IF(comm_port)
         if self.ustx_ctrl is None:
             print("Failed to initialize USTx controller")
