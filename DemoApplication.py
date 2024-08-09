@@ -10,6 +10,10 @@ from pyfus.io.ustx import PulseProfile, DelayProfile, TxArray, print_regs
 from pyfus.xdc import Transducer
 
 class App(QWidget):
+    
+    CTRL_BOARD = True   # change to false and specify PORT_NAME for Nucleo Board
+    PORT_NAME = "COM16"
+
     def __init__(self):
         super().__init__()
         self.ustx_ctrl = None
@@ -146,10 +150,14 @@ class App(QWidget):
         return UART(com_port, timeout=5)
 
     def init_ustx(self):
-        comm_port = self.find_usb_comm()
-        if comm_port is None:
-            print("No device found")
-            return
+        if self.CTRL_BOARD:
+            comm_port = self.find_usb_comm()
+            if comm_port is None:
+                print("No device found")
+                return
+        else:
+            comm_port = UART(self.PORT_NAME, timeout=5)
+
         self.ustx_ctrl = CTRL_IF(comm_port)
         if self.ustx_ctrl is None:
             print("Failed to initialize USTx controller")
