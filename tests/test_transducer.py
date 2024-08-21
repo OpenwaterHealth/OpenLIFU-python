@@ -18,3 +18,7 @@ def test_serialize_deserialize_transducer(example_transducer : Transducer, compa
             assert (value_original == value_reconstructed).all()
         else:
             assert value_original == value_reconstructed
+
+def test_default_transducer():
+    """Ensure it is possible to construct a default transducer"""
+    Transducer()
