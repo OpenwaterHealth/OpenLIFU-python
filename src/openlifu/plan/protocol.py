@@ -11,7 +11,7 @@ class Protocol:
     description: str = ""
     pulse: bf.Pulse = field(default_factory=bf.Pulse)
     sequence: bf.Sequence = field(default_factory=bf.Sequence)
-    focal_pattern: bf.FocalPattern = field(default_factory=bf.FocalPattern)
+    focal_pattern: bf.FocalPattern = field(default_factory=bf.SinglePoint)
     sim_setup: sim.SimSetup = field(default_factory=sim.SimSetup)
     delay_method: bf.DelayMethod = field(default_factory=bf.delay_methods.Direct)
     apod_method: bf.ApodizationMethod = field(default_factory=bf.apod_methods.Uniform)
