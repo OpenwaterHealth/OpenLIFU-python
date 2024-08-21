@@ -199,6 +199,24 @@ class Transducer:
         return Transducer(**d, **kwargs)
 
     @staticmethod
+    def from_json(json_string : str) -> "Transducer":
+        """Load a Transducer from a json string"""
+        return Transducer.from_dict(json.loads(json_string))
+
+    def to_json(self, compact:bool) -> str:
+        """Serialize a Transducer to a json string
+
+        Args:
+            compact: if enabled then the string is compact (not pretty). Disable for pretty.
+
+        Returns: A json string representing the complete Transducer object.
+        """
+        if compact:
+            return json.dumps(self.to_dict(), separators=(',', ':'))
+        else:
+            return json.dumps(self.to_dict(), indent=4)
+
+    @staticmethod
     def gen_matrix_array(nx=2, ny=2, pitch=1, kerf=0, units="mm", impulse_response=1, impulse_dt=1, id='array', name='Array', attrs={}):
         N = nx * ny
         xpos = [(i - nx // 2) * pitch for i in range(nx)]
