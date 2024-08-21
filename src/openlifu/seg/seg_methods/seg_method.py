@@ -1,14 +1,15 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from abc import ABC, abstractmethod
 from typing import Optional
 from openlifu.seg.material import Material, MATERIALS
 import xarray as xa
 import numpy as np
+import copy
 from openlifu.seg import seg_methods
 
 @dataclass
 class SegmentationMethod:
-    materials: dict = field(default_factory=lambda: MATERIALS.copy())
+    materials: dict[str,Material] = field(default_factory=lambda: MATERIALS.copy())
     ref_material: str = "water"
 
     def __post_init__(self):
@@ -29,8 +30,14 @@ class SegmentationMethod:
             elif d == "segmented":
                 return openlifu.seg.seg_methods.SegmentMRI()
         else:
-            d = d.copy()
+            d = copy.deepcopy(d)
             short_classname = d.pop("class")
+            if "materials" in d:
+                for material_key, material_definition in d["materials"].items():
+                    if not isinstance(material_definition, Material): # if it is given as a dict rather than a fully hydrated object
+                        param_ids = material_definition.pop("param_ids") # param_ids is a field of the dataclass, but it has init=False
+                        d["materials"][material_key] = Material.from_dict(material_definition)
+                        d["materials"][material_key].param_ids = tuple(param_ids)
             module_dict = seg_methods.__dict__
             class_constructor = module_dict[short_classname]
             return class_constructor(**d)
@@ -73,7 +80,7 @@ class SegmentationMethod:
        return seg
 
     def to_dict(self):
-        d = self.__dict__.copy()
+        d = asdict(self)
         d['class'] = self.__class__.__name__
         return d
 

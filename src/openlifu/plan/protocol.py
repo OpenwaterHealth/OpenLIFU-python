@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field, InitVar
-from typing import List
+from dataclasses import dataclass, field, asdict
+from typing import Dict, Any
 from openlifu import bf, sim, seg, xdc, geo
 import json
 import xarray as xa
@@ -21,7 +21,7 @@ class Protocol:
     analysis_options: dict = field(default_factory=dict)
 
     @staticmethod
-    def from_dict(d):
+    def from_dict(d : Dict[str,Any]) -> "Protocol":
         d["pulse"] = bf.Pulse.from_dict(d.get("pulse", {}))
         d["sequence"] = bf.Sequence.from_dict(d.get("sequence", {}))
         d["focal_pattern"] = bf.FocalPattern.from_dict(d.get("focal_pattern", {}))
@@ -42,7 +42,7 @@ class Protocol:
             "pulse": self.pulse.to_dict(),
             "sequence": self.sequence.to_dict(),
             "focal_pattern": self.focal_pattern.to_dict(),
-            "sim_setup": self.sim_setup.to_dict(),
+            "sim_setup": asdict(self.sim_setup),
             "delay_method": self.delay_method.to_dict(),
             "apod_method": self.apod_method.to_dict(),
             "seg_method": self.seg_method.to_dict(),
@@ -61,3 +61,21 @@ class Protocol:
         delays = self.delay_method.calc_delays(arr, target, params)
         apod = self.apod_method.calc_apodization(arr, target, params)
         return delays, apod
+
+    @staticmethod
+    def from_json(json_string : str) -> "Protocol":
+        """Load a Protocol from a json string"""
+        return Protocol.from_dict(json.loads(json_string))
+
+    def to_json(self, compact:bool) -> str:
+        """Serialize a Protocol to a json string
+
+        Args:
+            compact: if enabled then the string is compact (not pretty). Disable for pretty.
+
+        Returns: A json string representing the complete Protocol object.
+        """
+        if compact:
+            return json.dumps(self.to_dict(), separators=(',', ':'))
+        else:
+            return json.dumps(self.to_dict(), indent=4)
