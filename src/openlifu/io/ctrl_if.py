@@ -1,6 +1,6 @@
-from .core import *
-from .config import *
-from .utils import *
+from .core import UART
+from .config import OW_CONTROLLER, OW_CMD_PING, OW_CMD_PONG, OW_CMD_ECHO, OW_CMD_TOGGLE_LED, OW_CMD_VERSION, OW_CMD_HWID, OW_CMD_RESET, OW_CTRL_SCAN_I2C, OW_CTRL_SET_SWTRIG, OW_CTRL_GET_SWTRIG, OW_CTRL_START_SWTRIG, OW_CTRL_STOP_SWTRIG, OW_CTRL_SET_HV
+from .crc16 import util_crc16
 import asyncio
 import struct
 import json
@@ -8,7 +8,7 @@ import json
 from .afe_if import AFE_IF
 
 class CTRL_IF:
-    
+
     _delay = 0.02
 
     def __init__(self, uart: UART):
@@ -42,7 +42,7 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CMD_ECHO, data=data)
         self.uart.clear_buffer()
@@ -52,7 +52,7 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CMD_TOGGLE_LED)
         self.uart.clear_buffer()
@@ -62,7 +62,7 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CMD_VERSION)
         self.uart.clear_buffer()
@@ -72,7 +72,7 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CMD_HWID)
         self.uart.clear_buffer()
@@ -82,7 +82,7 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CMD_RESET)
         self.uart.clear_buffer()
@@ -92,11 +92,11 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CTRL_SCAN_I2C)
         self.uart.clear_buffer()
-        
+
         ret_val = []
         self._afe_instances.clear()
 
@@ -115,14 +115,14 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         if data:
             try:
                 json_string = json.dumps(data)
             except json.JSONDecodeError as e:
                 print(f"Data must be valid JSON: {e}")
-                return  
+                return None
 
             payload = json_string.encode('utf-8')
         else:
@@ -136,7 +136,7 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CTRL_GET_SWTRIG, data=None)
         self.uart.clear_buffer()
@@ -152,7 +152,7 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CTRL_START_SWTRIG, data=None)
         self.uart.clear_buffer()
@@ -161,7 +161,7 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CTRL_STOP_SWTRIG, data=None)
         self.uart.clear_buffer()
@@ -179,7 +179,7 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CTRL_GET_HV, data=None)
         self.uart.clear_buffer()
@@ -188,13 +188,13 @@ class CTRL_IF:
     @property
     def afe_devices(self):
         return self._afe_instances
-    
+
     def print(self):
         print("Controller Instance Information")
         print("  UART Port:")
         self.uart.print()
 
-        print("  AFE Instances:")        
+        print("  AFE_IF Instances:")
         for i in range(len(self._afe_instances)):
             afe_device = self._afe_instances[i]
             afe_device.print()

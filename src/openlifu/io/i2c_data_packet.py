@@ -21,7 +21,7 @@ class I2C_DATA_Packet:
         buffer += self.pData
         crc16.update(buffer)
         return crc16.crcValue
-    
+
     def to_buffer(self):
         self.crc = self.calculate_crc()
         buffer = struct.pack('<BHBBB', self.pkt_len, self.id, self.cmd, self.reserved, self.data_len)
@@ -49,7 +49,7 @@ class I2C_DATA_Packet:
         calculated_crc = self.calc_crc(buffer[0:-2])
 
         #print("Calculated CRC: ", hex(calculated_crc))
-        
+
         #print("Self Packet Length: ", hex(self.pkt_len))
         if pktLen != self.pkt_len:
             raise ValueError("Packet length validation failed.")
@@ -57,7 +57,7 @@ class I2C_DATA_Packet:
         # Validate CRC
         if received_crc != calculated_crc:
             raise ValueError("CRC validation failed.")
-        
+
         # Set CRC to the received CRC
         self.crc = received_crc
 
@@ -73,8 +73,8 @@ class I2C_DATA_Packet:
         print("  Data Length:", self.data_len)
         print("  Data:", self.pData.hex())
         print("  CRC:", hex(self.crc))
-    
-    
+
+
     def print_bytes(self, buffer=None):
         if buffer:
             print("Byte Buffer: ", buffer.hex())

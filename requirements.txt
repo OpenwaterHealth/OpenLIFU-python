@@ -1,0 +1,13 @@
+crc
+crcmod
+ipykernel
+ipywidgets
+k-Wave-python
+numpy
+pandas
+PyQt5
+pyserial
+python-dotenv
+qasync
+vtk
+xarray

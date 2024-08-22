@@ -2,7 +2,7 @@ import json
 import logging
 import asyncio
 import time
-from .config import *
+from .config import OW_START_BYTE, OW_END_BYTE, OW_JSON, OW_ACK, OW_CMD_NOP
 from .crc16 import util_crc16
 from .async_serial import AsyncSerial  # Assuming async_serial.py contains the AsyncSerial class
 
@@ -89,7 +89,7 @@ class UART:
         self.baud_rate = baud_rate
         self.timeout = timeout
         self.align = align
-        self.ser = AsyncSerial(port, baud_rate, timeout)
+        self.serial_port = AsyncSerial(port, baud_rate, timeout)
         self.read_buffer = []
 
     async def connect(self):
@@ -97,7 +97,7 @@ class UART:
         pass
 
     def close(self):
-        self.ser.close()
+        self.serial_port.close()
 
     async def send_ustx(self, id=0, packetType=OW_ACK, command=OW_CMD_NOP, addr=0, reserved=0, data=None, timeout=10):
         if data:
@@ -139,14 +139,14 @@ class UART:
             if self.align > 0:
                 while len(data) % self.align != 0:
                     data += bytes([OW_END_BYTE])
-            await self.ser.write(data)
+            await self.serial_port.write(data)
         except Exception as e:
             log.error(f"Error during transmission: {e}")
 
     async def _rx(self):
         try:
             while True:
-                data = await self.ser.read_all()
+                data = await self.serial_port.read_all()
                 if data:
                     self.read_buffer.extend(data)
                     if OW_END_BYTE in data:

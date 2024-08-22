@@ -1,5 +1,5 @@
-from .core import *
-from .config import *
+from .core import UART
+from .config import OW_START_BYTE, OW_AFE_SEND, OW_TX7332_WREG, OW_TX7332_RREG
 import struct
 import asyncio
 from typing import List
@@ -12,10 +12,10 @@ class TX7332_IF:
         self.afe_interface = afe_interface
         self.uart = afe_interface._uart
         self.identifier = identifier
-    
+
     def get_index(self) -> int:
         return self.identifier
-    
+
     async def write_register(self, address: int, value: int, packet_id=None):
         if self.identifier < 0:
             raise ValueError("TX Chip address NOT SET")
@@ -27,12 +27,12 @@ class TX7332_IF:
         if packet_id is None:
             self.afe_interface.ctrl_if.packet_count += 1
             packet_id = self.afe_interface.ctrl_if.packet_count
-        
+
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_AFE_SEND, command=OW_TX7332_WREG, addr=self.afe_interface.i2c_address, reserved=self.identifier, data=data)
-        
+
         self.uart.clear_buffer()
         return response
-    
+
     async def read_register(self, address: int, packet_id=None):
         if self.identifier < 0:
             raise ValueError("TX Chip address NOT SET")
@@ -42,7 +42,7 @@ class TX7332_IF:
         if packet_id is None:
             self.afe_interface.ctrl_if.packet_count += 1
             packet_id = self.afe_interface.ctrl_if.packet_count
-        
+
         data = struct.pack('<H', address)
 
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_AFE_SEND, command=OW_TX7332_RREG, addr=self.afe_interface.i2c_address, reserved=self.identifier, data=data)
@@ -64,7 +64,7 @@ class TX7332_IF:
 
         except Exception as e:
             print("Error reading response:", e)
-            
+
         return ret_val
 
     async def write_block(self, start_address: int, reg_values: List[int], packet_id=None):
@@ -90,15 +90,15 @@ class TX7332_IF:
             data = struct.pack(data_format, start_address + chunk_start, len(chunk), 0, *chunk)
 
             response = await self.uart.send_ustx(id=packet_id, packetType=OW_AFE_SEND, command=OW_TX7332_WBLOCK, addr=self.afe_interface.i2c_address, reserved=self.identifier, data=data)
-    
+
             self.uart.clear_buffer()
 
             responses.append(response)
 
             self.afe_interface.ctrl_if.packet_count += 1
             packet_id = self.afe_interface.ctrl_if.packet_count
-        
-        return responses    
+
+        return responses
 
     def print(self):
         print("Controller Instance Information")

@@ -12,13 +12,13 @@ class I2C_STATUS_Packet:
     @property
     def crc(self):
         return self.calculate_crc()
-    
+
     def calculate_crc(self):
         crc16 = crcmod.predefined.Crc('crc-ccitt-false')
         buffer = struct.pack('<HBBBB', self.id, self.cmd, self.status, self.reserved, self.data_len)
         crc16.update(buffer)
         return crc16.crcValue
-    
+
     def to_buffer(self):
         return struct.pack('<HBBBBH', self.id, self.cmd, self.status, self.reserved, self.data_len, self.crc)
 

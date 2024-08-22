@@ -1,5 +1,5 @@
-from .core import *
-from .config import *
+from .core import UART
+from .config import OW_START_BYTE, OW_AFE_SEND, OW_CMD_PING, OW_CMD_ECHO, OW_CMD_NOP, OW_CMD_RESET, OW_TX7332_DEMO, OW_TX7332_WREG, OW_TX7332_RREG, OW_AFE_READ, OW_AFE_STATUS, OW_AFE_ENUM_TX7332, OW_CMD_PONG, OW_CMD_VERSION, OW_CMD_TOGGLE_LED, OW_CMD_HWID
 import struct
 import asyncio
 
@@ -14,7 +14,7 @@ class AFE_IF:
         self.ctrl_if = controller
         self._tx_instances = []
         self._uart = controller.uart
-        
+
     async def ping(self, packet_id=None):
         if packet_id is None:
             self.ctrl_if.packet_count += 1
@@ -24,7 +24,7 @@ class AFE_IF:
         response = await self._uart.send_ustx(id=packet_id, packetType=OW_AFE_SEND, command=OW_CMD_PING, addr=self.i2c_addr)
         self._uart.clear_buffer()
         return response
-        
+
     async def pong(self, packet_id=None):
         if packet_id is None:
             self.ctrl_if.packet_count += 1
@@ -44,7 +44,7 @@ class AFE_IF:
         response = await self._uart.send_ustx(id=packet_id, packetType=OW_AFE_SEND, command=OW_CMD_ECHO, addr=self.i2c_addr, data=data)
         self._uart.clear_buffer()
         return response
-    
+
     async def toggle_led(self, packet_id=None):
         if packet_id is None:
             self.ctrl_if.packet_count += 1
@@ -54,7 +54,7 @@ class AFE_IF:
         response = await self._uart.send_ustx(id=packet_id, packetType=OW_AFE_SEND, command=OW_CMD_TOGGLE_LED, addr=self.i2c_addr)
         self._uart.clear_buffer()
         return response
-    
+
     async def version(self, packet_id=None):
         if packet_id is None:
             self.ctrl_if.packet_count += 1
@@ -64,7 +64,7 @@ class AFE_IF:
         response = await self._uart.send_ustx(id=packet_id, packetType=OW_AFE_SEND, command=OW_CMD_VERSION, addr=self.i2c_addr)
         self._uart.clear_buffer()
         return response
-    
+
     async def chipid(self, packet_id=None):
         if packet_id is None:
             self.ctrl_if.packet_count += 1
@@ -74,7 +74,7 @@ class AFE_IF:
         response = await self._uart.send_ustx(id=packet_id, packetType=OW_AFE_SEND, command=OW_CMD_HWID, addr=self.i2c_addr)
         self._uart.clear_buffer()
         return response
-        
+
     async def tx7332_demo(self, packet_id=None):
         if packet_id is None:
             self.ctrl_if.packet_count += 1
@@ -84,7 +84,7 @@ class AFE_IF:
         response = await self._uart.send_ustx(id=packet_id, packetType=OW_AFE_SEND, command=OW_TX7332_DEMO, addr=self.i2c_addr)
         self._uart.clear_buffer()
         return response
-    
+
     async def reset(self, packet_id=None):
         if packet_id is None:
             self.ctrl_if.packet_count += 1
@@ -94,7 +94,7 @@ class AFE_IF:
         response = await self._uart.send_ustx(id=packet_id, packetType=OW_AFE_SEND, command=OW_CMD_RESET, addr=self.i2c_addr)
         self._uart.clear_buffer()
         return response
-    
+
     async def enum_tx7332_devices(self, packet_id=None):
         if packet_id is None:
             self.ctrl_if.packet_count += 1
@@ -112,7 +112,7 @@ class AFE_IF:
             for i in range(afe_resp.reserved):
                 self._tx_instances.append(TX7332_IF(self, i))
         return response
-    
+
     async def status(self, packet_id=None):
         if packet_id is None:
             self.ctrl_if.packet_count += 1
@@ -129,7 +129,7 @@ class AFE_IF:
         afe_resp.print_packet()
 
         return response
-    
+
     async def read_data(self, packet_id=None, packet_len: int = 0):
         if packet_id is None:
             self.ctrl_if.packet_count += 1
@@ -143,13 +143,13 @@ class AFE_IF:
     @property
     def tx_devices(self):
         return self._tx_instances
-    
+
     @property
     def i2c_address(self):
         return self.i2c_addr
 
     def print(self):
-        print("  AFE Instance Information")
+        print("  AFE_IF Information")
         formatted_hex = '0x{:02X}'.format(self.i2c_address)
         formatted_hex = formatted_hex.replace(' ', '')  # Remove space
         print(f"    I2C Address: {formatted_hex}")
