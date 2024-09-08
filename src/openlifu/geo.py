@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from openlifu.util.units import getunitconversion
 import copy
 import vtk
+import json
 
 @dataclass
 class Point:
@@ -110,3 +111,21 @@ class Point:
         if "dims" in point_data:
             point_data["dims"] = tuple(point_data["dims"])
         return Point(**point_data)
+
+    @staticmethod
+    def from_json(json_string : str) -> "Point":
+        """Load a Point from a json string"""
+        return Point.from_dict(json.loads(json_string))
+
+    def to_json(self, compact:bool) -> str:
+        """Serialize a Point to a json string
+
+        Args:
+            compact: if enabled then the string is compact (not pretty). Disable for pretty.
+
+        Returns: A json string representing the complete Point object.
+        """
+        if compact:
+            return json.dumps(self.to_dict(), separators=(',', ':'))
+        else:
+            return json.dumps(self.to_dict(), indent=4)
