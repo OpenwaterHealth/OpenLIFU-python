@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 from openlifu.util.strings import sanitize
 import json
+from pathlib import Path
 
 @dataclass
 class Subject:
@@ -65,6 +66,6 @@ class Subject:
 
         :param filename: Name of the file to write
         """
-        from openlifu.util.json import to_json
+        Path(filename).parent.mkdir(exist_ok=True)
         with open(filename, 'w') as f:
             json.dump(self.to_dict(), f, indent=4)
