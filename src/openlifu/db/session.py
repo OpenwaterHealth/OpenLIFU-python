@@ -88,11 +88,11 @@ class Session:
                 d['volume_id'] = d['volume']
                 # If we kept this key then it would assign a string to the volume attribute, which is the wrong type:
                 d.pop('volume')
-        if isinstance(d['transducer'], dict):
-            transducer_id = d['transducer']['id']
+        if isinstance(d['transducer_id'], str):
+            transducer_id = d['transducer_id']
             transducer  = Transducer.from_file(db.get_transducer_filename(transducer_id))
-            if "matrix" in d['transducer']: # Allow the matrix to be overridden at the Session level
-                transducer.matrix = np.array(d['transducer']["matrix"])
+        if isinstance(d["array_transform"], dict):
+            transducer.matrix = np.array(d['array_transform']["matrix"])
             d['transducer'] = transducer
         if isinstance(d['targets'], list):
             if len(d['targets'])>0 and isinstance(d['targets'][0], dict):
