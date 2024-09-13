@@ -4,7 +4,6 @@ from datetime import datetime
 from openlifu.geo import Point
 from openlifu.xdc import Transducer
 from openlifu.util.strings import sanitize
-import xarray
 import numpy as np
 import json
 
@@ -23,7 +22,7 @@ class Session:
     date: Date of the session
     targets: sonication targets
     markers: registration markers
-    volume: loaded volume data
+    volume_id: id of the subject volume file
     transducer: transducer
     attrs: Dictionary of attributes
     date_modified: Date of last modification
@@ -34,7 +33,6 @@ class Session:
     date: datetime = datetime.now()
     targets: List[Point] = field(default_factory=list)
     markers: List[Point] = field(default_factory=list)
-    volume: Optional[xarray.DataArray] = None
     volume_id: Optional[str] = None
     transducer: Transducer = field(default_factory=Transducer)
     attrs: dict = field(default_factory=dict)
@@ -82,12 +80,7 @@ class Session:
         if 'date_modified' in d:
             d['date_modified'] = datetime.fromisoformat(d['date_modified'])
         if 'volume' in d:
-            if isinstance(d['volume'], dict):
-                d['volume'] = xarray.DataArray.from_dict(d['volume'])
-            elif isinstance(d['volume'], str):
-                d['volume_id'] = d['volume']
-                # If we kept this key then it would assign a string to the volume attribute, which is the wrong type:
-                d.pop('volume')
+            raise ValueError("Sessions no longer recognize a volume attribute -- it is now volume_id.")
         if isinstance(d['transducer'], dict):
             transducer_id = d['transducer']['id']
             transducer  = Transducer.from_file(db.get_transducer_filename(transducer_id))
@@ -121,7 +114,6 @@ class Session:
         d = self.__dict__.copy()
         d['date'] = d['date'].isoformat()
         d['date_modified'] = d['date_modified'].isoformat()
-        d['volume'] = d['volume'].to_dict()
         d['transducer'] = d['transducer'].to_dict()
         d['targets'] = [p.to_dict() for p in d['targets']]
         d['markers'] = [p.to_dict() for p in d['markers']]
