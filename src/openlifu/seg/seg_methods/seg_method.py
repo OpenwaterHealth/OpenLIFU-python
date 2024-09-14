@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, asdict
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Optional
 from openlifu.seg.material import Material, MATERIALS
 import xarray as xa

@@ -1,10 +1,8 @@
 
 import numpy as np
-import pandas as pd
 from openlifu.util.units import getunitconversion
 from dataclasses import dataclass, field
-from collections.abc import Iterable
-from typing import List, Dict, Any, Tuple
+from typing import Dict, Any, Tuple
 import vtk
 import logging
 import json

@@ -1,5 +1,4 @@
 from openlifu.seg import SegmentationMethod, Material
-from pathlib import Path
 import pytest
 
 @pytest.fixture()

@@ -2,8 +2,6 @@
 import os
 import json
 import scipy.io
-from typing import List
-import numpy as np
 import logging
 import h5py
 import glob
