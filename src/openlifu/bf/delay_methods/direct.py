@@ -4,7 +4,7 @@ import numpy as np
 from openlifu.xdc import Transducer
 from openlifu.geo import Point
 from openlifu.bf.delay_methods import DelayMethod
-from typing import ClassVar, Optional
+from typing import Optional
 
 @dataclass
 class Direct(DelayMethod):

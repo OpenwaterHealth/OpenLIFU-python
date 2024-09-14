@@ -10,9 +10,7 @@ from kwave.ksource import kSource
 from kwave.kspaceFirstOrder3D import kspaceFirstOrder3D
 from kwave.options.simulation_execution_options import SimulationExecutionOptions
 from kwave.utils.kwave_array import kWaveArray
-from crc import Crc32, Calculator
-import json
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Optional
 import logging
 import xarray as xa
 import numpy as np

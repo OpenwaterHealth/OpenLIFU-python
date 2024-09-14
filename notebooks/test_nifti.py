@@ -19,7 +19,6 @@ slicer_exe = R"C:\Users\pjh7\AppData\Local\NA-MIC\Slicer 5.2.2\Slicer.exe"
 import sys
 sys.path.append(modified_kwave_path)
 import openlifu
-from typing import List, Dict, Any, Tuple
 import logging
 root = logging.getLogger()
 loglevel = logging.INFO
