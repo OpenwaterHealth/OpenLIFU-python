@@ -115,7 +115,7 @@ def getsiscale(unit, type):
         idx = len(unit)
 
     elif type == 'frequency':
-        idx = len(unit) - 1
+        idx = len(unit) - 2
 
     else:
         idx = len(unit) - len(type) + 1
@@ -126,7 +126,6 @@ def getsiscale(unit, type):
     if not prefix:
         scl = 1.0
     else:
-        prefix = prefix.lower()
         scl = 1.0
 
         if prefix == 'pico' or prefix == 'p':
@@ -143,11 +142,11 @@ def getsiscale(unit, type):
             scl = 1.0
         elif prefix == 'kilo' or prefix == 'k':
             scl = 1.0e3
-        elif prefix == 'mega' or prefix == 'm':
+        elif prefix == 'mega' or prefix == 'M':
             scl = 1.0e6
-        elif prefix == 'giga' or prefix == 'g':
+        elif prefix == 'giga' or prefix == 'G':
             scl = 1.0e9
-        elif prefix == 'tera' or prefix == 't':
+        elif prefix == 'tera' or prefix == 'T':
             scl = 1.0e12
         elif prefix == 'min' or prefix == 'minute':
             scl = 60.0
