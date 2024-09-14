@@ -17,9 +17,12 @@
 modified_kwave_path = R'C:\Users\pjh7\git\k-wave-python'
 slicer_exe = R"C:\Users\pjh7\AppData\Local\NA-MIC\Slicer 5.2.2\Slicer.exe"
 import sys
+
 sys.path.append(modified_kwave_path)
-import openlifu
 import logging
+
+import openlifu
+
 root = logging.getLogger()
 loglevel = logging.INFO
 root.setLevel(loglevel)
@@ -75,6 +78,7 @@ ds['p_max'].sel(lat=-5).plot.imshow()
 # %%
 # Export to .nii.gz
 import nibabel as nb
+
 output_filename = "foo.nii.gz"
 trans_matrix = np.array(
     [[-1,   0,  0, 0],
@@ -96,4 +100,5 @@ im.to_filename(output_filename)
 # %%
 # Load into Slicer
 import slicerio.server
+
 slicerio.server.file_load(output_filename, slicer_executable=slicer_exe)

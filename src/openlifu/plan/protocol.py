@@ -1,8 +1,11 @@
-from dataclasses import dataclass, field, asdict
-from typing import Dict, Any
-from openlifu import bf, sim, seg, xdc, geo
 import json
+from dataclasses import asdict, dataclass, field
+from typing import Any, Dict
+
 import xarray as xa
+
+from openlifu import bf, geo, seg, sim, xdc
+
 
 @dataclass
 class Protocol:
@@ -53,7 +56,7 @@ class Protocol:
 
     @staticmethod
     def from_file(filename):
-        with open(filename, "r") as f:
+        with open(filename) as f:
             d = json.load(f)
         return Protocol.from_dict(d)
 

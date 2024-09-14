@@ -1,5 +1,7 @@
-from openlifu.geo import Point
 import numpy as np
+
+from openlifu.geo import Point
+
 
 def test_point_from_dict():
     point = Point.from_dict({'position' : [10,20,30],})

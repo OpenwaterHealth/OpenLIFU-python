@@ -1,8 +1,10 @@
-from dataclasses import dataclass, field
-from typing import List, Optional
-from openlifu.util.strings import sanitize
 import json
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import List, Optional
+
+from openlifu.util.strings import sanitize
+
 
 @dataclass
 class Subject:
@@ -49,7 +51,7 @@ class Subject:
         :param filename: Name of the file to read
         :returns: Subject object
         """
-        with open(filename, 'r') as f:
+        with open(filename) as f:
             return Subject.from_dict(json.load(f))
 
     def to_dict(self):

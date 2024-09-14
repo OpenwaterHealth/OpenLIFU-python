@@ -1,8 +1,8 @@
-import pytest
 import numpy as np
-from openlifu.util.units import (
-    getsiscale
-)
+import pytest
+
+from openlifu.util.units import getsiscale
+
 
 def test_getsiscale():
     with pytest.raises(ValueError, match="Unknown prefix"):

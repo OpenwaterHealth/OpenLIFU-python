@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from openlifu.geo import Point
+
 from openlifu.bf import focal_patterns
+from openlifu.geo import Point
+
 
 @dataclass
 class FocalPattern(ABC):

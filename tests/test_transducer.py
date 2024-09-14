@@ -1,8 +1,11 @@
-from openlifu import Transducer
-from pathlib import Path
 from dataclasses import fields
+from pathlib import Path
+
 import numpy as np
 import pytest
+
+from openlifu import Transducer
+
 
 @pytest.fixture()
 def example_transducer() -> Transducer:

@@ -151,8 +151,6 @@ ignore = [
 
   "I002", # Missing required import: `from __future__ import annotations`
   "E402", # Module level import not at top of file
-  "I001", # Import block is un-sorted or un-formatted
-  "PTH100", # `os.path.abspath()` should be replaced by `Path.resolve()`
   "ARG002", # Unused method argument: `id`
   "RET504", # Unnecessary assignment to `dist` before `return` statement
   "SIM108", # Use ternary operator `matrix = self.get_matrix(units=units) if transform else np.eye(4)` instead of `if`-`else`-block
@@ -162,44 +160,24 @@ ignore = [
   "G004", # Logging statement uses f-string
   "EM101", # Exception must not use a string literal, assign to variable first
   "PTH123", # `open()` should be replaced by `Path.open()`
-  "PTH118", # `os.path.join()` should be replaced by `Path` with `/` operator
   "PTH207", # Replace `glob` with `Path.glob` or `Path.rglob`
   "PTH122", # `os.path.splitext()` should be replaced by `Path.suffix`, `Path.stem`, and `Path.parent`
   "PTH119", # `os.path.basename()` should be replaced by `Path.name`
   "PTH113", # `os.path.isfile()` should be replaced by `Path.is_file()`
-  "UP015", # Unnecessary open mode parameters
   "RET505", # Unnecessary `else` after `return` statement
   "F821", # Undefined name `pyfus`
   "F841", # Local variable `m` is assigned to but never used
   "PTH111", # `os.path.expanduser()` should be replaced by `Path.expanduser()`
-  "ARG004", # Unused static method argument: `options`
   "RUF009", # Do not perform function call `datetime.now` in dataclass defaults
-  "PLR5501", # Use `elif` instead of `else` then `if`, to reduce indentation
   "B008", # Do not perform function call `np.eye` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
-  "C416", # Unnecessary `list` comprehension (rewrite using `list()`)
-  "F541", # f-string without any placeholders
   "B018", # Found useless expression. Either assign it to a variable or remove it.
   "PLW2901", # `for` loop variable `samples` overwritten by assignment target
-  "T201", # `print` found
-  "SIM102", # Use a single `if` statement instead of nested `if` statements
-  "SIM118", # Use `key not in dict` instead of `key not in dict.keys()`
   "SIM101", # Multiple `isinstance` calls for `d`, merge into a single call
   "RET503", # Missing explicit `return` at the end of function able to return non-`None` value
   "B006", # Do not use mutable data structures for argument defaults
-  "PIE807", # Prefer `dict` over useless lambda
-  "UP008", # Use `super()` instead of `super(__class__, self)`
-  "PTH120", # `os.path.dirname()` should be replaced by `Path.parent`
-  "PTH110", # `os.path.exists()` should be replaced by `Path.exists()`
-  "PTH103", # `os.makedirs()` should be replaced by `Path.mkdir(parents=True)`
-  "SIM114", # Combine `if` branches using logical `or` operator
-  "PIE810", # Call `endswith` once with a `tuple`
-  "UP032", # Use f-string instead of `format` call
-  "EM103", # Exception must not use a `.format()` string directly, assign to variable first
-  "PLW0127", # Self-assignment of variable `idx`
   "PLR1714", # Consider merging multiple comparisons: `prefix in ('deg', 'degree', 'degrees', '\u00b0')`. Use a `set` if the elements are hashable.
   "E741", # Ambiguous variable name: `l`
   "PLW0120", # `else` clause on loop without a `break` statement; remove the `else` and dedent its contents
-  "UP007", # Use `X | Y` for type annotations
   "UP035", # `typing.List` is deprecated, use `list` instead
   "UP006", # Use `list` instead of `List` for type annotation
   "B905", # `zip()` without an explicit `strict=` parameter
@@ -210,6 +188,7 @@ isort.required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["T20"]
+"notebooks/**" = ["T20"]
 "noxfile.py" = ["T20"]
 
 
@@ -234,25 +213,18 @@ messages_control.disable = [
   "no-member",
   "invalid-name",
   "unused-variable",
-  "wrong-import-order",
   "unnecessary-pass",
   "superfluous-parens",
-  "consider-iterating-dictionary",
   "unnecessary-dunder-call",
   "consider-merging-isinstance",
-  "bad-indentation",
   "unnecessary-lambda",
-  "reimported",
   "import-outside-toplevel",
   "undefined-variable",
   "inconsistent-return-statements",
   "arguments-renamed",
-  "ungrouped-imports",
   "too-many-lines",
-  "unnecessary-comprehension",
   "redefined-outer-name",
   "logging-fstring-interpolation",
-  "f-string-without-interpolation",
   "chained-comparison",
   "pointless-statement",
   "consider-using-generator",

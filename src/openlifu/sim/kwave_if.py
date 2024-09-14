@@ -1,19 +1,22 @@
-from openlifu import xdc
-from openlifu.util.units import getunitconversion
+import logging
+from typing import List, Optional
+
 import kwave
 import kwave.data
+import numpy as np
+import xarray as xa
 from kwave.kgrid import kWaveGrid
 from kwave.kmedium import kWaveMedium
-from kwave.options.simulation_options import SimulationOptions
 from kwave.ksensor import kSensor
 from kwave.ksource import kSource
 from kwave.kspaceFirstOrder3D import kspaceFirstOrder3D
 from kwave.options.simulation_execution_options import SimulationExecutionOptions
+from kwave.options.simulation_options import SimulationOptions
 from kwave.utils.kwave_array import kWaveArray
-from typing import List, Optional
-import logging
-import xarray as xa
-import numpy as np
+
+from openlifu import xdc
+from openlifu.util.units import getunitconversion
+
 
 def get_kgrid(coords: xa.Coordinates, t_end = 0, dt = 0, sound_speed_ref=1500):
     scl = getunitconversion(coords['lat'].attrs['units'], 'm')

@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Tuple
 
+
 @dataclass
 class Material:
     id: str = "material"
@@ -29,7 +30,7 @@ class Material:
                 "thermal_conductivity":{"id":"thermal_conductivity",
                                         "name": "Thermal Conductivity",
                                         "units": "W/m/K"}}
-        if param_id not in INFO.keys():
+        if param_id not in INFO:
             raise ValueError(f"Parameter {param_id} not found.")
         return INFO[param_id]
 

@@ -1,13 +1,19 @@
 
-import os
-import json
-import scipy.io
-import logging
-import h5py
 import glob
+import json
+import logging
+import os
+from pathlib import Path
 from typing import Literal, Optional
+
+import h5py
+import scipy.io
+
 from openlifu.plan import Protocol, Solution
-from openlifu.db import Subject, Session
+
+from .session import Session
+from .subject import Subject
+
 OnConflictOpts = Literal['error', 'overwrite', 'skip']
 
 
@@ -205,8 +211,8 @@ class Database:
         raise NotImplementedError("Method not yet implemented")
 
     def get_gridweight_hashes(self, transducer_id):
-        transducer_dir = os.path.join(self.path, 'transducers', transducer_id)
-        gridfiles = glob.glob(os.path.join(transducer_dir, f'{transducer_id}_gridweights_*.h5'))
+        transducer_dir = Path(self.path)/'transducers'/transducer_id
+        gridfiles = glob.glob(Path(transducer_dir)/f'{transducer_id}_gridweights_*.h5')
         return [os.path.splitext(os.path.basename(f))[0].split('_')[-1] for f in gridfiles]
 
     def get_session_table(self, subject_id, options=None):
@@ -225,7 +231,7 @@ class Database:
         connected_system_filename = self.get_connected_system_filename()
 
         if os.path.isfile(connected_system_filename):
-            with open(connected_system_filename, "r") as file:
+            with open(connected_system_filename) as file:
                 connected_systems = file.read().strip().split(',')
             self.logger.info("Connected systems: %s", connected_systems)
             return connected_systems
@@ -237,7 +243,7 @@ class Database:
         connected_transducer_filename = self.get_connected_transducer_filename()
 
         if os.path.isfile(connected_transducer_filename):
-            with open(connected_transducer_filename, "r") as file:
+            with open(connected_transducer_filename) as file:
                 connected_transducer_id = file.read().strip()
             self.logger.info("Connected transducer: %s", connected_transducer_id)
             return connected_transducer_id
@@ -249,7 +255,7 @@ class Database:
         protocols_filename = self.get_protocols_filename()
 
         if os.path.isfile(protocols_filename):
-            with open(protocols_filename, "r") as file:
+            with open(protocols_filename) as file:
                 protocol_data = json.load(file)
                 protocol_ids = protocol_data.get("protocol_ids", [])
             self.logger.info("Protocol IDs: %s", protocol_ids)
@@ -262,7 +268,7 @@ class Database:
         sessions_filename = self.get_sessions_filename(subject_id)
 
         if os.path.isfile(sessions_filename):
-            with open(sessions_filename, "r") as file:
+            with open(sessions_filename) as file:
                 session_data = json.load(file)
                 session_ids = session_data.get("session_ids", [])
             self.logger.info("Session IDs for subject %s: %s", subject_id, session_ids)
@@ -275,7 +281,7 @@ class Database:
         solutions_filename = self.get_solutions_filename(subject_id, session_id)
 
         if os.path.isfile(solutions_filename):
-            with open(solutions_filename, "r") as file:
+            with open(solutions_filename) as file:
                 solution_data = json.load(file)
             solutions = [
                 Solution.from_dict(solution_dict) for solution_dict in solution_data
@@ -290,7 +296,7 @@ class Database:
         subjects_filename = self.get_subjects_filename()
 
         if os.path.isfile(subjects_filename):
-            with open(subjects_filename, "r") as file:
+            with open(subjects_filename) as file:
                 subject_data = json.load(file)
                 subject_ids = subject_data.get("subject_ids", [])
             self.logger.info("Subject IDs: %s", subject_ids)
@@ -303,7 +309,7 @@ class Database:
         systems_filename = self.get_systems_filename()
 
         if os.path.isfile(systems_filename):
-            with open(systems_filename, "r") as file:
+            with open(systems_filename) as file:
                 system_data = json.load(file)
                 system_ids = system_data.get("system_ids", [])
             self.logger.info("System IDs: %s", system_ids)
@@ -317,7 +323,7 @@ class Database:
         system_filename = self.get_system_filename(sys_id)
 
         if os.path.isfile(system_filename):
-            with open(system_filename, "r") as file:
+            with open(system_filename) as file:
                 system_data = json.load(file)
                 system_info = UltrasoundSystem.from_dict(system_data)
             self.logger.info("System info for system %s: %s", sys_id, system_info)
@@ -330,7 +336,7 @@ class Database:
         transducers_filename = self.get_transducers_filename()
 
         if os.path.isfile(transducers_filename):
-            with open(transducers_filename, "r") as file:
+            with open(transducers_filename) as file:
                 transducer_data = json.load(file)
                 transducer_ids = transducer_data.get("transducer_ids", [])
             if not isinstance(transducer_ids, list):
@@ -410,7 +416,7 @@ class Database:
     def load_all_protocols(self):
         protocols_filename = self.get_protocols_filename()
         if os.path.isfile(protocols_filename):
-            with open(protocols_filename, 'r') as file:
+            with open(protocols_filename) as file:
                 data = json.load(file)
                 protocol_ids = data.get('protocol_ids', [])
             protocols = []
@@ -437,7 +443,7 @@ class Database:
     def load_session_info(self, subject_id, session_id):
         session_filename = self.get_session_filename(subject_id, session_id)
         if os.path.isfile(session_filename):
-            with open(session_filename, 'r') as file:
+            with open(session_filename) as file:
                 session_data = json.load(file)
             self.logger.info(f"Loaded session info for session {session_id} of subject {subject_id}")
             return session_data
@@ -452,7 +458,7 @@ class Database:
 
         if os.path.isfile(solution_filename_json) and os.path.isfile(solution_filename_mat):
             # Load from JSON file
-            with open(solution_filename_json, "r") as json_file:
+            with open(solution_filename_json) as json_file:
                 json_data = json.load(json_file)
 
             # Load from MAT file
@@ -481,64 +487,64 @@ class Database:
             f.write(trans_id)
 
     def get_connected_system_filename(self):
-        return os.path.join(self.path, "systems", "connected_system.txt")
+        return Path(self.path) / "systems" / "connected_system.txt"
 
     def get_connected_transducer_filename(self):
-        return os.path.join(self.path, 'transducers', 'connected_transducer.txt')
+        return Path(self.path) / 'transducers' / 'connected_transducer.txt'
 
     def get_gridweights_filename(self, transducer_id, grid_hash):
-        return os.path.join(self.path, 'transducers', transducer_id, f'{transducer_id}_gridweights_{grid_hash}.h5')
+        return Path(self.path) / 'transducers' / transducer_id / f'{transducer_id}_gridweights_{grid_hash}.h5'
 
     def get_protocols_filename(self):
-        return os.path.join(self.path, 'protocols', 'protocols.json')
+        return Path(self.path) / 'protocols' / 'protocols.json'
 
     def get_protocol_filename(self, protocol_id):
-        return os.path.join(self.path, 'protocols', protocol_id, f'{protocol_id}.json')
+        return Path(self.path) / 'protocols' / protocol_id / f'{protocol_id}.json'
 
     def get_session_dir(self, subject_id, session_id):
-        return os.path.join(self.get_subject_dir(subject_id), 'sessions', session_id)
+        return Path(self.get_subject_dir(subject_id)) / 'sessions' / session_id
 
     def get_session_filename(self, subject_id, session_id):
-        return os.path.join(self.get_session_dir(subject_id, session_id), f'{session_id}.json')
+        return Path(self.get_session_dir(subject_id, session_id)) / f'{session_id}.json'
 
     def get_sessions_filename(self, subject_id):
-        return os.path.join(self.get_subject_dir(subject_id), 'sessions', 'sessions.json')
+        return Path(self.get_subject_dir(subject_id)) / 'sessions' / 'sessions.json'
 
     def get_solution_filename(self, subject_id, session_id, protocol_id, target_id, ext='mat'):
         session_dir = self.get_session_dir(subject_id, session_id)
-        return os.path.join(session_dir, 'solutions', protocol_id, f'{target_id}.{ext}')
+        return Path(session_dir) / 'solutions' / protocol_id / f'{target_id}.{ext}'
 
     def get_solutions_filename(self, subject_id, session_id):
         session_dir = self.get_session_dir(subject_id, session_id)
-        return os.path.join(session_dir, 'solutions', 'solutions.json')
+        return Path(session_dir) / 'solutions' / 'solutions.json'
 
     def get_standoff_filename(self, transducer_id, standoff_id='standoff'):
-        return os.path.join(self.path, 'transducers', transducer_id, f'{standoff_id}.json')
+        return Path(self.path) / 'transducers' / transducer_id / f'{standoff_id}.json'
 
     def get_subject_dir(self, subject_id):
-        return os.path.join(self.path, 'subjects', subject_id)
+        return Path(self.path) / 'subjects' / subject_id
 
     def get_subject_filename(self, subject_id):
-        return os.path.join(self.get_subject_dir(subject_id), f'{subject_id}.json')
+        return Path(self.get_subject_dir(subject_id)) / f'{subject_id}.json'
 
     def get_subjects_filename(self):
-        return os.path.join(self.path, 'subjects', 'subjects.json')
+        return Path(self.path) / 'subjects' / 'subjects.json'
 
     def get_systems_filename(self):
-        return os.path.join(self.path, 'systems', 'systems.json')
+        return Path(self.path) / 'systems' / 'systems.json'
 
     def get_system_filename(self, system_id):
-        return os.path.join(self.path, 'systems', system_id, f'{system_id}.json')
+        return Path(self.path) / 'systems' / system_id / f'{system_id}.json'
 
     def get_transducer_filename(self, transducer_id):
-        return os.path.join(self.path, 'transducers', transducer_id, f'{transducer_id}.json')
+        return Path(self.path) / 'transducers' / transducer_id / f'{transducer_id}.json'
 
     def get_transducers_filename(self):
-        return os.path.join(self.path, 'transducers', 'transducers.json')
+        return Path(self.path) / 'transducers' / 'transducers.json'
 
     def get_volume_filename(self, subject_id, volume_id):
         subject_dir = self.get_subject_dir(subject_id)
-        return os.path.join(subject_dir, 'volumes', f'{volume_id}.mat')
+        return Path(subject_dir) / 'volumes' / f'{volume_id}.mat'
 
     def write_protocol_ids(self, protocol_ids):
         protocol_data = {'protocol_ids': protocol_ids}
@@ -574,10 +580,10 @@ class Database:
         return os.path.expanduser("~")
 
     @staticmethod
-    def get_default_path(options=None):
+    def get_default_path():
         """
         Get the default path for the database
 
         :returns: Default path for the database
         """
-        return os.path.join(Database.get_default_user_dir(), "Documents", "db")
+        return Path(Database.get_default_user_dir()) / "Documents" / "db"

@@ -13,9 +13,10 @@ copyright = '2023, Openwater'
 author = 'Openwater'
 version = release = importlib.metadata.version("openlifu")
 
-import os
 import sys
-sys.path.insert(0, os.path.abspath('..'))
+from pathlib import Path
+
+sys.path.insert(0, Path('..').resolve())
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

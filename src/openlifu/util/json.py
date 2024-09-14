@@ -1,12 +1,15 @@
 import json
-import os
+from pathlib import Path
+
 import numpy as np
-from openlifu.geo import Point
-from openlifu.xdc.transducer import Transducer
-from openlifu.xdc.element import Element
-from openlifu.seg.material import Material
+
 from openlifu.db.session import Session
 from openlifu.db.subject import Subject
+from openlifu.geo import Point
+from openlifu.seg.material import Material
+from openlifu.xdc.element import Element
+from openlifu.xdc.transducer import Transducer
+
 
 class PYFUSEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -28,11 +31,11 @@ class PYFUSEncoder(json.JSONEncoder):
             return obj.to_dict()
         if isinstance(obj, Subject):
             return obj.to_dict()
-        return super(PYFUSEncoder, self).default(obj)
+        return super().default(obj)
 
 def to_json(obj, filename):
-    dirname = os.path.dirname(filename)
-    if dirname and not os.path.exists(dirname):
-        os.makedirs(dirname)
+    dirname = Path(filename)
+    if dirname and not dirname.exists():
+        dirname.mkdir(parents=True)
     with open(filename, 'w') as file:
         json.dump(obj, file, cls=PYFUSEncoder, indent=4)

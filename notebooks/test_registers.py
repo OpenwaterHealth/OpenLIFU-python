@@ -14,8 +14,17 @@
 # ---
 
 # %%
-from openlifu.io.ustx import PulseProfile, DelayProfile, TxModule, Tx7332Registers, print_regs, TxArray, swap_byte_order
 import numpy as np
+
+from openlifu.io.ustx import (
+    DelayProfile,
+    PulseProfile,
+    Tx7332Registers,
+    TxArray,
+    TxModule,
+    print_regs,
+    swap_byte_order,
+)
 
 # %%
 tx = Tx7332Registers()

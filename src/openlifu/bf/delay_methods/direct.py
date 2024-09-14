@@ -1,10 +1,13 @@
 from dataclasses import dataclass
-import xarray as xa
-import numpy as np
-from openlifu.xdc import Transducer
-from openlifu.geo import Point
-from openlifu.bf.delay_methods import DelayMethod
 from typing import Optional
+
+import numpy as np
+import xarray as xa
+
+from openlifu.bf.delay_methods import DelayMethod
+from openlifu.geo import Point
+from openlifu.xdc import Transducer
+
 
 @dataclass
 class Direct(DelayMethod):

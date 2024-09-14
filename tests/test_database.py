@@ -1,7 +1,10 @@
-from openlifu.db import Session, Database, Subject
-from pathlib import Path
-import pytest
 import shutil
+from pathlib import Path
+
+import pytest
+
+from openlifu.db import Database, Session, Subject
+
 
 @pytest.fixture()
 def example_database(tmp_path:Path) -> Database:

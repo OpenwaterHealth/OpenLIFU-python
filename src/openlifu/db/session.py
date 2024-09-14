@@ -1,11 +1,13 @@
-from dataclasses import dataclass, field
-from typing import Optional, List, Dict, TYPE_CHECKING
-from datetime import datetime
-from openlifu.geo import Point
-from openlifu.xdc import Transducer
-from openlifu.util.strings import sanitize
-import numpy as np
 import json
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import TYPE_CHECKING, Dict, List, Optional
+
+import numpy as np
+
+from openlifu.geo import Point
+from openlifu.util.strings import sanitize
+from openlifu.xdc import Transducer
 
 if TYPE_CHECKING:
     from openlifu import Database
@@ -63,7 +65,7 @@ class Session:
         :param db: Database object
         :returns: Session object
         """
-        with open(filename, 'r') as f:
+        with open(filename) as f:
             return Session.from_dict(json.load(f), db)
 
     @staticmethod
@@ -90,19 +92,17 @@ class Session:
         if isinstance(d['targets'], list):
             if len(d['targets'])>0 and isinstance(d['targets'][0], dict):
                 d['targets'] = [Point.from_dict(p) for p in d['targets']]
-        else:
-            if isinstance(d['targets'], dict):
-                d['targets'] = [Point.from_dict(d['targets'])]
-            elif isinstance(d['targets'], Point):
-                d['targets'] = [d['targets']]
+        elif isinstance(d['targets'], dict):
+            d['targets'] = [Point.from_dict(d['targets'])]
+        elif isinstance(d['targets'], Point):
+            d['targets'] = [d['targets']]
         if isinstance(d['markers'], list):
             if len(d['markers'])>0 and isinstance(d['markers'][0], dict):
                 d['markers'] = [Point.from_dict(p) for p in d['markers']]
-        else:
-            if isinstance(d['markers'], dict):
-                d['markers'] = [Point.from_dict(d['markers'])]
-            elif isinstance(d['markers'], Point):
-                d['markers'] = [d['markers']]
+        elif isinstance(d['markers'], dict):
+            d['markers'] = [Point.from_dict(d['markers'])]
+        elif isinstance(d['markers'], Point):
+            d['markers'] = [d['markers']]
         return Session(**d)
 
     def to_dict(self):

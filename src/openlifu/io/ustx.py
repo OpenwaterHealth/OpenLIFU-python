@@ -1,8 +1,10 @@
-from dataclasses import dataclass, field
-from typing import Tuple, Optional, List, Dict, Literal
-from openlifu.util.units import getunitconversion
-import numpy as np
 import logging
+from dataclasses import dataclass, field
+from typing import Dict, List, Literal, Optional, Tuple
+
+import numpy as np
+
+from openlifu.util.units import getunitconversion
 
 NUM_TRANSMITTERS = 2
 ADDRESS_GLOBAL_MODE = 0x0
@@ -35,8 +37,8 @@ ADDRESSES_GLOBAL = [ADDRESS_GLOBAL_MODE,
                     ADDRESS_PATTERN_SEL_G2,
                     ADDRESS_TRSW,
                     ADDRESS_APODIZATION]
-ADDRESSES_DELAY_DATA = [i for i in range(0x20, 0x11F+1)]
-ADDRESSES_PATTERN_DATA = [i for i in range(0x120, 0x19F+1)]
+ADDRESSES_DELAY_DATA = list(range(0x20, 0x11F+1))
+ADDRESSES_PATTERN_DATA = list(range(0x120, 0x19F+1))
 ADDRESSES = ADDRESSES_GLOBAL + ADDRESSES_DELAY_DATA + ADDRESSES_PATTERN_DATA
 NUM_CHANNELS = 32
 MAX_REGISTER = 0x19F
@@ -63,13 +65,13 @@ for row, channels in enumerate(DELAY_ORDER):
     for i, channel in enumerate(channels):
         DELAY_CHANNEL_MAP[channel] = {'row': row, 'lsb': 16*(1-i)}
 DELAY_PROFILE_OFFSET = 16
-VALID_DELAY_PROFILES = [i for i in range(1, 17)]
+VALID_DELAY_PROFILES = list(range(1, 17))
 DELAY_WIDTH = 13
 APODIZATION_CHANNEL_ORDER = [17, 19, 21, 23, 25, 27, 29, 31, 18, 20, 22, 24, 26, 28, 30, 32, 1, 3, 5, 7, 9, 11, 13, 15, 2, 4, 6, 8, 10, 12, 14, 16]
 DEFAULT_PATTERN_DUTY_CYCLE = 0.66
 PATTERN_PROFILE_OFFSET = 4
 NUM_PATTERN_PROFILES = 32
-VALID_PATTERN_PROFILES = [i for i in range(1, NUM_PATTERN_PROFILES+1)]
+VALID_PATTERN_PROFILES = list(range(1, NUM_PATTERN_PROFILES+1))
 MAX_PATTERN_PERIODS = 16
 PATTERN_PERIOD_ORDER = [[1, 2, 3, 4],
                  [5, 6, 7, 8],
@@ -156,12 +158,12 @@ def calc_pulse_pattern(frequency:float, duty_cycle:float=DEFAULT_PATTERN_DUTY_CY
         second_half_period_samples = period_samples - first_half_period_samples
         first_on_samples = int(first_half_period_samples * duty_cycle)
         if first_on_samples < 2:
-            logging.warning(f"Duty cycle too short. Setting to minimum of 2 samples")
+            logging.warning("Duty cycle too short. Setting to minimum of 2 samples")
             first_on_samples = 2
         first_off_samples = first_half_period_samples - first_on_samples
         second_on_samples = max(2, int(second_half_period_samples * duty_cycle))
         if second_on_samples < 2:
-            logging.warning(f"Duty cycle too short. Setting to minimum of 2 samples")
+            logging.warning("Duty cycle too short. Setting to minimum of 2 samples")
             second_on_samples = 2
         second_off_samples = second_half_period_samples - second_on_samples
         if first_off_samples > 0 and first_off_samples < 2:
@@ -222,9 +224,9 @@ def print_regs(d):
     for addr, val in sorted(d.items()):
         if isinstance(val, list):
             for i, v in enumerate(val):
-                print(f'0x{addr:X}[+{i:d}]:x{v:08X}')
+                print(f'0x{addr:X}[+{i:d}]:x{v:08X}') # noqa: T201
         else:
-            print(f'0x{addr:X}:x{val:08X}')
+            print(f'0x{addr:X}:x{val:08X}') # noqa: T201
 
 def pack_registers(regs, pack_single:bool=False):
     """
@@ -308,16 +310,14 @@ class Tx7332Registers:
     def __post_init__(self):
         delay_profiles = self.configured_delay_profiles()
         if len(delay_profiles) != len(set(delay_profiles)):
-            raise ValueError(f"Duplicate delay profiles found")
-        if self.active_delay_profile is not None:
-            if self.active_delay_profile not in delay_profiles:
-                raise ValueError(f"Delay profile {self.active_delay_profile} not found")
+            raise ValueError("Duplicate delay profiles found")
+        if self.active_delay_profile is not None and self.active_delay_profile not in delay_profiles:
+            raise ValueError(f"Delay profile {self.active_delay_profile} not found")
         pulse_profiles = self.configured_pulse_profiles()
         if len(pulse_profiles) != len(set(pulse_profiles)):
-            raise ValueError(f"Duplicate pulse profiles found")
-        if self.active_pulse_profile is not None:
-            if self.active_pulse_profile not in pulse_profiles:
-                raise ValueError(f"Pulse profile {self.active_pulse_profile} not found")
+            raise ValueError("Duplicate pulse profiles found")
+        if self.active_pulse_profile is not None and self.active_pulse_profile not in pulse_profiles:
+            raise ValueError(f"Pulse profile {self.active_pulse_profile} not found")
 
     def add_delay_profile(self, delay_profile: DelayProfile, activate: Optional[bool]=None):
         if delay_profile.num_elements != NUM_CHANNELS:
@@ -434,7 +434,7 @@ class Tx7332Registers:
             t = np.arange(len(y))*(1/clk_n)
             elastic_mode = 1
             if elastic_repeat > MAX_ELASTIC_REPEAT:
-                raise ValueError(f"Pattern duration too long for elastic repeat")
+                raise ValueError("Pattern duration too long for elastic repeat")
         else:
             repeat = cycles-1
             elastic_repeat = 0
@@ -500,13 +500,13 @@ class Tx7332Registers:
 
     def get_registers(self, profiles: ProfileOpts = "configured", pack: bool=False, pack_single: bool=False) -> Dict[int,int]:
         if len(self._delay_profiles_list) == 0:
-            raise ValueError(f"No delay profiles have been configured")
+            raise ValueError("No delay profiles have been configured")
         if len(self._pulse_profiles_list) == 0:
-            raise ValueError(f"No pulse profiles have been configured")
+            raise ValueError("No pulse profiles have been configured")
         if self.active_delay_profile is None:
-            raise ValueError(f"No delay profile activated")
+            raise ValueError("No delay profile activated")
         if self.active_pulse_profile is None:
-            raise ValueError(f"No pulse profile activated")
+            raise ValueError("No pulse profile activated")
         registers = {addr:0x0 for addr in ADDRESSES_GLOBAL}
         registers.update(self.get_delay_control_registers())
         registers.update(self.get_pulse_control_registers())
@@ -781,7 +781,7 @@ class TxArray:
 
     def __post_init__(self):
         if len(set(self.i2c_addresses)) != len(self.i2c_addresses):
-            raise ValueError(f"Duplicate I2C addresses found")
+            raise ValueError("Duplicate I2C addresses found")
         self.modules = {addr:TxModule(i2c_addr=addr, bf_clk=self.bf_clk, num_transmitters=self.num_transmitters) for addr in self.i2c_addresses}
         self.num_modules = len(self.modules)
 

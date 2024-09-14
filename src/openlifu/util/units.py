@@ -8,17 +8,15 @@ def getunittype(unit):
         return 'angle'
     elif 'sec' in unit:
         return 'time'
-    elif 'meter' in unit:
-        return 'distance'
-    elif 'micron' in unit:
+    elif 'meter' in unit or 'micron' in unit:
         return 'distance'
     elif unit.endswith('s'):
         return 'time'
     elif unit.endswith('m'):
         return 'distance'
-    elif unit.endswith('m2') or unit.endswith('m^2'):
+    elif unit.endswith(('m2', 'm^2')):
         return 'area'
-    elif unit.endswith('m3') or unit.endswith('m^3'):
+    elif unit.endswith(('m3', 'm^3')):
         return 'volume'
     elif unit.endswith('hz'):
         return 'frequency'
@@ -46,7 +44,7 @@ def getunitconversion(from_unit, to_unit, unitratio=None, constant=None):
         elif type0 == type1:
             scl = getunitconversion(from_unit, to_unit)
         else:
-            raise ValueError('Unit type mismatch {} -> ({}/{}) -> {}'.format(type0, typen, typed, type1))
+            raise ValueError(f'Unit type mismatch {type0} -> ({typen}/{typed}) -> {type1}')
     else:
         slash0 = from_unit.find('/')
         slash1 = to_unit.find('/')
@@ -62,11 +60,11 @@ def getunitconversion(from_unit, to_unit, unitratio=None, constant=None):
             type1 = getunittype(to_unit)
 
             if type0 != type1:
-                raise ValueError('Unit type mismatch ({}) vs ({})'.format(type0, type1))
+                raise ValueError(f'Unit type mismatch ({type0}) vs ({type1})')
 
             if type0 == 'other':
                 if from_unit[-1] != to_unit[-1]:
-                    raise ValueError('Cannot convert {} to {}'.format(from_unit, to_unit))
+                    raise ValueError(f'Cannot convert {from_unit} to {to_unit}')
 
                 i = 0
                 while i < min(len(from_unit), len(to_unit)) and from_unit[-i:] == to_unit[-i:]:
@@ -81,7 +79,7 @@ def getunitconversion(from_unit, to_unit, unitratio=None, constant=None):
                 scl1 = getsiscale(to_unit, type0)
                 scl = scl0 / scl1
         else:
-            raise ValueError('Unit ratio mismatch ({} vs {})'.format(from_unit, to_unit))
+            raise ValueError(f'Unit ratio mismatch ({from_unit} vs {to_unit})')
 
     return scl
 
@@ -120,7 +118,6 @@ def getsiscale(unit, type):
     else:
         idx = len(unit) - len(type) + 1
 
-    idx = idx
     prefix = unit[:idx]
 
     if not prefix:
@@ -158,9 +155,8 @@ def getsiscale(unit, type):
             scl = 1.0
         elif prefix == 'deg' or prefix == 'degree' or prefix == 'degrees' or prefix == '\u00b0':
             scl = 2 * 3.14159265358979323846 / 360
-        else:
-            if prefix:
-                raise ValueError('Unknown prefix {}'.format(prefix))
+        elif prefix:
+            raise ValueError(f'Unknown prefix {prefix}')
 
     if type == 'area':
         scl = scl ** 2.0

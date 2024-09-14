@@ -1,8 +1,7 @@
 from .apodmethod import ApodizationMethod
-from .uniform import Uniform
 from .maxangle import MaxAngle
 from .piecewiselinear import PiecewiseLinear
-
+from .uniform import Uniform
 
 __all__ = [
     "ApodizationMethod",

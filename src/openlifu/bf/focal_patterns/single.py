@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+
 from openlifu.bf.focal_patterns import FocalPattern
 from openlifu.geo import Point
+
 
 @dataclass
 class SinglePoint(FocalPattern):
