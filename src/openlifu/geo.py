@@ -1,10 +1,13 @@
-from typing import Any, Tuple, Optional, Dict
-import numpy as np
-from dataclasses import dataclass, field
-from openlifu.util.units import getunitconversion
 import copy
-import vtk
 import json
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional, Tuple
+
+import numpy as np
+import vtk
+
+from openlifu.util.units import getunitconversion
+
 
 @dataclass
 class Point:

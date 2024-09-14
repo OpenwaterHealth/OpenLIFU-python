@@ -1,7 +1,10 @@
-from openlifu import Point
+from dataclasses import fields
+
 import numpy as np
 import pytest
-from dataclasses import fields
+
+from openlifu import Point
+
 
 @pytest.fixture()
 def example_point() -> Point:

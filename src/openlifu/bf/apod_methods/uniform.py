@@ -1,9 +1,12 @@
 from dataclasses import dataclass
-import xarray as xa
+
 import numpy as np
-from openlifu.xdc import Transducer
-from openlifu.geo import Point
+import xarray as xa
+
 from openlifu.bf.apod_methods import ApodizationMethod
+from openlifu.geo import Point
+from openlifu.xdc import Transducer
+
 
 @dataclass
 class Uniform(ApodizationMethod):

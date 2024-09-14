@@ -1,7 +1,10 @@
 from dataclasses import dataclass
+
+import numpy as np
+
 from openlifu.bf.focal_patterns import FocalPattern
 from openlifu.geo import Point
-import numpy as np
+
 
 @dataclass
 class Wheel(FocalPattern):

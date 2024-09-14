@@ -1,13 +1,17 @@
 
-import numpy as np
-from openlifu.util.units import getunitconversion
-from dataclasses import dataclass, field
-from typing import Dict, Any, Tuple
-import vtk
-import logging
-import json
 import copy
+import json
+import logging
+from dataclasses import dataclass, field
+from typing import Any, Dict, Tuple
+
+import numpy as np
+import vtk
+
+from openlifu.util.units import getunitconversion
+
 from .element import Element
+
 
 @dataclass
 class Transducer:
@@ -17,7 +21,7 @@ class Transducer:
     frequency: float = 400.6e3
     units: str = "m"
     matrix: np.ndarray = field(default_factory=lambda: np.eye(4))
-    attrs: Dict[str, Any] = field(default_factory= lambda: {})
+    attrs: Dict[str, Any] = field(default_factory= dict)
 
     def __post_init__(self):
         logging.info("Initializing transducer array")
@@ -189,7 +193,7 @@ class Transducer:
 
     @staticmethod
     def from_file(filename):
-        with open(filename, 'r') as file:
+        with open(filename) as file:
             data = json.load(file)
         return Transducer.from_dict(data)
 

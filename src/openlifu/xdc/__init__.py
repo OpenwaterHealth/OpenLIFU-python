@@ -1,5 +1,4 @@
-from . import element
-from . import transducer
+from . import element, transducer
 from .element import Element
 from .transducer import Transducer
 

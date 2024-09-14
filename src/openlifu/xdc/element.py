@@ -1,8 +1,11 @@
-import numpy as np
-from openlifu.util.units import getunitconversion
-from dataclasses import dataclass, field
-from collections.abc import Iterable
 import copy
+from collections.abc import Iterable
+from dataclasses import dataclass, field
+
+import numpy as np
+
+from openlifu.util.units import getunitconversion
+
 
 def matrix2xyz(matrix):
     x = matrix[0, 3]

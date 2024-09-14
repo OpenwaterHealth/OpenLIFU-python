@@ -1,11 +1,14 @@
-from dataclasses import dataclass, field, asdict
-from abc import abstractmethod
-from typing import Optional
-from openlifu.seg.material import Material, MATERIALS
-import xarray as xa
-import numpy as np
 import copy
+from abc import abstractmethod
+from dataclasses import asdict, dataclass, field
+from typing import Optional
+
+import numpy as np
+import xarray as xa
+
 from openlifu.seg import seg_methods
+from openlifu.seg.material import MATERIALS, Material
+
 
 @dataclass
 class SegmentationMethod:
@@ -13,7 +16,7 @@ class SegmentationMethod:
     ref_material: str = "water"
 
     def __post_init__(self):
-        if self.ref_material not in self.materials.keys():
+        if self.ref_material not in self.materials:
             raise ValueError(f"Reference material {self.ref_material} not found.")
     @abstractmethod
     def _segment(self, volume: xa.DataArray):
@@ -22,13 +25,12 @@ class SegmentationMethod:
     @staticmethod
     def from_dict(d):
         if isinstance(d, str):
-            import openlifu.seg.seg_methods
             if d == "water":
-                return openlifu.seg.seg_methods.Water()
+                return seg_methods.Water()
             elif d == "tissue":
-                return openlifu.seg.seg_methods.Tissue()
+                return seg_methods.Tissue()
             elif d == "segmented":
-                return openlifu.seg.seg_methods.SegmentMRI()
+                return seg_methods.SegmentMRI()
         else:
             d = copy.deepcopy(d)
             short_classname = d.pop("class")
@@ -68,16 +70,16 @@ class SegmentationMethod:
         return params
 
     def ref_params(self, coords: xa.Coordinates):
-       seg = self._ref_segment(coords)
-       params = self._map_params(seg)
-       return params
+        seg = self._ref_segment(coords)
+        params = self._map_params(seg)
+        return params
 
     def _ref_segment(self, coords: xa.Coordinates):
-       material_dict = self._material_indices()
-       m_idx = material_dict[self.ref_material]
-       sz = list(coords.sizes.values())
-       seg = xa.DataArray(np.full(sz, m_idx, dtype=int), coords=coords)
-       return seg
+        material_dict = self._material_indices()
+        m_idx = material_dict[self.ref_material]
+        sz = list(coords.sizes.values())
+        seg = xa.DataArray(np.full(sz, m_idx, dtype=int), coords=coords)
+        return seg
 
     def to_dict(self):
         d = asdict(self)
@@ -87,4 +89,4 @@ class SegmentationMethod:
 @dataclass
 class UniformSegmentation(SegmentationMethod):
     def _segment(self, vol: xa.DataArray):
-       return self._ref_segment(vol.coords)
+        return self._ref_segment(vol.coords)

@@ -21,8 +21,9 @@
 # Also, if you are using the original version, import `openlifu` takes _way_ longer (45s on my PC), presumably hanging on `import kwave`. For some reason, it wants to re-download the binaries every time, even though they are already present in the the installation directory. I've opened an issue on this: https://github.com/waltsims/k-wave-python/issues/366.
 
 # %%
-import sys
 import logging
+import sys
+
 root = logging.getLogger()
 loglevel = logging.DEBUG
 root.setLevel(loglevel)
@@ -31,8 +32,9 @@ handler.setLevel(loglevel)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 root.addHandler(handler)
-import openlifu
 import numpy as np
+
+import openlifu
 
 # %% [markdown]
 # We'll start by generating a transducer and drawing it using some vtk-based methods
@@ -97,6 +99,7 @@ ds
 
 # %%
 import nibabel as nb
+
 p_min = ds['p_min'].data
 coords = ds['p_min'].coords
 affine = np.eye(3) * np.array([float(np.diff(coords[x][:2])) for x in coords])
@@ -109,6 +112,7 @@ nb.Nifti1Image(p_min, affine).to_filename("p_min.nii.gz")
 
 # %%
 import vtk
+
 arr_actor = arr.get_actor(units="mm")
 renderWindow = vtk.vtkRenderWindow()
 renderer = vtk.vtkRenderer()

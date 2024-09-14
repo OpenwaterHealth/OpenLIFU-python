@@ -1,6 +1,9 @@
-from openlifu import Protocol
 from pathlib import Path
+
 import pytest
+
+from openlifu import Protocol
+
 
 @pytest.fixture()
 def example_protocol() -> Protocol:

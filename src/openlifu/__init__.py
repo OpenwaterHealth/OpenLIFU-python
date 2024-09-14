@@ -6,54 +6,36 @@ openlifu: Openwater Focused Ultrasound Toolkit
 
 from __future__ import annotations
 
-from ._version import version as __version__
+from openlifu.bf import (
+    ApodizationMethod,
+    DelayMethod,
+    FocalPattern,
+    Pulse,
+    Sequence,
+    apod_methods,
+    delay_methods,
+    focal_patterns,
+)
+from openlifu.db import Database
 
 #from . import bf, db, io, plan, seg, sim, xdc, geo
-
-
-from openlifu.geo import (
-    Point
-)
-
-from openlifu.xdc import (
-    Transducer
-)
-
-from openlifu.plan import (
-    Protocol,
-    Solution
-)
-
+from openlifu.geo import Point
+from openlifu.plan import Protocol, Solution
 from openlifu.seg import (
+    AIR,
+    MATERIALS,
+    SKULL,
+    STANDOFF,
+    TISSUE,
+    WATER,
     Material,
     SegmentationMethod,
     seg_methods,
-    MATERIALS,
-    WATER,
-    TISSUE,
-    SKULL,
-    AIR,
-    STANDOFF
 )
+from openlifu.sim import SimSetup
+from openlifu.xdc import Transducer
 
-from openlifu.bf import (
-    DelayMethod,
-    ApodizationMethod,
-    Pulse,
-    Sequence,
-    FocalPattern,
-    focal_patterns,
-    delay_methods,
-    apod_methods
-)
-
-from openlifu.sim import (
-    SimSetup
-)
-
-from openlifu.db import (
-    Database
-)
+from ._version import version as __version__
 
 __all__ = [
     "Point",

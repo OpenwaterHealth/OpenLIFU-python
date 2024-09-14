@@ -1,5 +1,5 @@
-from typing import Literal
 import re
+from typing import Literal
 
 Cases = Literal['lower', 'upper', 'same', 'snake', 'camel', 'pascal', 'cobra', 'title', 'sentence']
 

@@ -1,5 +1,7 @@
-from openlifu.seg import SegmentationMethod, Material
 import pytest
+
+from openlifu.seg import Material, SegmentationMethod
+
 
 @pytest.fixture()
 def example_seg_method() -> SegmentationMethod:

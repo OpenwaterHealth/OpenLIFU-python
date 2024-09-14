@@ -1,10 +1,13 @@
+import logging
 from dataclasses import dataclass, field
 from typing import Optional, Tuple
+
 import numpy as np
 import xarray as xa
-import logging
+
 from openlifu.util.units import getunitconversion
 from openlifu.xdc import Transducer
+
 
 @dataclass
 class SimSetup:
@@ -19,7 +22,7 @@ class SimSetup:
     t_end: float = 0.
     c0: float = 1500.0
     cfl: float = 0.5
-    options: dict = field(default_factory=lambda: {})
+    options: dict = field(default_factory=dict)
 
     def __post_init__(self):
         if len(self.dims) != 3:

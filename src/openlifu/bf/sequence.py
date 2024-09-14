@@ -1,5 +1,7 @@
-import pandas as pd
 from dataclasses import dataclass
+
+import pandas as pd
+
 
 @dataclass
 class Sequence:

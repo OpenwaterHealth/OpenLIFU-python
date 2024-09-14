@@ -1,6 +1,9 @@
 from dataclasses import dataclass
-from openlifu.seg.seg_methods.seg_method import SegmentationMethod
+
 import xarray as xa
+
+from openlifu.seg.seg_methods.seg_method import SegmentationMethod
+
 
 @dataclass
 class SegmentMRI(SegmentationMethod):
