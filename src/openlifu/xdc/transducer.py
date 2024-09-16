@@ -195,7 +195,8 @@ class Transducer:
     def from_dict(d, **kwargs):
         d = d.copy()
         d["elements"] = Element.from_dict(d["elements"])
-        d["matrix"] = np.array(d["matrix"])
+        if 'matrix' in d:
+            d["matrix"] = np.array(d["matrix"])
         return Transducer(**d, **kwargs)
 
     @staticmethod
