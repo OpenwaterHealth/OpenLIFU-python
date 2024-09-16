@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, TYPE_CHECKING
+from typing import Optional, List, Dict, Any, TYPE_CHECKING
 from datetime import datetime
 from openlifu.geo import Point
 from openlifu.xdc import Transducer
@@ -24,7 +24,8 @@ class Session:
     targets: sonication targets
     markers: registration markers
     volume: loaded volume data
-    transducer: transducer
+    transducer_id: transducer
+    array_transform : transform matrix for transducer
     attrs: Dictionary of attributes
     date_modified: Date of last modification
     """
@@ -36,7 +37,8 @@ class Session:
     markers: List[Point] = field(default_factory=list)
     volume: Optional[xarray.DataArray] = None
     volume_id: Optional[str] = None
-    transducer: Transducer = field(default_factory=Transducer)
+    transducer_id: str = ""
+    array_transform: Dict[str, Any]
     attrs: dict = field(default_factory=dict)
     date_modified: datetime = datetime.now()
 
@@ -88,12 +90,10 @@ class Session:
                 d['volume_id'] = d['volume']
                 # If we kept this key then it would assign a string to the volume attribute, which is the wrong type:
                 d.pop('volume')
-        if isinstance(d['transducer_id'], str):
-            transducer_id = d['transducer_id']
-            transducer  = Transducer.from_file(db.get_transducer_filename(transducer_id))
+        # if isinstance(d['transducer_id'], str):
+        #     transducer_id = d['transducer_id']
         if isinstance(d["array_transform"], dict):
-            transducer.matrix = np.array(d['array_transform']["matrix"])
-            d['transducer'] = transducer
+            d['array_transform'] = np.array(d['array_transform']["matrix"])
         if isinstance(d['targets'], list):
             if len(d['targets'])>0 and isinstance(d['targets'][0], dict):
                 d['targets'] = [Point.from_dict(p) for p in d['targets']]
