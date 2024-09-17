@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Optional
 
+import numpy as np
 import xarray as xa
 
 from openlifu.bf import apod_methods
@@ -11,7 +13,7 @@ from openlifu.xdc import Transducer
 @dataclass
 class ApodizationMethod(ABC):
     @abstractmethod
-    def calc_apodization(self, arr: Transducer, target: Point, params: xa.Dataset, transform: bool = True):
+    def calc_apodization(self, arr: Transducer, target: Point, params: xa.Dataset, transform:Optional[np.ndarray]=None):
         pass
 
     def to_dict(self):

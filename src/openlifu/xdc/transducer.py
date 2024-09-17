@@ -3,7 +3,7 @@ import copy
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import vtk
@@ -20,14 +20,12 @@ class Transducer:
     elements: Tuple[Element] = ()
     frequency: float = 400.6e3
     units: str = "m"
-    matrix: np.ndarray = field(default_factory=lambda: np.eye(4))
     attrs: Dict[str, Any] = field(default_factory= dict)
 
     def __post_init__(self):
         logging.info("Initializing transducer array")
         if self.name == "":
             self.name = self.id
-        self.matrix = np.array(self.matrix, dtype=np.float64)
         for element in self.elements:
             element.rescale(self.units)
 
@@ -47,8 +45,8 @@ class Transducer:
         return copy.deepcopy(self)
 
     def draw(self,
-             units=None,
-             transform=True,
+             transform:Optional[np.ndarray]=None,
+             units:Optional[str]=None,
              facecolor=[0,1,1,0.5]):
         units = self.units if units is None else units
         actor = self.get_actor(units=units, transform=transform, facecolor=facecolor)
@@ -61,7 +59,7 @@ class Transducer:
         renderWindow.Render()
         renderWindowInteractor.Start()
 
-    def get_actor(self, units=None, transform=False, facecolor=[0,1,1,0.5]):
+    def get_actor(self, transform:Optional[np.ndarray]=None, units:Optional[str]=None, facecolor=[0,1,1,0.5]):
         units = self.units if units is None else units
         polydata = self.get_polydata(units=units, transform=transform, facecolor=facecolor)
         mapper = vtk.vtkPolyDataMapper()
@@ -71,7 +69,10 @@ class Transducer:
         actor.GetProperty().SetInterpolationToFlat()
         return actor
 
-    def get_polydata(self, units=None, transform=False, facecolor=None):
+    def get_polydata(self, transform:Optional[np.ndarray]=None, units:Optional[str]=None, facecolor=None):
+        """Get a vtk polydata of the transducer. Optionally provide a transform, and units in which to interpret
+        that transform. If a transform is provided with no units specified, it is assumed that the units
+        are the same as those of the transducer itself. Optionally provide an RGBA color to set."""
         units = self.units if units is None else units
         N = self.numelements()
         points = vtk.vtkPoints()
@@ -88,10 +89,7 @@ class Transducer:
         else:
             facecolors = np.array([np.array([*fc])*255 for fc in facecolor]).astype(np.uint8)
         point_index = 0
-        if transform:
-            matrix = self.get_matrix(units=units)
-        else:
-            matrix = np.eye(4)
+        matrix = transform if transform is not None else np.eye(4)
         for el, color in zip(self.elements, facecolors):
             corners = el.get_corners(matrix=matrix, units=units)
             rect = vtk.vtkQuad()
@@ -115,49 +113,36 @@ class Transducer:
         widths, lengths = zip(*[element.get_size(units=units) for element in self.elements])
         return sum(w * l for w, l in zip(widths, lengths))
 
-    def get_corners(self, transform=True, units=None):
+    def get_corners(self, transform:Optional[np.ndarray]=None, units:Optional[str]=None):
         units = self.units if units is None else units
-        if transform:
-            matrix = self.get_matrix(units=units)
-        else:
-            matrix = np.eye(4)
+        matrix = transform if transform is not None else np.eye(4)
         return [element.get_corners(units=units, matrix=matrix) for element in self.elements]
 
-    def get_positions(self, transform=True, units=None):
+    def get_positions(self, transform:Optional[np.ndarray]=None, units:Optional[str]=None):
         units = self.units if units is None else units
-        if transform:
-            matrix = self.get_matrix(units=units)
-        else:
-            matrix = np.eye(4)
+        matrix = transform if transform is not None else np.eye(4)
         positions = [element.get_position(units=units, matrix=matrix) for element in self.elements]
         return np.array(positions)
 
-    def get_matrix(self, units=None):
-        units = self.units if units is None else units
-        matrix = self.matrix.copy()
-        matrix[0:3, 3] *= getunitconversion(self.units, units)
+    def convert_transform(self, matrix:np.ndarray, units:str) -> np.ndarray:
+        """Given a transform matrix in some units, convert it to this transducer's native units.
+
+        Args:
+            matrix: 4x4 affine transform matrix
+            units: units of the coordinate space on which the provided transform matrix operates
+
+        Returns: 4x4 affine transform matrix, now operating on a the transducer's native coordinate space
+            (i.e. in the transducer's native units)
+        """
+        matrix = matrix.copy()
+        matrix[0:3, 3] *= getunitconversion(units, self.units)
         return matrix
 
-    def get_unit_vectors(self, transform=True, scale=1, units=None):
-        units = self.units if units is None else units
-        unit_vectors = [
-            [[0, 0, 0], [1, 0, 0]],
-            [[0, 0, 0], [0, 1, 0]],
-            [[0, 0, 0], [0, 0, 1]]
-        ]
-        unit_vectors = [[v * scale for v in uv] for uv in unit_vectors]
-        if transform:
-            matrix = self.get_matrix(units=units)
-            unit_vectors = [(np.dot(matrix, np.concatenate([np.array(uv).T, np.ones([1,2])], 0))[:3,:].T).tolist() for uv in unit_vectors]
-        return [np.array(uv).transpose() for uv in unit_vectors]
-
     @staticmethod
-    def merge(list_of_transducers):
+    def merge(list_of_transducers:"List[Transducer]") -> "Transducer":
         merged_array = list_of_transducers[0].copy()
-        ref_matrix = merged_array.get_matrix()
         for arr in list_of_transducers[1:]:
             xform_array = arr.copy()
-            xform_array.transform(np.dot(np.linalg.inv(arr.get_matrix()),ref_matrix), transform_elements=True)
             merged_array.elements += xform_array.elements
         return merged_array
 
@@ -175,21 +160,17 @@ class Transducer:
     def to_dict(self):
         d = self.__dict__.copy()
         d["elements"] = [element.to_dict() for element in d["elements"]]
-        d["matrix"] = d["matrix"].tolist()
         return d
 
     def to_file(self, filename):
         from openlifu.util.json import to_json
         to_json(self.to_dict(), filename)
 
-    def transform(self, matrix, units=None, transform_elements: bool=False):
+    def transform(self, matrix, units=None):
         if units is not None:
             self.rescale(units)
-        if transform_elements:
-            for el in self.elements:
-                el.set_matrix(np.dot(np.linalg.inv(matrix), el.get_matrix()))
-            else:
-                self.matrix = np.dot(self.matrix, np.linalg.inv(matrix))
+        for el in self.elements:
+            el.set_matrix(np.dot(np.linalg.inv(matrix), el.get_matrix()))
 
     @staticmethod
     def from_file(filename):
@@ -201,7 +182,6 @@ class Transducer:
     def from_dict(d, **kwargs):
         d = d.copy()
         d["elements"] = Element.from_dict(d["elements"])
-        d["matrix"] = np.array(d["matrix"])
         return Transducer(**d, **kwargs)
 
     @staticmethod

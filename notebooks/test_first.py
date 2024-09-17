@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.2
+#       jupytext_version: 1.16.4
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -84,6 +84,9 @@ delays, apod = protocol.beamform(arr=arr, target=pts[0], params=params)
 
 # %% [markdown]
 # We can use all of `xarray`s built-in plotting capabilities to plot the data.
+
+# %%
+ds['p_min'].sel(ele=0).plot.imshow()
 
 # %%
 ds['p_min'].sel(ele=0).plot.imshow()
