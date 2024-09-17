@@ -1,17 +1,26 @@
 import json
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import numpy as np
 
 from openlifu.geo import Point
+from openlifu.util.json import PYFUSEncoder
 from openlifu.util.strings import sanitize
-from openlifu.xdc import Transducer
 
-if TYPE_CHECKING:
-    from openlifu import Database
 
+@dataclass
+class ArrayTransform:
+    """Class representing the transform on a transducer array to position it in space.
+
+    matrix: 4x4 affine transform matrix
+    units: the units of the space on which to apply the transform matrix , e.g. "mm"
+        (In order to apply the transform to transducer points, first represent
+        the points in these units.)
+    """
+    matrix: np.ndarray
+    units : str
 
 @dataclass
 class Session:
@@ -25,7 +34,8 @@ class Session:
     targets: sonication targets
     markers: registration markers
     volume_id: id of the subject volume file
-    transducer: transducer
+    transducer_id: id of the transducer
+    array_transform: transducer affine transform matrix with units
     attrs: Dictionary of attributes
     date_modified: Date of last modification
     """
@@ -36,7 +46,8 @@ class Session:
     targets: List[Point] = field(default_factory=list)
     markers: List[Point] = field(default_factory=list)
     volume_id: Optional[str] = None
-    transducer: Transducer = field(default_factory=Transducer)
+    transducer_id: Optional[str] = None
+    array_transform: ArrayTransform = field(default_factory=lambda : ArrayTransform(np.eye(4),"mm"))
     attrs: dict = field(default_factory=dict)
     date_modified: datetime = datetime.now()
 
@@ -57,7 +68,7 @@ class Session:
             self.markers = list(self.markers)
 
     @staticmethod
-    def from_file(filename, db:'Database'):
+    def from_file(filename):
         """
         Create a Session from a file
 
@@ -66,10 +77,10 @@ class Session:
         :returns: Session object
         """
         with open(filename) as f:
-            return Session.from_dict(json.load(f), db)
+            return Session.from_dict(json.load(f))
 
     @staticmethod
-    def from_dict(d:Dict, db:'Database'):
+    def from_dict(d:Dict):
         """
         Create a session from a dictionary
 
@@ -83,12 +94,8 @@ class Session:
             d['date_modified'] = datetime.fromisoformat(d['date_modified'])
         if 'volume' in d:
             raise ValueError("Sessions no longer recognize a volume attribute -- it is now volume_id.")
-        if isinstance(d['transducer'], dict):
-            transducer_id = d['transducer']['id']
-            transducer  = Transducer.from_file(db.get_transducer_filename(transducer_id))
-            if "matrix" in d['transducer']: # Allow the matrix to be overridden at the Session level
-                transducer.matrix = np.array(d['transducer']["matrix"])
-            d['transducer'] = transducer
+        if 'array_transform' in d:
+            d['array_transform'] = ArrayTransform(np.array(d['array_transform']['matrix']), d['array_transform']['units'])
         if isinstance(d['targets'], list):
             if len(d['targets'])>0 and isinstance(d['targets'][0], dict):
                 d['targets'] = [Point.from_dict(p) for p in d['targets']]
@@ -114,10 +121,30 @@ class Session:
         d = self.__dict__.copy()
         d['date'] = d['date'].isoformat()
         d['date_modified'] = d['date_modified'].isoformat()
-        d['transducer'] = d['transducer'].to_dict()
         d['targets'] = [p.to_dict() for p in d['targets']]
         d['markers'] = [p.to_dict() for p in d['markers']]
+
+        d['array_transform'] = asdict(d['array_transform'])
+
         return d
+
+    @staticmethod
+    def from_json(json_string : str) -> "Session":
+        """Load a Session from a json string"""
+        return Session.from_dict(json.loads(json_string))
+
+    def to_json(self, compact:bool) -> str:
+        """Serialize a Session to a json string
+
+        Args:
+            compact: if enabled then the string is compact (not pretty). Disable for pretty.
+
+        Returns: A json string representing the complete Session object.
+        """
+        if compact:
+            return json.dumps(self.to_dict(), separators=(',', ':'), cls=PYFUSEncoder)
+        else:
+            return json.dumps(self.to_dict(), indent=4, cls=PYFUSEncoder)
 
     def to_file(self, filename):
         """
@@ -125,5 +152,5 @@ class Session:
 
         :param filename: Name of the file
         """
-        from openlifu.util.json import to_json
-        to_json(self.to_dict(), filename)
+        with open(filename, 'w') as file:
+            file.write(self.to_json(compact=False))
