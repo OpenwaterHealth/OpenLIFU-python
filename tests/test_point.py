@@ -1,7 +1,7 @@
-from dataclasses import fields
 
 import numpy as np
 import pytest
+from helpers import dataclasses_are_equal
 
 from openlifu import Point
 
@@ -21,10 +21,4 @@ def example_point() -> Point:
 @pytest.mark.parametrize("compact_representation", [True, False])
 def test_serialize_deserialize_protocol(example_point : Point, compact_representation: bool):
     reconstructed_point = example_point.from_json(example_point.to_json(compact_representation))
-    for field in fields(example_point):
-        value_original = getattr(example_point, field.name)
-        value_reconstructed = getattr(reconstructed_point, field.name)
-        if isinstance(value_original, np.ndarray):
-            assert (value_original == value_reconstructed).all()
-        else:
-            assert value_original == value_reconstructed
+    assert dataclasses_are_equal(example_point, reconstructed_point)
