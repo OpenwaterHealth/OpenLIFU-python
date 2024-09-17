@@ -19,6 +19,16 @@ def test_serialize_deserialize_transducer(example_transducer : Transducer, compa
         else:
             assert value_original == value_reconstructed
 
+def test_get_polydata_transducer(example_transducer : Transducer):
+    """Ensure that the color is set correctly on the polydata"""
+    polydata_with_default_color = example_transducer.get_polydata()
+    point_scalars = polydata_with_default_color.GetPointData().GetScalars()
+    assert point_scalars is None
+
+    polydata_with_given_color = example_transducer.get_polydata(facecolor=[0,1,1,0.5])
+    point_scalars = polydata_with_given_color.GetPointData().GetScalars()
+    assert point_scalars is not None
+
 def test_default_transducer():
     """Ensure it is possible to construct a default transducer"""
     Transducer()
