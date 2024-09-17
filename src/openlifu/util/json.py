@@ -3,7 +3,6 @@ from pathlib import Path
 
 import numpy as np
 
-from openlifu.db.session import Session
 from openlifu.db.subject import Subject
 from openlifu.geo import Point
 from openlifu.seg.material import Material
@@ -26,8 +25,6 @@ class PYFUSEncoder(json.JSONEncoder):
         if isinstance(obj, Element):
             return obj.to_dict()
         if isinstance(obj, Material):
-            return obj.to_dict()
-        if isinstance(obj, Session):
             return obj.to_dict()
         if isinstance(obj, Subject):
             return obj.to_dict()

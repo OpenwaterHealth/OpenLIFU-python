@@ -433,7 +433,7 @@ class Database:
             options = {}
         session_filename = self.get_session_filename(subject.id, session_id)
         if os.path.isfile(session_filename):
-            session = Session.from_file(session_filename, self)
+            session = Session.from_file(session_filename)
             self.logger.info(f"Loaded session {session_id} for subject {subject.id}")
             return session
         else:
