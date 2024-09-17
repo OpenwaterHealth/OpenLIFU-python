@@ -47,10 +47,9 @@ class Transducer:
     def draw(self,
              units=None,
              transform=True,
-             facecolor=[0,1,1],
-             facealpha=0.5):
+             facecolor=[0,1,1,0.5]):
         units = self.units if units is None else units
-        actor = self.get_actor(units=units, transform=transform, facecolor=facecolor, facealpha=facealpha)
+        actor = self.get_actor(units=units, transform=transform, facecolor=facecolor)
         renderWindow = vtk.vtkRenderWindow()
         renderer = vtk.vtkRenderer()
         renderWindow.AddRenderer(renderer)
@@ -60,9 +59,9 @@ class Transducer:
         renderWindow.Render()
         renderWindowInteractor.Start()
 
-    def get_actor(self, units=None, transform=False, facecolor=[0,1,1], facealpha=0.5):
+    def get_actor(self, units=None, transform=False, facecolor=[0,1,1,0.5]):
         units = self.units if units is None else units
-        polydata = self.get_polydata(units=units, transform=transform, facecolor=facecolor, facealpha=facealpha)
+        polydata = self.get_polydata(units=units, transform=transform, facecolor=facecolor)
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputData(polydata)
         actor = vtk.vtkActor()
@@ -70,7 +69,7 @@ class Transducer:
         actor.GetProperty().SetInterpolationToFlat()
         return actor
 
-    def get_polydata(self, units=None, transform=False, facecolor=[0,1,1], facealpha=0.5):
+    def get_polydata(self, units=None, transform=False, facecolor=None):
         units = self.units if units is None else units
         N = self.numelements()
         points = vtk.vtkPoints()
@@ -79,10 +78,13 @@ class Transducer:
         colors = vtk.vtkUnsignedCharArray()
         colors.SetNumberOfComponents(4)
         facecolor = np.array(facecolor)
-        if facecolor.ndim == 1:
-            facecolors = np.tile((np.array([*facecolor, facealpha])*255).astype(np.uint8), (N, 1))
+        is_color_el_none = np.vectorize(lambda color_el: color_el is None)
+        if np.all(is_color_el_none(facecolor)):
+            facecolors = np.tile((np.array(None)), (N, 1))
+        elif facecolor.ndim == 1:
+            facecolors = np.tile((np.array([*facecolor])*255).astype(np.uint8), (N, 1))
         else:
-            facecolors = np.array([np.array([*fc, facealpha])*255 for fc in facecolor]).astype(np.uint8)
+            facecolors = np.array([np.array([*fc])*255 for fc in facecolor]).astype(np.uint8)
         point_index = 0
         if transform:
             matrix = self.get_matrix(units=units)
@@ -95,13 +97,15 @@ class Transducer:
             for i in range(4):
                 points.SetPoint(point_index, corners[:,i])
                 point_ids.SetId(i, point_index)
-                colors.InsertNextTuple4(*color)
+                if color[0] is not None:
+                    colors.InsertNextTuple4(*color)
                 point_index += 1
             cell_array.InsertNextCell(rect)
         polydata = vtk.vtkPolyData()
         polydata.SetPolys(cell_array)
         polydata.SetPoints(points)
-        polydata.GetPointData().SetScalars(colors)
+        if not np.all(is_color_el_none(facecolor)):
+            polydata.GetPointData().SetScalars(colors)
         return polydata
 
     def get_area(self, units=None):
