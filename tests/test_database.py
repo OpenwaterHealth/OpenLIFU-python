@@ -19,6 +19,12 @@ def example_session(example_database : Database) -> Session:
         filename = Path(example_database.path)/"subjects/example_subject/sessions/example_session/example_session.json",
     )
 
+@pytest.fixture()
+def example_subject(example_database : Database) -> Subject:
+    return Subject.from_file(
+        filename = Path(example_database.path)/"subjects/example_subject/example_subject.json",
+    )
+
 def test_load_session_from_file(example_session : Session, example_database : Database):
 
     # Test that Session loaded via Session.from_file is correct
@@ -59,6 +65,34 @@ def test_write_subject(example_database : Database):
     reloaded_subject = example_database.load_subject("bleh")
     assert reloaded_subject.name == "Deb Jectson"
 
+def test_write_session(example_database: Database, example_subject: Subject):
+    session = Session(name="bleh", id='a_session',subject_id=example_subject.id)
+
+    # Can add a new session, and it loads back in correctly.
+    example_database.write_session(example_subject, session)
+    reloaded_session = example_database.load_session(example_subject, session.id)
+    assert dataclasses_are_equal(reloaded_session,session)
+
+    # Error raised when the session already exists
+    with pytest.raises(ValueError, match="already exists"):
+        example_database.write_session(example_subject, session, on_conflict="error")
+
+    # Skip option
+    session.name = "new_name"
+    example_database.write_session(example_subject, session, on_conflict="skip")
+    reloaded_session = example_database.load_session(example_subject, session.id)
+    assert reloaded_session.name == "bleh"
+
+    # Overwrite option
+    session.name = "new_name"
+    example_database.write_session(example_subject, session, on_conflict="overwrite")
+    reloaded_session = example_database.load_session(example_subject, session.id)
+    assert reloaded_session.name == "new_name"
+
+def test_write_session_mismatched_id(example_database: Database, example_subject: Subject):
+    session = Session(id='a_session',subject_id='bogus_id') # The subject ID here is different from the ID in example_subject
+    with pytest.raises(ValueError, match="IDs do not match"):
+        example_database.write_session(example_subject, session)
 
 @pytest.mark.parametrize("compact_representation", [True, False])
 def test_serialize_deserialize_session(example_session : Session, compact_representation:bool):

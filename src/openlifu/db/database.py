@@ -72,9 +72,13 @@ class Database:
         self.logger.info(f"Added Sonication Protocol with ID {protocol_id} to the database.")
 
 
-    def write_session(self, subject, session, on_conflict="error"):
+    def write_session(self, subject:Subject, session:Session, on_conflict="error"):
         # Generate session ID
         session_id = session.id
+
+        # Validate the subject ID in the session
+        if session.subject_id != subject.id:
+            raise ValueError("IDs do not match between the given subject and the subject referenced in the session.")
 
         # Check if the session already exists in the database
         session_ids = self.get_session_ids(subject.id)
