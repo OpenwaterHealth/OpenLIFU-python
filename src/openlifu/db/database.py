@@ -26,7 +26,7 @@ class Database:
             if on_conflict == "error":
                 raise ValueError(f"Grid weights with hash {grid_hash} already exists for transducer {transducer_id}.")
             elif on_conflict == "overwrite":
-                self.logger.warning(f"Overwriting grid weights with hash {grid_hash} for transducer {transducer_id}.")
+                self.logger.info(f"Overwriting grid weights with hash {grid_hash} for transducer {transducer_id}.")
             elif on_conflict == "skip":
                 self.logger.info(f"Skipping grid weights with hash {grid_hash} for transducer {transducer_id} as it already exists.")
             else:
@@ -45,7 +45,7 @@ class Database:
             if on_conflict == "error":
                 raise ValueError(f"Protocol with ID {protocol_id} already exists in the database.")
             elif on_conflict == "overwrite":
-                self.logger.warning(f"Overwriting Protocol with ID {protocol_id} in the database.")
+                self.logger.info(f"Overwriting Protocol with ID {protocol_id} in the database.")
             elif on_conflict == "skip":
                 self.logger.info(f"Skipping Protocol with ID {protocol_id} as it already exists in the database.")
                 return  # Skip adding the Protocol
@@ -79,7 +79,7 @@ class Database:
             if on_conflict == "error":
                 raise ValueError(f"Session with ID {session_id} already exists for subject {subject.id}.")
             elif on_conflict == "overwrite":
-                self.logger.warning(f"Overwriting session with ID {session_id} for subject {subject.id}.")
+                self.logger.info(f"Overwriting session with ID {session_id} for subject {subject.id}.")
             elif on_conflict == "skip":
                 self.logger.info(f"Skipping session with ID {session_id} for subject {subject.id} as it already exists.")
                 return  # Skip adding the session
@@ -105,7 +105,7 @@ class Database:
             if on_conflict == "error":
                 raise ValueError(f"Subject with ID {subject_id} already exists in the database.")
             elif on_conflict == "overwrite":
-                self.logger.warning(f"Overwriting subject with ID {subject_id} in the database.")
+                self.logger.info(f"Overwriting subject with ID {subject_id} in the database.")
             elif on_conflict == "skip":
                 self.logger.info(f"Skipping subject with ID {subject_id} as it already exists.")
                 return
@@ -129,7 +129,7 @@ class Database:
             if on_conflict == "error":
                 raise ValueError(f"Transducer with ID {transducer_id} already exists in the database.")
             elif on_conflict == "overwrite":
-                self.logger.warning(f"Overwriting transducer with ID {transducer_id} in the database.")
+                self.logger.info(f"Overwriting transducer with ID {transducer_id} in the database.")
             elif on_conflict == "skip":
                 self.logger.info(f"Skipping transducer with ID {transducer_id} as it already exists.")
                 return
@@ -153,7 +153,7 @@ class Database:
             if on_conflict == "error":
                 raise ValueError(f"Ultrasound system with ID {system_id} already exists in the database.")
             elif on_conflict == "overwrite":
-                self.logger.warning(f"Overwriting ultrasound system with ID {system_id} in the database.")
+                self.logger.info(f"Overwriting ultrasound system with ID {system_id} in the database.")
             elif on_conflict == "skip":
                 self.logger.info(f"Skipping ultrasound system with ID {system_id} as it already exists.")
                 return
@@ -180,7 +180,7 @@ class Database:
             if on_conflict == "error":
                 raise ValueError(f"Volume with ID {volume_id} already exists for subject {subject_id}.")
             elif on_conflict == "overwrite":
-                self.logger.warning(f"Overwriting volume with ID {volume_id} for subject {subject_id}.")
+                self.logger.info(f"Overwriting volume with ID {volume_id} for subject {subject_id}.")
             elif on_conflict == "skip":
                 self.logger.info(f"Skipping volume with ID {volume_id} for subject {subject_id} as it already exists.")
                 return
