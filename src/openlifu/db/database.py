@@ -20,7 +20,7 @@ class Database:
         self.path = os.path.normpath(path)
         self.logger = logging.getLogger(__name__)
 
-    def add_gridweights(self, transducer_id: str, grid_hash: str, grid_weights, on_conflict: OnConflictOpts =b"error"):
+    def write_gridweights(self, transducer_id: str, grid_hash: str, grid_weights, on_conflict: OnConflictOpts =b"error"):
         grid_hashes = self.get_gridweight_hashes(transducer_id)
         if grid_hash in grid_hashes:
             if on_conflict == "error":
@@ -36,7 +36,7 @@ class Database:
             f.create_dataset("grid_weights", data=grid_weights)
         self.logger.info(f"Added grid weights with hash {grid_hash} for transducer {transducer_id} to the database.")
 
-    def add_protocol(self, protocol: Protocol, on_conflict: OnConflictOpts = "error"):
+    def write_protocol(self, protocol: Protocol, on_conflict: OnConflictOpts = "error"):
         # Check if the sonication protocol ID already exists in the database
         protocol_id = protocol.id
         protocol_ids = self.get_protocol_ids()
@@ -68,7 +68,7 @@ class Database:
         self.logger.info(f"Added Sonication Protocol with ID {protocol_id} to the database.")
 
 
-    def add_session(self, subject, session, on_conflict="error"):
+    def write_session(self, subject, session, on_conflict="error"):
         # Generate session ID
         session_id = session.id
 
@@ -97,7 +97,7 @@ class Database:
 
         self.logger.info(f"Added session with ID {session_id} for subject {subject.id} to the database.")
 
-    def add_subject(self, subject, on_conflict="error"):
+    def write_subject(self, subject, on_conflict="error"):
         subject_id = subject.id
         subject_ids = self.get_subject_ids()
 
@@ -121,7 +121,7 @@ class Database:
 
         self.logger.info(f"Added subject with ID {subject_id} to the database.")
 
-    def add_transducer(self, transducer, on_conflict: OnConflictOpts="error"):
+    def write_transducer(self, transducer, on_conflict: OnConflictOpts="error"):
         transducer_id = transducer.id
         transducer_ids = self.get_transducer_ids()
 
@@ -145,7 +145,7 @@ class Database:
 
         self.logger.info(f"Added transducer with ID {transducer_id} to the database.")
 
-    def add_system(self, system, on_conflict="error"):
+    def write_system(self, system, on_conflict="error"):
         system_id = system.id
         system_ids = self.get_system_ids()
 
@@ -171,7 +171,7 @@ class Database:
 
         self.logger.info(f"Added ultrasound system with ID {system_id} to the database.")
 
-    def add_volume(self, subject, volume, on_conflict="error"):
+    def write_volume(self, subject, volume, on_conflict="error"):
         volume_id = volume.id
         subject_id = subject.id
 
@@ -477,7 +477,7 @@ class Database:
                 self.logger.error(f"Invalid Transducer ID {trans_id}. Valid IDs are {', '.join(transducer_ids)}")
                 raise ValueError(f"Invalid Transducer ID {trans_id}")
             else:
-                self.add_transducer(trans)
+                self.write_transducer(trans)
         filename = self.get_connected_transducer_filename()
         with open(filename, 'w') as f:
             f.write(trans_id)
