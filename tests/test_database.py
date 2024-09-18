@@ -19,25 +19,25 @@ def test_load_session_from_file(example_database : Database):
     assert session.name == "Example Session"
     assert session.volume_id == "example_volume"
 
-def test_add_subject(example_database : Database):
+def test_write_subject(example_database : Database):
     subject = Subject(id="bleh",name="Seb Jectson")
 
     # Can add a new subject, and it loads back in correctly.
-    example_database.add_subject(subject)
+    example_database.write_subject(subject)
     reloaded_subject = example_database.load_subject("bleh")
     assert subject == reloaded_subject
 
     # Error raised when the subject already exists
     with pytest.raises(ValueError, match="already exists"):
-        example_database.add_subject(subject, on_conflict="error")
+        example_database.write_subject(subject, on_conflict="error")
 
     # Skip option
     subject.name = "Deb Jectson"
-    example_database.add_subject(subject, on_conflict="skip")
+    example_database.write_subject(subject, on_conflict="skip")
     reloaded_subject = example_database.load_subject("bleh")
     assert reloaded_subject.name == "Seb Jectson"
 
     # Overwrite option
-    example_database.add_subject(subject, on_conflict="overwrite")
+    example_database.write_subject(subject, on_conflict="overwrite")
     reloaded_subject = example_database.load_subject("bleh")
     assert reloaded_subject.name == "Deb Jectson"
