@@ -43,9 +43,17 @@ Install project (editable)
 
 With this repo as the working directory:
 
+Basic mode
+^^^^^^^^^^
 .. code:: sh
 
    pip install -e .
+
+Dev mode
+^^^^^^^^^^
+.. code:: sh
+
+   pip install -e .[dev]
 
 Disclaimer
 ----------
