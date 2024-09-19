@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 import pandas as pd
 
@@ -18,16 +18,18 @@ class Sequence:
     pulse_train_interval: float = 1.0 # s
     pulse_train_count: int = 1
 
-    def get_table(self):
+    def get_table(self) -> pd.DataFrame:
         """
         Get a table of the sequence parameters
 
         :returns: Pandas DataFrame of the sequence parameters
         """
-        records = [{"Name": "Pulse Interval", "Value": self.pulse_interval, "Unit": "s"},
-                   {"Name": "Pulse Count", "Value": self.pulse_count, "Unit": ""},
-                   {"Name": "Pulse Train Interval", "Value": self.pulse_train_interval, "Unit": "s"},
-                   {"Name": "Pulse Train Count", "Value": self.pulse_train_count, "Unit": ""}]
+        records = [
+            {"Name": "Pulse Interval", "Value": self.pulse_interval, "Unit": "s"},
+            {"Name": "Pulse Count", "Value": self.pulse_count, "Unit": ""},
+            {"Name": "Pulse Train Interval", "Value": self.pulse_train_interval, "Unit": "s"},
+            {"Name": "Pulse Train Count", "Value": self.pulse_train_count, "Unit": ""}
+        ]
         return pd.DataFrame.from_records(records)
 
     @staticmethod
@@ -38,10 +40,7 @@ class Sequence:
         :param d: Dictionary of the sequence parameters
         :returns: Sequence object
         """
-        return Sequence(pulse_interval=d["pulse_interval"],
-                        pulse_count=d["pulse_count"],
-                        pulse_train_interval=d["pulse_train_interval"],
-                        pulse_train_count=d["pulse_train_count"])
+        return Sequence(**d)
 
     def to_dict(self):
         """
@@ -49,7 +48,4 @@ class Sequence:
 
         :returns: Dictionary of the sequence parameters
         """
-        return {"pulse_interval": self.pulse_interval,
-                "pulse_count": self.pulse_count,
-                "pulse_train_interval": self.pulse_train_interval,
-                "pulse_train_count": self.pulse_train_count}
+        return asdict(self)
