@@ -4,10 +4,9 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 import h5py
-import scipy.io
 
 from openlifu.plan import Protocol, Solution
 
@@ -206,6 +205,29 @@ class Database:
 
         self.logger.info(f"Added volume with ID {volume_id} for subject {subject_id} to the database.")
 
+    def write_solution(self, session:Session, solution:Solution, on_conflict: OnConflictOpts="error"):
+        solution_ids = self.get_solution_ids(session.subject_id, session.id)
+
+        if solution.id in solution_ids:
+            if on_conflict == "error":
+                raise ValueError(f"Solution with ID {solution.id} already exists in the database.")
+            elif on_conflict == "overwrite":
+                self.logger.info(f"Overwriting solution with ID {solution.id} in the database.")
+            elif on_conflict == "skip":
+                self.logger.info(f"Skipping solution with ID {solution.id} as it already exists.")
+                return
+            else:
+                raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
+
+        solution_json_filepath = self.get_solution_filepath(session.subject_id, session.id, solution.id)
+        solution.to_files(solution_json_filepath)
+
+        if solution.id not in solution_ids:
+            solution_ids.append(solution.id)
+            self.write_solution_ids(session, solution_ids)
+
+        self.logger.info(f"Wrote solution with ID {solution.id} to the database.")
+
     def choose_session(self, subject, options=None):
         # Implement the logic to choose a session
         raise NotImplementedError("Method not yet implemented")
@@ -225,10 +247,6 @@ class Database:
 
     def get_subject_table(self, options=None):
         # Implement the logic to get subject table
-        raise NotImplementedError("Method not yet implemented")
-
-    def load_session_solutions(self, session, options=None):
-        # Implement the logic to load session solutions
         raise NotImplementedError("Method not yet implemented")
 
     def get_connected_systems(self):
@@ -281,20 +299,15 @@ class Database:
             self.logger.warning("Sessions file not found for subject %s.", subject_id)
             return []
 
-    def get_solutions(self, subject_id, session_id):
+    def get_solution_ids(self, subject_id:str, session_id:str) -> List[str]:
+        """Get a list of IDs of the solutions associated with the given session"""
         solutions_filename = self.get_solutions_filename(subject_id, session_id)
 
-        if os.path.isfile(solutions_filename):
-            with open(solutions_filename) as file:
-                solution_data = json.load(file)
-            solutions = [
-                Solution.from_dict(solution_dict) for solution_dict in solution_data
-            ]
-            self.logger.info("Solutions for subject %s, session %s: %s", subject_id, session_id, solutions)
-            return solutions
-        else:
+        if not (solutions_filename.exists() and solutions_filename.is_file()):
             self.logger.warning("Solutions file not found for subject %s, session %s.", subject_id, session_id)
             return []
+
+        return json.loads(solutions_filename.read_text())["solution_ids"]
 
     def get_subject_ids(self):
         subjects_filename = self.get_subjects_filename()
@@ -456,26 +469,18 @@ class Database:
             raise FileNotFoundError(f"Session file not found for ID: {session_id}")
 
 
-    def load_solution(self, session, protocol_id, target_id):
-        solution_filename_json = self.get_solution_filename(session.subject_id, session.id, protocol_id, target_id, ext="json")
-        solution_filename_mat = self.get_solution_filename(session.subject_id, session.id, protocol_id, target_id, ext="mat")
+    def load_solution(self, session:Session, solution_id:str) -> Solution:
+        """Load the Solution of the given ID that is associated with the given Session"""
+        solution_json_filepath = self.get_solution_filepath(session.subject_id, session.id, solution_id)
 
-        if os.path.isfile(solution_filename_json) and os.path.isfile(solution_filename_mat):
-            # Load from JSON file
-            with open(solution_filename_json) as json_file:
-                json_data = json.load(json_file)
+        if not solution_json_filepath.exists() or not solution_json_filepath.is_file():
+            self.logger.error(f"Solution file not found for solution {solution_id}, session {session.id}")
+            raise FileNotFoundError(f"Solution file not found for solution {solution_id}, session {session.id}")
 
-            # Load from MAT file
-            mat_data = scipy.io.loadmat(solution_filename_mat)
-            # Extract any additional data from the MAT file as needed
+        solution = Solution.from_files(solution_json_filepath)
+        self.logger.info(f"Loaded solution {solution_id}")
+        return solution
 
-            # Pass the loaded JSON data as keyword arguments to TreatmentSolution constructor
-            solution = Solution(**json_data)
-            self.logger.info(f"Loaded solution for Protocol {protocol_id}, Target {target_id}")
-            return solution
-        else:
-            self.logger.error(f"Solution files not found for Protocol {protocol_id}, Target {target_id}")
-            raise FileNotFoundError(f"Solution files not found for Protocol {protocol_id}, Target {target_id}")
 
     def set_connected_transducer(self, trans, options=None):
         trans_id = trans.id
@@ -514,11 +519,13 @@ class Database:
     def get_sessions_filename(self, subject_id):
         return Path(self.get_subject_dir(subject_id)) / 'sessions' / 'sessions.json'
 
-    def get_solution_filename(self, subject_id, session_id, protocol_id, target_id, ext='mat'):
+    def get_solution_filepath(self, subject_id, session_id, solution_id) -> Path:
+        """Get the solution json file for the solution with the given ID"""
         session_dir = self.get_session_dir(subject_id, session_id)
-        return Path(session_dir) / 'solutions' / protocol_id / f'{target_id}.{ext}'
+        return Path(session_dir) / 'solutions' / solution_id / f"{solution_id}.json"
 
-    def get_solutions_filename(self, subject_id, session_id):
+    def get_solutions_filename(self, subject_id, session_id) -> Path:
+        """Get the path to the overall solutions json file for the requested session"""
         session_dir = self.get_session_dir(subject_id, session_id)
         return Path(session_dir) / 'solutions' / 'solutions.json'
 
@@ -573,6 +580,11 @@ class Database:
         transducers_filename = self.get_transducers_filename()
         with open(transducers_filename, 'w') as f:
             json.dump(transducers_data, f)
+
+    def write_solution_ids(self, session:Session, solution_ids:List[str]):
+        """Write to the list of overall solution IDs"""
+        solutions_data = {'solution_ids': solution_ids}
+        self.get_solutions_filename(session.subject_id, session.id).write_text(json.dumps(solutions_data))
 
     @staticmethod
     def get_default_user_dir():
