@@ -32,6 +32,7 @@ def test_load_session_from_file(example_session : Session, example_database : Da
     assert session.name == "Example Session"
     assert session.volume_id == "example_volume"
     assert session.transducer_id == "example_transducer"
+    assert session.protocol_id == "example_protocol"
     assert session.array_transform.matrix.shape == (4,4)
     assert session.array_transform.units == "mm"
 

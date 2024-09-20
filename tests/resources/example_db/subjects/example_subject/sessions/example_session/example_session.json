@@ -15,6 +15,7 @@
   "markers": [],
   "volume_id": "example_volume",
   "transducer_id": "example_transducer",
+  "protocol_id": "example_protocol",
   "array_transform": {
     "matrix": [
       [-1, 0, 0, 0],
