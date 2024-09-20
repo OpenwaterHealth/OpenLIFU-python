@@ -161,7 +161,9 @@ class Solution:
         """
         if nc_filepath is None:
             nc_filepath = _construct_nc_filepath_from_json_filepath(json_filepath)
+        simulation_result = xarray.open_dataset(nc_filepath, engine='h5netcdf').load()
+        simulation_result.close() # this is needed to release the lock on the file so that it can be written to again
         return Solution.from_json(
             json_string = json_filepath.read_text(),
-            simulation_result = xarray.open_dataset(nc_filepath),
+            simulation_result = simulation_result,
         )
