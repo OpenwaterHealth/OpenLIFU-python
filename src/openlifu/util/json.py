@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -18,6 +19,8 @@ class PYFUSEncoder(json.JSONEncoder):
             return float(obj)
         if isinstance(obj, np.ndarray):
             return obj.tolist()
+        if isinstance(obj, datetime):
+            return obj.isoformat()
         if isinstance(obj, Point):
             return obj.to_dict()
         if isinstance(obj, Transducer):
