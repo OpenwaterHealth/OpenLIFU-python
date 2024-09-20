@@ -36,6 +36,7 @@ class Session:
     markers: registration markers
     volume_id: id of the subject volume file
     transducer_id: id of the transducer
+    protocol_id: id of the protocol
     array_transform: transducer affine transform matrix with units
     attrs: Dictionary of attributes
     date_modified: Date of last modification
@@ -48,6 +49,7 @@ class Session:
     markers: List[Point] = field(default_factory=list)
     volume_id: Optional[str] = None
     transducer_id: Optional[str] = None
+    protocol_id: Optional[str] = None
     array_transform: ArrayTransform = field(default_factory=lambda : ArrayTransform(np.eye(4),"mm"))
     attrs: dict = field(default_factory=dict)
     date_modified: datetime = datetime.now()
