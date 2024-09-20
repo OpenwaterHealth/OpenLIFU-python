@@ -2,6 +2,7 @@ import base64
 import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -11,6 +12,12 @@ from openlifu.bf import Pulse, Sequence
 from openlifu.geo import Point
 from openlifu.util.json import PYFUSEncoder
 
+
+def _construct_nc_filepath_from_json_filepath(json_filepath:Path) -> Path:
+    """Construct a default filepath to netCDF file given filepath to associated solution json file."""
+    nc_filename = json_filepath.name.split(".")[0] + ".nc"
+    nc_filepath = json_filepath.parent / nc_filename
+    return nc_filepath
 
 @dataclass
 class Solution:
@@ -121,3 +128,37 @@ class Solution:
             ))
 
         return Solution(**solution_dict)
+
+    def to_files(self, json_filepath:Path, nc_filepath:Optional[Path]=None) -> None:
+        """Save the solution to json and netCDF files.
+
+        json_filepath: where to save the json file with all data except the simulation results dataset
+        nc_filepath: where to save the netCDF file containing the simulation results.
+            If None then it will be saved in the same directory as the json file, with the same name but with
+            the extension *.nc
+        """
+        if nc_filepath is None:
+            nc_filepath = _construct_nc_filepath_from_json_filepath(json_filepath)
+        json_filepath.parent.mkdir(parents=True, exist_ok=True)
+        nc_filepath.parent.mkdir(parents=True, exist_ok=True)
+        with json_filepath.open("w") as json_file:
+            json_file.write(
+                self.to_json(include_simulation_data=False, compact=False)
+            )
+        self.simulation_result.to_netcdf(nc_filepath)
+
+    @staticmethod
+    def from_files(json_filepath:Path, nc_filepath:Optional[Path]=None):
+        """Read solution from json and netCDF files.
+
+        json_filepath: solution json file location, containing all data except the simulation results dataset
+        nc_filepath: netCDF file location, containing the simulation results.
+            If None then it will be assumed to be saved in the same directory as the json file, with the same name but with
+            the extension *.nc. This is the default saving behavior of Solution.to_files.
+        """
+        if nc_filepath is None:
+            nc_filepath = _construct_nc_filepath_from_json_filepath(json_filepath)
+        return Solution.from_json(
+            json_string = json_filepath.read_text(),
+            simulation_result = xarray.open_dataset(nc_filepath),
+        )

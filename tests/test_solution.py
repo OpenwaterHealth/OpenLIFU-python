@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -53,3 +54,16 @@ def test_json_serialize_deserialize_solution(
     else:
         solution_reconstructed = Solution.from_json(solution_json, simulation_result=solution.simulation_result)
     assert dataclasses_are_equal(solution_reconstructed, solution)
+
+def test_save_load_solution(example_solution:Solution, tmp_path:Path):
+    """Test that a solution can be saved to and loaded from disk faithfully."""
+    json_filepath = tmp_path/"some_directory"/"example_soln.json"
+    example_solution.to_files(json_filepath)
+    assert dataclasses_are_equal(Solution.from_files(json_filepath), example_solution)
+
+def test_save_load_solution_custom_dataset_filepath(example_solution:Solution, tmp_path:Path):
+    """Test that a solution can be saved to and loaded from disk faithfully, this time with a custom path for simulation data."""
+    json_filepath = tmp_path/"some_directory"/"example_soln.json"
+    nc_filepath = tmp_path/"some_other_directory"/"sim_output.nc"
+    example_solution.to_files(json_filepath, nc_filepath)
+    assert dataclasses_are_equal(Solution.from_files(json_filepath, nc_filepath), example_solution)
