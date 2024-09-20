@@ -1,9 +1,11 @@
+import logging
 import shutil
 from pathlib import Path
 
 import pytest
 from helpers import dataclasses_are_equal
 
+from openlifu import Solution
 from openlifu.db import Database, Session, Subject
 
 
@@ -105,3 +107,68 @@ def test_session_to_file(example_session : Session, tmp_path:Path):
     example_session.to_file(save_path)
     reloaded_session = Session.from_file(save_path)
     assert dataclasses_are_equal(example_session, reloaded_session)
+
+def test_get_solutions_filename(example_database:Database):
+    solutions_filepath = example_database.get_solutions_filename("example_subject", "example_session")
+    assert solutions_filepath.exists()
+    assert solutions_filepath.is_file()
+    assert solutions_filepath.name == "solutions.json"
+
+def test_get_solution_filepath(example_database:Database):
+    solutions_dir = example_database.get_solution_filepath("example_subject", "example_session", "example_solution")
+    assert solutions_dir.exists()
+    assert solutions_dir.is_file()
+    assert solutions_dir.name == "example_solution.json"
+
+def test_get_solution_ids(example_database:Database, caplog):
+    # verify that solution ids are loaded correctly
+    solution_ids = example_database.get_solution_ids("example_subject", "example_session")
+    assert len(solution_ids) == 1
+    assert solution_ids[0] == "example_solution"
+
+    # verify that warning is printed and empty list returned when there is no solutions file
+    solutions_filepath = example_database.get_solutions_filename("example_subject", "example_session")
+    solutions_filepath.unlink() # Delete file
+    with caplog.at_level(logging.WARNING):
+        solution_ids = example_database.get_solution_ids("example_subject", "example_session")
+        assert "Solutions file not found" in caplog.text
+    assert len(solution_ids) == 0
+
+
+def test_load_solution(example_database:Database, example_session:Session):
+    with pytest.raises(FileNotFoundError,match="Solution file not found"):
+        example_database.load_solution(example_session, "bogus_solution_id")
+
+    example_solution = example_database.load_solution(example_session, "example_solution")
+    assert example_solution.name == "Example Solution"
+    assert "p_min" in example_solution.simulation_result.data_vars # ensure the xarray dataset got loaded too
+
+def test_write_solution(example_database:Database, example_session:Session):
+    solution = Solution(name="bleh", id='new_solution')
+
+    # This solution is not initially in the list of solution IDs
+    assert solution.id not in example_database.get_solution_ids(example_session.subject_id, example_session.id)
+
+    # Can add a new solution, and it loads back in correctly.
+    example_database.write_solution(example_session, solution)
+    reloaded_solution = example_database.load_solution(example_session, solution.id)
+    assert dataclasses_are_equal(reloaded_solution,solution)
+
+    # The new solution has now been added to the list of solution IDs
+    assert solution.id in example_database.get_solution_ids(example_session.subject_id, example_session.id)
+
+    # Error raised when the solution already exists
+    with pytest.raises(ValueError, match="already exists"):
+        example_database.write_solution(example_session, solution, on_conflict="error")
+
+    # Skip option
+    solution.name = "new_name"
+    example_database.write_solution(example_session, solution, on_conflict="skip")
+    reloaded_solution = example_database.load_solution(example_session, solution.id)
+    assert reloaded_solution.name == "bleh"
+
+    # Overwrite option
+    solution.name = "new_name"
+    example_database.write_solution(example_session, solution, on_conflict="overwrite")
+    reloaded_solution = example_database.load_solution(example_session, solution.id)
+    assert reloaded_solution.name == "new_name"
