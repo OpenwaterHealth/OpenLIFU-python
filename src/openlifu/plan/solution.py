@@ -81,7 +81,7 @@ class Solution:
 
         if include_simulation_data:
             # Serialize xarray dataset into a string
-            solution_dict['simulation_result'] = base64.b64encode(self.simulation_result.to_netcdf()).decode('utf-8')
+            solution_dict['simulation_result'] = base64.b64encode(self.simulation_result.to_netcdf(engine='scipy')).decode('utf-8')
         else:
             solution_dict.pop('simulation_result')
 
@@ -123,9 +123,12 @@ class Solution:
             solution_dict["simulation_result"] = simulation_result
         elif "simulation_result" in solution_dict:
             # Deserialize xarray dataset from string
-            solution_dict["simulation_result"] = xarray.open_dataset(base64.b64decode(
-                solution_dict["simulation_result"].encode('utf-8')
-            ))
+            solution_dict["simulation_result"] = xarray.open_dataset(
+                base64.b64decode(
+                    solution_dict["simulation_result"].encode('utf-8')
+                ),
+                engine='scipy',
+            )
 
         return Solution(**solution_dict)
 
@@ -145,7 +148,7 @@ class Solution:
             json_file.write(
                 self.to_json(include_simulation_data=False, compact=False)
             )
-        self.simulation_result.to_netcdf(nc_filepath)
+        self.simulation_result.to_netcdf(nc_filepath, engine='h5netcdf')
 
     @staticmethod
     def from_files(json_filepath:Path, nc_filepath:Optional[Path]=None):
