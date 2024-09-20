@@ -14,7 +14,7 @@ class Point:
     id: str = "point"
     name: str = "Point"
     color: Any = (1.0, 0.0, 0.0)
-    radius: float = 1 # mm
+    radius: float = 1. # mm
     position: np.ndarray = field(default_factory=lambda: np.array([0.0, 0.0, 0.0])) # mm
     dims: Tuple[str, str, str] = ("x","y","z")
     units: str = "mm"
