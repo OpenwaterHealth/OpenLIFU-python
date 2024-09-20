@@ -19,6 +19,9 @@ def example_point() -> Point:
     )
 
 @pytest.mark.parametrize("compact_representation", [True, False])
-def test_serialize_deserialize_protocol(example_point : Point, compact_representation: bool):
-    reconstructed_point = example_point.from_json(example_point.to_json(compact_representation))
-    assert dataclasses_are_equal(example_point, reconstructed_point)
+@pytest.mark.parametrize("default_point", [True, False])
+def test_serialize_deserialize_point(example_point : Point, compact_representation: bool, default_point: bool):
+    """Verify that turning a point into json and then re-constructing it gets back to the original point"""
+    point = Point() if default_point else example_point
+    reconstructed_point = point.from_json(point.to_json(compact_representation))
+    assert dataclasses_are_equal(point, reconstructed_point)
