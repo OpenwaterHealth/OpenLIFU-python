@@ -3,11 +3,12 @@
 from dataclasses import fields, is_dataclass
 
 import numpy as np
+import xarray
 
 
 def dataclasses_are_equal(obj1, obj2) -> bool:
     """Return whether two nested dataclass structures are equal by recursively checking for equality of fields,
-    while specially handling numpy arrays.
+    while specially handling numpy arrays and xarray Datasets.
 
     Recurses into dataclasses as well as dictionary-like, list-like, and tuple-like fields.
     """
@@ -28,5 +29,7 @@ def dataclasses_are_equal(obj1, obj2) -> bool:
         return all(dataclasses_are_equal(obj1[k],obj2[k]) for k in obj1)
     elif issubclass(obj_type, np.ndarray):
         return (obj1==obj2).all()
+    elif issubclass(obj_type, xarray.Dataset):
+        return obj1.equals(obj2)
     else:
         return obj1 == obj2
