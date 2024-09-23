@@ -6,7 +6,8 @@ import pytest
 from helpers import dataclasses_are_equal
 
 from openlifu import Solution
-from openlifu.db import Database, Session, Subject
+from openlifu.db import Session, Subject
+from openlifu.db.database import Database, OnConflictOpts
 
 
 @pytest.fixture()
@@ -55,16 +56,16 @@ def test_write_subject(example_database : Database):
 
     # Error raised when the subject already exists
     with pytest.raises(ValueError, match="already exists"):
-        example_database.write_subject(subject, on_conflict="error")
+        example_database.write_subject(subject, on_conflict=OnConflictOpts.ERROR)
 
     # Skip option
     subject.name = "Deb Jectson"
-    example_database.write_subject(subject, on_conflict="skip")
+    example_database.write_subject(subject, on_conflict=OnConflictOpts.SKIP)
     reloaded_subject = example_database.load_subject("bleh")
     assert reloaded_subject.name == "Seb Jectson"
 
     # Overwrite option
-    example_database.write_subject(subject, on_conflict="overwrite")
+    example_database.write_subject(subject, on_conflict=OnConflictOpts.OVERWRITE)
     reloaded_subject = example_database.load_subject("bleh")
     assert reloaded_subject.name == "Deb Jectson"
 
@@ -78,17 +79,17 @@ def test_write_session(example_database: Database, example_subject: Subject):
 
     # Error raised when the session already exists
     with pytest.raises(ValueError, match="already exists"):
-        example_database.write_session(example_subject, session, on_conflict="error")
+        example_database.write_session(example_subject, session, on_conflict=OnConflictOpts.ERROR)
 
     # Skip option
     session.name = "new_name"
-    example_database.write_session(example_subject, session, on_conflict="skip")
+    example_database.write_session(example_subject, session, on_conflict=OnConflictOpts.SKIP)
     reloaded_session = example_database.load_session(example_subject, session.id)
     assert reloaded_session.name == "bleh"
 
     # Overwrite option
     session.name = "new_name"
-    example_database.write_session(example_subject, session, on_conflict="overwrite")
+    example_database.write_session(example_subject, session, on_conflict=OnConflictOpts.OVERWRITE)
     reloaded_session = example_database.load_session(example_subject, session.id)
     assert reloaded_session.name == "new_name"
 
@@ -159,16 +160,16 @@ def test_write_solution(example_database:Database, example_session:Session):
 
     # Error raised when the solution already exists
     with pytest.raises(ValueError, match="already exists"):
-        example_database.write_solution(example_session, solution, on_conflict="error")
+        example_database.write_solution(example_session, solution, on_conflict=OnConflictOpts.ERROR)
 
     # Skip option
     solution.name = "new_name"
-    example_database.write_solution(example_session, solution, on_conflict="skip")
+    example_database.write_solution(example_session, solution, on_conflict=OnConflictOpts.SKIP)
     reloaded_solution = example_database.load_solution(example_session, solution.id)
     assert reloaded_solution.name == "bleh"
 
     # Overwrite option
     solution.name = "new_name"
-    example_database.write_solution(example_session, solution, on_conflict="overwrite")
+    example_database.write_solution(example_session, solution, on_conflict=OnConflictOpts.OVERWRITE)
     reloaded_solution = example_database.load_solution(example_session, solution.id)
     assert reloaded_solution.name == "new_name"

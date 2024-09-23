@@ -3,8 +3,9 @@ import glob
 import json
 import logging
 import os
+from enum import Enum
 from pathlib import Path
-from typing import List, Literal, Optional
+from typing import List, Optional
 
 import h5py
 
@@ -13,7 +14,7 @@ from openlifu.plan import Protocol, Solution
 from .session import Session
 from .subject import Subject
 
-OnConflictOpts = Literal['error', 'overwrite', 'skip']
+OnConflictOpts = Enum('OnConflictOpts', ['ERROR', 'OVERWRITE', 'SKIP'])
 
 
 class Database:
@@ -23,14 +24,14 @@ class Database:
         self.path = os.path.normpath(path)
         self.logger = logging.getLogger(__name__)
 
-    def write_gridweights(self, transducer_id: str, grid_hash: str, grid_weights, on_conflict: OnConflictOpts =b"error"):
+    def write_gridweights(self, transducer_id: str, grid_hash: str, grid_weights, on_conflict: OnConflictOpts = OnConflictOpts.ERROR):
         grid_hashes = self.get_gridweight_hashes(transducer_id)
         if grid_hash in grid_hashes:
-            if on_conflict == "error":
+            if on_conflict == OnConflictOpts.ERROR:
                 raise ValueError(f"Grid weights with hash {grid_hash} already exists for transducer {transducer_id}.")
-            elif on_conflict == "overwrite":
+            elif on_conflict == OnConflictOpts.OVERWRITE:
                 self.logger.info(f"Overwriting grid weights with hash {grid_hash} for transducer {transducer_id}.")
-            elif on_conflict == "skip":
+            elif on_conflict == OnConflictOpts.SKIP:
                 self.logger.info(f"Skipping grid weights with hash {grid_hash} for transducer {transducer_id} as it already exists.")
             else:
                 raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
@@ -39,17 +40,17 @@ class Database:
             f.create_dataset("grid_weights", data=grid_weights)
         self.logger.info(f"Added grid weights with hash {grid_hash} for transducer {transducer_id} to the database.")
 
-    def write_protocol(self, protocol: Protocol, on_conflict: OnConflictOpts = "error"):
+    def write_protocol(self, protocol: Protocol, on_conflict: OnConflictOpts = OnConflictOpts.ERROR):
         # Check if the sonication protocol ID already exists in the database
         protocol_id = protocol.id
         protocol_ids = self.get_protocol_ids()
 
         if protocol_id in protocol_ids:
-            if on_conflict == "error":
+            if on_conflict == OnConflictOpts.ERROR:
                 raise ValueError(f"Protocol with ID {protocol_id} already exists in the database.")
-            elif on_conflict == "overwrite":
+            elif on_conflict == OnConflictOpts.OVERWRITE:
                 self.logger.info(f"Overwriting Protocol with ID {protocol_id} in the database.")
-            elif on_conflict == "skip":
+            elif on_conflict == OnConflictOpts.SKIP:
                 self.logger.info(f"Skipping Protocol with ID {protocol_id} as it already exists in the database.")
                 return  # Skip adding the Protocol
             else:
@@ -71,7 +72,7 @@ class Database:
         self.logger.info(f"Added Sonication Protocol with ID {protocol_id} to the database.")
 
 
-    def write_session(self, subject:Subject, session:Session, on_conflict="error"):
+    def write_session(self, subject:Subject, session:Session, on_conflict=OnConflictOpts.ERROR):
         # Generate session ID
         session_id = session.id
 
@@ -83,11 +84,11 @@ class Database:
         session_ids = self.get_session_ids(subject.id)
 
         if session_id in session_ids:
-            if on_conflict == "error":
+            if on_conflict == OnConflictOpts.ERROR:
                 raise ValueError(f"Session with ID {session_id} already exists for subject {subject.id}.")
-            elif on_conflict == "overwrite":
+            elif on_conflict == OnConflictOpts.OVERWRITE:
                 self.logger.info(f"Overwriting session with ID {session_id} for subject {subject.id}.")
-            elif on_conflict == "skip":
+            elif on_conflict == OnConflictOpts.SKIP:
                 self.logger.info(f"Skipping session with ID {session_id} for subject {subject.id} as it already exists.")
                 return  # Skip adding the session
             else:
@@ -104,16 +105,16 @@ class Database:
 
         self.logger.info(f"Added session with ID {session_id} for subject {subject.id} to the database.")
 
-    def write_subject(self, subject, on_conflict="error"):
+    def write_subject(self, subject, on_conflict=OnConflictOpts.ERROR):
         subject_id = subject.id
         subject_ids = self.get_subject_ids()
 
         if subject_id in subject_ids:
-            if on_conflict == "error":
+            if on_conflict == OnConflictOpts.ERROR:
                 raise ValueError(f"Subject with ID {subject_id} already exists in the database.")
-            elif on_conflict == "overwrite":
+            elif on_conflict == OnConflictOpts.OVERWRITE:
                 self.logger.info(f"Overwriting subject with ID {subject_id} in the database.")
-            elif on_conflict == "skip":
+            elif on_conflict == OnConflictOpts.SKIP:
                 self.logger.info(f"Skipping subject with ID {subject_id} as it already exists.")
                 return
             else:
@@ -128,16 +129,16 @@ class Database:
 
         self.logger.info(f"Added subject with ID {subject_id} to the database.")
 
-    def write_transducer(self, transducer, on_conflict: OnConflictOpts="error"):
+    def write_transducer(self, transducer, on_conflict: OnConflictOpts=OnConflictOpts.ERROR):
         transducer_id = transducer.id
         transducer_ids = self.get_transducer_ids()
 
         if transducer_id in transducer_ids:
-            if on_conflict == "error":
+            if on_conflict == OnConflictOpts.ERROR:
                 raise ValueError(f"Transducer with ID {transducer_id} already exists in the database.")
-            elif on_conflict == "overwrite":
+            elif on_conflict == OnConflictOpts.OVERWRITE:
                 self.logger.info(f"Overwriting transducer with ID {transducer_id} in the database.")
-            elif on_conflict == "skip":
+            elif on_conflict == OnConflictOpts.SKIP:
                 self.logger.info(f"Skipping transducer with ID {transducer_id} as it already exists.")
                 return
             else:
@@ -152,16 +153,16 @@ class Database:
 
         self.logger.info(f"Added transducer with ID {transducer_id} to the database.")
 
-    def write_system(self, system, on_conflict="error"):
+    def write_system(self, system, on_conflict=OnConflictOpts.ERROR):
         system_id = system.id
         system_ids = self.get_system_ids()
 
         if system_id in system_ids:
-            if on_conflict == "error":
+            if on_conflict == OnConflictOpts.ERROR:
                 raise ValueError(f"Ultrasound system with ID {system_id} already exists in the database.")
-            elif on_conflict == "overwrite":
+            elif on_conflict == OnConflictOpts.OVERWRITE:
                 self.logger.info(f"Overwriting ultrasound system with ID {system_id} in the database.")
-            elif on_conflict == "skip":
+            elif on_conflict == OnConflictOpts.SKIP:
                 self.logger.info(f"Skipping ultrasound system with ID {system_id} as it already exists.")
                 return
             else:
@@ -178,17 +179,17 @@ class Database:
 
         self.logger.info(f"Added ultrasound system with ID {system_id} to the database.")
 
-    def write_volume(self, subject, volume, on_conflict="error"):
+    def write_volume(self, subject, volume, on_conflict=OnConflictOpts.ERROR):
         volume_id = volume.id
         subject_id = subject.id
 
         volume_ids = self.get_volume_ids(subject_id)
         if volume_id in volume_ids:
-            if on_conflict == "error":
+            if on_conflict == OnConflictOpts.ERROR:
                 raise ValueError(f"Volume with ID {volume_id} already exists for subject {subject_id}.")
-            elif on_conflict == "overwrite":
+            elif on_conflict == OnConflictOpts.OVERWRITE:
                 self.logger.info(f"Overwriting volume with ID {volume_id} for subject {subject_id}.")
-            elif on_conflict == "skip":
+            elif on_conflict == OnConflictOpts.SKIP:
                 self.logger.info(f"Skipping volume with ID {volume_id} for subject {subject_id} as it already exists.")
                 return
             else:
@@ -205,15 +206,15 @@ class Database:
 
         self.logger.info(f"Added volume with ID {volume_id} for subject {subject_id} to the database.")
 
-    def write_solution(self, session:Session, solution:Solution, on_conflict: OnConflictOpts="error"):
+    def write_solution(self, session:Session, solution:Solution, on_conflict: OnConflictOpts=OnConflictOpts.ERROR):
         solution_ids = self.get_solution_ids(session.subject_id, session.id)
 
         if solution.id in solution_ids:
-            if on_conflict == "error":
+            if on_conflict == OnConflictOpts.ERROR:
                 raise ValueError(f"Solution with ID {solution.id} already exists in the database.")
-            elif on_conflict == "overwrite":
+            elif on_conflict == OnConflictOpts.OVERWRITE:
                 self.logger.info(f"Overwriting solution with ID {solution.id} in the database.")
-            elif on_conflict == "skip":
+            elif on_conflict == OnConflictOpts.SKIP:
                 self.logger.info(f"Skipping solution with ID {solution.id} as it already exists.")
                 return
             else:
