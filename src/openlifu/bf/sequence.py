@@ -1,10 +1,12 @@
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 
 import pandas as pd
 
+from openlifu.io.dict_conversion import DictMixin
+
 
 @dataclass
-class Sequence:
+class Sequence(DictMixin):
     """
     Class for representing a sequence of pulses
 
@@ -31,21 +33,3 @@ class Sequence:
             {"Name": "Pulse Train Count", "Value": self.pulse_train_count, "Unit": ""}
         ]
         return pd.DataFrame.from_records(records)
-
-    @staticmethod
-    def from_dict(d):
-        """
-        Create a sequence from a dictionary
-
-        :param d: Dictionary of the sequence parameters
-        :returns: Sequence object
-        """
-        return Sequence(**d)
-
-    def to_dict(self):
-        """
-        Convert the sequence to a dictionary
-
-        :returns: Dictionary of the sequence parameters
-        """
-        return asdict(self)

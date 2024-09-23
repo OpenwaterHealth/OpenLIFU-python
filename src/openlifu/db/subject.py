@@ -3,11 +3,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
+from openlifu.io.dict_conversion import DictMixin
 from openlifu.util.strings import sanitize
 
 
 @dataclass
-class Subject:
+class Subject(DictMixin):
     """
     Class representing a subject
 
@@ -34,16 +35,6 @@ class Subject:
             self.volumes = list(self.volumes)
 
     @staticmethod
-    def from_dict(d):
-        """
-        Create a subject from a dictionary
-
-        :param d: Dictionary of subject parameters
-        :returns: Subject object
-        """
-        return Subject(**d)
-
-    @staticmethod
     def from_file(filename):
         """
         Create a subject from a file
@@ -53,14 +44,6 @@ class Subject:
         """
         with open(filename) as f:
             return Subject.from_dict(json.load(f))
-
-    def to_dict(self):
-        """
-        Convert the subject to a dictionary
-
-        :returns: Dictionary of subject parameters
-        """
-        return self.__dict__.copy()
 
     def to_file(self, filename):
         """

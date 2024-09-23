@@ -3,9 +3,11 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
+from openlifu.io.dict_conversion import DictMixin
+
 
 @dataclass
-class Pulse:
+class Pulse(DictMixin):
     """
     Class for representing a sinusoidal pulse
 
@@ -46,24 +48,3 @@ class Pulse:
                    {"Name": "Amplitude", "Value": self.amplitude, "Unit": "Pa"},
                    {"Name": "Duration", "Value": self.duration, "Unit": "s"}]
         return pd.DataFrame.from_records(records)
-
-    def to_dict(self):
-        """
-        Convert the pulse to a dictionary
-
-        :returns: Dictionary of the pulse parameters
-        """
-        return {"frequency": self.frequency,
-                "amplitude": self.amplitude,
-                "duration": self.duration,
-                "class": "Pulse"}
-
-    @staticmethod
-    def from_dict(d):
-        """
-        Create a pulse from a dictionary
-
-        :param d: Dictionary of the pulse parameters
-        :returns: Pulse object
-        """
-        return Pulse(frequency=d["frequency"], amplitude=d["amplitude"], duration=d["duration"])

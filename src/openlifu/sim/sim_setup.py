@@ -5,12 +5,13 @@ from typing import Optional, Tuple
 import numpy as np
 import xarray as xa
 
+from openlifu.io.dict_conversion import DictMixin
 from openlifu.util.units import getunitconversion
 from openlifu.xdc import Transducer
 
 
 @dataclass
-class SimSetup:
+class SimSetup(DictMixin):
     dims: Tuple[str, str, str] = ("lat", "ele", "ax")
     names: Tuple[str, str, str] = ("Lateral", "Elevation", "Axial")
     spacing: float = 1.0
@@ -108,7 +109,3 @@ class SimSetup:
 
     def transform_scene(self, scene, id: Optional[str] = None, name: Optional[str] = None, units: Optional[str] = None):
         raise NotImplementedError
-
-    @staticmethod
-    def from_dict(d):
-        return SimSetup(**d)
