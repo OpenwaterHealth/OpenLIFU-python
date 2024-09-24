@@ -159,3 +159,4 @@ Thumbs.db
 *~
 *.swp
 .vscode
+/db_dvc
