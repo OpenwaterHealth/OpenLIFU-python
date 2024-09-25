@@ -397,21 +397,13 @@ class Database:
         self.logger.info(f"Loaded subject {subject_id}")
         return subject
 
-    def load_volume(self, subject, volume_id):
-        raise NotImplementedError("Volume is not yet implemented")
-        volume_filename = self.get_volume_filepath(subject.id, volume_id)
-        volume = Volume.from_file(volume_filename)
-        return volume
-
-    def load_volume_attrs(self, subject, volume_ids=None):
-        raise NotImplementedError("Volume is not yet implemented")
-        volume_ids = volume_ids or subject.volumes
-        attrs = []
-        for volume_id in volume_ids:
-            volume_filename = self.get_volume_filepath(subject.id, volume_id)
-            volume = Volume.from_file(volume_filename)
-            attrs.append(volume.attrs)
-        return attrs
+    def get_volume_info(self, subject_id, volume_id):
+        volume_metadata_filepath = self.get_volume_metadata_filepath(subject_id, volume_id)
+        with open(volume_metadata_filepath) as f:
+            volume = json.load(f)
+            return {"id": volume["id"],\
+                    "name": volume["name"],\
+                    "data_abspath": Path(volume_metadata_filepath).parent/volume["data_filename"]}
 
     def load_standoff(self, transducer_id, standoff_id="standoff"):
         raise NotImplementedError("Standoff is not yet implemented")
