@@ -3,6 +3,7 @@ import glob
 import json
 import logging
 import os
+import shutil
 from enum import Enum
 from pathlib import Path
 from typing import List, Optional
@@ -10,6 +11,7 @@ from typing import List, Optional
 import h5py
 
 from openlifu.plan import Protocol, Solution
+from openlifu.util.json import PYFUSEncoder
 
 from .session import Session
 from .subject import Subject
@@ -179,9 +181,9 @@ class Database:
 
         self.logger.info(f"Added ultrasound system with ID {system_id} to the database.")
 
-    def write_volume(self, subject, volume, on_conflict=OnConflictOpts.ERROR):
-        volume_id = volume.id
-        subject_id = subject.id
+    def write_volume(self, subject_id, volume_id, volume_name, volume_data_filepath, on_conflict=OnConflictOpts.ERROR):
+        if not Path(volume_data_filepath).exists():
+            raise ValueError(f'Volume data filepath does not exist: {volume_data_filepath}')
 
         volume_ids = self.get_volume_ids(subject_id)
         if volume_id in volume_ids:
@@ -195,10 +197,16 @@ class Database:
             else:
                 raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
 
-        volume_data = volume.to_json()
-        volume_filename = self.get_volume_filename(subject_id, volume_id)
-        with open(volume_filename, "w") as f:
-            json.dump(volume_data, f)
+        # Create volume metadata
+        volume_metadata_dict = {"id": volume_id, "name": volume_name, "data_filename": Path(volume_data_filepath).name}
+        volume_metadata_json = json.dumps(volume_metadata_dict, separators=(',', ':'), cls=PYFUSEncoder)
+
+        # Save the volume metadata to a JSON file and copy volume data file to database
+        volume_metadata_filepath = self.get_volume_metadata_filepath(subject_id, volume_id)
+        Path(volume_metadata_filepath).parent.mkdir(exist_ok=True)
+        with open(volume_metadata_filepath, 'w') as file:
+            file.write(volume_metadata_json)
+        shutil.copy(Path(volume_data_filepath), Path(volume_metadata_filepath).parent)
 
         if volume_id not in volume_ids:
             volume_ids.append(volume_id)
@@ -300,6 +308,18 @@ class Database:
             self.logger.warning("Sessions file not found for subject %s.", subject_id)
             return []
 
+    def get_volume_ids(self, subject_id):
+        volumes_filename = self.get_volumes_filename(subject_id)
+        if os.path.isfile(volumes_filename):
+            with open(volumes_filename) as file:
+                volume_data = json.load(file)
+                volume_ids = volume_data.get("volume_ids", [])
+            self.logger.info("Volume IDs for subject %s: %s", subject_id, volume_ids)
+            return volume_ids
+        else:
+            self.logger.warning("Volumes file not found for subject %s.", subject_id)
+            return []
+
     def get_solution_ids(self, subject_id:str, session_id:str) -> List[str]:
         """Get a list of IDs of the solutions associated with the given session"""
         solutions_filename = self.get_solutions_filename(subject_id, session_id)
@@ -379,7 +399,7 @@ class Database:
 
     def load_volume(self, subject, volume_id):
         raise NotImplementedError("Volume is not yet implemented")
-        volume_filename = self.get_volume_filename(subject.id, volume_id)
+        volume_filename = self.get_volume_filepath(subject.id, volume_id)
         volume = Volume.from_file(volume_filename)
         return volume
 
@@ -388,7 +408,7 @@ class Database:
         volume_ids = volume_ids or subject.volumes
         attrs = []
         for volume_id in volume_ids:
-            volume_filename = self.get_volume_filename(subject.id, volume_id)
+            volume_filename = self.get_volume_filepath(subject.id, volume_id)
             volume = Volume.from_file(volume_filename)
             attrs.append(volume.attrs)
         return attrs
@@ -520,6 +540,9 @@ class Database:
     def get_sessions_filename(self, subject_id):
         return Path(self.get_subject_dir(subject_id)) / 'sessions' / 'sessions.json'
 
+    def get_volumes_filename(self, subject_id):
+        return Path(self.get_subject_dir(subject_id)) / 'volumes' / 'volumes.json'
+
     def get_solution_filepath(self, subject_id, session_id, solution_id) -> Path:
         """Get the solution json file for the solution with the given ID"""
         session_dir = self.get_session_dir(subject_id, session_id)
@@ -554,9 +577,11 @@ class Database:
     def get_transducers_filename(self):
         return Path(self.path) / 'transducers' / 'transducers.json'
 
-    def get_volume_filename(self, subject_id, volume_id):
-        subject_dir = self.get_subject_dir(subject_id)
-        return Path(subject_dir) / 'volumes' / f'{volume_id}.mat'
+    def get_volume_dir(self, subject_id, volume_id):
+        return Path(self.get_subject_dir(subject_id)) / 'volumes' / volume_id
+
+    def get_volume_metadata_filepath(self, subject_id, volume_id):
+        return Path(self.get_volume_dir(subject_id, volume_id)) / f'{volume_id}.json'
 
     def write_protocol_ids(self, protocol_ids):
         protocol_data = {'protocol_ids': protocol_ids}
@@ -569,6 +594,12 @@ class Database:
         sessions_filename = self.get_sessions_filename(subject_id)
         with open(sessions_filename, 'w') as f:
             json.dump(session_data, f)
+
+    def write_volume_ids(self, subject_id, volume_ids):
+        volume_data = {'volume_ids': volume_ids}
+        volumes_filename = self.get_volumes_filename(subject_id)
+        with open(volumes_filename, 'w') as f:
+            json.dump(volume_data, f)
 
     def write_subject_ids(self, subject_ids):
         subject_data = {'subject_ids': subject_ids}
