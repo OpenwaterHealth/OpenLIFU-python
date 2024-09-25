@@ -1,6 +1,5 @@
 {
   "id": "example_volume",
   "name": "EXAMPLE_VOLUME",
-  "dims": ["L", "P", "S"],
-  "dim_names": ["L", "P", "S"]
+  "data_filename": "example_volume.nii"
 }

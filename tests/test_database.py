@@ -135,6 +135,32 @@ def test_get_solution_ids(example_database:Database, caplog):
         assert "Solutions file not found" in caplog.text
     assert len(solution_ids) == 0
 
+def test_get_volume_ids(example_database:Database):
+    assert(example_database.get_volume_ids("example_subject") == ["example_volume"])
+
+def test_write_volume_ids(example_database:Database):
+    example_database.write_volume_ids("example_subject", ["example_volume", "example_volume_2"])
+    assert(example_database.get_volume_ids("example_subject") == ["example_volume", "example_volume_2"])
+
+def test_get_volume_dir(example_database:Database, tmp_path:Path):
+    subject_id = "example_subject"
+    volume_id = "example_volume"
+    assert(example_database.get_volume_dir(subject_id, volume_id) == \
+                        tmp_path/f'example_db/subjects/{subject_id}/volumes/{volume_id}')
+
+def test_write_volume(example_database:Database, tmp_path:Path):
+    subject_id = "example_subject"
+    volume_id = "example_volume_2"
+    volume_name = "EXAMPLE_VOLUME_2"
+    volume_data_path = Path(tmp_path/'test_db_files/example_volume_2.nii')
+    volume_data_path.parent.mkdir(parents=True, exist_ok=True)
+    volume_data_path.touch()
+    example_database.write_volume(subject_id, volume_id, volume_name, volume_data_path)
+    assert(example_database.get_volume_ids("example_subject") == ["example_volume", "example_volume_2"])
+
+    volume_filepath = example_database.get_volume_metadata_filepath("example_subject", "example_volume_2")
+    assert(volume_filepath.name == "example_volume_2.json")
+    assert((volume_filepath.parent/"example_volume_2.nii").exists())
 
 def test_load_solution(example_database:Database, example_session:Session):
     with pytest.raises(FileNotFoundError,match="Solution file not found"):
