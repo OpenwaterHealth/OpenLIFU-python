@@ -135,6 +135,15 @@ def test_get_solution_ids(example_database:Database, caplog):
         assert "Solutions file not found" in caplog.text
     assert len(solution_ids) == 0
 
+def test_get_volume_info(example_database:Database, tmp_path:Path):
+    subject = "example_subject"
+    volume_id = "example_volume"
+    volume_info = example_database.get_volume_info(subject, volume_id)
+    assert(volume_info["id"] == "example_volume")
+    assert(volume_info["name"] == "EXAMPLE_VOLUME")
+    assert(Path(volume_info["data_abspath"]) == \
+                        tmp_path/"example_db/subjects/example_subject/volumes/example_volume/example_volume.nii")
+
 def test_get_volume_ids(example_database:Database):
     assert(example_database.get_volume_ids("example_subject") == ["example_volume"])
 
