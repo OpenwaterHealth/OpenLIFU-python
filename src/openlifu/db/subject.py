@@ -1,7 +1,7 @@
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from openlifu.io.dict_conversion import DictMixin
 from openlifu.util.strings import sanitize
@@ -19,7 +19,6 @@ class Subject(DictMixin):
     """
     id: Optional[str] = None
     name: Optional[str] = None
-    volumes: List[str] = field(default_factory=list)
     attrs: dict = field(default_factory=dict)
 
     def __post_init__(self):
@@ -29,10 +28,6 @@ class Subject(DictMixin):
             self.id = sanitize(self.name, "snake")
         if self.name is None:
             self.name = self.id
-        if isinstance(self.volumes, str):
-            self.volumes = [self.volumes]
-        else:
-            self.volumes = list(self.volumes)
 
     @staticmethod
     def from_file(filename):
