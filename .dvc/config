@@ -1,5 +1,6 @@
 [core]
     remote = shared_gdrive
+    autostage = true
 ['remote "shared_gdrive"']
     url = gdrive://1rGAzqdikeTUzUQADjdP7-fTPdfF15eaO
     gdrive_acknowledge_abuse = true
