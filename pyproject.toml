@@ -53,6 +53,7 @@ test = [
 dev = [
   "pytest >=6",
   "pytest-cov >=3",
+  "dvc[gdrive]",
 ]
 docs = [
   "sphinx>=7.0",
