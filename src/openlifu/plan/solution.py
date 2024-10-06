@@ -3,7 +3,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
 import xarray as xa
@@ -82,16 +82,22 @@ class Solution:
     """Description of this solution"""
 
     delays: Optional[np.ndarray] = None
-    """Vector of time delays to steer the beam"""
+    """Vectors of time delays to steer the beam. Shape is (number of foci, number of transducer elements)."""
 
     apodizations: Optional[np.ndarray] = None
-    """Vector of apodizations to steer the beam"""
+    """Vectors of apodizations to steer the beam. Shape is (number of foci, number of transducer elements)."""
+
     pulse: Pulse = field(default_factory=Pulse)
     """Pulse to send to the transducer when running sonication"""
+
     sequence: Sequence = field(default_factory=Sequence)
     """Pulse sequence to use when running sonication"""
-    focus: Optional[Point] = None
-    """Point that is being focused on in this Solution; part of the focal pattern of the target"""
+
+    foci: List[Point] = field(default_factory=list)
+    """Points that are focused on in this Solution due to the focal pattern around the target.
+    Each item in this list is a unique point from the focal pattern, and the pulse sequence is
+    what determines how many times each point will be used.
+    """
 
     # there was "target_id" in the matlab software, but here we do not have the concept of a target ID.
     # I believe this was only needed in the matlab software because solutions were organized by target rather
@@ -110,16 +116,9 @@ class Solution:
     """Approval state of this solution as a sonication plan. `True` means the user has provided some
     kind of confirmation that the solution is safe and acceptable to be executed."""
 
-    def num_foci(self):
+    def num_foci(self) -> int:
         """Get the number of foci"""
-        if isinstance(self.focus, list):
-            nfoc = len(self.focus)
-        elif isinstance(self.focus, Point):
-            nfoc = 1
-        else:
-            raise ValueError("Cannot get number of foci for types other than Point.")
-
-        return nfoc
+        return len(self.foci)
 
     def analyze(self, transducer: Transducer, options: SolutionOptions = SolutionOptions()) -> SolutionAnalysis:
         """Analyzes the treatment solution.
@@ -166,10 +165,7 @@ class Solution:
         # power_W = np.zeros(self.num_foci())
         # TIC = np.zeros(self.num_foci())
         for focus_index in range(self.num_foci()):
-            if isinstance(self.focus, list):
-                foc = self.focus[focus_index]
-            elif isinstance(self.focus, Point):
-                foc = self.focus
+            foc = self.foci[focus_index]
             # output_signal = []
             # output_signal = np.zeros((transducer.numelements(), len(input_signal)))
             # for i in range(transducer.numelements()):
@@ -203,8 +199,8 @@ class Solution:
             #     distance=options.beamwidth_radius,
             #     options=mask_options)
 
-            pk = np.max(pnp_MPa.data * mainlobe_mask)  #TODO: pnp_MPa supposed to be a list for each focus: pnp_MPa(focus_index)
-            solution_analysis.mainlobe_pnp_MPa = pk
+            pk = np.max(pnp_MPa.data[focus_index] * mainlobe_mask)  #TODO: pnp_MPa supposed to be a list for each focus: pnp_MPa(focus_index)
+            solution_analysis.mainlobe_pnp_MPa += [pk]
 
         #     thresh_m3dB = pk*10**(-3 / 20)
         #     thresh_m6dB = pk*10**(-6 / 20)
@@ -357,10 +353,13 @@ class Solution:
             solution_dict["delays"] = np.array(solution_dict["delays"])
         if solution_dict["apodizations"] is not None:
             solution_dict["apodizations"] = np.array(solution_dict["apodizations"], ndmin=2)
+            solution_dict["apodizations"] = np.array(solution_dict["apodizations"], ndmin=2)
         solution_dict["pulse"] = Pulse.from_dict(solution_dict["pulse"])
         solution_dict["sequence"] = Sequence.from_dict(solution_dict["sequence"])
-        if solution_dict["focus"] is not None:
-            solution_dict["focus"] = Point.from_dict(solution_dict["focus"])  #TODO: Solution analysis needs a list, to interface with FocalPattern ?
+        solution_dict["foci"] = [
+            Point.from_dict(focus_dict)
+            for focus_dict in solution_dict["foci"]
+        ]
         if solution_dict["target"] is not None:
             solution_dict["target"] = Point.from_dict(solution_dict["target"])
 
