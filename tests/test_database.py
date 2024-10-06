@@ -179,6 +179,11 @@ def test_load_solution(example_database:Database, example_session:Session):
     assert example_solution.name == "Example Solution"
     assert "p_min" in example_solution.simulation_result.data_vars # ensure the xarray dataset got loaded too
 
+    # ensure the simulation and beamform data was loaded for all foci
+    assert len(example_solution.simulation_result['focal_point_index']) == len(example_solution.foci)
+    assert example_solution.delays.shape[0] == len(example_solution.foci)
+    assert example_solution.apodizations.shape[0] == len(example_solution.foci)
+
 def test_write_solution(example_database:Database, example_session:Session):
     solution = Solution(name="bleh", id='new_solution')
 
