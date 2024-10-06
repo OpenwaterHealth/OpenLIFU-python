@@ -36,34 +36,35 @@ def example_solution() -> Solution:
         transducer_id="trans_456",
         created_on=datetime(2024, 1, 1, 12, 0),
         description="This is a test solution for a unit test.",
-        delays=np.array([0.0, 1.0, 2.0, 3.0]),
-        apodizations=np.array([0.5, 0.75, 1.0, 0.85]),
+        delays=np.array([[0.0, 1.0, 2.0, 3.0]]),
+        apodizations=np.array([[0.5, 0.75, 1.0, 0.85]]),
         pulse=Pulse(frequency=42),
         sequence=Sequence(pulse_count=27),
-        focus=Point(id="test_focus_point"),
+        foci=[Point(id="test_focus_point")],
         target=Point(id="test_target_point"),
         simulation_result=xa.Dataset(
             {
                 'p_min': xa.DataArray(
-                    data=rng.random((3, 2, 3)),
-                    dims=["x", "y", "z"],
+                    data=rng.random((1, 3, 2, 3)),
+                    dims=["focal_point_index", "x", "y", "z"],
                     attrs={'units': "Pa"}
                 ),
                 'p_max': xa.DataArray(
-                    data=rng.random((3, 2, 3)),
-                    dims=["x", "y", "z"],
+                    data=rng.random((1, 3, 2, 3)),
+                    dims=["focal_point_index", "x", "y", "z"],
                     attrs={'units': "Pa"}
                 ),
                 'ita': xa.DataArray(
-                    data=rng.random((3, 2, 3)),
-                    dims=["x", "y", "z"],
+                    data=rng.random((1, 3, 2, 3)),
+                    dims=["focal_point_index", "x", "y", "z"],
                     attrs={'units': "W/cm^2"}
                 )
             },
             coords={
                 'x': xa.DataArray(dims=["x"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
                 'y': xa.DataArray(dims=["y"], data=np.linspace(0, 1, 2), attrs={'units': "m"}),
-                'z': xa.DataArray(dims=["z"], data=np.linspace(0, 1, 3), attrs={'units': "m"})
+                'z': xa.DataArray(dims=["z"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
+                'focal_point_index': [0]
             }
         ),
     )
@@ -108,6 +109,14 @@ def test_save_load_solution_custom_dataset_filepath(example_solution: Solution, 
     nc_filepath = tmp_path/"some_other_directory"/"sim_output.nc"
     example_solution.to_files(json_filepath, nc_filepath)
     assert dataclasses_are_equal(Solution.from_files(json_filepath, nc_filepath), example_solution)
+
+
+def test_num_foci(example_solution:Solution):
+    """Ensure that the number of foci in the test solution matches the number of foci provided in the simuluation and beamform data.
+    (This is more checking correctness of the test example rather than correctness of code, but it is important.)"""
+    assert len(example_solution.simulation_result['focal_point_index']) == len(example_solution.foci)
+    assert example_solution.delays.shape[0] == len(example_solution.foci)
+    assert example_solution.apodizations.shape[0] == len(example_solution.foci)
 
 
 def test_solution_analysis(example_solution: Solution, example_transducer: Transducer):

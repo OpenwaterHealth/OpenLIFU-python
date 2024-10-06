@@ -211,11 +211,12 @@ def rescale_coords(data_arr: Dataset, units: str) -> Dataset:
     rescaled = data_arr.copy(deep=True)
     for coord_key in data_arr.coords:
         curr_coord_attrs = rescaled[coord_key].attrs
-        curr_coord_units = curr_coord_attrs['units']
-        scale = getunitconversion(curr_coord_units, units)
-        curr_coord_rescaled = scale*rescaled[coord_key].data
-        rescaled = rescaled.assign_coords({coord_key: (coord_key, curr_coord_rescaled, curr_coord_attrs)})
-        rescaled[coord_key].attrs['units'] = units
+        if 'units' in curr_coord_attrs:
+            curr_coord_units = curr_coord_attrs['units']
+            scale = getunitconversion(curr_coord_units, units)
+            curr_coord_rescaled = scale*rescaled[coord_key].data
+            rescaled = rescaled.assign_coords({coord_key: (coord_key, curr_coord_rescaled, curr_coord_attrs)})
+            rescaled[coord_key].attrs['units'] = units
 
     return rescaled
 
@@ -235,7 +236,8 @@ def get_ndgrid_from_arr(data_arr: Dataset) -> np.ndarray:
     ordered_key = data_arr[first_data_key].dims
     all_coord = []
     for coord_key in ordered_key:
-        all_coord += [data_arr.coords[coord_key].data]
+        if 'units' in data_arr[coord_key].attrs:
+            all_coord += [data_arr.coords[coord_key].data]
     ndgrid = np.stack(np.meshgrid(*all_coord, indexing="ij"), axis=-1)
 
     return ndgrid
