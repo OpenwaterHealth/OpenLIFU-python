@@ -68,6 +68,9 @@ class Session:
     attrs: dict = field(default_factory=dict)
     """Dictionary of additional custom attributes to save to the session"""
 
+    virtual_fit_approval_for_target_id: Optional[str] = None
+    """Approval state of virtual fit. `None` if there is no approval, otherwise this is the ID
+    of the target for which virtual fitting has been marked approved."""
 
     def __post_init__(self):
         if self.id is None and self.name is None:
