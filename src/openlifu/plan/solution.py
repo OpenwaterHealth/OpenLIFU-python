@@ -67,6 +67,10 @@ class Solution:
     simulation_result: xarray.Dataset = field(default_factory=xarray.Dataset)
     """The xarray Dataset of simulation results"""
 
+    approved: bool = False
+    """Approval state of this solution as a sonication plan. `True` means the user has provided some
+    kind of confirmation that the solution is safe and acceptable to be executed."""
+
     def to_json(self, include_simulation_data:bool, compact:bool) -> str:
         """Serialize a Solution to a json string
 
