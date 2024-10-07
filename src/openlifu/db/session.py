@@ -39,10 +39,10 @@ class Session:
     name: Optional[str] = None
     """Session name"""
 
-    date: datetime = datetime.now()
+    date: datetime = field(default_factory=datetime.now)
     """Date of creation of the session"""
 
-    date_modified: datetime = datetime.now()
+    date_modified: datetime = field(default_factory=datetime.now)
     """Date of modification of the session"""
 
     protocol_id: Optional[str] = None
