@@ -27,5 +27,6 @@
   },
   "attrs": {},
   "date_modified": "2024-04-09 11:27:30",
-  "virtual_fit_approval_for_target_id": "example_target"
+  "virtual_fit_approval_for_target_id": "example_target",
+  "transducer_tracking_approved": false
 }

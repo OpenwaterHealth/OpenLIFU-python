@@ -72,6 +72,10 @@ class Session:
     """Approval state of virtual fit. `None` if there is no approval, otherwise this is the ID
     of the target for which virtual fitting has been marked approved."""
 
+    transducer_tracking_approved: Optional[bool] = False
+    """Approval state of transducer tracking. `True` means the user has provided some kind of
+    confirmation that the transducer transform in this session agrees with reality."""
+
     def __post_init__(self):
         if self.id is None and self.name is None:
             self.id = "session"
