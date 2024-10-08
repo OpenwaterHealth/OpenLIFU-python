@@ -4,3 +4,4 @@
 ['remote "shared_gdrive"']
     url = gdrive://1rGAzqdikeTUzUQADjdP7-fTPdfF15eaO
     gdrive_acknowledge_abuse = true
+    gdrive_client_id = 78626142150-1ikhqfnmr5p1aa63ji5opa7gveeksn90.apps.googleusercontent.com
