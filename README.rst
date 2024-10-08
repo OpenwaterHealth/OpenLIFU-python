@@ -50,10 +50,42 @@ Basic mode
    pip install -e .
 
 Dev mode
-^^^^^^^^^^
+^^^^^^^^
 .. code:: sh
 
    pip install -e .[dev]
+
+Version control of database using DVC (Data Version Control)
+-------------------------------------------------------------
+
+Data Version Control (DVC) is a data management tool that is meant to be run alongside Git.
+In this project, DVC is used to link changes in the code to specific versions of a sample database containing example project files.
+DVC can be used when this project is installed in Dev mode. You can read more about DVC and how to use it `here <https://dvc.org/doc/start>`_.
+**Note:** Remote access to the sample database stored on google drive is currently restricted. Access requires a :code:`gdrive_client_secret`
+for user access authentication to be shared by developers.
+
+DVC usage
+~~~~~~~~~
+
+To download the sample database:
+
+.. code:: sh
+
+   git pull
+   dvc remote modify --local shared_gdrive gdrive_client_secret <client_secret_here> # Contact developers for grive_client_secret
+   dvc pull # Requires access to remote storage
+
+This will download a directory 'db_dvc' in the repo directory that
+contains the corresponding version of example database files.
+
+To commit updates to the sample database:
+
+.. code:: sh
+
+   dvc add db_dvc
+   git commit -m "Describe updates to database"
+   git push
+   dvc push #Requires access to remote storage
 
 Disclaimer
 ----------
