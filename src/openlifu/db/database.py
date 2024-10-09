@@ -82,6 +82,16 @@ class Database:
         if session.subject_id != subject.id:
             raise ValueError("IDs do not match between the given subject and the subject referenced in the session.")
 
+        # Validate the approved fit target ID
+        if (
+            session.virtual_fit_approval_for_target_id is not None
+            and session.virtual_fit_approval_for_target_id not in [target.id for target in session.targets]
+        ):
+            raise ValueError(
+                f"The provided virtual_fit_approval_for_target_id of {session.virtual_fit_approval_for_target_id} is not"
+                " in this session's list of targets."
+            )
+
         # Check if the session already exists in the database
         session_ids = self.get_session_ids(subject.id)
 

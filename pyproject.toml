@@ -169,7 +169,6 @@ ignore = [
   "F821", # Undefined name `pyfus`
   "F841", # Local variable `m` is assigned to but never used
   "PTH111", # `os.path.expanduser()` should be replaced by `Path.expanduser()`
-  "RUF009", # Do not perform function call `datetime.now` in dataclass defaults
   "B008", # Do not perform function call `np.eye` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
   "B018", # Found useless expression. Either assign it to a variable or remove it.
   "PLW2901", # `for` loop variable `samples` overwritten by assignment target

@@ -14,45 +14,67 @@ from openlifu.util.strings import sanitize
 @dataclass
 class ArrayTransform:
     """Class representing the transform on a transducer array to position it in space.
-
-    matrix: 4x4 affine transform matrix
-    units: the units of the space on which to apply the transform matrix , e.g. "mm"
-        (In order to apply the transform to transducer points, first represent
-        the points in these units.)
+    units:
     """
+
     matrix: np.ndarray
+    """4x4 affine transform matrix"""
+
     units : str
+    """The units of the space on which to apply the transform matrix , e.g. "mm"
+    (In order to apply the transform to transducer points,.
+    first represent the points in these units.)"""
 
 @dataclass
 class Session:
     """
-    Class representing a session
-
-    ivar id: ID of the session
-    ivar subject_id: ID of the subject
-    ivar name: Name of the session
-    date: Date of the session
-    targets: sonication targets
-    markers: registration markers
-    volume_id: id of the subject volume file
-    transducer_id: id of the transducer
-    protocol_id: id of the protocol
-    array_transform: transducer affine transform matrix with units
-    attrs: Dictionary of attributes
-    date_modified: Date of last modification
+    Class representing an openlifu session, which consists essentially of a patient scan, a protocol
+    to use, potential targets for sonication, and a transducer situated in the patient space.
     """
+
     id: Optional[str] = None
+    """ID of this session"""
+
     subject_id: Optional[str] = None
+    """ID of the parent subject of this session"""
+
     name: Optional[str] = None
-    date: datetime = datetime.now()
-    targets: List[Point] = field(default_factory=list)
-    markers: List[Point] = field(default_factory=list)
-    volume_id: Optional[str] = None
-    transducer_id: Optional[str] = None
+    """Session name"""
+
+    date: datetime = field(default_factory=datetime.now)
+    """Date of creation of the session"""
+
+    date_modified: datetime = field(default_factory=datetime.now)
+    """Date of modification of the session"""
+
     protocol_id: Optional[str] = None
+    """ID of the protocol used for this session"""
+
+    volume_id: Optional[str] = None
+    """ID of the subject volume associated with this session"""
+
+    transducer_id: Optional[str] = None
+    """ID of the transducer associated with this session"""
+
     array_transform: ArrayTransform = field(default_factory=lambda : ArrayTransform(np.eye(4),"mm"))
+    """The transducer affine transform matrix with units, situating the transducer in space"""
+
+    targets: List[Point] = field(default_factory=list)
+    """Targets saved to this session"""
+
+    markers: List[Point] = field(default_factory=list)
+    """Registration markers saved to this session"""
+
     attrs: dict = field(default_factory=dict)
-    date_modified: datetime = datetime.now()
+    """Dictionary of additional custom attributes to save to the session"""
+
+    virtual_fit_approval_for_target_id: Optional[str] = None
+    """Approval state of virtual fit. `None` if there is no approval, otherwise this is the ID
+    of the target for which virtual fitting has been marked approved."""
+
+    transducer_tracking_approved: Optional[bool] = False
+    """Approval state of transducer tracking. `True` means the user has provided some kind of
+    confirmation that the transducer transform in this session agrees with reality."""
 
     def __post_init__(self):
         if self.id is None and self.name is None:

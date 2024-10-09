@@ -1,11 +1,13 @@
 import logging
 import shutil
+from contextlib import nullcontext as does_not_raise
 from pathlib import Path
+from typing import Optional
 
 import pytest
 from helpers import dataclasses_are_equal
 
-from openlifu import Solution
+from openlifu import Point, Solution
 from openlifu.db import Session, Subject
 from openlifu.db.database import Database, OnConflictOpts
 
@@ -96,6 +98,31 @@ def test_write_session(example_database: Database, example_subject: Subject):
 def test_write_session_mismatched_id(example_database: Database, example_subject: Subject):
     session = Session(id='a_session',subject_id='bogus_id') # The subject ID here is different from the ID in example_subject
     with pytest.raises(ValueError, match="IDs do not match"):
+        example_database.write_session(example_subject, session)
+
+@pytest.mark.parametrize(
+    ("virtual_fit_approval_for_target_id", "expectation"),
+    [
+        (None, does_not_raise()), # see https://docs.pytest.org/en/6.2.x/example/parametrize.html#parametrizing-conditional-raising
+        ("an_existing_target_id", does_not_raise()),
+        ("bogus_target_id", pytest.raises(ValueError, match="virtual_fit_approval_for_target_id.*not in")),
+    ]
+)
+def test_write_session_with_invalid_fit_approval(
+    example_database: Database,
+    example_subject: Subject,
+    virtual_fit_approval_for_target_id: Optional[str],
+    expectation,
+):
+    """Verify that writing a session with fit approval raises the invalid target error if and only if the
+    target being approved does not exist."""
+    session = Session(
+        id="unique_id_2764592837465",
+        subject_id=example_subject.id,
+        targets=[Point(id="an_existing_target_id")],
+        virtual_fit_approval_for_target_id=virtual_fit_approval_for_target_id,
+    )
+    with expectation:
         example_database.write_session(example_subject, session)
 
 @pytest.mark.parametrize("compact_representation", [True, False])
