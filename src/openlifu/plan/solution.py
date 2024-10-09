@@ -3,7 +3,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
 import xarray
@@ -43,16 +43,22 @@ class Solution:
     """Description of this solution"""
 
     delays: Optional[np.ndarray] = None
-    """Vector of time delays to steer the beam"""
+    """Vectors of time delays to steer the beam. Shape is (number of foci, number of transducer elements)."""
 
     apodizations: Optional[np.ndarray] = None
-    """Vector of apodizations to steer the beam"""
+    """Vectors of apodizations to steer the beam. Shape is (number of foci, number of transducer elements)."""
+
     pulse: Pulse = field(default_factory=Pulse)
     """Pulse to send to the transducer when running sonication"""
+
     sequence: Sequence = field(default_factory=Sequence)
     """Pulse sequence to use when running sonication"""
-    focus: Optional[Point] = None
-    """Point that is being focused on in this Solution; part of the focal pattern of the target"""
+
+    foci: List[Point] = field(default_factory=list)
+    """Points that are focused on in this Solution due to the focal pattern around the target.
+    Each item in this list is a unique point from the focal pattern, and the pulse sequence is
+    what determines how many times each point will be used.
+    """
 
     # there was "target_id" in the matlab software, but here we do not have the concept of a target ID.
     # I believe this was only needed in the matlab software because solutions were organized by target rather
@@ -109,8 +115,10 @@ class Solution:
             solution_dict["apodizations"] = np.array(solution_dict["apodizations"])
         solution_dict["pulse"] = Pulse.from_dict(solution_dict["pulse"])
         solution_dict["sequence"] = Sequence.from_dict(solution_dict["sequence"])
-        if solution_dict["focus"] is not None:
-            solution_dict["focus"] = Point.from_dict(solution_dict["focus"])
+        solution_dict["foci"] = [
+            Point.from_dict(focus_dict)
+            for focus_dict in solution_dict["foci"]
+        ]
         if solution_dict["target"] is not None:
             solution_dict["target"] = Point.from_dict(solution_dict["target"])
 
