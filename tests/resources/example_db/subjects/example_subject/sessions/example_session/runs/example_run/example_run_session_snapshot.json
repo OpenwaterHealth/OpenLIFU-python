@@ -1,0 +1,30 @@
+{
+  "id": "example_session",
+  "subject_id": "example_subject",
+  "name": "Example Session",
+  "date": "2024-04-09 11:27:30",
+  "targets": {
+    "id": "example_target",
+    "name": "Example Target",
+    "color": [1, 0, 0],
+    "radius": 1,
+    "position": [0, -50, 0],
+    "dims": ["L", "P", "S"],
+    "units": "mm"
+  },
+  "markers": [],
+  "volume_id": "example_volume",
+  "transducer_id": "example_transducer",
+  "protocol_id": "example_protocol",
+  "array_transform": {
+    "matrix": [
+      [-1, 0, 0, 0],
+      [0, 0.05, 0.998749217771909, -105],
+      [0, 0.998749217771909, -0.05, 5],
+      [0, 0, 0, 1]
+    ],
+    "units": "mm"
+  },
+  "attrs": {},
+  "date_modified": "2024-04-09 11:27:30"
+}

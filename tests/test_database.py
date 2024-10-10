@@ -10,6 +10,7 @@ from helpers import dataclasses_are_equal
 from openlifu import Point, Solution
 from openlifu.db import Session, Subject
 from openlifu.db.database import Database, OnConflictOpts
+from openlifu.plan import Run
 
 
 @pytest.fixture()
@@ -94,6 +95,47 @@ def test_write_session(example_database: Database, example_subject: Subject):
     example_database.write_session(example_subject, session, on_conflict=OnConflictOpts.OVERWRITE)
     reloaded_session = example_database.load_session(example_subject, session.id)
     assert reloaded_session.name == "new_name"
+
+def test_write_run(example_database: Database, tmp_path:Path):
+    subject_id = "example_subject"
+    session_id = "example_session"
+    protocol_id = "example_protocol"
+    run_id = "example_run_2"
+    success_flag = True
+    note = "Test note"
+    solution_id = "example_solution"
+    subject = example_database.load_subject(subject_id)
+    session = example_database.load_session(subject, session_id)
+    protocol = example_database.load_protocol(protocol_id)
+    run = Run(id=run_id, success_flag=success_flag, note=note, session_id=session_id, solution_id=solution_id)
+
+    # Can add a new session
+    example_database.write_run(run, session, protocol)
+    run_file_path = tmp_path/"example_db/subjects/example_subject/sessions/example_session/runs/example_run/example_run.json"
+    assert(run_file_path.is_file())
+
+    # Error raised when the session already exists
+    with pytest.raises(ValueError, match="already exists"):
+        example_database.write_run(run, session, protocol, on_conflict=OnConflictOpts.ERROR)
+
+    # Error raised when the user try to overwrite a run
+    with pytest.raises(ValueError, match="may not be overwritten"):
+        example_database.write_run(run, session, protocol, on_conflict=OnConflictOpts.OVERWRITE)
+
+
+def test_load_session_snapshot(example_database: Database):
+    subject_id = "example_subject"
+    session_id = "example_session"
+    run_id = "example_run"
+    session = example_database.load_session_snapshot(subject_id, session_id, run_id)
+    assert session.id == "example_session"
+
+def test_load_protocol_snapshot(example_database: Database):
+    subject_id = "example_subject"
+    session_id = "example_session"
+    run_id = "example_run"
+    protocol = example_database.load_protocol_snapshot(subject_id, session_id, run_id)
+    assert protocol.id == "example_protocol"
 
 def test_write_session_mismatched_id(example_database: Database, example_subject: Subject):
     session = Session(id='a_session',subject_id='bogus_id') # The subject ID here is different from the ID in example_subject
