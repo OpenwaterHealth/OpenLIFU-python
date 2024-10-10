@@ -10,7 +10,7 @@ from typing import List, Optional
 
 import h5py
 
-from openlifu.plan import Protocol, Solution
+from openlifu.plan import Protocol, Run, Solution
 from openlifu.util.json import PYFUSEncoder
 
 from .session import Session
@@ -106,6 +106,35 @@ class Database:
             self.write_session_ids(subject.id, session_ids)
 
         self.logger.info(f"Added session with ID {session_id} for subject {subject.id} to the database.")
+
+    def write_run(self, subject_id:str, session_id:str, run:Run, on_conflict=OnConflictOpts.ERROR):
+        # Check whether the run already exist in the session
+        run_ids = self.get_run_ids(subject_id, session_id)
+
+        if run.id in run_ids:
+            if on_conflict == OnConflictOpts.ERROR:
+                raise ValueError(f"Run with ID {run.id} already exists for session {session_id}.")
+            elif on_conflict == OnConflictOpts.OVERWRITE:
+                raise ValueError("OVERWRITE is not supported for write_run")
+            elif on_conflict == OnConflictOpts.SKIP:
+                self.logger.info(f"Skipping run with ID {run.id} for session {session_id} as it already exists.")
+                return  # Skip adding the session
+            else:
+                raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
+
+        # Save the run metadata to a JSON file and copy volume data file to database
+        run_metadata_filepath = self.get_run_metadata_filepath(subject_id, session_id, run.id)
+        Path(run_metadata_filepath).parent.mkdir(exist_ok=True)
+        run.to_file(run_metadata_filepath)
+
+        # Write snapshot of the session
+        subject = self.load_subject(subject_id)
+        session = self.load_session(subject, session_id)
+        session.to_file(run_metadata_filepath.parent / f'{run.id}_session_snapshot.json')
+
+        # Write snapshot of the protocol
+        protocol = self.load_protocol(session.protocol_id)
+        protocol.to_file(run_metadata_filepath.parent / f'{run.id}_protocol_snapshot.json')
 
     def write_subject(self, subject, on_conflict=OnConflictOpts.ERROR):
         subject_id = subject.id
@@ -308,6 +337,19 @@ class Database:
             self.logger.warning("Sessions file not found for subject %s.", subject_id)
             return []
 
+    def get_run_ids(self, subject_id, session_id):
+        runs_filename = self.get_runs_filename(subject_id, session_id)
+
+        if os.path.isfile(runs_filename):
+            with open(runs_filename) as file:
+                run_data = json.load(file)
+                run_ids = run_data.get("run_ids", [])
+            self.logger.info("Run IDs for session %s: %s", session_id, run_ids)
+            return run_ids
+        else:
+            self.logger.warning("Runs file not found for session %s.", session_id)
+            return []
+
     def get_volume_ids(self, subject_id):
         volumes_filename = self.get_volumes_filename(subject_id)
         if os.path.isfile(volumes_filename):
@@ -481,6 +523,13 @@ class Database:
             self.logger.error(f"Session file not found for ID: {session_id}")
             raise FileNotFoundError(f"Session file not found for ID: {session_id}")
 
+    def load_session_snapshot(self, subject_id, session_id, run_id):
+        path_to_run = self.get_run_dir(subject_id, session_id, run_id)
+        return Session.from_file(path_to_run / f'{run_id}_session_snapshot.json')
+
+    def load_protocol_snapshot(self, subject_id, session_id, run_id):
+        path_to_run = self.get_run_dir(subject_id, session_id, run_id)
+        Session.from_json(path_to_run / f'{run_id}_protocol_snapshot.json')
 
     def load_solution(self, session:Session, solution_id:str) -> Solution:
         """Load the Solution of the given ID that is associated with the given Session"""
@@ -532,6 +581,9 @@ class Database:
     def get_sessions_filename(self, subject_id):
         return Path(self.get_subject_dir(subject_id)) / 'sessions' / 'sessions.json'
 
+    def get_runs_filename(self, subject_id, session_id):
+        return Path(self.get_subject_dir(subject_id)) / 'sessions' / f'{session_id}' / 'runs' / 'runs.json'
+
     def get_volumes_filename(self, subject_id):
         return Path(self.get_subject_dir(subject_id)) / 'volumes' / 'volumes.json'
 
@@ -574,6 +626,13 @@ class Database:
 
     def get_volume_metadata_filepath(self, subject_id, volume_id):
         return Path(self.get_volume_dir(subject_id, volume_id)) / f'{volume_id}.json'
+
+    def get_run_dir(self, subject_id, session_id, run_id):
+        run_dir = self.get_session_dir(subject_id, session_id) / 'runs' / f'{run_id}'
+        return run_dir
+
+    def get_run_metadata_filepath(self, subject_id, session_id, run_id):
+        return Path(self.get_run_dir(subject_id, session_id, run_id)) / f'{run_id}.json'
 
     def write_protocol_ids(self, protocol_ids):
         protocol_data = {'protocol_ids': protocol_ids}

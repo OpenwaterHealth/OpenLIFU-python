@@ -8,6 +8,7 @@ from helpers import dataclasses_are_equal
 from openlifu import Solution
 from openlifu.db import Session, Subject
 from openlifu.db.database import Database, OnConflictOpts
+from openlifu.plan import Run
 
 
 @pytest.fixture()
@@ -92,6 +93,20 @@ def test_write_session(example_database: Database, example_subject: Subject):
     example_database.write_session(example_subject, session, on_conflict=OnConflictOpts.OVERWRITE)
     reloaded_session = example_database.load_session(example_subject, session.id)
     assert reloaded_session.name == "new_name"
+
+def test_write_run(example_database: Database):
+    subject_id = "example_subject"
+    session_id = "example_session"
+    run_id = "example_run_2"
+    success_flag = True
+    note = "Test note"
+    solution_id: "example_solution"
+
+    run = Run(id=run_id, success_flag=success_flag, note=note, session_id=session_id, solution_id=solution_id)
+    example_database.write_run(subject_id, session_id, run)
+
+    session = example_database.load_session_snapshot(subject_id, session_id, run_id)
+    protocol = example_database.load_protocol_snapshot(subject_id, session_id, run_id)
 
 def test_write_session_mismatched_id(example_database: Database, example_subject: Subject):
     session = Session(id='a_session',subject_id='bogus_id') # The subject ID here is different from the ID in example_subject
