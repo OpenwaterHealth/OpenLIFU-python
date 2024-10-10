@@ -1,5 +1,6 @@
 import json
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Any, Dict
 
 import xarray as xa
@@ -82,3 +83,13 @@ class Protocol:
             return json.dumps(self.to_dict(), separators=(',', ':'))
         else:
             return json.dumps(self.to_dict(), indent=4)
+
+    def to_file(self, filename):
+        """
+        Save the protocol to a file
+
+        :param filename: Name of the file
+        """
+        Path(filename).parent.mkdir(exist_ok=True)
+        with open(filename, 'w') as file:
+            file.write(self.to_json(compact=False))
