@@ -10,7 +10,7 @@ from typing import List, Optional
 
 import h5py
 
-from openlifu.plan import Protocol, Solution
+from openlifu.plan import Protocol, Run, Solution
 from openlifu.util.json import PYFUSEncoder
 
 from .session import Session
@@ -116,6 +116,47 @@ class Database:
             self.write_session_ids(subject.id, session_ids)
 
         self.logger.info(f"Added session with ID {session_id} for subject {subject.id} to the database.")
+
+    def write_run(self, run:Run, session:Session = None, protocol:Protocol = None, on_conflict=OnConflictOpts.ERROR):
+        """Write a run with a snapshot of session and a snapshot of protocol if provided
+
+        Args:
+            run: Run to be written
+            session (optional): the Session used in the Run, it will have a snapshot written alongside the Run
+            protocol (optional): the Protocol used in the Run, it will have a snapshot written alongside the Run
+
+        Returns:
+            None: This method does not return a value
+        """
+        # Check whether the run already exist in the session
+        run_ids = self.get_run_ids(session.subject_id, session.id)
+
+        if run.id in run_ids:
+            if on_conflict == OnConflictOpts.ERROR:
+                raise ValueError(f"Run with ID {run.id} already exists for session {session.id}.")
+            elif on_conflict == OnConflictOpts.OVERWRITE:
+                raise ValueError("Runs are write-once objects and may not be overwritten.")
+            elif on_conflict == OnConflictOpts.SKIP:
+                self.logger.info(f"Skipping run with ID {run.id} for session {session.id} as it already exists.")
+                return  # Skip adding the session
+            else:
+                raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
+
+        # Save the run metadata to a JSON file
+        run_metadata_filepath = self.get_run_filepath(session.subject_id, session.id, run.id)
+        run.to_file(run_metadata_filepath)
+
+        # Update
+        run_ids.append(run.id)
+        self.write_run_ids(session.subject_id, session.id, run_ids)
+
+        if session:
+            # Write snapshot of the session
+            session.to_file(run_metadata_filepath.parent / f'{run.id}_session_snapshot.json')
+
+        if protocol:
+            # Write snapshot of the protocol
+            protocol.to_file(run_metadata_filepath.parent / f'{run.id}_protocol_snapshot.json')
 
     def write_subject(self, subject, on_conflict=OnConflictOpts.ERROR):
         subject_id = subject.id
@@ -322,6 +363,19 @@ class Database:
             self.logger.info("Sessions file not found for subject %s.", subject_id)
             return []
 
+    def get_run_ids(self, subject_id, session_id):
+        runs_filename = self.get_runs_filename(subject_id, session_id)
+
+        if os.path.isfile(runs_filename):
+            with open(runs_filename) as file:
+                run_data = json.load(file)
+                run_ids = run_data.get("run_ids", [])
+            self.logger.info("Run IDs for session %s: %s", session_id, run_ids)
+            return run_ids
+        else:
+            self.logger.warning("Runs file not found for session %s.", session_id)
+            return []
+
     def get_volume_ids(self, subject_id):
         volumes_filename = self.get_volumes_filename(subject_id)
         if os.path.isfile(volumes_filename):
@@ -495,6 +549,13 @@ class Database:
             self.logger.error(f"Session file not found for ID: {session_id}")
             raise FileNotFoundError(f"Session file not found for ID: {session_id}")
 
+    def load_session_snapshot(self, subject_id, session_id, run_id):
+        path_to_run = self.get_run_dir(subject_id, session_id, run_id)
+        return Session.from_file(path_to_run / f'{run_id}_session_snapshot.json')
+
+    def load_protocol_snapshot(self, subject_id, session_id, run_id):
+        path_to_run = self.get_run_dir(subject_id, session_id, run_id)
+        return Protocol.from_file(path_to_run / f'{run_id}_protocol_snapshot.json')
 
     def load_solution(self, session:Session, solution_id:str) -> Solution:
         """Load the Solution of the given ID that is associated with the given Session"""
@@ -546,6 +607,9 @@ class Database:
     def get_sessions_filename(self, subject_id):
         return Path(self.get_subject_dir(subject_id)) / 'sessions' / 'sessions.json'
 
+    def get_runs_filename(self, subject_id, session_id):
+        return Path(self.get_subject_dir(subject_id)) / 'sessions' / f'{session_id}' / 'runs' / 'runs.json'
+
     def get_volumes_filename(self, subject_id):
         return Path(self.get_subject_dir(subject_id)) / 'volumes' / 'volumes.json'
 
@@ -589,6 +653,13 @@ class Database:
     def get_volume_metadata_filepath(self, subject_id, volume_id):
         return Path(self.get_volume_dir(subject_id, volume_id)) / f'{volume_id}.json'
 
+    def get_run_dir(self, subject_id, session_id, run_id):
+        run_dir = self.get_session_dir(subject_id, session_id) / 'runs' / f'{run_id}'
+        return run_dir
+
+    def get_run_filepath(self, subject_id, session_id, run_id):
+        return Path(self.get_run_dir(subject_id, session_id, run_id)) / f'{run_id}.json'
+
     def write_protocol_ids(self, protocol_ids):
         protocol_data = {'protocol_ids': protocol_ids}
         protocols_filename = self.get_protocols_filename()
@@ -611,6 +682,15 @@ class Database:
             self.logger.info(f"Added volumes.json file with volume_id {volume_ids} for subject {subject_id} to the database.")
         with open(volumes_filename, 'w') as f:
             json.dump(volume_data, f)
+
+    def write_run_ids(self, subject_id, session_id, run_ids):
+        run_data = {'run_ids': run_ids}
+        runs_filename = self.get_runs_filename(subject_id, session_id)
+        Path(runs_filename).parent.mkdir(exist_ok=True)
+        if not os.path.isfile(runs_filename):
+            self.logger.info(f"Added runs.json file for session {session_id} of subject {subject_id}.")
+        with open(runs_filename, 'w') as f:
+            json.dump(run_data, f)
 
     def write_subject_ids(self, subject_ids):
         subject_data = {'subject_ids': subject_ids}
