@@ -212,7 +212,8 @@ class Database:
         volume_metadata_json = json.dumps(volume_metadata_dict, separators=(',', ':'), cls=PYFUSEncoder)
 
         # Save the volume metadata to a JSON file and copy volume data file to database
-        volume_metadata_filepath = self.get_volume_metadata_filepath(subject_id, volume_id)
+        volume_metadata_filepath = self.get_volume_metadata_filepath(subject_id, volume_id) #subject_id/volume/volume_id/volume_id.json
+        Path(volume_metadata_filepath).parent.parent.mkdir(exist_ok=True) # volume directory
         Path(volume_metadata_filepath).parent.mkdir(exist_ok=True)
         with open(volume_metadata_filepath, 'w') as file:
             file.write(volume_metadata_json)
@@ -327,7 +328,7 @@ class Database:
             self.logger.info("Volume IDs for subject %s: %s", subject_id, volume_ids)
             return volume_ids
         else:
-            self.logger.warning("Volumes file not found for subject %s.", subject_id)
+            self.logger.info("Volumes file created for subject %s.", subject_id)
             return []
 
     def get_solution_ids(self, subject_id:str, session_id:str) -> List[str]:

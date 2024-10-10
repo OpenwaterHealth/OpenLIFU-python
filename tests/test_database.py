@@ -198,6 +198,17 @@ def test_write_volume(example_database:Database, tmp_path:Path):
     assert(volume_filepath.name == "example_volume_2.json")
     assert((volume_filepath.parent/"example_volume_2.nii").exists())
 
+    # When writing to a new subject
+    subject = Subject(id="bleh",name="Deb Jectson")
+    example_database.write_subject(subject, on_conflict=OnConflictOpts.OVERWRITE)
+    example_database.write_volume(subject.id, volume_id, volume_name, volume_data_path)
+
+    assert(example_database.get_volume_ids("bleh") == ["example_volume_2"])
+
+    volume_filepath = example_database.get_volume_metadata_filepath("bleh", "example_volume_2")
+    assert(volume_filepath.name == "example_volume_2.json")
+    assert((volume_filepath.parent/"example_volume_2.nii").exists())
+
 def test_load_solution(example_database:Database, example_session:Session):
     with pytest.raises(FileNotFoundError,match="Solution file not found"):
         example_database.load_solution(example_session, "bogus_solution_id")
