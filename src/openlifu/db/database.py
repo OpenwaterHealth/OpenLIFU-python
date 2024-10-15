@@ -328,7 +328,7 @@ class Database:
             self.logger.info("Volume IDs for subject %s: %s", subject_id, volume_ids)
             return volume_ids
         else:
-            self.logger.info("Volumes file created for subject %s.", subject_id)
+            self.logger.info("Volumes file not found for subject %s.", subject_id)
             return []
 
     def get_solution_ids(self, subject_id:str, session_id:str) -> List[str]:
@@ -601,6 +601,8 @@ class Database:
     def write_volume_ids(self, subject_id, volume_ids):
         volume_data = {'volume_ids': volume_ids}
         volumes_filename = self.get_volumes_filename(subject_id)
+        if not os.path.isfile(volumes_filename):
+            self.logger.info(f"Added volumes.json file with volume_id {volume_ids} for subject {subject_id} to the database.")
         with open(volumes_filename, 'w') as f:
             json.dump(volume_data, f)
 
