@@ -1,3 +1,7 @@
+import numpy as np
+from xarray import DataArray, Coordinates
+#TODO: use Pint (https://github.com/hgrecco/pint) instead to manage physics units in python
+
 def getunittype(unit):
     unit = unit.lower()
     if unit in ['micron', 'microns']:
@@ -20,6 +24,10 @@ def getunittype(unit):
         return 'volume'
     elif unit.endswith('hz'):
         return 'frequency'
+    elif unit.endswith('pa'):
+        return 'pascal'
+    elif unit.endswith('w'):
+        return 'watt'
     else:
         return 'other'
 
@@ -115,6 +123,12 @@ def getsiscale(unit, type):
     elif type == 'frequency':
         idx = len(unit) - 2
 
+    elif type == "pascal":
+        idx = len(unit) - 2
+
+    elif type == "watt":
+        idx = len(unit) - 1
+
     else:
         idx = len(unit) - len(type) + 1
 
@@ -164,3 +178,66 @@ def getsiscale(unit, type):
         scl = scl ** 3.0
 
     return scl
+
+
+def rescale_data_arr(data_arr: DataArray, units: str) -> DataArray:
+    """
+    Rescales the DataArray to the specified units.
+
+    Args:
+        data_arr : xarray.DataArray
+        units: str
+
+    Returns:
+        rescaled: The rescaled xarray to new units.
+    """
+    rescaled = data_arr.copy(deep=True)
+    scale = getunitconversion(data_arr.attrs['units'], units)
+    rescaled.data *= scale
+    rescaled.attrs['units'] = units
+
+    return rescaled
+
+
+def rescale_coords(data_arr: DataArray, units: str) -> DataArray:
+    """
+    Rescales the DataArray coordinates to the specified units.
+
+    Args:
+        data_arr : xarray.DataArray
+        units: str
+
+    Returns:
+        rescaled: The rescaled data_arr coords to new units.
+    """
+    rescaled = data_arr.copy(deep=True)
+    for coord_key in data_arr.coords.keys():
+        curr_coord_attrs = rescaled[coord_key].attrs
+        curr_coord_units = curr_coord_attrs['units']
+        scale = getunitconversion(curr_coord_units, units)
+        curr_coord_rescaled = scale*rescaled[coord_key].data
+        rescaled = rescaled.assign_coords({coord_key: (coord_key, curr_coord_rescaled, curr_coord_attrs)})
+        rescaled[coord_key].attrs['units'] = units
+
+    return rescaled
+
+
+def get_ndgrid_from_arr(data_arr: DataArray, flatten: bool = False) -> np.ndarray:
+    """
+    Creates a ndgrid from xarray.DataArray coordinates.
+
+    Args:
+        coords : xarray.Coordinates
+
+    Returns:
+        ndgrid: The ndgrid from the Coordinates.
+    """
+    # First need to get correct coordinates for the ndgrid
+    first_data_key = list(data_arr.keys())[0]
+    ordered_key = data_arr[first_data_key].dims
+    all_coord = []
+    for coord_key in ordered_key:
+        all_coord += [data_arr.coords[coord_key].data]
+    ndgrid = np.stack(np.meshgrid(*all_coord, indexing="ij"), axis=-1)
+
+    return ndgrid

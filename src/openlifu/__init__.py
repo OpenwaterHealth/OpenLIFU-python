@@ -15,6 +15,11 @@ from openlifu.bf import (
     apod_methods,
     delay_methods,
     focal_patterns,
+    calc_dist_from_focus,
+    get_beamwidth,
+    get_focus_matrix,
+    mask_focus,
+    offset_grid,
 )
 from openlifu.db import Database
 
@@ -59,6 +64,11 @@ __all__ = [
     "focal_patterns",
     "delay_methods",
     "apod_methods",
+    "calc_dist_from_focus",
+    "get_beamwidth",
+    "get_focus_matrix",
+    "mask_focus",
+    "offset_grid",
     "SimSetup",
     "Database",
     "__version__",

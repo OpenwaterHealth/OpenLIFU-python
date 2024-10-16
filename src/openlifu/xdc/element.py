@@ -85,7 +85,7 @@ class Element:
 
     def get_area(self, units=None):
         units = self.units if units is None else units
-        ele_width, ele_length = self.get_size({"units": units})
+        ele_width, ele_length = self.get_size(units)
         return ele_width * ele_length
 
     def get_corners(self, units=None, matrix=np.eye(4)):
