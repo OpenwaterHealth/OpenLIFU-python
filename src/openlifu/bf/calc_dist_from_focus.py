@@ -10,7 +10,6 @@ from openlifu.geo import Point
 def calc_dist_from_focus(
         data_arr: DataArray,
         focus: Point,
-        # units: str = "m", #TODO: I removed since input is already rescaled coords (already check were it is used)
         aspect_ratio: Tuple[float, float, float] = (1., 1., 1.)
         ) -> np.ndarray:
     """
