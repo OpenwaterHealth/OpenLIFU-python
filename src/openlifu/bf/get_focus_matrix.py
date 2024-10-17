@@ -1,11 +1,9 @@
-from typing import Dict, Any
 from enum import Enum
+from typing import Any, Dict
 
 import numpy as np
-from scipy.spatial.transform import Rotation
 
 from openlifu.geo import Point
-
 
 CenterOnOpts = Enum('CenterOnOpts', ['focus', 'origin'])
 
@@ -16,7 +14,7 @@ def get_focus_matrix(focus: Point, options: Dict[str, Any]):
 
     Returns the transformation matrix for the focus point.
     The transformation matrix is a 4x4 matrix that transforms points
-    in the coordinate system of the choosen origin to the global coordinate system.
+    in the coordinate system of the chosen origin to the global coordinate system.
 
     Args:
         focus : fus.Point object

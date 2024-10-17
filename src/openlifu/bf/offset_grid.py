@@ -1,8 +1,8 @@
 import numpy as np
 from xarray import DataArray
 
-from openlifu.util.units import get_ndgrid_from_arr
 from openlifu.geo import Point
+from openlifu.util.units import get_ndgrid_from_arr
 
 
 def offset_grid(data_arr: DataArray, focus: Point):

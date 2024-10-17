@@ -8,12 +8,12 @@ from typing import Optional
 import numpy as np
 import xarray as xa
 
-from openlifu.bf import Pulse, Sequence, mask_focus, get_beamwidth
+from openlifu.bf import Pulse, Sequence, mask_focus
 from openlifu.bf.mask_focus import MaskOp
 from openlifu.geo import Point
-from openlifu.xdc import Transducer
 from openlifu.util.json import PYFUSEncoder
 from openlifu.util.units import rescale_data_arr
+from openlifu.xdc import Transducer
 
 
 def _construct_nc_filepath_from_json_filepath(json_filepath:Path) -> Path:
@@ -124,7 +124,7 @@ class Solution:
         """Analyzes the treatment solution.
 
         Args:
-            transducer: A Transducer item.  #TODO: this should be instanciated at the database level, not here ?
+            transducer: A Transducer item.  #TODO: this should be instantiated at the database level, not here ?
             options: A struct for solution analysis options.
 
         Returns: A struct containing the results of the analysis.

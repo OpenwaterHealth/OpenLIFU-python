@@ -1,5 +1,6 @@
 import numpy as np
-from xarray import DataArray, Coordinates
+from xarray import DataArray
+
 #TODO: use Pint (https://github.com/hgrecco/pint) instead to manage physics units in python
 
 def getunittype(unit):
@@ -120,10 +121,7 @@ def getsiscale(unit, type):
     elif type == 'angle':
         idx = len(unit)
 
-    elif type == 'frequency':
-        idx = len(unit) - 2
-
-    elif type == "pascal":
+    elif type == 'frequency' or type == "pascal":
         idx = len(unit) - 2
 
     elif type == "watt":
@@ -211,7 +209,7 @@ def rescale_coords(data_arr: DataArray, units: str) -> DataArray:
         rescaled: The rescaled data_arr coords to new units.
     """
     rescaled = data_arr.copy(deep=True)
-    for coord_key in data_arr.coords.keys():
+    for coord_key in data_arr.coords:
         curr_coord_attrs = rescaled[coord_key].attrs
         curr_coord_units = curr_coord_attrs['units']
         scale = getunitconversion(curr_coord_units, units)
@@ -222,7 +220,7 @@ def rescale_coords(data_arr: DataArray, units: str) -> DataArray:
     return rescaled
 
 
-def get_ndgrid_from_arr(data_arr: DataArray, flatten: bool = False) -> np.ndarray:
+def get_ndgrid_from_arr(data_arr: DataArray) -> np.ndarray:
     """
     Creates a ndgrid from xarray.DataArray coordinates.
 
@@ -233,7 +231,7 @@ def get_ndgrid_from_arr(data_arr: DataArray, flatten: bool = False) -> np.ndarra
         ndgrid: The ndgrid from the Coordinates.
     """
     # First need to get correct coordinates for the ndgrid
-    first_data_key = list(data_arr.keys())[0]
+    first_data_key = next(iter(data_arr.keys()))
     ordered_key = data_arr[first_data_key].dims
     all_coord = []
     for coord_key in ordered_key:

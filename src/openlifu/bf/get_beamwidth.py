@@ -1,13 +1,14 @@
-from typing import Dict, Any
+import logging
 from dataclasses import dataclass
+from typing import Any, Dict
 
 import numpy as np
 from scipy.spatial import ConvexHull, QhullError
 from xarray import DataArray
 
-from openlifu.util.units import getunitconversion
-from openlifu.geo import Point
 from openlifu.bf import offset_grid
+from openlifu.geo import Point
+from openlifu.util.units import getunitconversion
 
 
 @dataclass
@@ -97,11 +98,12 @@ def get_beamwidth(vol: DataArray, coords_units: str, focus: Point, cutoff: float
             inlier_hull = ConvexHull(inlier_points)
     except QhullError:
         # If convex hull creation fails (e.g., too few points), add jitter and try again
-        print("Invalid inliers, attempting to add jitter to create a valid volume...")  #TODO: should be using self.logger
+        logging.warning("Invalid inliers, attempting to add jitter to create a valid volume...")  #TODO: should be using self.logger
         minmax_coords = np.array([(np.min(coords[i]), np.max(coords[i])) for i in range(len(coords))])  #TODO: min-max should be from coords.extent
         coords_shape = tuple([len(coords[i]) for i in range(len(coords))])
         dx = np.mean(np.diff(minmax_coords) / (np.array(coords_shape) - 1))
-        inlier_points = inlier_points + (np.random.rand(*inlier_points.shape) - 0.5)*dx/2
+        rng = np.random.default_rng()
+        inlier_points = inlier_points + (rng.random(inlier_points.shape) - 0.5)*dx/2
         # Create convex hull(s) from the set of inlier points
         if options['simplify_hulls']:
             inlier_hull = ConvexHull(inlier_points)  #TODO: simplification not implemented in scipy ConvexHull
