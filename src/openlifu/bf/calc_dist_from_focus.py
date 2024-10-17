@@ -3,7 +3,7 @@ from typing import Tuple
 import numpy as np
 from xarray import DataArray
 
-from openlifu.bf import offset_grid
+from openlifu.bf.offset_grid import offset_grid
 from openlifu.geo import Point
 
 
