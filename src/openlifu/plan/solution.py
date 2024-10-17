@@ -120,7 +120,7 @@ class Solution:
 
         return nfoc
 
-    def analyse(self, transducer: Transducer, options: SolutionOptions = SolutionOptions()) -> SolutionAnalysis:
+    def analyze(self, transducer: Transducer, options: SolutionOptions = SolutionOptions()) -> SolutionAnalysis:
         """Analyzes the treatment solution.
 
         Args:

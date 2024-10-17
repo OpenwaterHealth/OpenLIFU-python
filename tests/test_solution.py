@@ -111,5 +111,5 @@ def test_save_load_solution_custom_dataset_filepath(example_solution: Solution, 
 
 
 def test_solution_analysis(example_solution: Solution, example_transducer: Transducer):
-    """Test that a solution output can be analysed."""
-    example_solution.analyse(example_transducer)
+    """Test that a solution output can be analyzed."""
+    example_solution.analyze(example_transducer)
