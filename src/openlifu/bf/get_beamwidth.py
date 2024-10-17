@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Any, Dict
 
 import numpy as np
-from scipy.spatial import ConvexHull, QhullError
+from scipy.spatial import ConvexHull, QhullError  # pylint: disable = no-name-in-module
 from xarray import DataArray
 
 from openlifu.bf import offset_grid
@@ -85,7 +85,7 @@ def get_beamwidth(vol: DataArray, coords_units: str, focus: Point, cutoff: float
     ngrid0 = np.meshgrid(*coords, indexing='ij')
     mdata = search_mask * vol.data
     inlier_mask = mdata > cutoff
-    ogrid = offset_grid(coords, coords_units, focus, units="mm")
+    ogrid = offset_grid(coords, focus)
     omask = [ogrid[..., ii][inlier_mask] for ii in range(ogrid.shape[-1])]  #TODO: better to use vectorization here omask = ogrid[inlier_mask]
     inlier_points = [ngrid0[ii][inlier_mask] for ii in range(len(ngrid0))]
     inlier_points = np.stack(inlier_points, axis=-1)
