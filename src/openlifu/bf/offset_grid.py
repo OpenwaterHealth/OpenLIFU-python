@@ -1,11 +1,11 @@
 import numpy as np
-from xarray import DataArray
+from xarray import Dataset
 
 from openlifu.geo import Point
 from openlifu.util.units import get_ndgrid_from_arr
 
 
-def offset_grid(data_arr: DataArray, focus: Point):
+def offset_grid(data_arr: Dataset, focus: Point):
     """
     Calculates the distance from the focus point for each point in the coordinate system.
 
@@ -13,7 +13,7 @@ def offset_grid(data_arr: DataArray, focus: Point):
     then elevation, so that the 'z' axis points at the focus.
 
     Args:
-        data_arr: xarray.DataArray
+        data_arr: xarray.Dataset
         focus : fus.Point object
             The focus point to be used as reference.
 

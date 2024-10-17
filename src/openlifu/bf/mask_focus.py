@@ -3,7 +3,7 @@ from math import inf
 from typing import Tuple
 
 import numpy as np
-from xarray import DataArray
+from xarray import Dataset
 
 from openlifu.bf import calc_dist_from_focus
 from openlifu.geo import Point
@@ -13,7 +13,7 @@ MaskOp = Enum("MaskOp", ["GREATER", "GREATER_EQUAL", "LESS", "LESS_EQUAL"])
 
 
 def mask_focus(
-        data_arr: DataArray,
+        data_arr: Dataset,
         focus: Point,
         distance: float,
         mask_op: MaskOp = MaskOp.LESS_EQUAL,
@@ -25,8 +25,7 @@ def mask_focus(
     Creates a mask for points within a (scaled) distance from the focus point.
 
     Args:
-        data_arr : xarray.DataArray
-            The input DataArray.
+        data_arr : xarray.Dataset
         focus : fus.Point object
             The focus point to be used as reference for masking.
         distance : float

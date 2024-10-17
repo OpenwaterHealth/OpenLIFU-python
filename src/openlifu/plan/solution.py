@@ -55,6 +55,7 @@ class SolutionOptions:
     beamwidth_radius: float = 5e-3
     sidelobe_radius: float = 3e-3
     sidelobe_zmin: float = 1e-3
+    distance_units: str = "m"
 
 
 @dataclass
@@ -183,7 +184,7 @@ class Solution:
                 foc,
                 options.mainlobe_radius,
                 mask_op=MaskOp.LESS_EQUAL,
-                units="m",
+                units=options.distance_units,
                 aspect_ratio=options.mainlobe_aspect_ratio
             )
             # mask_options['operation'] = ">="

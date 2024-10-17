@@ -1,14 +1,14 @@
 from typing import Tuple
 
 import numpy as np
-from xarray import DataArray
+from xarray import Dataset
 
 from openlifu.bf.offset_grid import offset_grid
 from openlifu.geo import Point
 
 
 def calc_dist_from_focus(
-        data_arr: DataArray,
+        data_arr: Dataset,
         focus: Point,
         aspect_ratio: Tuple[float, float, float] = (1., 1., 1.)
         ) -> np.ndarray:
@@ -22,7 +22,7 @@ def calc_dist_from_focus(
     away from an oblong focal spot each point is.
 
     Args:
-        data_arr: xarray.DataArray
+        data_arr: xarray.Dataset
         focus : fus.Point object
             The focus point to be used as reference.
         aspect_ratio : Tuple[float, float, float]

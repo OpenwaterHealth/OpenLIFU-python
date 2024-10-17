@@ -1,5 +1,5 @@
 import numpy as np
-from xarray import DataArray
+from xarray import Dataset
 
 #TODO: use Pint (https://github.com/hgrecco/pint) instead to manage physics units in python
 
@@ -178,12 +178,12 @@ def getsiscale(unit, type):
     return scl
 
 
-def rescale_data_arr(data_arr: DataArray, units: str) -> DataArray:
+def rescale_data_arr(data_arr: Dataset, units: str) -> Dataset:
     """
-    Rescales the DataArray to the specified units.
+    Rescales the Dataset to the specified units.
 
     Args:
-        data_arr : xarray.DataArray
+        data_arr : xarray.Dataset
         units: str
 
     Returns:
@@ -197,12 +197,12 @@ def rescale_data_arr(data_arr: DataArray, units: str) -> DataArray:
     return rescaled
 
 
-def rescale_coords(data_arr: DataArray, units: str) -> DataArray:
+def rescale_coords(data_arr: Dataset, units: str) -> Dataset:
     """
-    Rescales the DataArray coordinates to the specified units.
+    Rescales the Dataset coordinates to the specified units.
 
     Args:
-        data_arr : xarray.DataArray
+        data_arr : xarray.Dataset
         units: str
 
     Returns:
@@ -220,9 +220,9 @@ def rescale_coords(data_arr: DataArray, units: str) -> DataArray:
     return rescaled
 
 
-def get_ndgrid_from_arr(data_arr: DataArray) -> np.ndarray:
+def get_ndgrid_from_arr(data_arr: Dataset) -> np.ndarray:
     """
-    Creates a ndgrid from xarray.DataArray coordinates.
+    Creates a ndgrid from xarray.Dataset coordinates.
 
     Args:
         coords : xarray.Coordinates
