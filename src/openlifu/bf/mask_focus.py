@@ -5,7 +5,7 @@ from typing import Tuple
 import numpy as np
 from xarray import Dataset
 
-from openlifu.bf import calc_dist_from_focus
+from openlifu.bf.offset_grid import offset_grid
 from openlifu.geo import Point
 from openlifu.util.units import get_ndgrid_from_arr, rescale_coords
 
@@ -47,7 +47,13 @@ def mask_focus(
     focus.rescale(units)
 
     # Calculate distances from the focus for each point in coords and compare with distance limit
-    m = calc_dist_from_focus(data_arr_rescaled, focus, aspect_ratio)
+    # The distance is calculated by first transforming the coordinate system so that the focus point is on
+    # the z' axis, adjusting the x and y axes to be orthogonal to the z' axis, and then calculating the distance
+    # e.g. d = sqrt(((x'-x0')/ax)^2 + ((y'-y0')/ay)^2 + ((z'-z0')/az)^2). This is useful for calculating how far
+    # away from an oblong focal spot each point is.
+    ogrid = offset_grid(data_arr_rescaled, focus)
+    ogrid_aspect_corrected = ogrid*aspect_ratio
+    m = np.sqrt(np.sum(ogrid_aspect_corrected**2, axis=-1))
 
     # mask based on distance
     if mask_op is MaskOp.GREATER:

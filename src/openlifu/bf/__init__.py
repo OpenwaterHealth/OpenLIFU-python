@@ -1,5 +1,4 @@
 from .apod_methods import ApodizationMethod
-from .calc_dist_from_focus import calc_dist_from_focus
 from .delay_methods import DelayMethod
 from .focal_patterns import FocalPattern, SinglePoint, Wheel
 from .get_beamwidth import get_beamwidth
@@ -17,7 +16,6 @@ __all__ = [
     "Pulse",
     "Sequence",
     "offset_grid",
-    "calc_dist_from_focus",
     "mask_focus",
     "get_beamwidth"
 ]
