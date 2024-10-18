@@ -95,6 +95,14 @@ def test_write_session(example_database: Database, example_subject: Subject):
     reloaded_session = example_database.load_session(example_subject, session.id)
     assert reloaded_session.name == "new_name"
 
+    # When writing to a new subject
+    new_subject = Subject(id="bleh_new",name="Deb Jectson")
+    example_database.write_subject(new_subject, on_conflict=OnConflictOpts.OVERWRITE)
+    session = Session(name="bleh", id='a_session',subject_id=new_subject.id)
+    example_database.write_session(new_subject, session)
+    reloaded_session = example_database.load_session(new_subject, session.id)
+    assert reloaded_session.name == "bleh"
+
 def test_write_session_mismatched_id(example_database: Database, example_subject: Subject):
     session = Session(id='a_session',subject_id='bogus_id') # The subject ID here is different from the ID in example_subject
     with pytest.raises(ValueError, match="IDs do not match"):

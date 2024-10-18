@@ -316,7 +316,7 @@ class Database:
             self.logger.info("Session IDs for subject %s: %s", subject_id, session_ids)
             return session_ids
         else:
-            self.logger.warning("Sessions file not found for subject %s.", subject_id)
+            self.logger.info("Sessions file not found for subject %s.", subject_id)
             return []
 
     def get_volume_ids(self, subject_id):
@@ -595,6 +595,8 @@ class Database:
     def write_session_ids(self, subject_id, session_ids):
         session_data = {'session_ids': session_ids}
         sessions_filename = self.get_sessions_filename(subject_id)
+        if not os.path.isfile(sessions_filename):
+            self.logger.info(f"Added sessions.json file with session_id {session_ids} for subject {subject_id} to the database.")
         with open(sessions_filename, 'w') as f:
             json.dump(session_data, f)
 
