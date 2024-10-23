@@ -177,6 +177,9 @@ class Database:
         subject_filename = self.get_subject_filename(subject_id)
         subject.to_file(subject_filename)
 
+        # Create empty sessions.json file for subject
+        self.write_session_ids(subject_id, session_ids=[])
+
         if subject_id not in subject_ids:
             subject_ids.append(subject_id)
             self.write_subject_ids(subject_ids)
@@ -358,7 +361,7 @@ class Database:
             self.logger.info("Session IDs for subject %s: %s", subject_id, session_ids)
             return session_ids
         else:
-            self.logger.warning("Sessions file not found for subject %s.", subject_id)
+            self.logger.info("Sessions file not found for subject %s.", subject_id)
             return []
 
     def get_run_ids(self, subject_id, session_id):
@@ -667,6 +670,9 @@ class Database:
     def write_session_ids(self, subject_id, session_ids):
         session_data = {'session_ids': session_ids}
         sessions_filename = self.get_sessions_filename(subject_id)
+        Path(sessions_filename).parent.mkdir(exist_ok=True) #sessions directory
+        if not os.path.isfile(sessions_filename):
+            self.logger.info(f"Added sessions.json file for subject {subject_id} to the database.")
         with open(sessions_filename, 'w') as f:
             json.dump(session_data, f)
 

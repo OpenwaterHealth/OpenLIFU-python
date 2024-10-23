@@ -57,6 +57,14 @@ def test_write_subject(example_database : Database):
     reloaded_subject = example_database.load_subject("bleh")
     assert subject == reloaded_subject
 
+    # Empty sessions file is created
+    sessions_filename = example_database.get_sessions_filename(subject.id)
+    assert sessions_filename.exists()
+    assert sessions_filename.is_file()
+    assert sessions_filename.name == "sessions.json"
+    session_ids = example_database.get_session_ids(subject.id)
+    assert session_ids == []
+
     # Error raised when the subject already exists
     with pytest.raises(ValueError, match="already exists"):
         example_database.write_subject(subject, on_conflict=OnConflictOpts.ERROR)
@@ -95,6 +103,14 @@ def test_write_session(example_database: Database, example_subject: Subject):
     example_database.write_session(example_subject, session, on_conflict=OnConflictOpts.OVERWRITE)
     reloaded_session = example_database.load_session(example_subject, session.id)
     assert reloaded_session.name == "new_name"
+
+    # When writing to a new subject
+    new_subject = Subject(id="bleh_new",name="Deb Jectson")
+    example_database.write_subject(new_subject, on_conflict=OnConflictOpts.OVERWRITE)
+    session = Session(name="bleh", id='a_session',subject_id=new_subject.id)
+    example_database.write_session(new_subject, session)
+    reloaded_session = example_database.load_session(new_subject, session.id)
+    assert reloaded_session.name == "bleh"
 
 def test_write_run(example_database: Database, tmp_path:Path):
     subject_id = "example_subject"
