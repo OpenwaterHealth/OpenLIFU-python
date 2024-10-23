@@ -112,11 +112,12 @@ def test_save_load_solution_custom_dataset_filepath(example_solution: Solution, 
 
 
 def test_num_foci(example_solution:Solution):
-    """Ensure that the number of foci in the test solution matches the number of foci provided in the simuluation and beamform data.
-    (This is more checking correctness of the test example rather than correctness of code, but it is important.)"""
-    assert len(example_solution.simulation_result['focal_point_index']) == len(example_solution.foci)
-    assert example_solution.delays.shape[0] == len(example_solution.foci)
-    assert example_solution.apodizations.shape[0] == len(example_solution.foci)
+    """Ensure that the number of foci in the test solution matches the number of foci provided in the simuluation and beamform data."""
+    num_foci = example_solution.num_foci()
+    assert len(example_solution.foci) == num_foci
+    assert len(example_solution.simulation_result['focal_point_index']) == num_foci
+    assert example_solution.delays.shape[0] == num_foci
+    assert example_solution.apodizations.shape[0] == num_foci
 
 
 def test_solution_analysis(example_solution: Solution, example_transducer: Transducer):
