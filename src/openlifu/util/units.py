@@ -211,6 +211,8 @@ def rescale_coords(data_arr: Dataset, units: str) -> Dataset:
     rescaled = data_arr.copy(deep=True)
     for coord_key in data_arr.coords:
         curr_coord_attrs = rescaled[coord_key].attrs
+        if 'units' not in curr_coord_attrs:
+            continue # We only rescale coordinates that have units (skipping for example the focal point index dimension)
         curr_coord_units = curr_coord_attrs['units']
         scale = getunitconversion(curr_coord_units, units)
         curr_coord_rescaled = scale*rescaled[coord_key].data
