@@ -41,14 +41,16 @@ class Point:
             center = pos
         else:
             center = np.zeros(3)
-        zvec = pos / np.linalg.norm(pos)
+        zvec = np.array([0., 0., 1.])
+        if np.linalg.norm(pos) != 0:
+            zvec = pos / np.linalg.norm(pos)
         az = -np.arctan2(zvec[0], zvec[2])
         xvec = np.array([np.cos(az), 0.0, np.sin(az)])
         yvec = np.cross(zvec, xvec)
         m = np.array([[xvec[0], yvec[0], zvec[0], center[0]],
-                        [xvec[1], yvec[1], zvec[1], center[1]],
-                        [xvec[2], yvec[2], zvec[2], center[2]],
-                        [0.0, 0.0, 0.0, 1.0]])
+                      [xvec[1], yvec[1], zvec[1], center[1]],
+                      [xvec[2], yvec[2], zvec[2], center[2]],
+                      [0.0, 0.0, 0.0, 1.0]])
         if not local:
             m = np.dot(origin, m)
         return m

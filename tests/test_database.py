@@ -10,6 +10,7 @@ from helpers import dataclasses_are_equal
 from openlifu import Point, Solution
 from openlifu.db import Session, Subject
 from openlifu.db.database import Database, OnConflictOpts
+from openlifu.plan import Run
 
 
 @pytest.fixture()
@@ -56,6 +57,14 @@ def test_write_subject(example_database : Database):
     reloaded_subject = example_database.load_subject("bleh")
     assert subject == reloaded_subject
 
+    # Empty sessions file is created
+    sessions_filename = example_database.get_sessions_filename(subject.id)
+    assert sessions_filename.exists()
+    assert sessions_filename.is_file()
+    assert sessions_filename.name == "sessions.json"
+    session_ids = example_database.get_session_ids(subject.id)
+    assert session_ids == []
+
     # Error raised when the subject already exists
     with pytest.raises(ValueError, match="already exists"):
         example_database.write_subject(subject, on_conflict=OnConflictOpts.ERROR)
@@ -94,6 +103,55 @@ def test_write_session(example_database: Database, example_subject: Subject):
     example_database.write_session(example_subject, session, on_conflict=OnConflictOpts.OVERWRITE)
     reloaded_session = example_database.load_session(example_subject, session.id)
     assert reloaded_session.name == "new_name"
+
+    # When writing to a new subject
+    new_subject = Subject(id="bleh_new",name="Deb Jectson")
+    example_database.write_subject(new_subject, on_conflict=OnConflictOpts.OVERWRITE)
+    session = Session(name="bleh", id='a_session',subject_id=new_subject.id)
+    example_database.write_session(new_subject, session)
+    reloaded_session = example_database.load_session(new_subject, session.id)
+    assert reloaded_session.name == "bleh"
+
+def test_write_run(example_database: Database, tmp_path:Path):
+    subject_id = "example_subject"
+    session_id = "example_session"
+    protocol_id = "example_protocol"
+    run_id = "example_run_2"
+    success_flag = True
+    note = "Test note"
+    solution_id = "example_solution"
+    subject = example_database.load_subject(subject_id)
+    session = example_database.load_session(subject, session_id)
+    protocol = example_database.load_protocol(protocol_id)
+    run = Run(id=run_id, success_flag=success_flag, note=note, session_id=session_id, solution_id=solution_id)
+
+    # Can add a new session
+    example_database.write_run(run, session, protocol)
+    run_file_path = tmp_path/"example_db/subjects/example_subject/sessions/example_session/runs/example_run/example_run.json"
+    assert(run_file_path.is_file())
+
+    # Error raised when the session already exists
+    with pytest.raises(ValueError, match="already exists"):
+        example_database.write_run(run, session, protocol, on_conflict=OnConflictOpts.ERROR)
+
+    # Error raised when the user try to overwrite a run
+    with pytest.raises(ValueError, match="may not be overwritten"):
+        example_database.write_run(run, session, protocol, on_conflict=OnConflictOpts.OVERWRITE)
+
+
+def test_load_session_snapshot(example_database: Database):
+    subject_id = "example_subject"
+    session_id = "example_session"
+    run_id = "example_run"
+    session = example_database.load_session_snapshot(subject_id, session_id, run_id)
+    assert session.id == "example_session"
+
+def test_load_protocol_snapshot(example_database: Database):
+    subject_id = "example_subject"
+    session_id = "example_session"
+    run_id = "example_run"
+    protocol = example_database.load_protocol_snapshot(subject_id, session_id, run_id)
+    assert protocol.id == "example_protocol"
 
 def test_write_session_mismatched_id(example_database: Database, example_subject: Subject):
     session = Session(id='a_session',subject_id='bogus_id') # The subject ID here is different from the ID in example_subject
@@ -216,6 +274,11 @@ def test_load_solution(example_database:Database, example_session:Session):
     example_solution = example_database.load_solution(example_session, "example_solution")
     assert example_solution.name == "Example Solution"
     assert "p_min" in example_solution.simulation_result.data_vars # ensure the xarray dataset got loaded too
+
+    # ensure the simulation and beamform data was loaded for all foci
+    assert len(example_solution.simulation_result['focal_point_index']) == len(example_solution.foci)
+    assert example_solution.delays.shape[0] == len(example_solution.foci)
+    assert example_solution.apodizations.shape[0] == len(example_solution.foci)
 
 def test_write_solution(example_database:Database, example_session:Session):
     solution = Solution(name="bleh", id='new_solution')
