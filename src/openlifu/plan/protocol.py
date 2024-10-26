@@ -1,17 +1,16 @@
 import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, TYPE_CHECKING, Optional, Tuple
-from datetime import datetime
+from typing import TYPE_CHECKING, Any, Dict, Tuple
 
 import numpy as np
 import xarray as xa
 
 from openlifu import bf, geo, seg, sim, xdc
-from openlifu.xdc import Transducer
 from openlifu.geo import Point
-from openlifu.sim import run_simulation
 from openlifu.plan.solution import Solution
+from openlifu.sim import run_simulation
+from openlifu.xdc import Transducer
 
 if TYPE_CHECKING:
     from openlifu.db import Session
@@ -99,6 +98,7 @@ class Protocol:
 
         :param filename: Name of the file
         """
+        Path(filename).parent.parent.mkdir(exist_ok=True)
         Path(filename).parent.mkdir(exist_ok=True)
         with open(filename, 'w') as file:
             file.write(self.to_json(compact=False))

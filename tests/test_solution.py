@@ -46,17 +46,17 @@ def example_solution() -> Solution:
             {
                 'p_min': xa.DataArray(
                     data=rng.random((1, 3, 2, 3)),
-                    dims=['focal_point_index', "x", "y", "z"],
+                    dims=["focal_point_index", "x", "y", "z"],
                     attrs={'units': "Pa"}
                 ),
                 'p_max': xa.DataArray(
                     data=rng.random((1, 3, 2, 3)),
-                    dims=['focal_point_index', "x", "y", "z"],
+                    dims=["focal_point_index", "x", "y", "z"],
                     attrs={'units': "Pa"}
                 ),
                 'ita': xa.DataArray(
                     data=rng.random((1, 3, 2, 3)),
-                    dims=['focal_point_index', "x", "y", "z"],
+                    dims=["focal_point_index", "x", "y", "z"],
                     attrs={'units': "W/cm^2"}
                 )
             },
@@ -64,7 +64,7 @@ def example_solution() -> Solution:
                 'x': xa.DataArray(dims=["x"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
                 'y': xa.DataArray(dims=["y"], data=np.linspace(0, 1, 2), attrs={'units': "m"}),
                 'z': xa.DataArray(dims=["z"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
-                'focal_point_index': [0],
+                'focal_point_index': [0]
             }
         ),
     )
@@ -111,10 +111,6 @@ def test_save_load_solution_custom_dataset_filepath(example_solution: Solution, 
     assert dataclasses_are_equal(Solution.from_files(json_filepath, nc_filepath), example_solution)
 
 
-def test_solution_analysis(example_solution: Solution, example_transducer: Transducer):
-    """Test that a solution output can be analyzed."""
-    example_solution.analyze(example_transducer)
-
 def test_num_foci(example_solution:Solution):
     """Ensure that the number of foci in the test solution matches the number of foci provided in the simuluation and beamform data."""
     num_foci = example_solution.num_foci()
@@ -122,3 +118,8 @@ def test_num_foci(example_solution:Solution):
     assert len(example_solution.simulation_result['focal_point_index']) == num_foci
     assert example_solution.delays.shape[0] == num_foci
     assert example_solution.apodizations.shape[0] == num_foci
+
+
+def test_solution_analysis(example_solution: Solution, example_transducer: Transducer):
+    """Test that a solution output can be analyzed."""
+    example_solution.analyze(example_transducer)

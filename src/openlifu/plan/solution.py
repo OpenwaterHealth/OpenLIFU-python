@@ -176,7 +176,7 @@ class Solution:
 
             # get focus region masks (for mainlobe, sidelobe and beamwidth)
             mainlobe_mask = mask_focus(
-                self.simulation_result.sel(focal_point_index=focus_index),  #TODO: Original code uses coords, but too complicated to maniplulate a Coordinates class
+                self.simulation_result,  #TODO: Original code uses coords, but too complicated to maniplulate a Coordinates class
                 foc,
                 options.mainlobe_radius,
                 mask_op=MaskOp.LESS_EQUAL,
@@ -199,8 +199,8 @@ class Solution:
             #     distance=options.beamwidth_radius,
             #     options=mask_options)
 
-            pk = np.max(pnp_MPa.data * mainlobe_mask)  #TODO: pnp_MPa supposed to be a list for each focus: pnp_MPa(focus_index)
-            solution_analysis.mainlobe_pnp_MPa = pk
+            pk = np.max(pnp_MPa.data[focus_index] * mainlobe_mask)  #TODO: pnp_MPa supposed to be a list for each focus: pnp_MPa(focus_index)
+            solution_analysis.mainlobe_pnp_MPa += [pk]
 
         #     thresh_m3dB = pk*10**(-3 / 20)
         #     thresh_m6dB = pk*10**(-6 / 20)
@@ -353,10 +353,11 @@ class Solution:
             solution_dict["delays"] = np.array(solution_dict["delays"])
         if solution_dict["apodizations"] is not None:
             solution_dict["apodizations"] = np.array(solution_dict["apodizations"], ndmin=2)
+            solution_dict["apodizations"] = np.array(solution_dict["apodizations"], ndmin=2)
         solution_dict["pulse"] = Pulse.from_dict(solution_dict["pulse"])
         solution_dict["sequence"] = Sequence.from_dict(solution_dict["sequence"])
         solution_dict["foci"] = [
-            Point.from_dict(focus_dict)  #TODO: Solution analysis needs a list, to interface with FocalPattern ?
+            Point.from_dict(focus_dict)
             for focus_dict in solution_dict["foci"]
         ]
         if solution_dict["target"] is not None:

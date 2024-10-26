@@ -72,6 +72,7 @@ class Run:
 
         :param filename: Name of the file
         """
+        Path(filename).parent.parent.mkdir(exist_ok=True)
         Path(filename).parent.mkdir(exist_ok=True)
         with open(filename, 'w') as file:
             file.write(self.to_json(compact=False))

@@ -57,7 +57,7 @@ def test_write_subject(example_database : Database):
     reloaded_subject = example_database.load_subject("bleh")
     assert subject == reloaded_subject
 
-    # Empty sessions file is created
+    # Empty sessions file is created (overlaps with test_write_subject_associated_object_structure_created but it's okay)
     sessions_filename = example_database.get_sessions_filename(subject.id)
     assert sessions_filename.exists()
     assert sessions_filename.is_file()
@@ -79,6 +79,15 @@ def test_write_subject(example_database : Database):
     example_database.write_subject(subject, on_conflict=OnConflictOpts.OVERWRITE)
     reloaded_subject = example_database.load_subject("bleh")
     assert reloaded_subject.name == "Deb Jectson"
+
+def test_write_subject_associated_object_structure_created(example_database : Database):
+    """Test that when you create a new subject, the file structure needed for other objects that can be written
+    under that subject is also created."""
+    subject = Subject(id="bleh",name="Seb Jectson")
+    example_database.write_subject(subject)
+
+    assert example_database.get_sessions_filename(subject.id).is_file()
+    assert example_database.get_volumes_filename(subject.id).is_file()
 
 def test_write_session(example_database: Database, example_subject: Subject):
     session = Session(name="bleh", id='a_session',subject_id=example_subject.id)
@@ -112,6 +121,16 @@ def test_write_session(example_database: Database, example_subject: Subject):
     reloaded_session = example_database.load_session(new_subject, session.id)
     assert reloaded_session.name == "bleh"
 
+def test_write_session_associated_object_structure_created(example_database: Database, example_subject: Subject):
+    """Test that when you create a new session, the file structure needed for other objects that can be written
+    under that session is also created."""
+    session = Session(name="bleh", id='a_session',subject_id=example_subject.id)
+    example_database.write_session(example_subject, session)
+
+    assert example_database.get_solutions_filename(example_subject.id, session.id).is_file()
+    assert example_database.get_runs_filename(example_subject.id, session.id).is_file()
+
+
 def test_write_run(example_database: Database, tmp_path:Path):
     subject_id = "example_subject"
     session_id = "example_session"
@@ -125,7 +144,7 @@ def test_write_run(example_database: Database, tmp_path:Path):
     protocol = example_database.load_protocol(protocol_id)
     run = Run(id=run_id, success_flag=success_flag, note=note, session_id=session_id, solution_id=solution_id)
 
-    # Can add a new session
+    # Can add a new run
     example_database.write_run(run, session, protocol)
     run_file_path = tmp_path/"example_db/subjects/example_subject/sessions/example_session/runs/example_run/example_run.json"
     assert(run_file_path.is_file())
@@ -138,6 +157,15 @@ def test_write_run(example_database: Database, tmp_path:Path):
     with pytest.raises(ValueError, match="may not be overwritten"):
         example_database.write_run(run, session, protocol, on_conflict=OnConflictOpts.OVERWRITE)
 
+    # Make sure the Runs folder and Runs file are created
+    new_session = Session(id='new_session',subject_id='example_subject')
+    example_database.write_session(subject, new_session)
+    new_run = Run(id=run_id, success_flag=success_flag, note=note, session_id='new_session', solution_id=solution_id)
+    example_database.write_run(new_run, new_session, protocol, on_conflict=OnConflictOpts.OVERWRITE)
+    runs_filename = example_database.get_runs_filename(subject.id, new_session.id)
+    assert runs_filename.exists()
+    assert runs_filename.is_file()
+    assert runs_filename.name == "runs.json"
 
 def test_load_session_snapshot(example_database: Database):
     subject_id = "example_subject"
@@ -309,3 +337,10 @@ def test_write_solution(example_database:Database, example_session:Session):
     example_database.write_solution(example_session, solution, on_conflict=OnConflictOpts.OVERWRITE)
     reloaded_solution = example_database.load_solution(example_session, solution.id)
     assert reloaded_solution.name == "new_name"
+
+def test_write_solution_new_session(example_database:Database, example_subject:Subject):
+    """Writing a solution should be possible in a newly created session"""
+    session = Session(name="bleh", id='a_session',subject_id=example_subject.id)
+    solution = Solution(name="bleh", id='new_solution')
+    example_database.write_session(example_subject, session)
+    example_database.write_solution(session, solution)

@@ -110,6 +110,10 @@ class Database:
         session_filename = self.get_session_filename(subject.id, session_id)
         session.to_file(session_filename)
 
+        # Create empty runs.json and solutions.json files for session
+        self.write_solution_ids(session, [])
+        self.write_run_ids(session.subject_id, session.id, [])
+
         # Update the list of session IDs for the subject
         if session_id not in session_ids:
             session_ids.append(session_id)
@@ -118,15 +122,15 @@ class Database:
         self.logger.info(f"Added session with ID {session_id} for subject {subject.id} to the database.")
 
     def write_run(self, run:Run, session:Session = None, protocol:Protocol = None, on_conflict=OnConflictOpts.ERROR):
-        """Write a run with a snapshat of session and a snapshat of protocol if provided
+        """Write a run with a snapshot of session and a snapshot of protocol if provided
 
         Args:
-            run: run to be written
-            session (optional): the session used in the run, it will have a snapshot written alongside the run
-            protocol (optional): the protocol used in the run, it will have a snapshot written alongside the run
+            run: Run to be written
+            session (optional): the Session used in the Run, it will have a snapshot written alongside the Run
+            protocol (optional): the Protocol used in the Run, it will have a snapshot written alongside the Run
 
         Returns:
-            None: This method does not return a value.
+            None: This method does not return a value
         """
         # Check whether the run already exist in the session
         run_ids = self.get_run_ids(session.subject_id, session.id)
@@ -144,7 +148,6 @@ class Database:
 
         # Save the run metadata to a JSON file
         run_metadata_filepath = self.get_run_filepath(session.subject_id, session.id, run.id)
-        Path(run_metadata_filepath).parent.parent.mkdir(exist_ok=True)
         run.to_file(run_metadata_filepath)
 
         # Update
@@ -177,8 +180,9 @@ class Database:
         subject_filename = self.get_subject_filename(subject_id)
         subject.to_file(subject_filename)
 
-        # Create empty sessions.json file for subject
+        # Create empty sessions.json and volumes.json files for subject
         self.write_session_ids(subject_id, session_ids=[])
+        self.write_volume_ids(subject_id, volume_ids=[])
 
         if subject_id not in subject_ids:
             subject_ids.append(subject_id)
@@ -671,22 +675,26 @@ class Database:
         session_data = {'session_ids': session_ids}
         sessions_filename = self.get_sessions_filename(subject_id)
         Path(sessions_filename).parent.mkdir(exist_ok=True) #sessions directory
-        if not os.path.isfile(sessions_filename):
-            self.logger.info(f"Added sessions.json file for subject {subject_id} to the database.")
+        if not sessions_filename.is_file():
+            self.logger.info(f"Adding sessions.json file for subject {subject_id} to the database.")
         with open(sessions_filename, 'w') as f:
             json.dump(session_data, f)
 
     def write_volume_ids(self, subject_id, volume_ids):
         volume_data = {'volume_ids': volume_ids}
         volumes_filename = self.get_volumes_filename(subject_id)
-        if not os.path.isfile(volumes_filename):
-            self.logger.info(f"Added volumes.json file with volume_id {volume_ids} for subject {subject_id} to the database.")
+        Path(volumes_filename).parent.mkdir(exist_ok=True) #volumes directory
+        if not volumes_filename.is_file():
+            self.logger.info(f"Adding volumes.json file with volume_id {volume_ids} for subject {subject_id} to the database.")
         with open(volumes_filename, 'w') as f:
             json.dump(volume_data, f)
 
     def write_run_ids(self, subject_id, session_id, run_ids):
         run_data = {'run_ids': run_ids}
         runs_filename = self.get_runs_filename(subject_id, session_id)
+        Path(runs_filename).parent.mkdir(exist_ok=True)
+        if not runs_filename.is_file():
+            self.logger.info(f"Adding runs.json file for session {session_id} of subject {subject_id}.")
         with open(runs_filename, 'w') as f:
             json.dump(run_data, f)
 
@@ -705,7 +713,9 @@ class Database:
     def write_solution_ids(self, session:Session, solution_ids:List[str]):
         """Write to the list of overall solution IDs"""
         solutions_data = {'solution_ids': solution_ids}
-        self.get_solutions_filename(session.subject_id, session.id).write_text(json.dumps(solutions_data))
+        solutions_filepath = self.get_solutions_filename(session.subject_id, session.id)
+        solutions_filepath.parent.mkdir(exist_ok=True) # Make solutions directory in case it does not exist
+        solutions_filepath.write_text(json.dumps(solutions_data))
 
     @staticmethod
     def get_default_user_dir():
