@@ -1,7 +1,7 @@
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from openlifu.util.json import PYFUSEncoder
 
@@ -14,6 +14,9 @@ class Run:
 
     id: Optional[str] = None
     """id: ID of the run"""
+
+    name: Optional[str] = None
+    """name: Name of the run"""
 
     success_flag: Optional[bool] = None
     """success_flag: True when run was successful, False otherwise"""
@@ -37,12 +40,16 @@ class Run:
         """
         with open(filename) as f:
             d = json.load(f)
-            return Run(**d)
+        return Run.from_dict(d)
 
     @staticmethod
     def from_json(json_string : str) -> "Run":
         """Load a Run from a json string"""
         return Run.from_dict(json.loads(json_string))
+
+    @staticmethod
+    def from_dict(d : Dict[str, Any]) -> "Run":
+        return Run(**d)
 
     def to_dict(self):
         """
