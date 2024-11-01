@@ -5,6 +5,7 @@ from typing import Dict, List, Literal, Optional, Tuple
 import numpy as np
 
 from openlifu.util.units import getunitconversion
+from openlifu.plan.solution import Solution
 
 NUM_TRANSMITTERS = 2
 ADDRESS_GLOBAL_MODE = 0x0
@@ -1008,3 +1009,145 @@ class TxArray:
         if profile is None:
             profile = self.active_pulse_profile
         return {addr:module.get_pulse_data_registers(profile, pack=pack, pack_single=pack_single) for addr, module in self.modules.items()}
+
+@dataclass
+class HVController:
+    # High Voltage Controller - Interface to high voltage controller
+    device_addr: int = 0x0
+    supply_voltage: float = 0.0
+    output_voltage: float = 0.0
+    is_connected: bool = False
+    is_hv_on: bool = False
+
+    def connect(self):
+        """
+        Connect to the high voltage controller
+        """
+        self.is_connected = True
+
+    def disconnect(self):
+        """
+        Disconnect from the high voltage controller
+        """
+        self.is_connected = False
+
+    def turn_on(self):
+        """
+        Turn on the high voltage
+        """
+        if not self.is_connected:
+            raise ValueError("High voltage controller not connected")
+        self.is_hv_on = True
+
+    def turn_off(self):
+        """
+        Turn off the high voltage
+        """
+        if not self.is_connected:
+            raise ValueError("High voltage controller not connected")
+        self.is_hv_on = False
+
+    def set_voltage(self, voltage: float):
+        """
+        Set the output voltage
+
+        :param voltage: Output voltage
+        """
+        if not self.is_connected:
+            raise ValueError("High voltage controller not connected")
+        if voltage > self.supply_voltage:
+            raise ValueError("Output voltage cannot exceed supply voltage")
+        self.output_voltage = voltage
+
+    def set_supply_voltage(self, voltage: float):
+        """
+        Set the supply voltage
+
+        :param voltage: Supply voltage
+        """
+        if not self.is_connected:
+            raise ValueError("High voltage controller not connected")
+        self.supply_voltage = voltage   
+
+@dataclass
+class DeviceInterface:
+    txarray: TxArray
+    hv_controller: HVController
+    is_ready: bool = False
+    is_running: bool = False
+    # USTX I/O
+
+    def connect(self):
+        """
+        Connect to the device
+        """
+
+    def disconnect(self):
+        """
+        Disconnect from the device
+        """
+
+    def load_solution(self, solution: Solution):
+        """
+        Load a solution
+
+        :param solution: Solution to load
+        """
+
+        # Vefiy that the solution has the correct number of elements matching the 
+ 
+        n = solution.num_foci()
+        for profile in range(n):
+            pulse_profile = PulseProfile(
+                profile=profile+1,
+                frequency= solution.pulse.frequency,
+                cycles= solution.pulse.duration * solution.pulse.frequency,
+                duty_cycle=DEFAULT_PATTERN_DUTY_CYCLE * max(solution.apodization[profile,:])
+            )
+            self.txarray.add_pulse_profile(pulse_profile)
+            delay_profile = DelayProfile(
+                profile=profile+1,
+                delays=solution.delays[profile,:],
+                apodizations=solution.apodizations[profile, :]
+            )
+            self.txarray.add_delay_profile(delay_profile)
+
+        sequence = solution.sequence
+        # Write the sequence parameters to the master TX Module
+
+        voltage = solution.pulse.amplitude
+        # Configure the HV Supply
+
+        registers = self.txarray.get_registers(pack=True)
+        # Write All TX7332 Registers from the txarray to the 7332
+        
+        delay_control_registers = {profile:self.txarray.get_delay_control_registers(profile) for profile in self.txarray.configured_delay_profiles()}
+        pulse_control_registers = {profile:self.txarray.get_pulse_control_registers(profile) for profile in self.txarray.configured_pulse_profiles()}
+        # Write the delay/pulse control registers into the individual Module microcontrollers so that they can increment the settings between pulses (for multiple foci)
+        
+    def start(self):
+        """ Start Sonication """
+        self.is_running = True
+
+    def get_status(self):
+        """ Check the Status """
+
+    def pause(self):
+        """ Pause the Sonication """
+        self.is_running = False
+
+    def resume(self):
+        """ Resume the Sonication """
+        self.is_running = True
+
+    def abort(self):
+        """ Abort the Sonication """
+        self.hv_controller.turn_off()
+        self.is_running = False
+
+    def finish(self):
+        """ Once the Sonication has completed, turn of the HV supply etc. """
+        self.hv_controller.turn_off()
+        
+
+    
