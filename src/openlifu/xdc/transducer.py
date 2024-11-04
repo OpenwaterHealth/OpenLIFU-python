@@ -153,8 +153,6 @@ class Transducer:
         if self.units != units:
             for element in self.elements:
                 element.rescale(units)
-            scl = getunitconversion(self.units, units)
-            self.matrix[0:3, 3] *= scl
             self.units = units
 
     def to_dict(self):

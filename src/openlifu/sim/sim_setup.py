@@ -5,8 +5,10 @@ from typing import Optional, Tuple
 import numpy as np
 import xarray as xa
 
+from openlifu.geo import Point
 from openlifu.io.dict_conversion import DictMixin
-from openlifu.util.units import getunitconversion
+from openlifu.seg import SegmentationMethod
+from openlifu.util.units import getunitconversion, rescale_coords
 from openlifu.xdc import Transducer
 
 
@@ -107,5 +109,59 @@ class SimSetup(DictMixin):
         units = self.units if units is None else units
         return getunitconversion(self.units, units)*self.spacing
 
-    def transform_scene(self, scene, id: Optional[str] = None, name: Optional[str] = None, units: Optional[str] = None):
-        raise NotImplementedError
+    #TODO: since we don't have a concept of scene here, and that the simulation scene is needed in protocol.calc_solution,
+    # we will return each prepared object one-by-one.
+    #TODO: Missing the "markers" from matlab scene in "scene.transform(self, coords, matrix, options)"
+    #TODO: The arg transform needs to be added since transducer.matrix does not exists anymore
+    def setup_sim_scene(
+            self,
+            transducer: Transducer,
+            transform: np.ndarray,
+            target: Point,
+            seg_method: SegmentationMethod,
+            volume: xa.DataArray = None,
+            interp_method: str = "Linear",
+            units: Optional[str] = None
+        ) -> Tuple[xa.DataArray, Transducer, Point]:
+        """ Prepare a simulation scene composed of a volume, transducer and targets.
+
+        Setup a simulation scene with a volume, transducer and target point.
+        All objects are resampled to the geo-referenced simulation grid (lon, lat, ele).
+        For the volume, a segmentation is also performed that defines the simulation medium.
+
+        Args:
+            volume: xa.DataArray
+            transducer: xdc.Transducer
+            transform: np.ndarray
+            target: geo.Point
+            seg_method: seg.SegmentationMethod
+            interp_method: str
+                Interpolation method for the simulation grid (Default: \"Linear\").
+            units: str
+                Units of simulation grid (Default: self.units).
+
+        Returns
+            params: The resampled and segmented xa.DataArray volume to the simulation grid
+            transducer_tr: The resampled xdc.Transducer to the simulation grid
+            target_tr: The resampled geo.Point to the simulation grid
+        """
+        units = self.units if units is None else units
+        sim_coords = self.get_coords(units=units)
+        #TODO: in a near future, the following will transform transducer and target. Currently Slicer does it.
+        # sim_matrix = convert_transform(transform, units=transducer.units, tgt_units=units)  #TODO: not clear here where the transform should come from since transducer.get_matrix() does not exist
+        # rescaled_affine = convert_transform(volume.affine, units=volume.affine_units, tgt_units=units)
+        # volume = volume.assign_attrs(affine_units=units, affine=rescaled_affine)
+        # volume_resampled = resample_volume(volume, sim_coords, sim_matrix, interp_method)
+        # transducer_tr = transducer.transform(sim_matrix, units)
+        # target_tr = target.transform(sim_matrix, units=units, new_dims=sim_coords.dims)
+        transducer.rescale(units)
+        target.rescale(units)
+        if volume is None:
+            params = seg_method.ref_params(sim_coords)
+        else:
+            sim_coords_units = sim_coords[next(iter(sim_coords.keys()))].units
+            volume_resampled = rescale_coords(volume, sim_coords_units)
+            params = seg_method.seg_params(volume_resampled)  #TODO: currently only "water" method is tested with db-simple-example-v04
+                                                              # we should have a whole MRI segmentation instead.
+
+        return params, transducer, target

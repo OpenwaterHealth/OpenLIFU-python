@@ -1,5 +1,5 @@
 import numpy as np
-from xarray import Dataset
+from xarray import Coordinates, Dataset
 
 #TODO: use Pint (https://github.com/hgrecco/pint) instead to manage physics units in python
 
@@ -241,3 +241,40 @@ def get_ndgrid_from_arr(data_arr: Dataset) -> np.ndarray:
     ndgrid = np.stack(np.meshgrid(*all_coord, indexing="ij"), axis=-1)
 
     return ndgrid
+
+
+def get_ndgrid_from_coords(coords_arr: Coordinates) -> np.ndarray:
+    """
+    Creates a ndgrid from xarray.coordinates.
+
+    Args:
+        coords : xarray.Coordinates
+
+    Returns:
+        ndgrid: The ndgrid from the Coordinates.
+    """
+    all_coord = []
+    for coord_key in coords_arr.dims:
+        if 'units' in coords_arr[coord_key].attrs:
+            all_coord += [coords_arr[coord_key].data]
+    ndgrid = np.stack(np.meshgrid(*all_coord, indexing="ij"), axis=-1)
+
+    return ndgrid
+
+
+def convert_transform(matrix: np.ndarray, units: str, tgt_units: str) -> np.ndarray:
+    """Given a transform matrix in some units, convert it to another units.
+
+    Args:
+        matrix: 4x4 np.ndarray
+            affine transform matrix
+        units: str
+            units of the coordinate space on which the provided transform matrix operates
+
+    Returns: 4x4 affine transform matrix
+    """
+    tgt_units = self.units if tgt_units is None else tgt_units
+    matrix = matrix.copy()
+    matrix[0:3, 3] *= getunitconversion(units, tgt_units)
+
+    return matrix

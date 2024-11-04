@@ -1,11 +1,25 @@
 import json
+import logging
+import math
+from copy import deepcopy
 from dataclasses import asdict, dataclass, field
+from datetime import datetime
+from enum import Enum
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List, Tuple
 
+import numpy as np
 import xarray as xa
 
 from openlifu import bf, geo, seg, sim, xdc
+from openlifu.db.session import Session
+from openlifu.geo import Point
+from openlifu.plan.solution import Solution, SolutionAnalysis, SolutionAnalysisOptions
+from openlifu.plan.target_constraints import TargetConstraints
+from openlifu.sim import run_simulation
+from openlifu.xdc import Transducer
+
+OnPulseMismatchAction = Enum("OnPulseMismatchAction", ["ERROR", "ROUND", "ROUNDUP", "ROUNDDOWN"])
 
 
 @dataclass
@@ -20,9 +34,9 @@ class Protocol:
     delay_method: bf.DelayMethod = field(default_factory=bf.delay_methods.Direct)
     apod_method: bf.ApodizationMethod = field(default_factory=bf.apod_methods.Uniform)
     seg_method: seg.SegmentationMethod = field(default_factory=seg.seg_methods.Water)
-    param_constraints: dict = field(default_factory=dict)
-    target_constraints: dict = field(default_factory=dict)
-    analysis_options: dict = field(default_factory=dict)
+    param_constraints: dict = field(default_factory=dict)  #TODO: this seems to be used only in `plan.check_analysis`` but not called anywhere
+    target_constraints: List[TargetConstraints] = field(default_factory=list)
+    analysis_options: SolutionAnalysisOptions = field(default_factory=SolutionAnalysisOptions)
 
     @staticmethod
     def from_dict(d : Dict[str,Any]) -> "Protocol":
@@ -36,6 +50,11 @@ class Protocol:
         if "materials" in d:
             seg_method_dict["materials"] = seg.Material.from_dict(d.pop("materials"))
         d["seg_method"] = seg.SegmentationMethod.from_dict(seg_method_dict)
+        d['param_constraints'] = d.get("param_constraints", {})
+        if "target_constraints" in d:
+            d['target_constraints'] = [TargetConstraints.from_dict(d_tc) for d_tc in d.get("target_constraints", {})]
+        if "analysis_options" in d:
+            d['analysis_options'] = SolutionAnalysisOptions.from_dict(d.get("analysis_options"))
         return Protocol(**d)
 
     def to_dict(self):
@@ -84,13 +103,237 @@ class Protocol:
         else:
             return json.dumps(self.to_dict(), indent=4)
 
-    def to_file(self, filename):
+    def to_file(self, filename: str):
         """
         Save the protocol to a file
 
-        :param filename: Name of the file
+        Args:
+            filename: Name of the file
         """
         Path(filename).parent.parent.mkdir(exist_ok=True)
         Path(filename).parent.mkdir(exist_ok=True)
         with open(filename, 'w') as file:
             file.write(self.to_json(compact=False))
+
+
+    def check_target(self, target):
+        """
+        Check if a target is within bounds.
+
+        Args:
+            target: The geo.Point target to check.
+        """
+        #TODO: in the matlab code they handle the case were multiple targets are given.
+        # After our discussion I assumed that we will not handle a list of targets.
+        if isinstance(target, list):
+            raise ValueError(f"Input target {target} not supposed to be a list!")
+
+        # check if target position is within target_constraints defined bounds.
+        for target_constraint in self.target_constraints:
+            pos = target.get_position(
+                dim=target_constraint.dim,
+                units=target_constraint.units
+            )
+            target_constraint.check_bounds(pos)
+
+    def scale_solution(
+            self,
+            solution: Solution,
+            transducer: Transducer,
+            analysis_options: SolutionAnalysisOptions = SolutionAnalysisOptions()
+    ) -> Tuple[Solution, SolutionAnalysis]:
+        """
+        Scale the solution to match the target pressure.
+        If no output is requested, the solution is scaled in-place.
+
+        Args:
+            solution: plan.Solution
+                The solution to be scaled.
+            analysis_options: plan.solution.SolutionAnalysisOptions
+
+        Returns:
+            solution_scaled: the scaled plan.Solution
+            analysis_scaled: the resulting plan.solution.SolutionAnalysis from scaled solution
+        """
+        solution_scaled = deepcopy(solution)
+        analysis = solution.analyze(transducer, options=analysis_options)
+
+        scaling_factors = np.zeros(solution.num_foci())
+        for i in range(solution.num_foci()):
+            scaling_factors[i] = (self.focal_pattern.target_pressure / 1e6) / analysis.mainlobe_pnp_MPa[i]
+            scaling_factors[i] = 2.3167
+        max_scaling = np.max(scaling_factors)
+        v0 = self.pulse.amplitude
+        v1 = v0 * max_scaling
+        apod_factors = scaling_factors / max_scaling
+
+        for i in range(solution.num_foci()):
+            scaling = v1/v0*apod_factors[i]
+            solution_scaled.simulation_result['p_min'][i].data *= scaling
+            solution_scaled.simulation_result['p_max'][i].data *= scaling
+            solution_scaled.simulation_result['ita'][i].data *= scaling**2
+            solution_scaled.apodizations[i] = solution_scaled.apodizations[i]*apod_factors[i]
+        self.pulse.amplitude = v1
+
+        analysis_scaled = solution_scaled.analyze(transducer, options=analysis_options)
+
+        return solution_scaled, analysis_scaled
+
+    #TODO: The arg transform needed for sim_setup since transducer.matrix does not exists
+    def calc_solution(
+        self,
+        target: Point,
+        transducer: Transducer,
+        transform: np.ndarray,
+        volume: xa.DataArray = None,  #TODO: Do we want to have the volume as a xa.DataArray instead of nifty ?
+        session: Session = None, # useful in solution id  #TODO not sure to understand why this type is optional
+        simulate: bool = True,
+        scale: bool = True,
+        sim_options: sim.SimSetup = None,
+        analysis_options: SolutionAnalysisOptions = None,
+        on_pulse_mismatch: OnPulseMismatchAction = OnPulseMismatchAction.ERROR,
+        #log : Logger. Default: fus.util.Logger.get()  #TODO what about logging, currently only db/database.py has one ?
+    ) -> Tuple[Solution, xa.DataArray]:  #TODO: make more sense for me to have a single xa.DataArray that holds the
+                                         # aggregation (pnp, ppp, ita). We could also store it in Solution.simulation_result
+                                         # with additional fields 'pnp_aggregated', 'ppp_aggregated' and 'ita_aggregated' ?
+        """Calculate the solution and aggregated k-wave simulation outputs.
+
+        Method that computes the delays and apodizations for each focus in
+        the treatment plan, simulates the resulting pressure field to adjust
+        transmit pressures to reach target pressures, and then analyzes the
+        resulting pressure field to compute the resulting acoustic parameters.
+
+        Args:
+            target: The target Point.
+            transducer: A Transducer item.
+            volume: xa.DataArray
+                The xa.DataArray volume corresponding to the subject scan (Default: None).
+                If no volume is given, a default simulation grid will be used.
+            session: db.Session
+                A session used to define solution_id (Default: None).
+            simulate: bool
+                Enable solution simulation (Default: true).
+            scale: bool
+                Triggers solution and simulation scaling to the requested pressure (Default: true).
+            sim_options : sim.SimSetup
+                The options for the k-wave simulation (Default: self.sim_setup).
+            analysis_options: plan.solution.SolutionAnalysisOptions
+                The options for the solution analysis (Default: self.analysis_options).
+            on_pulse_mismatch: plan.protocol.OnPulseMismatchAction
+                An action to take if the number of pulses in the sequence does not match
+                the number of foci (Default: OnPulseMismatchAction.ERROR).
+
+        Returns: Tuple[Solution, xa.DataArray]
+            Represents the solution object including its analysis, and aggregated simulation output.
+        """
+        if sim_options is None:
+            sim_options = self.sim_setup
+        if analysis_options is None:
+            analysis_options = self.analysis_options
+        # check before if target is within bounds
+        self.check_target(target)
+        params, transducer, target = sim_options.setup_sim_scene(transducer, transform, target, self.seg_method, volume=volume, units="m")
+
+        delays_to_stack: List[np.ndarray] = []
+        apodizations_to_stack: List[np.ndarray] = []
+        simulation_outputs_to_stack: List[xa.Dataset] = []
+        simulation_output_stacked: xa.Dataset = None
+        simulation_result_aggregated: xa.Dataset = None
+        foci: List[Point] = self.focal_pattern.get_targets(target)
+        simulation_cycles = np.max([np.round(self.pulse.duration * self.pulse.frequency), 20])
+        out_solution: Solution = Solution()
+
+        # updating solution sequence if pulse mismatch
+        solution_sequence = deepcopy(self.sequence)
+        if (self.sequence.pulse_count % len(foci)) != 0:
+            if on_pulse_mismatch is OnPulseMismatchAction.ERROR:
+                raise ValueError(f"Pulse Count {self.sequence.pulse_count} is not a multiple of the number of foci {len(foci)}")
+            else:
+                if on_pulse_mismatch is OnPulseMismatchAction.ROUND:
+                    solution_sequence.pulse_count = round(self.sequence.pulse_count / len(self.foci)) * len(foci)
+                elif on_pulse_mismatch is OnPulseMismatchAction.ROUNDUP:
+                    solution_sequence.pulse_count = math.ceil(self.sequence.pulse_count / len(foci)) * len(self.foci)
+                elif on_pulse_mismatch is OnPulseMismatchAction.ROUNDUP:
+                    solution_sequence.pulse_count = math.floor(self.sequence.pulse_count / len(foci)) * len(self.foci)
+                logging.warning(
+                    f"Pulse Count {self.sequence.pulse_count} is not a multiple of the number of foci {len(foci)}."
+                    f"Rounding to {solution_sequence.pulse_count}."
+                )
+        # run simulation and aggregate the results
+        for focus in foci:
+            logging.info(f"Beamform for focus {focus}...")
+            delays, apodization = self.beamform(arr=transducer, target=focus, params=params)
+            simulation_output_xarray = None
+            if simulate:
+                logging.info(f"Simulate for focus {focus}...")
+                simulation_output_xarray, _ = run_simulation(
+                    arr=transducer,
+                    params=params,
+                    delays=delays,
+                    apod= apodization,
+                    freq = self.pulse.frequency,
+                    cycles = simulation_cycles,
+                    dt=sim_options.dt,
+                    t_end=sim_options.t_end,
+                    amplitude = 1,
+                    gpu = False
+                )
+            delays_to_stack.append(delays)
+            apodizations_to_stack.append(apodization)
+            simulation_outputs_to_stack.append(simulation_output_xarray)
+        if simulate:
+            simulation_output_stacked = xa.concat(
+                [
+                    sim.assign_coords(focal_point_index=i)
+                    for i, sim in enumerate(simulation_outputs_to_stack)
+                ],
+                dim='focal_point_index',
+            )
+        # instantiate and return the solution
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        solution_id = timestamp
+        if session is not None:
+            solution_id = f"{session.id}_{solution_id}"
+        solution =  Solution(
+            id=solution_id,
+            name=f"Solution {timestamp}",
+            protocol_id=self.id,
+            transducer_id=transducer.id,
+            delays=np.stack(delays_to_stack, axis=0),
+            apodizations=np.stack(apodizations_to_stack, axis=0),
+            pulse=self.pulse,  #TODO pulse is correctly scaled with `self.scale_solution``
+            sequence=solution_sequence, #TODO incorrect to set the sequence the same as the protocol's
+                                        # since sequence pulse_count can be modified if pulse mismatch.
+            foci=foci,
+            target=target,
+            simulation_result=simulation_output_stacked,
+            approved=False,
+            description= (
+                f"A solution computed for the {self.name} protocol with transducer {transducer.name}"
+                f" for subject volume {volume.id if volume is not None else None}" # TODO put volume ID here if it is not None, once Sadhana's PR #123 is merged
+                f" for target {target.id}."
+                f" This solution was created for the session {session.id} for subject {session.subject_id}." if session is not None else ""
+            )
+        )
+        # optionally scale the solution with simulation result
+        if scale:
+            if not simulate:
+                logging.error(msg=f"Cannot scale solution {solution.id} if simulation is not enabled!")
+                raise ValueError(f"Cannot scale solution {solution.id} if simulation is not enabled!")
+            logging.info(f"Scaling solution {solution.id}...")
+            #TODO does analysis needs to be an attribute of solution ?
+            solution_scaled, _ = self.scale_solution(solution, transducer, analysis_options=analysis_options)
+            solution = solution_scaled
+
+        # Finally the resulting pressure is max-aggregated and intensity is mean-aggregated, over all focus points .
+        pnp_aggregated = solution.simulation_result['p_min'].max(dim="focal_point_index")
+        ppp_aggregated = solution.simulation_result['p_max'].max(dim="focal_point_index")
+        # TODO: Ensure this mean is weighted by the number of times each point is focused on, once openlifu supports hitting points different numbers of times
+        intensity_aggregated = solution.simulation_result['ita'].mean(dim="focal_point_index")
+        simulation_result_aggregated = deepcopy(solution.simulation_result)
+        simulation_result_aggregated = simulation_result_aggregated.drop_dims("focal_point_index")
+        simulation_result_aggregated['p_min'] = pnp_aggregated
+        simulation_result_aggregated['p_max'] = ppp_aggregated
+        simulation_result_aggregated['ita'] = intensity_aggregated
+
+        return solution, simulation_result_aggregated
