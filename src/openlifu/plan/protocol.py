@@ -15,7 +15,7 @@ from openlifu import bf, geo, seg, sim, xdc
 from openlifu.db.session import Session
 from openlifu.geo import Point
 from openlifu.plan.solution import Solution
-from openlifu.plan.solution_analysis import SolutionAnalysis, SolutionAnalysisOptions
+from openlifu.plan.solution_analysis import SolutionAnalysisOptions
 from openlifu.plan.target_constraints import TargetConstraints
 from openlifu.sim import run_simulation
 from openlifu.util.json import PYFUSEncoder
@@ -137,49 +137,6 @@ class Protocol:
                 units=target_constraint.units
             )
             target_constraint.check_bounds(pos)
-
-    def scale_solution(
-            self,
-            solution: Solution,
-            transducer: Transducer,
-            analysis_options: SolutionAnalysisOptions = SolutionAnalysisOptions()
-    ) -> Tuple[Solution, SolutionAnalysis]:
-        """
-        Scale the solution to match the target pressure.
-        If no output is requested, the solution is scaled in-place.
-
-        Args:
-            solution: plan.Solution
-                The solution to be scaled.
-            analysis_options: plan.solution.SolutionAnalysisOptions
-
-        Returns:
-            solution_scaled: the scaled plan.Solution
-            analysis_scaled: the resulting plan.solution.SolutionAnalysis from scaled solution
-        """
-        solution_scaled = deepcopy(solution)
-        analysis = solution.analyze(transducer, options=analysis_options)
-
-        scaling_factors = np.zeros(solution.num_foci())
-        for i in range(solution.num_foci()):
-            scaling_factors[i] = (self.focal_pattern.target_pressure / 1e6) / analysis.mainlobe_pnp_MPa[i]
-            scaling_factors[i] = 2.3167
-        max_scaling = np.max(scaling_factors)
-        v0 = self.pulse.amplitude
-        v1 = v0 * max_scaling
-        apod_factors = scaling_factors / max_scaling
-
-        for i in range(solution.num_foci()):
-            scaling = v1/v0*apod_factors[i]
-            solution_scaled.simulation_result['p_min'][i].data *= scaling
-            solution_scaled.simulation_result['p_max'][i].data *= scaling
-            solution_scaled.simulation_result['ita'][i].data *= scaling**2
-            solution_scaled.apodizations[i] = solution_scaled.apodizations[i]*apod_factors[i]
-        self.pulse.amplitude = v1
-
-        analysis_scaled = solution_scaled.analyze(transducer, options=analysis_options)
-
-        return solution_scaled, analysis_scaled
 
     #TODO: The arg transform needed for sim_setup since transducer.matrix does not exists
     def calc_solution(
@@ -303,7 +260,7 @@ class Protocol:
             transducer_id=transducer.id,
             delays=np.stack(delays_to_stack, axis=0),
             apodizations=np.stack(apodizations_to_stack, axis=0),
-            pulse=self.pulse,  #TODO pulse is correctly scaled with `self.scale_solution``
+            pulse=self.pulse,  #TODO pulse is now correctly scaled with `solution.scale`
             sequence=solution_sequence, #TODO incorrect to set the sequence the same as the protocol's
                                         # since sequence pulse_count can be modified if pulse mismatch.
             foci=foci,
@@ -323,9 +280,8 @@ class Protocol:
                 logging.error(msg=f"Cannot scale solution {solution.id} if simulation is not enabled!")
                 raise ValueError(f"Cannot scale solution {solution.id} if simulation is not enabled!")
             logging.info(f"Scaling solution {solution.id}...")
-            #TODO does analysis needs to be an attribute of solution ?
-            solution_scaled, _ = self.scale_solution(solution, transducer, analysis_options=analysis_options)
-            solution = solution_scaled
+            #TODO can analysis be an attribute of solution ?
+            scaled_solution_analysis = solution.scale(transducer, self.focal_pattern, analysis_options=analysis_options)
 
         # Finally the resulting pressure is max-aggregated and intensity is mean-aggregated, over all focus points .
         pnp_aggregated = solution.simulation_result['p_min'].max(dim="focal_point_index")

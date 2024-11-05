@@ -1,5 +1,6 @@
 import base64
 import json
+from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -9,6 +10,7 @@ import numpy as np
 import xarray as xa
 
 from openlifu.bf import Pulse, Sequence, mask_focus
+from openlifu.bf.focal_patterns import FocalPattern
 from openlifu.bf.mask_focus import MaskOp
 from openlifu.geo import Point
 from openlifu.plan.solution_analysis import SolutionAnalysis, SolutionAnalysisOptions
@@ -229,6 +231,47 @@ class Solution:
         # solution_analysis.global_ispta_mWcm2 = np.max(ita_mWcm2.data*z_mask)
 
         return solution_analysis
+
+    def scale(
+            self,
+            transducer: Transducer,
+            focal_pattern: FocalPattern,
+            analysis_options: SolutionAnalysisOptions = SolutionAnalysisOptions()
+    ) -> SolutionAnalysis:
+        """
+        Scale the solution in-place to match the target pressure.
+
+        Args:
+            transducer: xdc.Transducer
+            focal_pattern: FocalPattern
+            analysis_options: plan.solution.SolutionAnalysisOptions
+
+        Returns:
+            analysis_scaled: the resulting plan.solution.SolutionAnalysis from scaled solution
+        """
+        solution_scaled = deepcopy(self)
+        analysis = solution_scaled.analyze(transducer, options=analysis_options)
+
+        scaling_factors = np.zeros(self.num_foci())
+        for i in range(solution_scaled.num_foci()):
+            scaling_factors[i] = (focal_pattern.target_pressure / 1e6) / analysis.mainlobe_pnp_MPa[i]
+            scaling_factors[i] = 2.3167
+        max_scaling = np.max(scaling_factors)
+        v0 = solution_scaled.pulse.amplitude
+        v1 = v0 * max_scaling
+        apod_factors = scaling_factors / max_scaling
+
+        for i in range(solution_scaled.num_foci()):
+            scaling = v1/v0*apod_factors[i]
+            solution_scaled.simulation_result['p_min'][i].data *= scaling
+            solution_scaled.simulation_result['p_max'][i].data *= scaling
+            solution_scaled.simulation_result['ita'][i].data *= scaling**2
+            solution_scaled.apodizations[i] = solution_scaled.apodizations[i]*apod_factors[i]
+        solution_scaled.pulse.amplitude = v1
+
+        analysis_scaled = solution_scaled.analyze(transducer, options=analysis_options)
+
+        return solution_scaled, analysis_scaled
 
     def get_pulsetrain_dutycycle(self) -> float:
         """
