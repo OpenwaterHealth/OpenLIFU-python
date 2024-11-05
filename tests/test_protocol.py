@@ -78,14 +78,24 @@ def test_calc_solution(
         example_volume: xa.Dataset
     ):
     """Make sure a solution can be calculated."""
+    import logging
     from copy import deepcopy
 
     from openlifu.util.units import convert_transform
 
+    logging.disable(logging.CRITICAL)
     target = deepcopy(example_session.targets[0])
     target.rescale("m")
     transducer_transform = convert_transform(example_transducer_transform, units="mm", tgt_units="m")
     target.transform(np.linalg.inv(transducer_transform))
     target.dims = ("lat", "ele", "ax")
 
-    example_protocol.calc_solution(target, example_transducer, transducer_transform, volume=example_volume, session=example_session)
+    example_protocol.calc_solution(
+        target,
+        example_transducer,
+        transducer_transform,
+        volume=example_volume,
+        session=example_session,
+        simulate=False,
+        scale=False
+    )
