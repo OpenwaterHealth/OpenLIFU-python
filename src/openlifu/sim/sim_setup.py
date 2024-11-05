@@ -102,7 +102,7 @@ class SimSetup(DictMixin):
 
     def get_size(self, dims: Optional[str]=None):
         dims = self.dims if dims is None else dims
-        n = [int(np.round(np.diff(ext)/self.spacing))+1 for ext in [self.x_extent, self.y_extent, self.z_extent]]
+        n = [int((np.round(np.diff(ext)/self.spacing)).item())+1 for ext in [self.x_extent, self.y_extent, self.z_extent]]
         return np.array([n[self.dims.index(dim)] for dim in dims]).squeeze()
 
     def get_spacing(self, units: Optional[str] = None):
