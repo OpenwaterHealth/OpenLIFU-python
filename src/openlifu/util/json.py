@@ -6,6 +6,7 @@ import numpy as np
 
 from openlifu.db.subject import Subject
 from openlifu.geo import Point
+from openlifu.plan.solution_analysis import SolutionAnalysisOptions
 from openlifu.seg.material import Material
 from openlifu.xdc.element import Element
 from openlifu.xdc.transducer import Transducer
@@ -30,6 +31,8 @@ class PYFUSEncoder(json.JSONEncoder):
         if isinstance(obj, Material):
             return obj.to_dict()
         if isinstance(obj, Subject):
+            return obj.to_dict()
+        if isinstance(obj, SolutionAnalysisOptions):
             return obj.to_dict()
         return super().default(obj)
 

@@ -3,7 +3,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import numpy as np
 import xarray as xa
@@ -11,7 +11,7 @@ import xarray as xa
 from openlifu.bf import Pulse, Sequence, mask_focus
 from openlifu.bf.mask_focus import MaskOp
 from openlifu.geo import Point
-from openlifu.io.dict_conversion import DictMixin
+from openlifu.plan.solution_analysis import SolutionAnalysis, SolutionAnalysisOptions
 from openlifu.util.json import PYFUSEncoder
 from openlifu.util.units import rescale_data_arr
 from openlifu.xdc import Transducer
@@ -22,41 +22,6 @@ def _construct_nc_filepath_from_json_filepath(json_filepath:Path) -> Path:
     nc_filename = json_filepath.name.split(".")[0] + ".nc"
     nc_filepath = json_filepath.parent / nc_filename
     return nc_filepath
-
-
-@dataclass
-class SolutionAnalysis(DictMixin):
-    mainlobe_pnp_MPa: list[float] = field(default_factory=list)
-    mainlobe_isppa_Wcm2: list[float] = field(default_factory=list)
-    mainlobe_ispta_mWcm2: list[float] = field(default_factory=list)
-    beamwidth_lat_3dB_mm: list[float] = field(default_factory=list)
-    beamwidth_ax_3dB_mm: list[float] = field(default_factory=list)
-    beamwidth_lat_6dB_mm: list[float] = field(default_factory=list)
-    beamwidth_ax_6dB_mm: list[float] = field(default_factory=list)
-    sidelobe_pnp_MPa: list[float] = field(default_factory=list)
-    sidelobe_isppa_Wcm2: list[float] = field(default_factory=list)
-    global_pnp_MPa: list[float] = field(default_factory=list)
-    global_isppa_Wcm2: list[float] = field(default_factory=list)
-    p0_Pa: list[float] = field(default_factory=list)
-    TIC: float = None
-    power_W: float = None
-    MI: float = None
-    global_ispta_mWcm2: float = None
-
-
-@dataclass
-class SolutionAnalysisOptions(DictMixin):
-    standoff_sound_speed: float = 1500.0
-    standoff_density: float = 1000.0
-    ref_sound_speed: float = 1500.0
-    ref_density: float = 1000.0
-    focus_diameter: float = 0.5
-    mainlobe_aspect_ratio: Tuple[float, float, float] = (1., 1., 5.)
-    mainlobe_radius: float = 2.5e-3
-    beamwidth_radius: float = 5e-3
-    sidelobe_radius: float = 3e-3
-    sidelobe_zmin: float = 1e-3
-    distance_units: str = "m"
 
 
 @dataclass

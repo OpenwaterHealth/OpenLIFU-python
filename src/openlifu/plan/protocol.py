@@ -14,9 +14,11 @@ import xarray as xa
 from openlifu import bf, geo, seg, sim, xdc
 from openlifu.db.session import Session
 from openlifu.geo import Point
-from openlifu.plan.solution import Solution, SolutionAnalysis, SolutionAnalysisOptions
+from openlifu.plan.solution import Solution
+from openlifu.plan.solution_analysis import SolutionAnalysis, SolutionAnalysisOptions
 from openlifu.plan.target_constraints import TargetConstraints
 from openlifu.sim import run_simulation
+from openlifu.util.json import PYFUSEncoder
 from openlifu.xdc import Transducer
 
 OnPulseMismatchAction = Enum("OnPulseMismatchAction", ["ERROR", "ROUND", "ROUNDUP", "ROUNDDOWN"])
@@ -99,9 +101,9 @@ class Protocol:
         Returns: A json string representing the complete Protocol object.
         """
         if compact:
-            return json.dumps(self.to_dict(), separators=(',', ':'))
+            return json.dumps(self.to_dict(), separators=(',', ':'), cls=PYFUSEncoder)
         else:
-            return json.dumps(self.to_dict(), indent=4)
+            return json.dumps(self.to_dict(), indent=4, cls=PYFUSEncoder)
 
     def to_file(self, filename: str):
         """
@@ -289,7 +291,7 @@ class Protocol:
                 ],
                 dim='focal_point_index',
             )
-        # instantiate and return the solution
+        # instantiateinstantiate and return the solution
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         solution_id = timestamp
         if session is not None:
