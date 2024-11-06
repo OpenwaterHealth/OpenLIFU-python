@@ -14,7 +14,7 @@ from openlifu.bf.mask_focus import MaskOp
 from openlifu.geo import Point
 from openlifu.plan.solution_analysis import SolutionAnalysis, SolutionAnalysisOptions
 from openlifu.util.json import PYFUSEncoder
-from openlifu.util.units import rescale_data_arr
+from openlifu.util.units import getunitconversion, rescale_data_arr
 from openlifu.xdc import Transducer
 
 
@@ -252,8 +252,8 @@ class Solution:
 
         scaling_factors = np.zeros(self.num_foci())
         for i in range(self.num_foci()):
-            scaling_factors[i] = (focal_pattern.target_pressure / 1e6) / analysis.mainlobe_pnp_MPa[i]
-            scaling_factors[i] = 2.3167
+            focal_pattern_pressure_in_MPa = focal_pattern.target_pressure * getunitconversion(focal_pattern.units, "MPa")
+            scaling_factors[i] = focal_pattern_pressure_in_MPa / analysis.mainlobe_pnp_MPa[i]
         max_scaling = np.max(scaling_factors)
         v0 = self.pulse.amplitude
         v1 = v0 * max_scaling

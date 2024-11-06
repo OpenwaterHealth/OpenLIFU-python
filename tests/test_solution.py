@@ -29,7 +29,7 @@ def example_transducer() -> Transducer:
 
 @pytest.fixture()
 def example_focal_pattern_single() -> SinglePoint:
-    return SinglePoint(target_pressure=1.0e6)
+    return SinglePoint(target_pressure=1.0e6, units="Pa")
 
 
 @pytest.fixture()

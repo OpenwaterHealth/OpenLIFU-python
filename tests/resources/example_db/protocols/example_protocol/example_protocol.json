@@ -16,6 +16,7 @@
   },
   "focal_pattern": {
     "target_pressure": 1.0e6,
+    "units": "Pa",
     "class": "SinglePoint"
   },
   "delay_method": {
