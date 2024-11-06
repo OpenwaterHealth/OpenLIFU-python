@@ -40,7 +40,6 @@ dependencies = [
   "opencv-contrib-python",
   "crc",
   "nibabel",
-  "antspyx",
   "sphinx",
   "ipykernel",
   "k-wave-python>=0.3.4",

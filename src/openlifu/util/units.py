@@ -1,5 +1,5 @@
 import numpy as np
-from xarray import Coordinates, Dataset
+from xarray import Dataset
 
 #TODO: use Pint (https://github.com/hgrecco/pint) instead to manage physics units in python
 
@@ -238,25 +238,6 @@ def get_ndgrid_from_arr(data_arr: Dataset) -> np.ndarray:
     for coord_key in ordered_key:
         if 'units' in data_arr[coord_key].attrs:
             all_coord += [data_arr.coords[coord_key].data]
-    ndgrid = np.stack(np.meshgrid(*all_coord, indexing="ij"), axis=-1)
-
-    return ndgrid
-
-
-def get_ndgrid_from_coords(coords_arr: Coordinates) -> np.ndarray:
-    """
-    Creates a ndgrid from xarray.coordinates.
-
-    Args:
-        coords : xarray.Coordinates
-
-    Returns:
-        ndgrid: The ndgrid from the Coordinates.
-    """
-    all_coord = []
-    for coord_key in coords_arr.dims:
-        if 'units' in coords_arr[coord_key].attrs:
-            all_coord += [coords_arr[coord_key].data]
     ndgrid = np.stack(np.meshgrid(*all_coord, indexing="ij"), axis=-1)
 
     return ndgrid
