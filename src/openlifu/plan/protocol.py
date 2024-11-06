@@ -40,6 +40,9 @@ class Protocol:
     target_constraints: List[TargetConstraints] = field(default_factory=list)
     analysis_options: SolutionAnalysisOptions = field(default_factory=SolutionAnalysisOptions)
 
+    def __post_init__(self):
+        self.logger = logging.getLogger(__name__)
+
     @staticmethod
     def from_dict(d : Dict[str,Any]) -> "Protocol":
         d["pulse"] = bf.Pulse.from_dict(d.get("pulse", {}))
@@ -209,7 +212,7 @@ class Protocol:
             analysis_options = self.analysis_options
         # check before if target is within bounds
         self.check_target(target)
-        params, transducer, target = sim_options.setup_sim_scene(transducer, target, self.seg_method, volume=volume, units="m")
+        params = sim_options.setup_sim_scene(self.seg_method, volume=volume)
 
         delays_to_stack: List[np.ndarray] = []
         apodizations_to_stack: List[np.ndarray] = []
