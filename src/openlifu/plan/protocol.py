@@ -150,7 +150,7 @@ class Protocol:
                 self.sequence.pulse_count = math.ceil(self.sequence.pulse_count / len(foci)) * len(foci)
             elif on_pulse_mismatch is OnPulseMismatchAction.ROUNDDOWN:
                 self.sequence.pulse_count = math.floor(self.sequence.pulse_count / len(foci)) * len(foci)
-            logging.warning(
+            self.logger.warning(
                 f"Pulse Count {self.sequence.pulse_count} is not a multiple of the number of foci {len(foci)}."
                 f"Rounding to {self.sequence.pulse_count}."
             )
@@ -165,8 +165,7 @@ class Protocol:
         scale: bool = True,
         sim_options: Optional[sim.SimSetup] = None,
         analysis_options: Optional[SolutionAnalysisOptions] = None,
-        on_pulse_mismatch: OnPulseMismatchAction = OnPulseMismatchAction.ERROR,
-        #log : Logger. Default: fus.util.Logger.get()  #TODO what about logging, currently only db/database.py has one ?
+        on_pulse_mismatch: OnPulseMismatchAction = OnPulseMismatchAction.ERROR
     ) -> Tuple[Solution, xa.DataArray, SolutionAnalysis]:  #TODO: make more sense for me to have a single xa.DataArray that holds the
                                                            # aggregation (pnp, ppp, ita). We could also store it in Solution.simulation_result
                                                            # with additional fields 'pnp_aggregated', 'ppp_aggregated' and 'ita_aggregated' ?
@@ -228,11 +227,11 @@ class Protocol:
             self.fix_pulse_mismatch(on_pulse_mismatch, foci)
         # run simulation and aggregate the results
         for focus in foci:
-            logging.info(f"Beamform for focus {focus}...")
+            self.logger.info(f"Beamform for focus {focus}...")
             delays, apodization = self.beamform(arr=transducer, target=focus, params=params)
             simulation_output_xarray = None
             if simulate:
-                logging.info(f"Simulate for focus {focus}...")
+                self.logger.info(f"Simulate for focus {focus}...")
                 simulation_output_xarray, _ = run_simulation(
                     arr=transducer,
                     params=params,
@@ -283,9 +282,9 @@ class Protocol:
         # optionally scale the solution with simulation result
         if scale:
             if not simulate:
-                logging.error(msg=f"Cannot scale solution {solution.id} if simulation is not enabled!")
+                self.logger.error(msg=f"Cannot scale solution {solution.id} if simulation is not enabled!")
                 raise ValueError(f"Cannot scale solution {solution.id} if simulation is not enabled!")
-            logging.info(f"Scaling solution {solution.id}...")
+            self.logger.info(f"Scaling solution {solution.id}...")
             #TODO can analysis be an attribute of solution ?
             scaled_solution_analysis = solution.scale(transducer, self.focal_pattern, analysis_options=analysis_options)
 
