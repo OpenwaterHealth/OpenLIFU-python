@@ -109,47 +109,31 @@ class SimSetup(DictMixin):
         units = self.units if units is None else units
         return getunitconversion(self.units, units)*self.spacing
 
-    #TODO: since we don't have a concept of scene here, and that the simulation scene is needed in protocol.calc_solution,
-    # we will return each prepared object one-by-one.
-    #TODO: Missing the "markers" from matlab scene in "scene.transform(self, coords, matrix, options)"
-    #TODO: The arg transform needs to be added since transducer.matrix does not exists anymore
     def setup_sim_scene(
             self,
-            transducer: Transducer,
-            target: Point,
             seg_method: SegmentationMethod,
-            volume: Optional[xa.DataArray] = None,
-            units: Optional[str] = None
+            volume: Optional[xa.DataArray] = None
         ) -> Tuple[xa.DataArray, Transducer, Point]:
-        """ Prepare a simulation scene composed of a volume, transducer and targets.
+        """ Prepare a simulation scene composed of a simulation grid
 
-        Setup a simulation scene with a volume, transducer and target point.
-        All objects are resampled to the geo-referenced simulation grid (lon, lat, ele).
-        For the volume, a segmentation is also performed that defines the simulation medium.
+        Setup a simulation scene with a simulation grid including physical properties.
+        A segmentation is performed to detect the medium, so we can assign
+        physical properties to each voxel, later used by the ultrasound simulation.
+        This assume that the input volume is resampled to the geo-referenced simulation grid (lon, lat, ele).
 
         Args:
-
-            transducer: xdc.Transducer
-            target: geo.Point
             seg_method: seg.SegmentationMethod
             volume: xa.DataArray
                 Optional volume to be used for simulation grid definition (Default: None).
-                The volume is assumed to be resampled on grid coordinates.
-            units: str
-                Units of simulation grid (Default: self.units).
+                The volume is assumed to be resampled on sim grid coordinates.
 
         Returns
             params: The xa.DataArray simulation grid with physical properties for each voxel
-            transducer: The transformed xdc.Transducer to the simulation grid
-            target: The transformed geo.Point to the simulation grid
         """
-        units = self.units if units is None else units
-        sim_coords = self.get_coords(units=units)
-        transducer.rescale(units)
-        target.rescale(units)
         if volume is None:
+            sim_coords = self.get_coords()
             params = seg_method.ref_params(sim_coords)
         else:
             params = seg_method.seg_params(volume)
 
-        return params, transducer, target
+        return params
