@@ -97,7 +97,7 @@ def test_check_target(example_protocol: Protocol, example_session: Session, targ
     except ValueError:
         assert True
     else:
-        pytest.fail(f"Verification failed for {target_constraints}!")
+        pytest.raises(f"Verification failed for {target_constraints}!")
 
 @pytest.mark.parametrize("on_pulse_mismatch", [
             OnPulseMismatchAction.ERROR,
@@ -119,7 +119,7 @@ def test_fix_pulse_mismatch(example_protocol: Protocol, example_session: Session
         except ValueError:
             assert True
         else:
-            pytest.fail("on_pulse_mismatch exception not triggered as excepted!")
+            pytest.raises("on_pulse_mismatch exception not triggered as excepted!")
     else:
         example_protocol.fix_pulse_mismatch(on_pulse_mismatch, foci)
         if on_pulse_mismatch is OnPulseMismatchAction.ROUND:
