@@ -33,6 +33,7 @@ def example_transducer_transform() -> np.ndarray:
 
 @pytest.fixture()
 def example_volume() -> xa.Dataset:
+    return xa.Dataset()
     #TODO the following is in case we want to test a nifti input volume
     # loading a nifti file and then construction a xarray dataset from it
     # with open(Path(__file__).parent/"resources/example_db/subjects/example_subject/volumes/example_volume/mni.json") as f:
@@ -60,7 +61,6 @@ def example_volume() -> xa.Dataset:
     #         'affine_units': "mm"
     #     }
     # )
-    return None
 
 @pytest.mark.parametrize("compact_representation", [True, False])
 def test_serialize_deserialize_protocol(example_protocol : Protocol, compact_representation: bool):
@@ -70,12 +70,15 @@ def test_default_protocol():
     """Ensure it is possible to construct a default protocol"""
     Protocol()
 
+def test_check_target(example_protocol: Protocol, example_session: Session):
+    """Ensure that the target can be correctly verified."""
+    example_protocol.check_target(example_session.targets[0])
+
 def test_calc_solution(
         example_protocol: Protocol,
         example_transducer: Transducer,
         example_session: Session,
-        example_transducer_transform: np.ndarray,
-        example_volume: xa.Dataset
+        example_transducer_transform: np.ndarray
     ):
     """Make sure a solution can be calculated."""
     import logging
@@ -93,8 +96,7 @@ def test_calc_solution(
     example_protocol.calc_solution(
         target,
         example_transducer,
-        transducer_transform,
-        volume=example_volume,
+        volume=None,
         session=example_session,
         simulate=False,
         scale=False

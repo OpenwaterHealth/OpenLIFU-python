@@ -118,15 +118,13 @@ class Protocol:
             file.write(self.to_json(compact=False))
 
 
-    def check_target(self, target):
+    def check_target(self, target: Point):
         """
         Check if a target is within bounds.
 
         Args:
             target: The geo.Point target to check.
         """
-        #TODO: in the matlab code they handle the case were multiple targets are given.
-        # After our discussion I assumed that we will not handle a list of targets.
         if isinstance(target, list):
             raise ValueError(f"Input target {target} not supposed to be a list!")
 
