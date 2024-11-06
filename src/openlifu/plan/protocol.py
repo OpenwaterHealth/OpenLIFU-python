@@ -165,21 +165,22 @@ class Protocol:
         on_pulse_mismatch: OnPulseMismatchAction = OnPulseMismatchAction.ERROR,
         #log : Logger. Default: fus.util.Logger.get()  #TODO what about logging, currently only db/database.py has one ?
     ) -> Tuple[Solution, xa.DataArray, SolutionAnalysis]:  #TODO: make more sense for me to have a single xa.DataArray that holds the
-                                         # aggregation (pnp, ppp, ita). We could also store it in Solution.simulation_result
-                                         # with additional fields 'pnp_aggregated', 'ppp_aggregated' and 'ita_aggregated' ?
+                                                           # aggregation (pnp, ppp, ita). We could also store it in Solution.simulation_result
+                                                           # with additional fields 'pnp_aggregated', 'ppp_aggregated' and 'ita_aggregated' ?
         """Calculate the solution and aggregated k-wave simulation outputs.
 
-        Method that computes the delays and apodizations for each focus in
-        the treatment plan, simulates the resulting pressure field to adjust
-        transmit pressures to reach target pressures, and then analyzes the
-        resulting pressure field to compute the resulting acoustic parameters.
+        Method that computes the delays and apodizations for each focus in the treatment plan,
+        simulates the resulting pressure field to adjust transmit pressures to reach target pressures,
+        and then analyzes the resulting pressure field to compute the resulting acoustic parameters.
 
         Args:
             target: The target Point.
+                Target is expected to be in the simulation grid coordinates (lat, ele, ax).
             transducer: A Transducer item.
             volume: xa.DataArray
-                The xa.DataArray volume corresponding to the subject scan (Default: None).
-                If no volume is given, a default simulation grid will be used.
+                The subject scan (Default: None).
+                It is expected to be in the simulation grid coordinates (lat, ele, ax).
+                If None, a default simulation grid will be used.
             session: db.Session
                 A session used to define solution_id (Default: None).
             simulate: bool
