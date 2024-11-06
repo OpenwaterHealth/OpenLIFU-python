@@ -7,6 +7,7 @@ import xarray as xa
 from helpers import dataclasses_are_equal
 
 from openlifu import Point, Pulse, Sequence, Solution, Transducer
+from openlifu.bf.focal_patterns import SinglePoint
 from openlifu.xdc.element import Element
 
 
@@ -24,6 +25,11 @@ def example_transducer() -> Transducer:
         frequency=1e6,
         units="m"
     )
+
+
+@pytest.fixture()
+def example_focal_pattern_single() -> SinglePoint:
+    return SinglePoint(target_pressure=1.0e6)
 
 
 @pytest.fixture()
@@ -118,6 +124,11 @@ def test_num_foci(example_solution:Solution):
     assert len(example_solution.simulation_result['focal_point_index']) == num_foci
     assert example_solution.delays.shape[0] == num_foci
     assert example_solution.apodizations.shape[0] == num_foci
+
+
+def test_scale_solution(example_solution: Solution, example_transducer: Transducer, example_focal_pattern_single: SinglePoint):
+    """Test that a solution can be scaled."""
+    example_solution.scale(example_transducer, example_focal_pattern_single)
 
 
 def test_solution_analysis(example_solution: Solution, example_transducer: Transducer):
