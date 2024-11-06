@@ -15,7 +15,7 @@ from openlifu import bf, geo, seg, sim, xdc
 from openlifu.db.session import Session
 from openlifu.geo import Point
 from openlifu.plan.solution import Solution
-from openlifu.plan.solution_analysis import SolutionAnalysisOptions
+from openlifu.plan.solution_analysis import SolutionAnalysis, SolutionAnalysisOptions
 from openlifu.plan.target_constraints import TargetConstraints
 from openlifu.sim import run_simulation
 from openlifu.util.json import PYFUSEncoder
@@ -136,6 +136,22 @@ class Protocol:
             )
             target_constraint.check_bounds(pos)
 
+    def fix_pulse_mismatch(self, on_pulse_mismatch: OnPulseMismatchAction, foci: List[Point]):
+        """Fix the protocol sequence pulse count in-place given a pulse_mismatch action."""
+        if on_pulse_mismatch is OnPulseMismatchAction.ERROR:
+            raise ValueError(f"Pulse Count {self.sequence.pulse_count} is not a multiple of the number of foci {len(foci)}")
+        else:
+            if on_pulse_mismatch is OnPulseMismatchAction.ROUND:
+                self.sequence.pulse_count = round(self.sequence.pulse_count / len(foci)) * len(foci)
+            elif on_pulse_mismatch is OnPulseMismatchAction.ROUNDUP:
+                self.sequence.pulse_count = math.ceil(self.sequence.pulse_count / len(foci)) * len(foci)
+            elif on_pulse_mismatch is OnPulseMismatchAction.ROUNDDOWN:
+                self.sequence.pulse_count = math.floor(self.sequence.pulse_count / len(foci)) * len(foci)
+            logging.warning(
+                f"Pulse Count {self.sequence.pulse_count} is not a multiple of the number of foci {len(foci)}."
+                f"Rounding to {self.sequence.pulse_count}."
+            )
+
     def calc_solution(
         self,
         target: Point,
@@ -148,7 +164,7 @@ class Protocol:
         analysis_options: SolutionAnalysisOptions = None,
         on_pulse_mismatch: OnPulseMismatchAction = OnPulseMismatchAction.ERROR,
         #log : Logger. Default: fus.util.Logger.get()  #TODO what about logging, currently only db/database.py has one ?
-    ) -> Tuple[Solution, xa.DataArray]:  #TODO: make more sense for me to have a single xa.DataArray that holds the
+    ) -> Tuple[Solution, xa.DataArray, SolutionAnalysis]:  #TODO: make more sense for me to have a single xa.DataArray that holds the
                                          # aggregation (pnp, ppp, ita). We could also store it in Solution.simulation_result
                                          # with additional fields 'pnp_aggregated', 'ppp_aggregated' and 'ita_aggregated' ?
         """Calculate the solution and aggregated k-wave simulation outputs.
@@ -178,8 +194,13 @@ class Protocol:
                 An action to take if the number of pulses in the sequence does not match
                 the number of foci (Default: OnPulseMismatchAction.ERROR).
 
-        Returns: Tuple[Solution, xa.DataArray]
-            Represents the solution object including its analysis, and aggregated simulation output.
+        Returns:
+            solution: Solution
+            simulation_result_aggregated: xa.Dataset
+                If simulation is enabled, then this is the resulting aggregated
+                output (max pressure and mean intensity over all foci).
+            scaled_solution_analysis: SolutionAnalysis
+                This is the resulting rescaled analysis, if scale is enabled.
         """
         if sim_options is None:
             sim_options = self.sim_setup
@@ -192,28 +213,15 @@ class Protocol:
         delays_to_stack: List[np.ndarray] = []
         apodizations_to_stack: List[np.ndarray] = []
         simulation_outputs_to_stack: List[xa.Dataset] = []
-        simulation_output_stacked: xa.Dataset = None
-        simulation_result_aggregated: xa.Dataset = None
+        simulation_output_stacked: xa.Dataset = xa.Dataset()
+        simulation_result_aggregated: xa.Dataset = xa.Dataset()
+        scaled_solution_analysis: SolutionAnalysis = SolutionAnalysis()
         foci: List[Point] = self.focal_pattern.get_targets(target)
         simulation_cycles = np.max([np.round(self.pulse.duration * self.pulse.frequency), 20])
-        out_solution: Solution = Solution()
 
         # updating solution sequence if pulse mismatch
-        solution_sequence = deepcopy(self.sequence)
         if (self.sequence.pulse_count % len(foci)) != 0:
-            if on_pulse_mismatch is OnPulseMismatchAction.ERROR:
-                raise ValueError(f"Pulse Count {self.sequence.pulse_count} is not a multiple of the number of foci {len(foci)}")
-            else:
-                if on_pulse_mismatch is OnPulseMismatchAction.ROUND:
-                    solution_sequence.pulse_count = round(self.sequence.pulse_count / len(self.foci)) * len(foci)
-                elif on_pulse_mismatch is OnPulseMismatchAction.ROUNDUP:
-                    solution_sequence.pulse_count = math.ceil(self.sequence.pulse_count / len(foci)) * len(self.foci)
-                elif on_pulse_mismatch is OnPulseMismatchAction.ROUNDUP:
-                    solution_sequence.pulse_count = math.floor(self.sequence.pulse_count / len(foci)) * len(self.foci)
-                logging.warning(
-                    f"Pulse Count {self.sequence.pulse_count} is not a multiple of the number of foci {len(foci)}."
-                    f"Rounding to {solution_sequence.pulse_count}."
-                )
+            self.fix_pulse_mismatch(on_pulse_mismatch, foci)
         # run simulation and aggregate the results
         for focus in foci:
             logging.info(f"Beamform for focus {focus}...")
@@ -244,7 +252,7 @@ class Protocol:
                 ],
                 dim='focal_point_index',
             )
-        # instantiateinstantiate and return the solution
+        # instantiate and return the solution
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         solution_id = timestamp
         if session is not None:
@@ -256,16 +264,14 @@ class Protocol:
             transducer_id=transducer.id,
             delays=np.stack(delays_to_stack, axis=0),
             apodizations=np.stack(apodizations_to_stack, axis=0),
-            pulse=self.pulse,  #TODO pulse is now correctly scaled with `solution.scale`
-            sequence=solution_sequence, #TODO incorrect to set the sequence the same as the protocol's
-                                        # since sequence pulse_count can be modified if pulse mismatch.
+            pulse=self.pulse,
+            sequence=self.sequence,
             foci=foci,
             target=target,
             simulation_result=simulation_output_stacked,
             approved=False,
             description= (
                 f"A solution computed for the {self.name} protocol with transducer {transducer.name}"
-                f" for subject volume {volume.id if volume is not None else None}" # TODO put volume ID here if it is not None, once Sadhana's PR #123 is merged
                 f" for target {target.id}."
                 f" This solution was created for the session {session.id} for subject {session.subject_id}." if session is not None else ""
             )
@@ -291,4 +297,4 @@ class Protocol:
             simulation_result_aggregated['p_max'] = ppp_aggregated
             simulation_result_aggregated['ita'] = intensity_aggregated
 
-        return solution, simulation_result_aggregated
+        return solution, simulation_result_aggregated, scaled_solution_analysis

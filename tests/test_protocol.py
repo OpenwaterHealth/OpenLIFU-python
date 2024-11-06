@@ -1,3 +1,5 @@
+import logging
+import math
 from pathlib import Path
 
 import numpy as np
@@ -5,6 +7,7 @@ import pytest
 
 from openlifu import Protocol, Transducer
 from openlifu.db import Session
+from openlifu.plan.protocol import OnPulseMismatchAction
 
 
 @pytest.fixture()
@@ -75,6 +78,37 @@ def test_check_target(example_protocol: Protocol, example_session: Session):
     """Ensure that the target can be correctly verified."""
     example_protocol.check_target(example_session.targets[0])
 
+@pytest.mark.parametrize("on_pulse_mismatch", [
+      OnPulseMismatchAction.ERROR,
+      OnPulseMismatchAction.ROUND,
+      OnPulseMismatchAction.ROUNDUP,
+      OnPulseMismatchAction.ROUNDDOWN
+      ]
+    )
+def test_fix_pulse_mismatch(example_protocol: Protocol, example_session: Session, on_pulse_mismatch: OnPulseMismatchAction):
+    """Test if sequence is correctly fixed for all pulse mismatch actions."""
+    logging.disable(logging.CRITICAL)
+
+    target = example_session.targets[0]
+    foci = example_protocol.focal_pattern.get_targets(target)
+    foci = [foci[0], foci[0], foci[0]]
+    if on_pulse_mismatch is OnPulseMismatchAction.ERROR:
+        try:
+            example_protocol.fix_pulse_mismatch(on_pulse_mismatch, foci)
+        except ValueError:
+            assert True
+    else:
+        example_protocol.fix_pulse_mismatch(on_pulse_mismatch, foci)
+        if on_pulse_mismatch is OnPulseMismatchAction.ROUND:
+            expected_pulse_count = round(example_protocol.sequence.pulse_count / len(foci)) * len(foci)
+            assert example_protocol.sequence.pulse_count == expected_pulse_count
+        elif on_pulse_mismatch is OnPulseMismatchAction.ROUNDUP:
+            expected_pulse_count = math.ceil(example_protocol.sequence.pulse_count / len(foci)) * len(foci)
+            assert example_protocol.sequence.pulse_count == expected_pulse_count
+        elif on_pulse_mismatch is OnPulseMismatchAction.ROUNDDOWN:
+            expected_pulse_count = math.floor(example_protocol.sequence.pulse_count / len(foci)) * len(foci)
+            assert example_protocol.sequence.pulse_count == expected_pulse_count
+
 def test_calc_solution(
         example_protocol: Protocol,
         example_transducer: Transducer,
@@ -82,7 +116,6 @@ def test_calc_solution(
         example_transducer_transform: np.ndarray
     ):
     """Make sure a solution can be calculated."""
-    import logging
     from copy import deepcopy
 
     logging.disable(logging.CRITICAL)
