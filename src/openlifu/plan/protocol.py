@@ -138,12 +138,10 @@ class Protocol:
             )
             target_constraint.check_bounds(pos)
 
-    #TODO: The arg transform needed for sim_setup since transducer.matrix does not exists
     def calc_solution(
         self,
         target: Point,
         transducer: Transducer,
-        transform: np.ndarray,
         volume: xa.DataArray = None,  #TODO: Do we want to have the volume as a xa.DataArray instead of nifty ?
         session: Session = None, # useful in solution id  #TODO not sure to understand why this type is optional
         simulate: bool = True,
@@ -191,7 +189,7 @@ class Protocol:
             analysis_options = self.analysis_options
         # check before if target is within bounds
         self.check_target(target)
-        params, transducer, target = sim_options.setup_sim_scene(transducer, transform, target, self.seg_method, volume=volume, units="m")
+        params, transducer, target = sim_options.setup_sim_scene(transducer, target, self.seg_method, volume=volume, units="m")
 
         delays_to_stack: List[np.ndarray] = []
         apodizations_to_stack: List[np.ndarray] = []
