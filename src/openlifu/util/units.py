@@ -241,21 +241,3 @@ def get_ndgrid_from_arr(data_arr: Dataset) -> np.ndarray:
     ndgrid = np.stack(np.meshgrid(*all_coord, indexing="ij"), axis=-1)
 
     return ndgrid
-
-
-def convert_transform(matrix: np.ndarray, units: str, tgt_units: str) -> np.ndarray:
-    """Given a transform matrix in some units, convert it to another units.
-
-    Args:
-        matrix: 4x4 np.ndarray
-            affine transform matrix
-        units: str
-            units of the coordinate space on which the provided transform matrix operates
-
-    Returns: 4x4 affine transform matrix
-    """
-    tgt_units = self.units if tgt_units is None else tgt_units
-    matrix = matrix.copy()
-    matrix[0:3, 3] *= getunitconversion(units, tgt_units)
-
-    return matrix

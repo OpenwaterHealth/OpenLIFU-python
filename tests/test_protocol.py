@@ -85,12 +85,11 @@ def test_calc_solution(
     import logging
     from copy import deepcopy
 
-    from openlifu.util.units import convert_transform
-
     logging.disable(logging.CRITICAL)
     target = deepcopy(example_session.targets[0])
     target.rescale("m")
-    transducer_transform = convert_transform(example_transducer_transform, units="mm", tgt_units="m")
+    example_transducer.units = "m"
+    transducer_transform = example_transducer.convert_transform(example_transducer_transform, units="mm")
     target.transform(np.linalg.inv(transducer_transform))
     target.dims = ("lat", "ele", "ax")
 
