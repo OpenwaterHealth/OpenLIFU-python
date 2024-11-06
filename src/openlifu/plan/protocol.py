@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import xarray as xa
@@ -156,12 +156,12 @@ class Protocol:
         self,
         target: Point,
         transducer: Transducer,
-        volume: xa.DataArray = None,  #TODO: Do we want to have the volume as a xa.DataArray instead of nifty ?
-        session: Session = None, # useful in solution id  #TODO not sure to understand why this type is optional
+        volume: Optional[xa.DataArray] = None,  #TODO: Do we want to have the volume as a xa.DataArray instead of nifty ?
+        session: Optional[Session] = None, # useful in solution id  #TODO not sure to understand why this type is optional
         simulate: bool = True,
         scale: bool = True,
-        sim_options: sim.SimSetup = None,
-        analysis_options: SolutionAnalysisOptions = None,
+        sim_options: Optional[sim.SimSetup] = None,
+        analysis_options: Optional[SolutionAnalysisOptions] = None,
         on_pulse_mismatch: OnPulseMismatchAction = OnPulseMismatchAction.ERROR,
         #log : Logger. Default: fus.util.Logger.get()  #TODO what about logging, currently only db/database.py has one ?
     ) -> Tuple[Solution, xa.DataArray, SolutionAnalysis]:  #TODO: make more sense for me to have a single xa.DataArray that holds the

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Tuple
+from typing import Optional, Tuple
 
 from openlifu.io.dict_conversion import DictMixin
 
@@ -18,10 +18,10 @@ class SolutionAnalysis(DictMixin):
     global_pnp_MPa: list[float] = field(default_factory=list)
     global_isppa_Wcm2: list[float] = field(default_factory=list)
     p0_Pa: list[float] = field(default_factory=list)
-    TIC: float = None
-    power_W: float = None
-    MI: float = None
-    global_ispta_mWcm2: float = None
+    TIC: Optional[float] = None
+    power_W: Optional[float] = None
+    MI: Optional[float] = None
+    global_ispta_mWcm2: Optional[float] = None
 
 
 @dataclass
