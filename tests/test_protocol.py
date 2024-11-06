@@ -8,6 +8,7 @@ import pytest
 from openlifu import Protocol, Transducer
 from openlifu.db import Session
 from openlifu.plan.protocol import OnPulseMismatchAction
+from openlifu.plan.target_constraints import TargetConstraints
 
 
 @pytest.fixture()
@@ -74,16 +75,36 @@ def test_default_protocol():
     """Ensure it is possible to construct a default protocol"""
     Protocol()
 
-def test_check_target(example_protocol: Protocol, example_session: Session):
+@pytest.mark.parametrize("target_constraints",[
+            [
+                TargetConstraints(dim="P", units="mm", min=0.0, max=float("inf"))
+            ],
+            [
+                TargetConstraints(dim="P", units="m", min=-0.001, max=0.0)
+            ],
+            [
+                TargetConstraints(dim="L", units="mm", min=-100.0, max=0.0),
+                TargetConstraints(dim="P", units="mm", min=-100.0, max=0.0),
+                TargetConstraints(dim="S", units="mm", min=-100.0, max=-10.0)
+            ]
+        ]
+    )
+def test_check_target(example_protocol: Protocol, example_session: Session, target_constraints: TargetConstraints):
     """Ensure that the target can be correctly verified."""
-    example_protocol.check_target(example_session.targets[0])
+    example_protocol.target_constraints = target_constraints
+    try:
+        example_protocol.check_target(example_session.targets[0])
+    except ValueError:
+        assert True
+    else:
+        pytest.fail(f"Verification failed for {target_constraints}!")
 
 @pytest.mark.parametrize("on_pulse_mismatch", [
-      OnPulseMismatchAction.ERROR,
-      OnPulseMismatchAction.ROUND,
-      OnPulseMismatchAction.ROUNDUP,
-      OnPulseMismatchAction.ROUNDDOWN
-      ]
+            OnPulseMismatchAction.ERROR,
+            OnPulseMismatchAction.ROUND,
+            OnPulseMismatchAction.ROUNDUP,
+            OnPulseMismatchAction.ROUNDDOWN
+        ]
     )
 def test_fix_pulse_mismatch(example_protocol: Protocol, example_session: Session, on_pulse_mismatch: OnPulseMismatchAction):
     """Test if sequence is correctly fixed for all pulse mismatch actions."""
@@ -97,6 +118,8 @@ def test_fix_pulse_mismatch(example_protocol: Protocol, example_session: Session
             example_protocol.fix_pulse_mismatch(on_pulse_mismatch, foci)
         except ValueError:
             assert True
+        else:
+            pytest.fail("on_pulse_mismatch exception not triggered as excepted!")
     else:
         example_protocol.fix_pulse_mismatch(on_pulse_mismatch, foci)
         if on_pulse_mismatch is OnPulseMismatchAction.ROUND:
