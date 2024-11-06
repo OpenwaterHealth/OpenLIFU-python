@@ -118,7 +118,7 @@ class SimSetup(DictMixin):
             transducer: Transducer,
             target: Point,
             seg_method: SegmentationMethod,
-            volume: xa.DataArray = None,
+            volume: Optional[xa.DataArray] = None,
             units: Optional[str] = None
         ) -> Tuple[xa.DataArray, Transducer, Point]:
         """ Prepare a simulation scene composed of a volume, transducer and targets.
@@ -134,6 +134,7 @@ class SimSetup(DictMixin):
             seg_method: seg.SegmentationMethod
             volume: xa.DataArray
                 Optional volume to be used for simulation grid definition (Default: None).
+                The volume is assumed to be resampled on grid coordinates.
             units: str
                 Units of simulation grid (Default: self.units).
 
@@ -149,6 +150,6 @@ class SimSetup(DictMixin):
         if volume is None:
             params = seg_method.ref_params(sim_coords)
         else:
-            params = seg_method.ref_params(sim_coords)
+            params = seg_method.seg_params(volume)
 
         return params, transducer, target
