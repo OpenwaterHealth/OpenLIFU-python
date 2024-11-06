@@ -120,7 +120,7 @@ class Protocol:
 
     def check_target(self, target: Point):
         """
-        Check if a target is within bounds.
+        Check if a target is within bounds, raising an exception if it isn't.
 
         Args:
             target: The geo.Point target to check.
