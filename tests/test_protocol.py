@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from openlifu import Protocol, Transducer
@@ -118,3 +119,31 @@ def test_fix_pulse_mismatch(
             assert example_protocol.sequence.pulse_count == 2*num_foci
         elif on_pulse_mismatch is OnPulseMismatchAction.ROUNDDOWN:
             assert example_protocol.sequence.pulse_count == num_foci
+
+def test_calc_solution(
+        example_protocol: Protocol,
+        example_transducer: Transducer,
+        example_session: Session
+    ):
+    """Make sure a solution can be calculated."""
+    from copy import deepcopy
+
+    logging.disable(logging.CRITICAL)
+    target = deepcopy(example_session.targets[0])
+    target.rescale("m")
+    example_transducer.units = "m"
+    transducer_transform = example_transducer.convert_transform(
+        example_session.array_transform.matrix,
+        example_session.array_transform.units
+    )
+    target.transform(np.linalg.inv(transducer_transform))
+    target.dims = ("lat", "ele", "ax")
+
+    example_protocol.calc_solution(
+        target,
+        example_transducer,
+        volume=None,
+        session=example_session,
+        simulate=False,
+        scale=False
+    )
