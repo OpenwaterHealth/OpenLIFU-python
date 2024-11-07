@@ -36,7 +36,7 @@ class Protocol:
     delay_method: bf.DelayMethod = field(default_factory=bf.delay_methods.Direct)
     apod_method: bf.ApodizationMethod = field(default_factory=bf.apod_methods.Uniform)
     seg_method: seg.SegmentationMethod = field(default_factory=seg.seg_methods.Water)
-    param_constraints: dict = field(default_factory=dict)  #TODO: this seems to be used only in `plan.check_analysis`` but not called anywhere
+    param_constraints: dict = field(default_factory=dict)  #TODO: this seems to be used only in `plan.check_analysis` but not called anywhere
     target_constraints: List[TargetConstraints] = field(default_factory=list)
     analysis_options: SolutionAnalysisOptions = field(default_factory=SolutionAnalysisOptions)
 
@@ -159,16 +159,14 @@ class Protocol:
         self,
         target: Point,
         transducer: Transducer,
-        volume: Optional[xa.DataArray] = None,  #TODO: Do we want to have the volume as a xa.DataArray instead of nifty ?
-        session: Optional[Session] = None, # useful in solution id  #TODO not sure to understand why this type is optional
+        volume: Optional[xa.DataArray] = None,
+        session: Optional[Session] = None,
         simulate: bool = True,
         scale: bool = True,
         sim_options: Optional[sim.SimSetup] = None,
         analysis_options: Optional[SolutionAnalysisOptions] = None,
         on_pulse_mismatch: OnPulseMismatchAction = OnPulseMismatchAction.ERROR
-    ) -> Tuple[Solution, xa.DataArray, SolutionAnalysis]:  #TODO: make more sense for me to have a single xa.DataArray that holds the
-                                                           # aggregation (pnp, ppp, ita). We could also store it in Solution.simulation_result
-                                                           # with additional fields 'pnp_aggregated', 'ppp_aggregated' and 'ita_aggregated' ?
+    ) -> Tuple[Solution, xa.DataArray, SolutionAnalysis]:
         """Calculate the solution and aggregated k-wave simulation outputs.
 
         Method that computes the delays and apodizations for each focus in the treatment plan,

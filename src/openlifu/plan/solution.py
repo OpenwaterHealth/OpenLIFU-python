@@ -143,7 +143,7 @@ class Solution:
 
             # get focus region masks (for mainlobe, sidelobe and beamwidth)
             mainlobe_mask = mask_focus(
-                self.simulation_result,  #TODO: Original code uses coords, but too complicated to maniplulate a Coordinates class
+                self.simulation_result,
                 foc,
                 options.mainlobe_radius,
                 mask_op=MaskOp.LESS_EQUAL,
