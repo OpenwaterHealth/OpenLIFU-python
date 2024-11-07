@@ -3,7 +3,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import numpy as np
 import xarray as xa
@@ -231,6 +231,36 @@ class Solution:
 
         return solution_analysis
 
+    def compute_scaling_factors(
+            self,
+            focal_pattern: FocalPattern,
+            analysis: SolutionAnalysis
+        ) -> Tuple[np.ndarray, float, float]:
+        """
+
+        Compute the scaling factors used to re-scale the apodizations, simulation results and pulse amplitude.
+
+        Args:
+            focal_pattern: FocalPattern
+            analysis: SolutionAnalysis
+
+        Returns:
+            apod_factors: A np.ndarray apodization factors
+            v0: A float representing the original pulse amplitude
+            v1: A float representing the new pulse amplitude
+        """
+        scaling_factors = np.zeros(self.num_foci())
+
+        for i in range(self.num_foci()):
+            focal_pattern_pressure_in_MPa = focal_pattern.target_pressure * getunitconversion(focal_pattern.units, "MPa")
+            scaling_factors[i] = focal_pattern_pressure_in_MPa / analysis.mainlobe_pnp_MPa[i]
+        max_scaling = np.max(scaling_factors)
+        v0 = self.pulse.amplitude
+        v1 = v0 * max_scaling
+        apod_factors = scaling_factors / max_scaling
+
+        return apod_factors, v0, v1
+
     def scale(
             self,
             transducer: Transducer,
@@ -250,14 +280,7 @@ class Solution:
         """
         analysis = self.analyze(transducer, options=analysis_options)
 
-        scaling_factors = np.zeros(self.num_foci())
-        for i in range(self.num_foci()):
-            focal_pattern_pressure_in_MPa = focal_pattern.target_pressure * getunitconversion(focal_pattern.units, "MPa")
-            scaling_factors[i] = focal_pattern_pressure_in_MPa / analysis.mainlobe_pnp_MPa[i]
-        max_scaling = np.max(scaling_factors)
-        v0 = self.pulse.amplitude
-        v1 = v0 * max_scaling
-        apod_factors = scaling_factors / max_scaling
+        apod_factors, v0, v1 = self.compute_scaling_factors(focal_pattern, analysis)
 
         for i in range(self.num_foci()):
             scaling = v1/v0*apod_factors[i]
