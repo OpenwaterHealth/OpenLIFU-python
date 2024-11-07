@@ -26,38 +26,6 @@ def example_session() -> Session:
 def example_wheel_pattern() -> Wheel:
     return Wheel(num_spokes=6)
 
-#TODO the following is in case we want to test a nifti input volume
-# @pytest.fixture()
-# def example_volume() -> xa.Dataset:
-#     # loading a nifti file and then construction a xarray dataset from it
-#     with open(Path(__file__).parent/"resources/example_db/subjects/example_subject/volumes/example_volume/mni.json") as f:
-#         nib_volume_metadata = json.load(f)
-#     nib_volume = Nifti1Image.load(Path(__file__).parent/"resources/example_db/subjects/example_subject/volumes/example_volume"/nib_volume_metadata['data_filename'])
-#     l_min, p_min, s_min = nib_volume.affine[:3, -1]
-#     vol_shape = nib_volume.shape
-#     l_max = affines.apply_affine(nib_volume.affine, [vol_shape[0]-1, 0, 0])[0]
-#     p_max = affines.apply_affine(nib_volume.affine, [0, vol_shape[1]-1, 0])[1]
-#     s_max = affines.apply_affine(nib_volume.affine, [0, 0, vol_shape[2]-1])[2]
-#     volume = xa.Dataset(
-#         {
-#             'data': xa.DataArray(data=nib_volume.get_fdata(), dims=["L", "P", "S"])
-#         },
-#         coords={
-#             'L': xa.DataArray(dims=["L"], data=np.linspace(l_min, l_max, vol_shape[0]), attrs={'units': "mm"}),
-#             'P': xa.DataArray(dims=["P"], data=np.linspace(p_min, p_max, vol_shape[1]), attrs={'units': "mm"}),
-#             'S': xa.DataArray(dims=["S"], data=np.linspace(s_min, s_max, vol_shape[2]), attrs={'units': "mm"})
-#         },
-#         attrs={
-#             'units': "",
-#             'name': "Test Volume",
-#             'id': "volume_000",
-#             'affine': nib_volume.affine,
-#             'affine_units': "mm"
-#         }
-#     )
-
-#     return volume
-
 @pytest.mark.parametrize("compact_representation", [True, False])
 def test_serialize_deserialize_protocol(example_protocol : Protocol, compact_representation: bool):
     assert example_protocol.from_json(example_protocol.to_json(compact_representation)) == example_protocol
