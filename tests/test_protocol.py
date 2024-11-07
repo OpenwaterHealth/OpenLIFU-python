@@ -1,11 +1,11 @@
 import logging
-import math
 from pathlib import Path
 
 import numpy as np
 import pytest
 
 from openlifu import Protocol, Transducer
+from openlifu.bf.focal_patterns import Wheel
 from openlifu.db import Session
 from openlifu.plan.protocol import OnPulseMismatchAction
 from openlifu.plan.target_constraints import TargetConstraints
@@ -24,20 +24,12 @@ def example_session() -> Session:
     return Session.from_file(Path(__file__).parent/"resources/example_db/subjects/example_subject/sessions/example_session/example_session.json")
 
 @pytest.fixture()
-def example_transducer_transform() -> np.ndarray:
-    return np.array(
-        [
-            [-1,    0,	0,	0],
-            [0,	0.05,	0.998749217771909,	-105],
-            [0,	0.998749217771909,	-0.05,	5],
-            [0,	0,	0,	1]
-        ]
-    )
+def example_wheel_pattern() -> Wheel:
+    return Wheel(num_spokes=6)
 
 #TODO the following is in case we want to test a nifti input volume
 # @pytest.fixture()
 # def example_volume() -> xa.Dataset:
-
 #     # loading a nifti file and then construction a xarray dataset from it
 #     with open(Path(__file__).parent/"resources/example_db/subjects/example_subject/volumes/example_volume/mni.json") as f:
 #         nib_volume_metadata = json.load(f)
@@ -104,37 +96,34 @@ def test_check_target(example_protocol: Protocol, example_session: Session, targ
             OnPulseMismatchAction.ROUNDDOWN
         ]
     )
-def test_fix_pulse_mismatch(example_protocol: Protocol, example_session: Session, on_pulse_mismatch: OnPulseMismatchAction):
+def test_fix_pulse_mismatch(
+        example_protocol: Protocol,
+        example_session: Session,
+        example_wheel_pattern: Wheel,
+        on_pulse_mismatch: OnPulseMismatchAction
+    ):
     """Test if sequence is correctly fixed for all pulse mismatch actions."""
     logging.disable(logging.CRITICAL)
 
     target = example_session.targets[0]
-    foci = example_protocol.focal_pattern.get_targets(target)
-    foci = [foci[0], foci[0], foci[0]]
+    foci = example_wheel_pattern.get_targets(target)
+    num_foci = len(foci)
     if on_pulse_mismatch is OnPulseMismatchAction.ERROR:
-        try:
+        with pytest.raises(ValueError, match="not a multiple of the number of foci"):
             example_protocol.fix_pulse_mismatch(on_pulse_mismatch, foci)
-        except ValueError:
-            assert True
-        else:
-            pytest.raises("on_pulse_mismatch exception not triggered as excepted!")
     else:
         example_protocol.fix_pulse_mismatch(on_pulse_mismatch, foci)
         if on_pulse_mismatch is OnPulseMismatchAction.ROUND:
-            expected_pulse_count = round(example_protocol.sequence.pulse_count / len(foci)) * len(foci)
-            assert example_protocol.sequence.pulse_count == expected_pulse_count
+            assert example_protocol.sequence.pulse_count == num_foci
         elif on_pulse_mismatch is OnPulseMismatchAction.ROUNDUP:
-            expected_pulse_count = math.ceil(example_protocol.sequence.pulse_count / len(foci)) * len(foci)
-            assert example_protocol.sequence.pulse_count == expected_pulse_count
+            assert example_protocol.sequence.pulse_count == 2*num_foci
         elif on_pulse_mismatch is OnPulseMismatchAction.ROUNDDOWN:
-            expected_pulse_count = math.floor(example_protocol.sequence.pulse_count / len(foci)) * len(foci)
-            assert example_protocol.sequence.pulse_count == expected_pulse_count
+            assert example_protocol.sequence.pulse_count == num_foci
 
 def test_calc_solution(
         example_protocol: Protocol,
         example_transducer: Transducer,
-        example_session: Session,
-        example_transducer_transform: np.ndarray
+        example_session: Session
     ):
     """Make sure a solution can be calculated."""
     from copy import deepcopy
@@ -143,7 +132,10 @@ def test_calc_solution(
     target = deepcopy(example_session.targets[0])
     target.rescale("m")
     example_transducer.units = "m"
-    transducer_transform = example_transducer.convert_transform(example_transducer_transform, units="mm")
+    transducer_transform = example_transducer.convert_transform(
+        example_session.array_transform.matrix,
+        example_session.array_transform.units
+    )
     target.transform(np.linalg.inv(transducer_transform))
     target.dims = ("lat", "ele", "ax")
 
