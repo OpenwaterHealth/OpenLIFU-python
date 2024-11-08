@@ -404,7 +404,7 @@ class Tx7332Registers:
         delay_profile = self.get_delay_profile(profile)
         apod_register = 0
         for i, apod in enumerate(delay_profile.apodizations):
-            apod_register = set_register_value(apod_register, 1-apod, lsb=i, width=1)
+            apod_register = set_register_value(apod_register, 1-apod, lsb=APODIZATION_CHANNEL_ORDER.index(i+1), width=1)
         delay_sel_register = 0
         delay_sel_register = set_register_value(delay_sel_register, delay_profile.profile-1, lsb=12, width=4)
         delay_sel_register = set_register_value(delay_sel_register, delay_profile.profile-1, lsb=28, width=4)
