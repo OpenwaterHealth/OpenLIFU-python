@@ -4,9 +4,9 @@ import json
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QGroupBox, QFormLayout
 from PyQt5.QtCore import Qt
-from ow_ustx import list_vcp_with_vid_pid, UART, CTRL_IF, UartPacket
-from pyfus.io.ustx import PulseProfile, DelayProfile, TxArray, print_regs
-from pyfus.xdc import Transducer
+from io import list_vcp_with_vid_pid, UART, CTRL_IF, UartPacket
+from openlifu.io.ustx import PulseProfile, DelayProfile, TxArray, print_regs
+from openlifu.xdc import Transducer
 import asyncio
 from qasync import QEventLoop, asyncSlot, QApplication
 

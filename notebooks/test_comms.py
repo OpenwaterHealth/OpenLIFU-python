@@ -12,11 +12,12 @@
 #     name: python3
 # ---
 
-from pyfus.io.ustx import PulseProfile, DelayProfile, TxModule, Tx7332Registers, print_regs, TxArray, swap_byte_order
-from pyfus.xdc import Transducer
+from openlifu.io.ustx import PulseProfile, DelayProfile, TxModule, Tx7332Registers, print_regs, TxArray, swap_byte_order
+from openlifu.xdc import Transducer
 import numpy as np
 import sys
-from ow_ustx import *
+from openlifu.io.core import UART
+from openlifu.io.ctrl_if import CTRL_IF
 import json
 import time
 
