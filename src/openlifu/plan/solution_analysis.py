@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
@@ -22,6 +23,24 @@ class SolutionAnalysis(DictMixin):
     power_W: Optional[float] = None
     MI: Optional[float] = None
     global_ispta_mWcm2: Optional[float] = None
+
+    @staticmethod
+    def from_json(json_string : str) -> "SolutionAnalysis":
+        """Load a SolutionAnalysis from a json string"""
+        return SolutionAnalysis.from_dict(json.loads(json_string))
+
+    def to_json(self, compact:bool) -> str:
+        """Serialize a SolutionAnalysis to a json string
+
+        Args:
+            compact: if enabled then the string is compact (not pretty). Disable for pretty.
+
+        Returns: A json string representing the complete SolutionAnalysis object.
+        """
+        if compact:
+            return json.dumps(self.to_dict(), separators=(',', ':'))
+        else:
+            return json.dumps(self.to_dict(), indent=4)
 
 
 @dataclass
