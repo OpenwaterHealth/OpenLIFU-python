@@ -8,6 +8,7 @@ from helpers import dataclasses_are_equal
 
 from openlifu import Point, Pulse, Sequence, Solution, Transducer
 from openlifu.bf.focal_patterns import SinglePoint
+from openlifu.plan import SolutionAnalysis
 from openlifu.xdc.element import Element
 
 
@@ -124,3 +125,11 @@ def test_num_foci(example_solution:Solution):
     assert len(example_solution.simulation_result['focal_point_index']) == num_foci
     assert example_solution.delays.shape[0] == num_foci
     assert example_solution.apodizations.shape[0] == num_foci
+
+@pytest.mark.parametrize("compact_representation", [True, False])
+def test_json_serialize_deserialize_solution_analysis(compact_representation: bool):
+    """Verify that turning a SolutionAnalysis into json and then re-constructing it gets back to the original"""
+    analysis = SolutionAnalysis(mainlobe_isppa_Wcm2=[1,2],beamwidth_ax_6dB_mm=[3,4], MI=5)
+    analysis_json = analysis.to_json(compact=compact_representation)
+    analysis_reconstructed = SolutionAnalysis.from_json(analysis_json)
+    assert dataclasses_are_equal(analysis_reconstructed, analysis)
