@@ -166,7 +166,7 @@ class Solution:
             #     distance=options.beamwidth_radius,
             #     options=mask_options)
 
-            pk = np.max(pnp_MPa.data[focus_index] * mainlobe_mask)  #TODO: pnp_MPa supposed to be a list for each focus: pnp_MPa(focus_index)
+            pk = np.max(pnp_MPa.data[focus_index] * mainlobe_mask).item()  #TODO: pnp_MPa supposed to be a list for each focus: pnp_MPa(focus_index)
             solution_analysis.mainlobe_pnp_MPa += [pk]
 
         #     thresh_m3dB = pk*10**(-3 / 20)
