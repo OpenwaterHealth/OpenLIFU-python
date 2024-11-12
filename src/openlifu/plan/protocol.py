@@ -59,6 +59,8 @@ class Protocol:
         if "target_constraints" in d:
             d['target_constraints'] = [TargetConstraints.from_dict(d_tc) for d_tc in d.get("target_constraints", {})]
         if "analysis_options" in d:
+            if "mainlobe_aspect_ratio" in d["analysis_options"]:
+                d["analysis_options"]["mainlobe_aspect_ratio"] = tuple(d["analysis_options"]["mainlobe_aspect_ratio"])
             d['analysis_options'] = SolutionAnalysisOptions.from_dict(d.get("analysis_options"))
         return Protocol(**d)
 

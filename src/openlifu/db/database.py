@@ -58,13 +58,9 @@ class Database:
             else:
                 raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
 
-        # Serialize the sonication protocol to JSON
-        protocol_dict = protocol.to_dict()
-
         # Save the sonication protocol to a JSON file
         protocol_filename = self.get_protocol_filename(protocol_id)
-        with open(protocol_filename, "w") as f:
-            json.dump(protocol_dict, f)
+        protocol.to_file(protocol_filename)
 
         # Update the list of Protocol IDs
         if protocol_id not in protocol_ids:
