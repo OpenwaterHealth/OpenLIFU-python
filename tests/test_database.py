@@ -10,7 +10,7 @@ from helpers import dataclasses_are_equal
 from openlifu import Point, Solution
 from openlifu.db import Session, Subject
 from openlifu.db.database import Database, OnConflictOpts
-from openlifu.plan import Run
+from openlifu.plan import Protocol, Run
 
 
 @pytest.fixture()
@@ -30,6 +30,36 @@ def example_subject(example_database : Database) -> Subject:
     return Subject.from_file(
         filename = Path(example_database.path)/"subjects/example_subject/example_subject.json",
     )
+
+def test_write_protocol(example_database: Database):
+    protocol = Protocol(name="bleh", id="a_protocol_called_bleh")
+
+    # Protocol id is not in list initially
+    assert protocol.id not in example_database.get_protocol_ids()
+
+    # Can add a new protocol, and it loads back in correctly.
+    example_database.write_protocol(protocol)
+    reloaded_protocol = example_database.load_protocol(protocol.id)
+    assert dataclasses_are_equal(reloaded_protocol,protocol)
+
+    # Protocol id is now in the list
+    assert protocol.id in example_database.get_protocol_ids()
+
+    # Error raised when the protocol already exists
+    with pytest.raises(ValueError, match="already exists"):
+        example_database.write_protocol(protocol, on_conflict=OnConflictOpts.ERROR)
+
+    # Skip option
+    protocol.name = "new_name"
+    example_database.write_protocol(protocol, on_conflict=OnConflictOpts.SKIP)
+    reloaded_protocol = example_database.load_protocol(protocol.id)
+    assert reloaded_protocol.name == "bleh"
+
+    # Overwrite option
+    protocol.name = "new_name"
+    example_database.write_protocol(protocol, on_conflict=OnConflictOpts.OVERWRITE)
+    reloaded_protocol = example_database.load_protocol(protocol.id)
+    assert reloaded_protocol.name == "new_name"
 
 def test_load_session_from_file(example_session : Session, example_database : Database):
 
