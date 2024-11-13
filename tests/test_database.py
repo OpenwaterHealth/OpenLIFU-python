@@ -95,6 +95,10 @@ def test_write_subject(example_database : Database):
     session_ids = example_database.get_session_ids(subject.id)
     assert session_ids == []
 
+    # Add a session so we can later test that overwriting a subject doesn't wipe out the session
+    session = Session(id="jectson_session_1", subject_id=subject.id)
+    example_database.write_session(subject, session)
+
     # Error raised when the subject already exists
     with pytest.raises(ValueError, match="already exists"):
         example_database.write_subject(subject, on_conflict=OnConflictOpts.ERROR)
@@ -109,6 +113,13 @@ def test_write_subject(example_database : Database):
     example_database.write_subject(subject, on_conflict=OnConflictOpts.OVERWRITE)
     reloaded_subject = example_database.load_subject("bleh")
     assert reloaded_subject.name == "Deb Jectson"
+
+    # Ensure that after overwrite of a subject the sessions are still there
+    assert session.id in example_database.get_session_ids(subject.id)
+    assert dataclasses_are_equal(
+        example_database.load_session(subject, session.id),
+        session
+    )
 
 def test_write_subject_associated_object_structure_created(example_database : Database):
     """Test that when you create a new subject, the file structure needed for other objects that can be written

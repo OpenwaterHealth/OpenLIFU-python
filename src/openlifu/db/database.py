@@ -176,9 +176,11 @@ class Database:
         subject_filename = self.get_subject_filename(subject_id)
         subject.to_file(subject_filename)
 
-        # Create empty sessions.json and volumes.json files for subject
-        self.write_session_ids(subject_id, session_ids=[])
-        self.write_volume_ids(subject_id, volume_ids=[])
+        # Create empty sessions.json and volumes.json files for subject if needed
+        if not self.get_sessions_filename(subject.id).exists():
+            self.write_session_ids(subject_id, session_ids=[])
+        if not self.get_volumes_filename(subject.id).exists():
+            self.write_volume_ids(subject_id, volume_ids=[])
 
         if subject_id not in subject_ids:
             subject_ids.append(subject_id)
@@ -605,7 +607,7 @@ class Database:
     def get_session_filename(self, subject_id, session_id):
         return Path(self.get_session_dir(subject_id, session_id)) / f'{session_id}.json'
 
-    def get_sessions_filename(self, subject_id):
+    def get_sessions_filename(self, subject_id) -> Path:
         return Path(self.get_subject_dir(subject_id)) / 'sessions' / 'sessions.json'
 
     def get_runs_filename(self, subject_id, session_id):
