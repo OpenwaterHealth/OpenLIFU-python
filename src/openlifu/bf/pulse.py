@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from openlifu.io.dict_conversion import DictMixin
+from openlifu.util.dict_conversion import DictMixin
 
 
 @dataclass

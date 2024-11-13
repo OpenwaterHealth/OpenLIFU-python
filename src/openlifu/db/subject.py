@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from openlifu.io.dict_conversion import DictMixin
+from openlifu.util.dict_conversion import DictMixin
 from openlifu.util.strings import sanitize
 
 
