@@ -138,6 +138,12 @@ def test_write_session(example_database: Database, example_subject: Subject):
     reloaded_session = example_database.load_session(example_subject, session.id)
     assert dataclasses_are_equal(reloaded_session,session)
 
+    # Add a solution and a run to later test that overwriting a session doesn't wipe them out
+    solution = Solution(id="please_keep_me")
+    run = Run(id="please_keep_me_too")
+    example_database.write_solution(session,solution)
+    example_database.write_run(run,session)
+
     # Error raised when the session already exists
     with pytest.raises(ValueError, match="already exists"):
         example_database.write_session(example_subject, session, on_conflict=OnConflictOpts.ERROR)
@@ -153,6 +159,14 @@ def test_write_session(example_database: Database, example_subject: Subject):
     example_database.write_session(example_subject, session, on_conflict=OnConflictOpts.OVERWRITE)
     reloaded_session = example_database.load_session(example_subject, session.id)
     assert reloaded_session.name == "new_name"
+
+    # Ensure that after overwrite of a session the runs and solutions are still there
+    assert solution.id in example_database.get_solution_ids(session.subject_id, session.id)
+    assert dataclasses_are_equal(
+        example_database.load_solution(session, solution.id),
+        solution,
+    )
+    assert run.id in example_database.get_run_ids(session.subject_id, session.id)
 
     # When writing to a new subject
     new_subject = Subject(id="bleh_new",name="Deb Jectson")

@@ -106,9 +106,11 @@ class Database:
         session_filename = self.get_session_filename(subject.id, session_id)
         session.to_file(session_filename)
 
-        # Create empty runs.json and solutions.json files for session
-        self.write_solution_ids(session, [])
-        self.write_run_ids(session.subject_id, session.id, [])
+        # Create empty runs.json and solutions.json files for session if needed
+        if not self.get_solutions_filename(subject.id, session_id).exists():
+            self.write_solution_ids(session, [])
+        if not self.get_runs_filename(subject.id, session_id).exists():
+            self.write_run_ids(session.subject_id, session.id, [])
 
         # Update the list of session IDs for the subject
         if session_id not in session_ids:
