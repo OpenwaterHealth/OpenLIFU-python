@@ -1,44 +1,161 @@
-from dataclasses import dataclass
+import logging
+from dataclasses import dataclass, field
+from typing import Optional, Tuple
 
 import numpy as np
 import xarray as xa
 
 from openlifu.geo import Point
+from openlifu.plan import TargetConstraints
 from openlifu.xdc import Transducer
 
 
 @dataclass
 class VirtualFit:
-    search_range: tuple[float, float] = (-10., 10.) #pitch yaw
-    """min-max position to search"""
+    """
+    VirtualFit class.
+
+    Represents the virtual fitting algorithm which consists in
+    finding the optimal transducer transform (position and orientation)
+    given an input MRI volume and the associated target.
+    """
+    pitch_range: Tuple[int, int] = (10, 40)
+    """The pitch range for the grid search."""
+
+    pitch_step: int = 3
+    """The pitch step for the grid search."""
+
+    yaw_range: Tuple[int, int] = (-5, 25)
+    """The yaw range for the grid search."""
+
+    yaw_step: int = 3
+    """The yaw step for the grid search."""
 
     search_range_units: str = "deg"
-    """min-max position units to search"""
+    """Search grid units."""
 
-    def extract_skin_surface(self, volume: xa.Dataset):
+    steering_limits: Tuple[TargetConstraints] = field(default_factory=list)
+    """Defines the accepteable range for a target in the transducer space, usually (lat, ele, ax)."""
+
+    blocked_elems_threshold: float = 0.1
+    """How much blocked elements are acceptable."""
+
+    volume: xa.Dataset = field(default_factory=xa.Dataset)
+    """The MRI volume on which to optimize the position."""
+
+    transducer: Transducer = field(default_factory=Transducer)
+    """Transducer that sits on the skin."""
+
+    def __post_init__(self):
+        self.logger = logging.getLogger(__name__)
+        """The VirtualFit logger."""
+        self.logger.info(f"Initializing VirtualFit with the following parameters: {self.__dict__}")
+        self.logger.info("VirtualFit: Skin extraction...")
+        # 1. extract skin surface, this is done only once at initialization
+        # self.skin_surface = self.extract_skin_surface(volume: xa.Dataset)
+        """A list of vertices representing the skin surface."""
+
+    def extract_skin_surface(self, volume: xa.Dataset, quantile: float = 0.05):
+        #TODO: basic thresholding + convex hull
         # from scipy.spatial import ConvexHull
-        # ConvexHull(volume)
+        # threshold = np.quantile(volume, 0.05)   #TODO: check otsu threhsolding instead
+        # volume_thresholded = volume[volume > threshold]
+        #
+        # return ConvexHull(volume)
         pass
 
-    def fit_to_skin(self):
+    def fit_to_surface(
+            self,
+            sph_coords: Tuple[float, float],
+            skin_surface: np.ndarray
+        ) -> np.ndarray:
+        """
+        Fit a 3D plane plane given spherical coordinates (yaw, pitch)
+        and a set of points coordinates (lat, ele, ax).
+        """
         pass
 
-    def get_search_grid(self, skin_surface: np.ndarray):
+    def get_search_grid(
+            self,
+            yaw_range: Tuple[int, int],
+            yaw_step: int,
+            pitch_range: Tuple[int, int],
+            pitch_step: int
+        ) -> np.ndarray:
         """
-        defines the transducer search grid
-        each grid element is a 4x4 matrix that correctly
-        transform the Transducer position so it fit to skin surface.
+        Defines the transducer search grid in (yaw, pitch) coordinates.
         """
-        # fit_to_skin()
-        # self.search_range
-        pass
+        yaw_sequence = np.arange(yaw_range[0], yaw_range[-1], yaw_step)
+        pitch_sequence = np.arange(pitch_range[0], pitch_range[-1], pitch_step)
+        pitch_yaw_grid = np.meshgrid(pitch_sequence, yaw_sequence, indexing="ij")
+
+        return pitch_yaw_grid
 
     def analyse_position(self, pos: np.ndarray, transducer: Transducer, target: Point):
-        """Minimal implementation is closest to target"""
+        """
+        Analyse the transducer position relative to a specific target.
+        """
+        #TODO: Compute if target is within steering limits
+        #TODO: In the future, we should implement the ray-tracing analysis given a full segmentation
+
+        # pos_analysis = 1.0
+        # target_tr_space = target2trspace(pos, target)
+        # for target_constraint in self.steering_limits:
+        #     pos = target_tr_space.get_position(
+        #         dim=target_constraint.dim,
+        #         units=target_constraint.units
+        #     )
+        #     try:
+        #         target_constraint.check_bounds(pos)
+        #     except ValueError:
+        #         pos_analysis = 0.0
+        #
+        # return pos_analysis
+
         pass
 
-    def run(self, volume: xa.Dataset=None, transducer: Transducer=None, target: Point=None):
-        # 1. extract_skin_surface
-        # 2. get_search_grid(skin_surface)
-        # 3. [analyse_position(pos, transducer, target) for pos in self.search_grid]
-        pass
+    def run(
+            self,
+            target: Point,
+            pitch_range: Optional[Tuple[int, int]] = None,
+            pitch_step: Optional[int] = None,
+            yaw_range: Optional[Tuple[int, int]] = None,
+            yaw_step: Optional[int] = None,
+            steering_limits: Optional[Tuple[TargetConstraints]] = None,
+            blocked_elems_threshold: Optional[float] = None
+        ) -> np.ndarray:
+        """
+        VirtualFit main process.
+
+        Finds the optimal transducer transform (position and orientation)
+        given an input MRI volume and the associated target.
+        """
+        if pitch_range is None:
+            pitch_range = self.pitch_range
+        if pitch_step is None:
+            pitch_step = self.pitch_step
+        if yaw_range is None:
+            yaw_range = self.yaw_range
+        if yaw_step is None:
+            yaw_step = self.yaw_step
+        if steering_limits is None:
+            steering_limits = self.steering_limits
+        if blocked_elems_threshold is None:
+            blocked_elems_threshold = self.blocked_elems_threshold
+
+        self.logger.info("Running VirtualFit main process.")
+        self.logger.info("VirtualFit: Searching optimal position...")
+        # 2. get search grid
+        search_grid = self.get_search_grid(yaw_range, yaw_step, pitch_range, pitch_step)
+        for i in range(search_grid[0].shape[0]):
+            for j in range(search_grid[0].shape[1]):
+                yaw, pitch = (search_grid[0][i, j], search_grid[1][i, j])
+                self.logger.info(f"VirtualFit: Analysing {(yaw, pitch)}...")
+                # 3. define transducer transform (plane fitting) on the surface (skin) given spherical coordinate (yaw, pitch)
+                # self.fit_to_surface(sph_coords: Tuple[float, float], skin_surface: np.ndarray)
+                # 4. analyse current transform
+                # self.analyse_position(pos: np.ndarray, transducer: Transducer, target: Point):
+                optimal_transform = np.zeros((4, 4))
+        self.logger.info("VirtualFit: Found optimal position!")
+
+        return optimal_transform
