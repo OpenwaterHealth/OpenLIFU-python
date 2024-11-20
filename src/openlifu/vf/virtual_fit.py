@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 import numpy as np
 import xarray as xa
 
+from openlifu.db.session import ArrayTransform
 from openlifu.geo import Point
 from openlifu.plan import TargetConstraints
 from openlifu.xdc import Transducer
@@ -123,7 +124,7 @@ class VirtualFit:
             yaw_step: Optional[int] = None,
             steering_limits: Optional[Tuple[TargetConstraints]] = None,
             blocked_elems_threshold: Optional[float] = None
-        ) -> np.ndarray:
+        ) -> ArrayTransform:
         """
         VirtualFit main process.
 
