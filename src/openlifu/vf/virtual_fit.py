@@ -18,7 +18,7 @@ class VirtualFit:
 
     Represents the virtual fitting algorithm which consists in
     finding the optimal transducer transform (position and orientation)
-    given an input MRI volume in (lat, ele, ax) coordinates and the associated target.
+    given an input MRI volume in LPS coordinates and the associated target.
     """
     pitch_range: Tuple[int, int] = (10, 40)
     """The pitch range for the grid search."""
@@ -36,13 +36,13 @@ class VirtualFit:
     """Search grid units."""
 
     steering_limits: Tuple[TargetConstraints] = field(default_factory=list)
-    """Defines the accepteable range for a target in the transducer space, usually (lat, ele, ax)."""
+    """Defines the accepteable range for a target in the transducer space, usually LPS."""
 
     blocked_elems_threshold: float = 0.1
     """How much blocked elements are acceptable."""
 
     volume: xa.Dataset = field(default_factory=xa.Dataset)
-    """The MRI volume in (lat, ele, ax) coordinates, on which to optimize the position."""
+    """The MRI volume in LPS coordinates, on which to optimize the position."""
 
     transducer: Transducer = field(default_factory=Transducer)
     """Transducer that sits on the skin."""
@@ -72,7 +72,7 @@ class VirtualFit:
         ) -> np.ndarray:
         """
         Fit a 3D plane plane given spherical coordinates (yaw, pitch)
-        and a set of points coordinates (lat, ele, ax).
+        and a set of points coordinates LPS.
         """
         pass
 
@@ -129,8 +129,8 @@ class VirtualFit:
         VirtualFit main process.
 
         Finds the optimal transducer transform (position and orientation)
-        given an input MRI volume in (lat, ele, ax) coordinates, and the associated
-        target in same coordinates (lat, ele, ax).
+        given an input MRI volume in LPS coordinates, and the associated
+        target in same coordinates LPS.
         """
         if pitch_range is None:
             pitch_range = self.pitch_range
@@ -156,7 +156,7 @@ class VirtualFit:
                 # 3. define transducer transform (plane fitting) on the surface (skin) given spherical coordinate (yaw, pitch)
                 # self.fit_to_surface(sph_coords: Tuple[float, float], skin_surface: np.ndarray)
                 # 4. analyse current transform
-                # self.analyse_position(pos: np.ndarray, transducer: Transducer, target: Point):
+                # self.analyse_position(pos: np.ndarray, transducer: Transducer, target: Point)
                 optimal_transform = np.zeros((4, 4))
         self.logger.info("VirtualFit: Found optimal position!")
 
