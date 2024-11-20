@@ -128,7 +128,8 @@ class VirtualFit:
         VirtualFit main process.
 
         Finds the optimal transducer transform (position and orientation)
-        given an input MRI volume in (lat, ele, ax) coordinates, and the associated target.
+        given an input MRI volume in (lat, ele, ax) coordinates, and the associated
+        target in same coordinates (lat, ele, ax).
         """
         if pitch_range is None:
             pitch_range = self.pitch_range
