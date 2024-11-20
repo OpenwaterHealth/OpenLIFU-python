@@ -37,7 +37,7 @@ class PYFUSEncoder(json.JSONEncoder):
         return super().default(obj)
 
 def to_json(obj, filename):
-    dirname = Path(filename)
+    dirname = Path(filename).parent
     if dirname and not dirname.exists():
         dirname.mkdir(parents=True)
     with open(filename, 'w') as file:
