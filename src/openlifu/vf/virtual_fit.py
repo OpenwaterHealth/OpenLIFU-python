@@ -17,7 +17,7 @@ class VirtualFit:
 
     Represents the virtual fitting algorithm which consists in
     finding the optimal transducer transform (position and orientation)
-    given an input MRI volume and the associated target.
+    given an input MRI volume in (lat, ele, ax) coordinates and the associated target.
     """
     pitch_range: Tuple[int, int] = (10, 40)
     """The pitch range for the grid search."""
@@ -41,7 +41,7 @@ class VirtualFit:
     """How much blocked elements are acceptable."""
 
     volume: xa.Dataset = field(default_factory=xa.Dataset)
-    """The MRI volume on which to optimize the position."""
+    """The MRI volume in (lat, ele, ax) coordinates, on which to optimize the position."""
 
     transducer: Transducer = field(default_factory=Transducer)
     """Transducer that sits on the skin."""
@@ -128,7 +128,7 @@ class VirtualFit:
         VirtualFit main process.
 
         Finds the optimal transducer transform (position and orientation)
-        given an input MRI volume and the associated target.
+        given an input MRI volume in (lat, ele, ax) coordinates, and the associated target.
         """
         if pitch_range is None:
             pitch_range = self.pitch_range
