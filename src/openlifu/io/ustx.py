@@ -1119,6 +1119,10 @@ class DeviceInterface:
         # Configure the HV Supply
 
         registers = self.txarray.get_registers(pack=True)
+        for profile in range(n):
+            delay_control_registers = self.txarray.get_delay_control_registers(profile)
+            pulse_control_registers = self.txarray.get_pulse_control_registers(profile)
+            # write the delay control registers to the TX Modules
         # Write All TX7332 Registers from the txarray to the 7332
         
         delay_control_registers = {profile:self.txarray.get_delay_control_registers(profile) for profile in self.txarray.configured_delay_profiles()}
