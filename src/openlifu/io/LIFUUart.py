@@ -80,6 +80,15 @@ class LIFUUart:
         self.disconnected.emit()
         self.port = None
 
+    def is_connected(self) -> bool:
+        """
+        Check if the device is connected.
+
+        Returns:
+            bool: True if connected, False otherwise.
+        """
+        return self.port is not None and self.serial is not None and self.serial.is_open
+
     def check_usb_status(self):
         """Check if the USB device is connected or disconnected."""
         device = self.list_vcp_with_vid_pid()

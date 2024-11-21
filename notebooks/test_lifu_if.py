@@ -7,12 +7,8 @@ async def main():
     """
     Test script to automate:
     1. Connect to the device.
-    2. Send a ping.
-    3. Turn treatment on.
-    4. Wait for 5 seconds.
-    5. Turn treatment off.
-    6. Send another ping.
-    7. Exit.
+    2. Test HVController: Turn HV on/off and check voltage.
+    3. Test Device functionality.
     """
     print("Starting LIFU Test Script...")
     interface = LIFUInterface()
@@ -33,18 +29,49 @@ async def main():
 
     try:
         # Start monitoring in the background
-        monitor_task = asyncio.create_task(interface.start_monitoring())  # Store the task reference
+        monitor_task = asyncio.create_task(interface.start_monitoring())
         print("Monitoring started...")
 
         # Wait for connection
-        while not interface.uart.port:
+        while not interface.is_device_connected():
             print("Waiting for device to connect...")
             await asyncio.sleep(1)
 
-        # Send initial ping
-        print("Sending initial ping...")
-        interface.send_ping()
-        await asyncio.sleep(2)  # Allow time for data reception
+        if interface.is_device_connected():
+            print("Device is connected.")
+        else:
+            print("Device is not connected.")
+            return  # Exit if device isn't connected
+
+        # Test HVController
+        print("Testing HVController...")
+        hv_controller = interface.HVController
+
+        try:
+            hv_controller.turn_on()
+            print("HV turned on successfully.")
+            await asyncio.sleep(2)
+
+            hv_controller.set_voltage(5.0)  # Set voltage to 5.0V
+            print(f"HV Voltage set to {hv_controller.get_voltage():.2f}V.")
+            await asyncio.sleep(2)
+
+            hv_controller.turn_off()
+            print("HV turned off successfully.")
+        except Exception as e:
+            print(f"Error during HVController testing: {e}")
+
+        # Test Device functionality
+        print("Testing Device...")
+        device = interface.Device
+        try:
+            device.start_sonication()
+            print("Sonication started.")
+            await asyncio.sleep(5)
+            device.stop_sonication()
+            print("Sonication stopped.")
+        except Exception as e:
+            print(f"Error during Device testing: {e}")
 
     except Exception as e:
         print(f"Error during test: {e}")
@@ -53,7 +80,6 @@ async def main():
         interface.stop_monitoring()
         monitor_task.cancel()  # Cancel the background task if running
         print("LIFU Test Script completed.")
-
 
 if __name__ == "__main__":
     try:

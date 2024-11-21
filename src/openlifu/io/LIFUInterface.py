@@ -1,6 +1,7 @@
 import logging
-from typing import Optional
 
+from openlifu.io.LIFUDevice import LIFUDevice
+from openlifu.io.LIFUHVController import HVController
 from openlifu.io.LIFUSignal import LIFUSignal
 from openlifu.io.LIFUUart import LIFUUart
 
@@ -21,10 +22,20 @@ class LIFUInterface:
             baudrate (int): Communication baud rate.
             timeout (int): Read timeout in seconds.
         """
+        logger.debug("Initializing LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", vid, pid, baudrate, timeout)
+
         self.uart = LIFUUart(vid, pid, baudrate, timeout)
+
+        # Connect signals to internal handlers
         self.uart.connected.connect(self.connected.emit)
         self.uart.disconnected.connect(self.disconnected.emit)
         self.uart.data_received.connect(self.data_received.emit)
+
+        # Create a LIFUHVController instance as part of the interface
+        self.HVController = HVController(self)
+
+        # Create a LIFUDevice instance as part of the interface
+        self.Device = LIFUDevice(self)
 
     async def start_monitoring(self, interval: int = 1) -> None:
         """Start monitoring for USB device connections."""
@@ -40,27 +51,14 @@ class LIFUInterface:
         except Exception as e:
             logger.error("Error stopping monitoring: %s", e)
 
-    def send_ping(self) -> None:
-        """Send a ping command over UART."""
-        try:
-            self.uart.run_coroutine(self.uart.send_packet(packetType=0xE2, command=0x00))
-        except Exception as e:
-            logger.error("Error sending ping: %s", e)
+    def is_device_connected(self) -> bool:
+        """
+        Check if the device is currently connected.
 
-    def toggle_treatment_run(self, capture_on: bool) -> None:
-        """Toggle the treatment run state."""
-        command = 0x07 if capture_on else 0x06
-        try:
-            self.uart.run_coroutine(self.uart.send_packet(packetType=0xE2, command=command))
-        except Exception as e:
-            logger.error("Error toggling treatment run: %s", e)
-
-    def send_custom_packet(self, packetType: int, command: int, data: Optional[bytes] = None) -> None:
-        """Send a custom packet over UART."""
-        try:
-            self.uart.run_coroutine(self.uart.send_packet(packetType=packetType, command=command, data=data))
-        except Exception as e:
-            logger.error("Error sending custom packet: %s", e)
+        Returns:
+            bool: True if the device is connected, False otherwise.
+        """
+        return self.uart.is_connected()
 
     def __enter__(self):
         return self

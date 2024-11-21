@@ -4,8 +4,8 @@ from typing import Dict, List, Literal, Optional, Tuple
 
 import numpy as np
 
-from openlifu.util.units import getunitconversion
 from openlifu.plan.solution import Solution
+from openlifu.util.units import getunitconversion
 
 NUM_TRANSMITTERS = 2
 ADDRESS_GLOBAL_MODE = 0x0
@@ -1067,7 +1067,7 @@ class HVController:
         """
         if not self.is_connected:
             raise ValueError("High voltage controller not connected")
-        self.supply_voltage = voltage   
+        self.supply_voltage = voltage
 
 @dataclass
 class DeviceInterface:
@@ -1077,16 +1077,6 @@ class DeviceInterface:
     is_running: bool = False
     # USTX I/O
 
-    def connect(self):
-        """
-        Connect to the device
-        """
-
-    def disconnect(self):
-        """
-        Disconnect from the device
-        """
-
     def load_solution(self, solution: Solution):
         """
         Load a solution
@@ -1094,8 +1084,8 @@ class DeviceInterface:
         :param solution: Solution to load
         """
 
-        # Vefiy that the solution has the correct number of elements matching the 
- 
+        # Vefiy that the solution has the correct number of elements matching the
+
         n = solution.num_foci()
         for profile in range(n):
             pulse_profile = PulseProfile(
@@ -1124,11 +1114,11 @@ class DeviceInterface:
             pulse_control_registers = self.txarray.get_pulse_control_registers(profile)
             # write the delay control registers to the TX Modules
         # Write All TX7332 Registers from the txarray to the 7332
-        
+
         delay_control_registers = {profile:self.txarray.get_delay_control_registers(profile) for profile in self.txarray.configured_delay_profiles()}
         pulse_control_registers = {profile:self.txarray.get_pulse_control_registers(profile) for profile in self.txarray.configured_pulse_profiles()}
         # Write the delay/pulse control registers into the individual Module microcontrollers so that they can increment the settings between pulses (for multiple foci)
-        
+
     def start(self):
         """ Start Sonication """
         self.is_running = True
@@ -1152,6 +1142,3 @@ class DeviceInterface:
     def finish(self):
         """ Once the Sonication has completed, turn of the HV supply etc. """
         self.hv_controller.turn_off()
-        
-
-    
