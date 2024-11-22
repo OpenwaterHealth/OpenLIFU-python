@@ -11,7 +11,7 @@ async def main():
     3. Test Device functionality.
     """
     print("Starting LIFU Test Script...")
-    interface = LIFUInterface()
+    interface = LIFUInterface(test_mode=True)
 
     # Connect signals for debugging
     def on_connected(port):

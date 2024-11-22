@@ -17,7 +17,7 @@ log = logging.getLogger("UART")
 
 
 class LIFUUart:
-    def __init__(self, vid, pid, baudrate=921600, timeout=10, align=0):
+    def __init__(self, vid, pid, baudrate=921600, timeout=10, align=0, demo_mode=False):
         """
         Initialize the UART instance.
 
@@ -41,6 +41,8 @@ class LIFUUart:
         self.read_buffer = []
         self.loop = asyncio.get_event_loop()
         self.monitoring_task = None
+        self.demo_mode = demo_mode
+        self.demo_responses = []  # List of predefined responses for testing
 
         # Signals
         self.connected = LIFUSignal()
@@ -49,6 +51,11 @@ class LIFUUart:
 
     def connect(self):
         """Open the serial port."""
+        if self.demo_mode:
+            log.info("Demo mode: Simulating UART connection.")
+            self.running = True
+            self.connected.emit("demo_port")
+            return
         try:
             self.serial = serial.Serial(
                 port=self.port,
@@ -71,6 +78,11 @@ class LIFUUart:
     def disconnect(self):
         """Close the serial port."""
         self.running = False
+        if self.demo_mode:
+            log.info("Demo mode: Simulating UART disconnection.")
+            self.disconnected.emit()
+            return
+
         if self.read_thread:
             self.read_thread.join()
         if self.serial and self.serial.is_open:
@@ -87,6 +99,8 @@ class LIFUUart:
         Returns:
             bool: True if connected, False otherwise.
         """
+        if self.demo_mode:
+            return self.running
         return self.port is not None and self.serial is not None and self.serial.is_open
 
     def check_usb_status(self):
@@ -100,17 +114,27 @@ class LIFUUart:
 
     async def monitor_usb_status(self, interval=1):
         """Periodically check for USB device connection."""
+        if self.demo_mode:
+            log.info("Self-monitoring in demo mode.")
+            self.connect()
+            return
         while True:
             self.check_usb_status()
             await asyncio.sleep(interval)
 
     def start_monitoring(self, interval=1):
         """Start the periodic USB device connection check."""
+        if self.demo_mode:
+            log.info("Self-monitoring in demo mode.")
+            return
         if not self.monitoring_task:
             self.monitoring_task = asyncio.create_task(self.monitor_usb_status(interval))
 
     def stop_monitoring(self):
         """Stop the periodic USB device connection check."""
+        if self.demo_mode:
+            log.info("Self-monitoring in demo mode.")
+            return
         if self.monitoring_task:
             self.monitoring_task.cancel()
             self.monitoring_task = None
@@ -126,6 +150,14 @@ class LIFUUart:
 
     def _read_data(self):
         """Read data from the serial port in a separate thread."""
+        if self.demo_mode:
+            while self.running:
+                if self.demo_responses:
+                    data = self.demo_responses.pop(0)
+                    log.info("Demo mode: Simulated data received: %s", data)
+                    self.data_received.emit(data)
+                threading.Event().wait(1000)  # Simulate delay
+            return
         while self.running:
             try:
                 if self.serial.in_waiting > 0:
@@ -141,6 +173,9 @@ class LIFUUart:
         """Send data over UART."""
         if not self.serial or not self.serial.is_open:
             log.error("Serial port is not initialized.")
+            return
+        if self.demo_mode:
+            log.info("Demo mode: Simulating data transmission: %s", data)
             return
         try:
             if self.align > 0:
@@ -196,6 +231,13 @@ class LIFUUart:
             return self.loop.run_until_complete(coro)
         else:
             return asyncio.create_task(coro)
+
+    def add_demo_response(self, response: bytes):
+        """Add a predefined response for demo mode."""
+        if self.demo_mode:
+            self.demo_responses.append(response)
+        else:
+            log.warning("Cannot add demo response when not in demo mode.")
 
     def print(self):
         """Print the current UART configuration."""

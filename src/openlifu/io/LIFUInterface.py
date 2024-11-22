@@ -12,7 +12,7 @@ class LIFUInterface:
     disconnected: LIFUSignal = LIFUSignal()
     data_received: LIFUSignal = LIFUSignal()
 
-    def __init__(self, vid: int = 0x0483, pid: int = 0x57AE, baudrate: int = 921600, timeout: int = 10) -> None:
+    def __init__(self, vid: int = 0x0483, pid: int = 0x57AE, baudrate: int = 921600, timeout: int = 10, test_mode=False) -> None:
         """
         Initialize the LIFUInterface.
 
@@ -24,7 +24,7 @@ class LIFUInterface:
         """
         logger.debug("Initializing LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", vid, pid, baudrate, timeout)
 
-        self.uart = LIFUUart(vid, pid, baudrate, timeout)
+        self.uart = LIFUUart(vid, pid, baudrate, timeout, demo_mode=test_mode)
 
         # Connect signals to internal handlers
         self.uart.connected.connect(self.connected.emit)
