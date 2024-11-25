@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
 import numpy as np
+import scipy.interpolate
 import xarray as xa
 
 from openlifu.db.session import ArrayTransform
@@ -126,16 +127,106 @@ class VirtualFit:
         yaw = np.degrees(phi)
         return pitch, yaw, r
 
-    def fit_to_surface(
+    def get_transducer_pose(
             self,
             sph_coords: Tuple[float, float],
-            skin_surface: np.ndarray
-        ) -> np.ndarray:
+            skin_origin: Optional[Tuple[float, float, float]] = None,
+            skin_interpolator:  Optional[scipy.interpolate.LinearNDInterpolator] = None,
+            z_offset: float = 13.55,
+            dzdy: float = 0.15,
+            search_x: float = 20,
+            search_dx: float = 1,
+            search_y: float = 20,
+            search_dy: float = 1) -> np.ndarray:
         """
-        Fit a 3D plane plane given spherical coordinates (yaw, pitch)
-        and a set of points coordinates LPS.
+        Computes the pose of the transducer positioned at a point on the segmented skin surface
+        defined by spherical coordinates (pitch, yaw).
+
+        Args:
+            sph_coords: Spherical coordinates (pitch, yaw) in degrees.
+                pitch: Angle above the S=0 "eye" line (rotation about the "L" axis).
+                yaw: Angle along the pitched circle towards the subject's left ear
+                    (rotation about the "S*" axis).
+            skin_origin: The skin surface origin
+            skin_interpolant: Function mapping spherical coordinates to radial distance.
+            z_offset: Distance of transducer from skin surface (mm)
+            dzdy: Slope of transducer away from skin surface. Default is 0.15 (bottom of transducer is raised 15% relative to top)
+            search_x: Lateral (yaw) ROI extent for surface fitting (one-sided, mm).
+            search_dx: Lateral (yaw) ROI step size for surface fitting (one-sided, mm)
+            search_y: Elevation (pitch) ROI extent for surface fitting (one-sided, mm)
+            search_dy: Elevation (pitch) ROI step size for surface fitting (one-sided, mm)
+
+        Returns:
+            np.ndarray
+                4x4 transformation matrix representing the transducer's pose in terms of position and orientation (lat, ele, ax).
         """
-        pass
+
+        # Get input arguments
+        pitch, yaw = sph_coords
+        # Decomment these lines when the function extract_skin_surface is implemented
+        # if skin_origin is None:
+        #     skin_origin = self.skin_origin
+        # if skin_interpolator is None:
+        #     skin_interpolator = self.skin_interpolator
+
+        # Compute skin surface origin and local coordinates
+        r = skin_interpolator(pitch, yaw)
+        l, p, s = self.pyr2lps(pitch, yaw, r, skin_origin)
+        transducer_origin = np.array([l, p, s])
+
+        # Set up local unit vectors for ROI definition
+        roi_uv = [None] * 3
+        roi_uv[2] = -transducer_origin / np.linalg.norm(transducer_origin, 2)
+        l1, p1, s1 = self.pyr2lps(pitch, yaw - 1, r, skin_origin)
+        roi_uv[0] = np.array([l1, p1, s1]) - transducer_origin
+        roi_uv[0] -= roi_uv[2] * np.dot(roi_uv[0], roi_uv[2])
+        roi_uv[0] /= np.linalg.norm(roi_uv[0], 2)
+        roi_uv[1] = np.cross(roi_uv[2], roi_uv[0])
+        # Create matrix
+        roi_matrix = np.eye(4)
+        roi_matrix[:3, :3] = np.column_stack(roi_uv)
+        roi_matrix[:3, 3] = transducer_origin
+        roi_forward_matrix = np.linalg.pinv(roi_matrix)
+
+        # Search grid of transducer plane and surface fitting
+        dx_sequence = np.arange(-search_x, search_x + search_dx, search_dx)
+        dy_sequence = np.arange(-search_y, search_y + search_dy, search_dy)
+        dx_grid, dy_grid = np.meshgrid(dx_sequence, dy_sequence, indexing='ij')
+        roi_grid = np.array([l, p, s]) + np.outer(dx_grid, roi_uv[0]) + np.outer(dy_grid, roi_uv[1])
+        # Convert search grid to pitch-yaw
+        roi_pgrid = [self.lps2pyr(grid[0], grid[1], grid[2], skin_origin) for grid in roi_grid]
+        # Get surface grid
+        surf_pgrid = roi_pgrid.copy()
+        surf_pgrid = [[*grid[:2], skin_interpolator(grid[0], grid[1]).item()] for grid in roi_pgrid]
+        surf_lps = [self.pyr2lps(grid[0], grid[1], grid[2], skin_origin) for grid in surf_pgrid]
+        # Get surface grid in local coords
+        surf_lps_vec = np.hstack([surf_lps, np.ones((len(surf_lps), 1))]).T
+        surf_xyz = roi_forward_matrix @ surf_lps_vec
+
+        # Fit plane
+        plane_fit = np.linalg.lstsq(surf_xyz[:2, :].T, surf_xyz[2, :], rcond=None)[0]
+        # Get plane-fit unit vectors and convert to LPS
+        plane_matrix_xyz = np.column_stack([[1, 0, plane_fit[0]], [0, 1, plane_fit[1]], [0, 0, 1]])
+        plane_matrix_xyz /= np.linalg.norm(plane_matrix_xyz, axis=0)
+        plane_matrix_xyz[:, 2] = np.cross(plane_matrix_xyz[:, 0], plane_matrix_xyz[:, 1])
+        plane_matrix = np.eye(4)
+        plane_matrix[:3, :3] = roi_matrix[:3, :3] @ plane_matrix_xyz
+        plane_matrix[:3, 3] = transducer_origin
+
+        # Get offset transducer unit vectors & origin
+        transducer_origin = transducer_origin - plane_matrix[:3, 2] * z_offset + plane_matrix[:3, 1] * z_offset * dzdy
+        transducer_uv = [None] * 3
+        transducer_uv[0] = plane_matrix[:3, 0]
+        transducer_uv[1] = plane_matrix[:3, 1] + dzdy * plane_matrix[:3, 2]
+        transducer_uv[1] /= np.linalg.norm(transducer_uv[1], 2)
+        transducer_uv[2] = np.cross(transducer_uv[0], transducer_uv[1])
+
+        # Create matrix
+        transducer_pose = np.eye(4)
+        transducer_pose[:3, :3] = np.column_stack(transducer_uv)
+        transducer_pose[:3, 3] = transducer_origin
+
+        return transducer_pose
 
     def get_search_grid(
             self,
@@ -210,12 +301,13 @@ class VirtualFit:
         self.logger.info("VirtualFit: Searching optimal position...")
         # 2. get search grid
         search_grid = self.get_search_grid(yaw_range, yaw_step, pitch_range, pitch_step)
+        transducer_poses = np.empty(search_grid[0].shape, dtype=object)
         for i in range(search_grid[0].shape[0]):
             for j in range(search_grid[0].shape[1]):
-                yaw, pitch = (search_grid[0][i, j], search_grid[1][i, j])
-                self.logger.info(f"VirtualFit: Analysing {(yaw, pitch)}...")
-                # 3. define transducer transform (plane fitting) on the surface (skin) given spherical coordinate (yaw, pitch)
-                # self.fit_to_surface(sph_coords: Tuple[float, float], skin_surface: np.ndarray)
+                pitch, yaw = (search_grid[0][i, j], search_grid[1][i, j])
+                self.logger.info(f"VirtualFit: Analysing {(pitch, yaw)}...")
+                # 3. define transducer transform (plane fitting) on the surface (skin) given spherical coordinate (pitch, yaw)
+                transducer_poses[i, j] = self.get_transducer_pose([pitch, yaw])
                 # 4. analyse current transform
                 # self.analyse_position(pos: np.ndarray, transducer: Transducer, target: Point)
                 optimal_transform = np.zeros((4, 4))
