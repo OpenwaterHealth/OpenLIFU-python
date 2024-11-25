@@ -20,7 +20,7 @@ class VirtualFit:
     finding the optimal transducer transform (position and orientation)
     given an input MRI volume in LPS coordinates and the associated target.
     """
-    pitch_range: Tuple[int, int] = (10, 40)
+    pitch_range: Tuple[int, int] = (-10, 40)
     """The pitch range for the grid search."""
 
     pitch_step: int = 3
