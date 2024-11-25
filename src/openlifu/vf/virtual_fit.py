@@ -36,7 +36,10 @@ class VirtualFit:
     search_range_units: str = "deg"
     """Search grid units."""
 
-    steering_limits: Tuple[TargetConstraints] = field(default_factory=list)
+    radius_in_mm: float = 50
+    """Radius from transducer"""
+
+    steering_limits: Tuple[TargetConstraints, TargetConstraints, TargetConstraints] = (TargetConstraints(), TargetConstraints(), TargetConstraints())
     """Defines the steering range limits for the transducer in the local coordinate system, usually in (lat, ele, ax)."""
 
     blocked_elems_threshold: float = 0.1
@@ -244,28 +247,55 @@ class VirtualFit:
 
         return pitch_yaw_grid
 
-    def analyse_position(self, pos: np.ndarray, transducer: Transducer, target: Point):
+    def analyse_target_position(
+            self,
+            target: Point,
+            transducer_pose: np.ndarray,
+            radius_in_mm: Optional[float] = None,
+            steering_limits: Optional[Tuple[TargetConstraints, TargetConstraints, TargetConstraints]] = None):
         """
-        Analyse the transducer position relative to a specific target.
+        Analyzes the pose of a transducer relative to a specific target point.
+        Determines whether or not the target is within the transducer's steering limits and
+        computes the steering distance.
+
+        Args:
+            target: The target point
+            transducer_pose : A 4x4 transformation matrix representing the transducer's pose
+            radius_in_mm: Radius of the transducer in millimeters.
+            steeringLimits: Steering range limits for the transducer in the local coordinate system (lat, ele, ax)
+
+        Returns:
+            in_bounds: A boolean indicating whether the target is within the steering limits.
+            steering_dist: The Euclidean distance from the transducer's center to the target in the local coordinate system.
         """
-        #TODO: Compute if target is within steering limits
         #TODO: In the future, we should implement the ray-tracing analysis given a full segmentation
 
-        # pos_analysis = 1.0
-        # target_tr_space = target2trspace(pos, target)
-        # for target_constraint in self.steering_limits:
-        #     pos = target_tr_space.get_position(
-        #         dim=target_constraint.dim,
-        #         units=target_constraint.units
-        #     )
-        #     try:
-        #         target_constraint.check_bounds(pos)
-        #     except ValueError:
-        #         pos_analysis = 0.0
-        #
-        # return pos_analysis
+        # Get transducer parameters
+        if radius_in_mm is None:
+            radius_in_mm = self.radius_in_mm
+        if steering_limits is None:
+            steering_limits = self.steering_limits
 
-        pass
+
+        # Transform target position into local coordinate of transducer
+        homogeneous_target_position = np.append(target.position, 1)
+        transducer_forward_matrix = np.linalg.pinv(transducer_pose)
+        target_pos_local = transducer_forward_matrix @ homogeneous_target_position
+        pos = target_pos_local[:3]
+        pos[2] -= radius_in_mm
+
+        # Calculate steering distance
+        steering_dist = np.linalg.norm(pos)
+
+        # Check if the target point is within the steering limits
+        in_bounds = True
+        for i, target_constraint in enumerate(steering_limits):
+            try:
+                target_constraint.check_bounds(pos[i])
+            except ValueError:
+                in_bounds = False
+
+        return in_bounds, steering_dist
 
     def run(
             self,
@@ -274,6 +304,7 @@ class VirtualFit:
             pitch_step: Optional[int] = None,
             yaw_range: Optional[Tuple[int, int]] = None,
             yaw_step: Optional[int] = None,
+            radius_in_mm: Optional[float] = None,
             steering_limits: Optional[Tuple[TargetConstraints]] = None,
             blocked_elems_threshold: Optional[float] = None
         ) -> ArrayTransform:
@@ -292,6 +323,8 @@ class VirtualFit:
             yaw_range = self.yaw_range
         if yaw_step is None:
             yaw_step = self.yaw_step
+        if radius_in_mm is None:
+            radius_in_mm = self.radius_in_mm
         if steering_limits is None:
             steering_limits = self.steering_limits
         if blocked_elems_threshold is None:
@@ -302,6 +335,8 @@ class VirtualFit:
         # 2. get search grid
         search_grid = self.get_search_grid(yaw_range, yaw_step, pitch_range, pitch_step)
         transducer_poses = np.empty(search_grid[0].shape, dtype=object)
+        in_bounds = np.zeros_like(search_grid[0])
+        steering_dists = np.zeros_like(search_grid[0])
         for i in range(search_grid[0].shape[0]):
             for j in range(search_grid[0].shape[1]):
                 pitch, yaw = (search_grid[0][i, j], search_grid[1][i, j])
@@ -309,8 +344,7 @@ class VirtualFit:
                 # 3. define transducer transform (plane fitting) on the surface (skin) given spherical coordinate (pitch, yaw)
                 transducer_poses[i, j] = self.get_transducer_pose([pitch, yaw])
                 # 4. analyse current transform
-                # self.analyse_position(pos: np.ndarray, transducer: Transducer, target: Point)
-                optimal_transform = np.zeros((4, 4))
+                in_bounds[i, j], steering_dists[i, j] = self.analyse_target_position(transducer_poses[i, j], target)
         self.logger.info("VirtualFit: Found optimal position!")
 
         return optimal_transform
