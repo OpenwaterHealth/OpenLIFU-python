@@ -36,7 +36,7 @@ class VirtualFit:
     """Search grid units."""
 
     steering_limits: Tuple[TargetConstraints] = field(default_factory=list)
-    """Defines the accepteable range for a target in the transducer space, usually LPS."""
+    """Defines the steering range limits for the transducer in the local coordinate system, usually in (lat, ele, ax)."""
 
     blocked_elems_threshold: float = 0.1
     """How much blocked elements are acceptable."""
