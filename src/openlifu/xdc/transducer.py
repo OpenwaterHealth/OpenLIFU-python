@@ -203,8 +203,8 @@ class Transducer:
     @staticmethod
     def gen_matrix_array(nx=2, ny=2, pitch=1, kerf=0, units="mm", impulse_response=1, impulse_dt=1, id='array', name='Array', attrs={}):
         N = nx * ny
-        xpos = [(i - nx // 2) * pitch for i in range(nx)]
-        ypos = [(i - ny // 2) * pitch for i in range(ny)]
+        xpos = [(i+0.5 - nx / 2) * pitch for i in range(nx)]
+        ypos = [(i+0.5 - ny / 2) * pitch for i in range(ny)]
         elements = []
         for i in range(N):
             x = xpos[i % nx]
