@@ -167,7 +167,8 @@ class Protocol:
         scale: bool = True,
         sim_options: Optional[sim.SimSetup] = None,
         analysis_options: Optional[SolutionAnalysisOptions] = None,
-        on_pulse_mismatch: OnPulseMismatchAction = OnPulseMismatchAction.ERROR
+        on_pulse_mismatch: OnPulseMismatchAction = OnPulseMismatchAction.ERROR,
+        use_gpu: bool = True,
     ) -> Tuple[Solution, xa.DataArray, SolutionAnalysis]:
         """Calculate the solution and aggregated k-wave simulation outputs.
 
@@ -242,7 +243,7 @@ class Protocol:
                     dt=sim_options.dt,
                     t_end=sim_options.t_end,
                     amplitude = 1,
-                    gpu = False
+                    gpu = use_gpu
                 )
             delays_to_stack.append(delays)
             apodizations_to_stack.append(apodization)
