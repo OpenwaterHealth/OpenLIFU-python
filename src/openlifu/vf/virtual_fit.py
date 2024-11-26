@@ -345,6 +345,14 @@ class VirtualFit:
                 transducer_poses[i, j] = self.get_transducer_pose([pitch, yaw])
                 # 4. analyse current transform
                 in_bounds[i, j], steering_dists[i, j] = self.analyse_target_position(transducer_poses[i, j], target)
+        # 5. get optimal transform
+        optimal_transform = None
+        for i in range(in_bounds.shape[0]):
+            for j in range(in_bounds.shape[1]):
+                if in_bounds[i, j]:
+                    #TODO: Check blocked element
+                    # self.check_blocked_elements()
+                    optimal_transform = transducer_poses[i, j]
         self.logger.info("VirtualFit: Found optimal position!")
 
         return optimal_transform
