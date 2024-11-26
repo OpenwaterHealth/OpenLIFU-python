@@ -44,6 +44,12 @@ class VirtualFit:
     volume: xa.Dataset = field(default_factory=xa.Dataset)
     """The MRI volume in LPS coordinates, on which to optimize the position."""
 
+    scene_matrix: np.ndarray = field(default_factory=lambda: np.eye(3))
+    """The transform represents the MRI volume scene"""
+
+    scene_origin: Tuple[float, float, float] = (0, 0, 0)
+    """The origin point of the the MRI volume scene"""
+
     transducer: Transducer = field(default_factory=Transducer)
     """Transducer that sits on the skin."""
 
@@ -53,16 +59,46 @@ class VirtualFit:
         self.logger.info(f"Initializing VirtualFit with the following parameters: {self.__dict__}")
         self.logger.info("VirtualFit: Skin extraction...")
         # 1. extract skin surface, this is done only once at initialization
-        # self.skin_surface = self.extract_skin_surface(volume: xa.Dataset)
+        # self.skin_origin, self.skin_surface, self.skin_interpolator = self.extract_skin_surface(volume: xa.Dataset)
         """A list of vertices representing the skin surface."""
 
-    def extract_skin_surface(self, volume: xa.Dataset, quantile: float = 0.05):
-        #TODO: basic thresholding + convex hull
-        # from scipy.spatial import ConvexHull
+    def extract_skin_surface(
+            self,
+            volume: xa.Dataset,
+            quantile: float = 0.05,
+            scene_origin: Optional[Tuple[float, float, float]] = None,
+            scene_matrix: Optional[np.ndarray] = None):
+        """
+        Extract skin surface from MRI volume in LPS coordinates
+
+        Args:
+            volume: The MRI volume in LPS coordinates.
+                Target is expected to be in the simulation grid coordinates (lat, ele, ax).
+            quantile: The threshold to define the surface.
+            scene_origin: The origin of the scene
+            scene_matrix: The transform of the scene
+
+        Returns:
+            skin_origin: The origin of the skin
+            skin_surface: The list of points represent the skin surface in LPS coordinates
+            skin_interpolator: An interpolatoor represents the skin surface in spherical coordinates (pitch, yaw, r)
+        """
+        if scene_origin is None:
+            scene_origin = self.scene_origin
+        if scene_matrix is None:
+            scene_matrix = self.scene_matrix
+        # -> Tuple[float, float, float], np.ndarray, scipy.interpolate.LinearNDInterpolator]
+        #TODO: Segmentation (basic thresholding)
         # threshold = np.quantile(volume, 0.05)   #TODO: check otsu threhsolding instead
         # volume_thresholded = volume[volume > threshold]
-        #
-        # return ConvexHull(volume)
+
+        #TODO: option1 Intepolant + list of points
+        # from scipy.interpolate import LinearNDInterpolator
+        # return Tuple[float, float, float], np.ndarray, skin_interpolator(scipy.interpolate.LinearNDInterpolator)
+
+        #TODO: option2 ConvexHull (combine interpolant and list of points)
+        # from scipy.spatial import ConvexHull
+        # return Tuple[float, float, float], ConvexHull(volume)
         pass
 
     def fit_to_surface(
