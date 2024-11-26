@@ -119,15 +119,16 @@ class Element:
         return m
 
     def get_angle(self, units="rad"):
+        # Return angles about the x, y', and z'' axes (el, az, roll)
         if units == "rad":
-            az = self.az
             el = self.el
+            az = self.az
             roll = self.roll
         elif units == "deg":
-            az = np.degrees(self.az)
             el = np.degrees(self.el)
+            az = np.degrees(self.az)
             roll = np.degrees(self.roll)
-        return az, el, roll
+        return el, az, roll
 
     def interp_impulse_response(self, dt=None):
         if dt is None:
