@@ -101,6 +101,31 @@ class VirtualFit:
         # return Tuple[float, float, float], ConvexHull(volume)
         pass
 
+    def pyr2lps(self, pitch: float, yaw: float, r: float, origin: Tuple[float, float, float] = (0, 0, 0)):
+        """
+        Convert spherical coordinates to LPS coordinates
+        """
+        pitch_rad = np.deg2rad(180 - pitch)
+        yaw_rad = np.deg2rad(yaw)
+        p = r * np.cos(yaw_rad) * np.cos(pitch_rad)
+        s = r * np.cos(yaw_rad) * np.sin(pitch_rad)
+        l = r * np.sin(yaw_rad)
+        return l + origin[0], p + origin[1], s + origin[2]
+
+    def lps2pyr(self, l: float, p:float, s:float, origin: Tuple[float, float, float] = (0, 0, 0)):
+        """
+        Convert LPS coordinates to spherical coordinates
+        """
+        x = p - origin[1]
+        y = s - origin[2]
+        z = l - origin[0]
+        th = np.arctan2(y, x)
+        phi = np.arctan2(z, np.sqrt(x**2 + y**2))
+        r = np.sqrt(x**2 + y**2 + z**2)
+        pitch = (360 - np.degrees(th)) % 360 - 180
+        yaw = np.degrees(phi)
+        return pitch, yaw, r
+
     def fit_to_surface(
             self,
             sph_coords: Tuple[float, float],
