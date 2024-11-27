@@ -59,12 +59,10 @@ class VirtualFit:
 
     def __post_init__(self):
         self.logger = logging.getLogger(__name__)
-        """The VirtualFit logger."""
         self.logger.info(f"Initializing VirtualFit with the following parameters: {self.__dict__}")
         self.logger.info("VirtualFit: Skin extraction...")
         # 1. extract skin surface, this is done only once at initialization
         # self.skin_origin, self.skin_surface, self.skin_interpolator = self.extract_skin_surface(volume: xa.Dataset)
-        """A list of vertices representing the skin surface."""
 
     def extract_skin_surface(
             self,
