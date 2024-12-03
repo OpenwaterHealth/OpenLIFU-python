@@ -277,10 +277,10 @@ class Database:
         self.logger.info(f"Added volume with ID {volume_id} for subject {subject_id} to the database.")
 
     def write_photoscan(self, session: Session, photoscan_id, photoscan_name, model_data_filepath, texture_data_filepath, mtl_data_filepath: Optional[Path] = None, on_conflict=OnConflictOpts.ERROR):
-        
+
         if not Path(model_data_filepath).exists():
             raise ValueError(f'Model data filepath does not exist: {model_data_filepath}')
-        
+
         if not Path(texture_data_filepath).exists():
             raise ValueError(f'Texture data filepath does not exist: {texture_data_filepath}')
 
@@ -530,7 +530,7 @@ class Database:
             return {"id": volume["id"],\
                     "name": volume["name"],\
                     "data_abspath": Path(volume_metadata_filepath).parent/volume["data_filename"]}
-    
+
     def get_photoscan_info(self, subject_id, session_id, photoscan_id):
         photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan_id)
         with open(photoscan_metadata_filepath) as f:
@@ -538,9 +538,10 @@ class Database:
             photoscan_dict = {"id": photoscan["id"],\
                     "name": photoscan["name"],\
                     "model_abspath": Path(photoscan_metadata_filepath).parent/photoscan["obj_filename"],
+                    "texture_abspath": Path(photoscan_metadata_filepath).parent/photoscan["texture_filename"],
                     "photoscan_approved": photoscan["photoscan_approved"]}
-            if "texture_filename" in photoscan.keys():
-                photoscan_dict["texture_abspath"] = Path(photoscan_metadata_filepath).parent/photoscan["texture_filename"]
+            if "mtl_filename" in photoscan:
+                photoscan_dict["mtl_abspath"] = Path(photoscan_metadata_filepath).parent/photoscan["mtl_filename"]
             return photoscan_dict
 
     def load_standoff(self, transducer_id, standoff_id="standoff"):
@@ -726,7 +727,7 @@ class Database:
 
     def get_volume_metadata_filepath(self, subject_id, volume_id):
         return Path(self.get_volume_dir(subject_id, volume_id)) / f'{volume_id}.json'
-    
+
     def get_photoscan_metadata_filepath(self, subject_id, session_id, photoscan_id):
         return Path(self.get_session_dir(subject_id, session_id)) / 'photoscans' / photoscan_id / f'{photoscan_id}.json'
 
