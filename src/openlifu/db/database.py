@@ -106,11 +106,13 @@ class Database:
         session_filename = self.get_session_filename(subject.id, session_id)
         session.to_file(session_filename)
 
-        # Create empty runs.json and solutions.json files for session if needed
+        # Create empty runs.json, solutions.json and photoscans.json files for session if needed
         if not self.get_solutions_filename(subject.id, session_id).exists():
             self.write_solution_ids(session, [])
         if not self.get_runs_filename(subject.id, session_id).exists():
             self.write_run_ids(session.subject_id, session.id, [])
+        if not self.get_photoscan_filename(subject.id, session_id).exists():
+            self.write_photoscan_ids(session.subject_id, session.id, [])
 
         # Update the list of session IDs for the subject
         if session_id not in session_ids:
@@ -274,6 +276,47 @@ class Database:
 
         self.logger.info(f"Added volume with ID {volume_id} for subject {subject_id} to the database.")
 
+    def write_photoscan(self, session: Session, photoscan_id, photoscan_name, model_data_filepath, texture_data_filepath, mtl_data_filepath: Optional[Path] = None, on_conflict=OnConflictOpts.ERROR):
+        
+        if not Path(model_data_filepath).exists():
+            raise ValueError(f'Model data filepath does not exist: {model_data_filepath}')
+        
+        if not Path(texture_data_filepath).exists():
+            raise ValueError(f'Texture data filepath does not exist: {texture_data_filepath}')
+
+        photoscan_ids = self.get_photoscan_ids(session.subject_id, session.id)
+        if photoscan_id in photoscan_ids:
+            if on_conflict == OnConflictOpts.ERROR:
+                raise ValueError(f"Photoscan with ID {photoscan_id} already exists for session {session.id}.")
+            elif on_conflict == OnConflictOpts.OVERWRITE:
+                self.logger.info(f"Overwriting photoscan with ID {photoscan_id} for session {session.id}.")
+            elif on_conflict == OnConflictOpts.SKIP:
+                self.logger.info(f"Skipping photoscan with ID {photoscan_id} for session {session.id} as it already exists.")
+                return
+            else:
+                raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
+
+        # Create volume metadata
+        photoscan_metadata_dict = {"id": photoscan_id, "name": photoscan_name, "model_filename": Path(model_data_filepath).name, "texture_filename": Path(texture_data_filepath).name, "photoscan_approved": False}
+        if mtl_data_filepath:
+            photoscan_metadata_dict["mtl_filename"] = Path(mtl_data_filepath).name
+        photoscan_metadata_json = json.dumps(photoscan_metadata_dict, separators=(',', ':'), cls=PYFUSEncoder)
+
+        # Save the volume metadata to a JSON file and copy volume data file to database
+        photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(session.subject_id, session.id, photoscan_id) #subject_id/photoscan/photoscan_id/photoscan_id.json
+        Path(photoscan_metadata_filepath).parent.parent.mkdir(exist_ok=True) #photoscan directory
+        Path(photoscan_metadata_filepath).parent.mkdir(exist_ok=True)
+        with open(photoscan_metadata_filepath, 'w') as file:
+            file.write(photoscan_metadata_json)
+        shutil.copy(Path(model_data_filepath), Path(photoscan_metadata_filepath).parent)
+        shutil.copy(Path(texture_data_filepath), Path(photoscan_metadata_filepath).parent)
+
+        if photoscan_id not in photoscan_ids:
+            photoscan_ids.append(photoscan_id)
+            self.write_photoscan_ids(session.subject_id,session.id, photoscan_ids)
+
+        self.logger.info(f"Added photoscan with ID {photoscan_id} for session {session.id} to the database.")
+
     def write_solution(self, session:Session, solution:Solution, on_conflict: OnConflictOpts=OnConflictOpts.ERROR):
         solution_ids = self.get_solution_ids(session.subject_id, session.id)
 
@@ -403,6 +446,16 @@ class Database:
 
         return json.loads(solutions_filename.read_text())["solution_ids"]
 
+    def get_photoscan_ids(self, subject_id: str, session_id: str) -> List[str]:
+        """Get a list of IDs of the photoscans associated with the given session"""
+        photoscan_filename = self.get_photoscan_filename(subject_id, session_id)
+
+        if not (photoscan_filename.exists() and photoscan_filename.is_file()):
+            self.logger.warning("Photoscan file not found for subject %s, session %s.", subject_id, session_id)
+            return []
+
+        return json.loads(photoscan_filename.read_text())["photoscan_ids"]
+
     def get_subject_ids(self):
         subjects_filename = self.get_subjects_filename()
 
@@ -477,6 +530,18 @@ class Database:
             return {"id": volume["id"],\
                     "name": volume["name"],\
                     "data_abspath": Path(volume_metadata_filepath).parent/volume["data_filename"]}
+    
+    def get_photoscan_info(self, subject_id, session_id, photoscan_id):
+        photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan_id)
+        with open(photoscan_metadata_filepath) as f:
+            photoscan = json.load(f)
+            photoscan_dict = {"id": photoscan["id"],\
+                    "name": photoscan["name"],\
+                    "model_abspath": Path(photoscan_metadata_filepath).parent/photoscan["obj_filename"],
+                    "photoscan_approved": photoscan["photoscan_approved"]}
+            if "texture_filename" in photoscan.keys():
+                photoscan_dict["texture_abspath"] = Path(photoscan_metadata_filepath).parent/photoscan["texture_filename"]
+            return photoscan_dict
 
     def load_standoff(self, transducer_id, standoff_id="standoff"):
         raise NotImplementedError("Standoff is not yet implemented")
@@ -574,7 +639,6 @@ class Database:
         self.logger.info(f"Loaded solution {solution_id}")
         return solution
 
-
     def set_connected_transducer(self, trans, options=None):
         trans_id = trans.id
         transducer_ids = self.get_transducer_ids()
@@ -628,6 +692,11 @@ class Database:
         session_dir = self.get_session_dir(subject_id, session_id)
         return Path(session_dir) / 'solutions' / 'solutions.json'
 
+    def get_photoscan_filename(self, subject_id, session_id) -> Path:
+        """Get the path to the overall photoscans json file for the requested session"""
+        session_dir = self.get_session_dir(subject_id, session_id)
+        return Path(session_dir) / 'photoscans' / 'photoscans.json'
+
     def get_standoff_filename(self, transducer_id, standoff_id='standoff'):
         return Path(self.path) / 'transducers' / transducer_id / f'{standoff_id}.json'
 
@@ -657,6 +726,9 @@ class Database:
 
     def get_volume_metadata_filepath(self, subject_id, volume_id):
         return Path(self.get_volume_dir(subject_id, volume_id)) / f'{volume_id}.json'
+    
+    def get_photoscan_metadata_filepath(self, subject_id, session_id, photoscan_id):
+        return Path(self.get_session_dir(subject_id, session_id)) / 'photoscans' / photoscan_id / f'{photoscan_id}.json'
 
     def get_run_dir(self, subject_id, session_id, run_id):
         run_dir = self.get_session_dir(subject_id, session_id) / 'runs' / f'{run_id}'
@@ -709,6 +781,13 @@ class Database:
         transducers_filename = self.get_transducers_filename()
         with open(transducers_filename, 'w') as f:
             json.dump(transducers_data, f)
+
+    def write_photoscan_ids(self, subject_id, session_id, photoscan_ids: List[str]):
+        photoscan_data = {'photoscan_ids': photoscan_ids}
+        photoscan_filename = self.get_photoscan_filename(subject_id, session_id)
+        photoscan_filename.parent.mkdir(exist_ok = True) # Make a photoscan directory in case it does not exist
+        with open(photoscan_filename, 'w') as f:
+            json.dump(photoscan_data,f)
 
     def write_solution_ids(self, session:Session, solution_ids:List[str]):
         """Write to the list of overall solution IDs"""
