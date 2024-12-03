@@ -18,6 +18,7 @@ from openlifu.plan.solution import Solution
 from openlifu.plan.solution_analysis import SolutionAnalysis, SolutionAnalysisOptions
 from openlifu.plan.target_constraints import TargetConstraints
 from openlifu.sim import run_simulation
+from openlifu.util.checkgpu import gpu_available
 from openlifu.util.json import PYFUSEncoder
 from openlifu.xdc import Transducer
 
@@ -168,7 +169,7 @@ class Protocol:
         sim_options: Optional[sim.SimSetup] = None,
         analysis_options: Optional[SolutionAnalysisOptions] = None,
         on_pulse_mismatch: OnPulseMismatchAction = OnPulseMismatchAction.ERROR,
-        use_gpu: bool = True,
+        use_gpu: Optional[bool] = None,
     ) -> Tuple[Solution, xa.DataArray, SolutionAnalysis]:
         """Calculate the solution and aggregated k-wave simulation outputs.
 
@@ -197,6 +198,8 @@ class Protocol:
             on_pulse_mismatch: plan.protocol.OnPulseMismatchAction
                 An action to take if the number of pulses in the sequence does not match
                 the number of foci (Default: OnPulseMismatchAction.ERROR).
+            use_gpu: Whether to use GPU in the simulation. If not provided then a GPU will be used
+                if available, with CPU as a fallback.
 
         Returns:
             solution: Solution
@@ -206,6 +209,9 @@ class Protocol:
             scaled_solution_analysis: SolutionAnalysis
                 This is the resulting rescaled analysis, if scale is enabled.
         """
+        if use_gpu is None:
+            use_gpu = gpu_available()
+
         if sim_options is None:
             sim_options = self.sim_setup
         if analysis_options is None:
