@@ -43,6 +43,7 @@ dependencies = [
   "sphinx",
   "ipykernel",
   "k-wave-python>=0.3.4",
+  "nvidia-ml-py",
 ]
 
 [project.optional-dependencies]

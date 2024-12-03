@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import pytest
@@ -90,14 +91,16 @@ def test_fix_pulse_mismatch(
         elif on_pulse_mismatch is OnPulseMismatchAction.ROUNDDOWN:
             assert example_protocol.sequence.pulse_count == num_foci
 
-@pytest.mark.parametrize("use_gpu", [True, False])
+@pytest.mark.parametrize("use_gpu", [True, False, None])
+@pytest.mark.parametrize("gpu_is_available", [True, False])
 def test_calc_solution_use_gpu(
     mocker:MockerFixture,
     example_protocol:Protocol,
     example_transducer:Transducer,
-    use_gpu:bool
+    use_gpu:Optional[bool],
+    gpu_is_available:bool,
 ):
-    """Test that use_gpu is passed to the simulation runner"""
+    """Test that the correct value of use_gpu is passed to the simulation runner"""
     example_simulation_output = xa.Dataset(
         {
             'p_min': xa.DataArray(data=np.empty((3, 2, 3)), dims=["x", "y", "z"], attrs={'units': "Pa"}),
@@ -109,6 +112,10 @@ def test_calc_solution_use_gpu(
             'y': xa.DataArray(dims=["y"], data=np.linspace(0, 1, 2), attrs={'units': "m"}),
             'z': xa.DataArray(dims=["z"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
         },
+    )
+    mocker.patch(
+        "openlifu.plan.protocol.gpu_available",
+        return_value = gpu_is_available,
     )
     run_simulation_mock = mocker.patch(
         "openlifu.plan.protocol.run_simulation",
@@ -122,4 +129,7 @@ def test_calc_solution_use_gpu(
         use_gpu=use_gpu,
     )
     args, kwargs = run_simulation_mock.call_args
-    assert kwargs['gpu'] == use_gpu
+    if use_gpu is None:
+        assert kwargs['gpu'] == gpu_is_available
+    else:
+        assert kwargs['gpu'] == use_gpu
