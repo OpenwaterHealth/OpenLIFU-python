@@ -277,10 +277,8 @@ class Database:
         self.logger.info(f"Added volume with ID {volume_id} for subject {subject_id} to the database.")
 
     def write_photoscan(self, session: Session, photoscan_id, photoscan_name, model_data_filepath, texture_data_filepath, mtl_data_filepath: Optional[Path] = None, on_conflict=OnConflictOpts.ERROR):
-
         if not Path(model_data_filepath).exists():
             raise ValueError(f'Model data filepath does not exist: {model_data_filepath}')
-
         if not Path(texture_data_filepath).exists():
             raise ValueError(f'Texture data filepath does not exist: {texture_data_filepath}')
 
@@ -296,13 +294,16 @@ class Database:
             else:
                 raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
 
-        # Create volume metadata
+        # Create photoscan metadata
         photoscan_metadata_dict = {"id": photoscan_id, "name": photoscan_name, "model_filename": Path(model_data_filepath).name, "texture_filename": Path(texture_data_filepath).name, "photoscan_approved": False}
         if mtl_data_filepath:
-            photoscan_metadata_dict["mtl_filename"] = Path(mtl_data_filepath).name
+            if not Path(mtl_data_filepath).exists():
+                raise ValueError(f'MTL filepath does not exist: {mtl_data_filepath}')
+            else:
+                photoscan_metadata_dict["mtl_filename"] = Path(mtl_data_filepath).name
         photoscan_metadata_json = json.dumps(photoscan_metadata_dict, separators=(',', ':'), cls=PYFUSEncoder)
 
-        # Save the volume metadata to a JSON file and copy volume data file to database
+        # Save the photoscan metadata to a JSON file and copy photoscan model and texture files to database
         photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(session.subject_id, session.id, photoscan_id) #subject_id/photoscan/photoscan_id/photoscan_id.json
         Path(photoscan_metadata_filepath).parent.parent.mkdir(exist_ok=True) #photoscan directory
         Path(photoscan_metadata_filepath).parent.mkdir(exist_ok=True)
@@ -310,6 +311,8 @@ class Database:
             file.write(photoscan_metadata_json)
         shutil.copy(Path(model_data_filepath), Path(photoscan_metadata_filepath).parent)
         shutil.copy(Path(texture_data_filepath), Path(photoscan_metadata_filepath).parent)
+        if mtl_data_filepath:
+            shutil.copy(Path(mtl_data_filepath), Path(photoscan_metadata_filepath).parent)
 
         if photoscan_id not in photoscan_ids:
             photoscan_ids.append(photoscan_id)
