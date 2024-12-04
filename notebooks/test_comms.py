@@ -22,6 +22,7 @@ from openlifu.io.ustx import (
     DelayProfile,
     PulseProfile,
     TxArray,
+    TxModule,
     print_regs,
 )
 from openlifu.io.utils import list_vcp_with_vid_pid
@@ -72,32 +73,41 @@ async def main():
     tof = distances*1e-3 / 1500
     delays = tof.max() - tof
     tx_addresses = list(tx_dict.keys())
-    tx_addresses = tx_addresses[:int(arr.numelements()/32)]
-    txa = TxArray(i2c_addresses=tx_addresses)
+    txm = TxModule(i2c_address=0x00)
     array_delay_profile = DelayProfile(1, delays.tolist())
-    txa.add_delay_profile(array_delay_profile)
-    txa.add_pulse_profile(pulse_profile)
-    regs = txa.get_registers(profiles="configured", pack=True)
-    for addr, rm in regs.items():
-        print(f'TX_IDX: 0x{addr:02x}')
-        for i, r in enumerate(rm):
-            print(f'MODULE {i}')
-            print_regs(r)
-        print('')  #calculate register state for 7332s, settings for board (bits, purpose), #change focus!!
+    txm.add_delay_profile(array_delay_profile)
+    txm.add_pulse_profile(pulse_profile)
+    regs = txm.get_registers(profiles="configured", pack=True)
+    for i, r in enumerate(regs):
+        print(f'MODULE {i}')
+        print_regs(r)
+    print('')  #calculate register state for 7332s, settings for board (bits, purpose), #change focus!!
 
     # Write Registers to Device #series of loops for programming tx chips
-    for tx_idx, module_regs in regs.items():
-        tx_inst = tx_dict[tx_idx]
-        r = module_regs[0]
-        await tx_inst.write_register(0,1) #resetting the device
-        for address, value in r.items():
+    for tx, txregs in zip(ustx_ctrl.tx_devices, regs):
+        print(f"Writing to TX{tx.identifier}")
+        await tx.write_register(0, 1)
+        for address, value in txregs.items():
             if isinstance(value, list):
-                print(f"0x{tx_idx:x}[{i}] Writing {len(value)}-value block starting at register 0x{address:X}")
-                await tx_inst.write_block(address, value)
+                print(f"Writing {len(value)}-value block starting at register 0x{address:X}")
+                await tx.write_block(address, value)
             else:
-                print(f"0x{tx_idx:x}[{i}] Writing value 0x{value:X} to register 0x{address:X}")
-                await tx_inst.write_register(address, value)
+                print(f"Writing value 0x{value:X} to register 0x{address:X}")
+                await tx.write_register(address, value)
             time.sleep(0.1)
+            
+    # for tx_idx, module_regs in regs.items():
+    #     tx_inst = tx_dict[tx_idx]
+    #     r = module_regs[0]
+    #     await tx_inst.write_register(0,1) #resetting the device
+    #     for address, value in r.items():
+    #         if isinstance(value, list):
+    #             print(f"0x{tx_idx:x}[{i}] Writing {len(value)}-value block starting at register 0x{address:X}")
+    #             await tx_inst.write_block(address, value)
+    #         else:
+    #             print(f"0x{tx_idx:x}[{i}] Writing value 0x{value:X} to register 0x{address:X}")
+    #             await tx_inst.write_register(address, value)
+    #         time.sleep(0.1)
 
     print("Turn Trigger On")
     await ustx_ctrl.start_trigger()
