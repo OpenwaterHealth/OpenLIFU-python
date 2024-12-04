@@ -408,9 +408,9 @@ def test_get_photoscan_info(example_database:Database, tmp_path:Path): # TODO: N
     assert(photoscan_info["id"] == "example_photoscan")
     assert(photoscan_info["name"] == "ExamplePhotoscan")
     assert(Path(photoscan_info["model_abspath"]) == \
-                        tmp_path/"example_db/subjects/mannequin/sessions//photoscans/scan/_volume.nii")
+                        tmp_path/"example_db/subjects/example_subject/sessions/example_session/photoscans/example_photoscan/example_photoscan.obj")
     assert(Path(photoscan_info["texture_abspath"]) == \
-                        tmp_path/"example_db/subjects/mannequin/sessions//photoscans/scan/_volume.nii")
+                        tmp_path/"example_db/subjects/example_subject/sessions/example_session/photoscans/example_photoscan/example_photoscan_texture.exr")
 
 def test_get_photoscan_ids(example_database:Database):
     assert(example_database.get_photoscan_ids("example_subject", "example_session") == ["example_photoscan"])
@@ -426,7 +426,7 @@ def test_write_photoscan(example_database:Database, example_session: Session, tm
     texture_data_path.touch()
     example_database.write_photoscan(example_session, photoscan_id, photoscan_name, model_data_path, texture_data_path)
 
-    assert(example_database.get_photoscan_ids("example_subject") == ["example_photoscan", "example_photoscan_2"])
+    assert(example_database.get_photoscan_ids("example_subject", "example_session") == ["example_photoscan", "example_photoscan_2"])
 
     photoscan_filepath = example_database.get_photoscan_metadata_filepath("example_subject","example_session","example_photoscan_2")
     assert(photoscan_filepath.name == "example_photoscan_2.json")
@@ -436,10 +436,11 @@ def test_write_photoscan(example_database:Database, example_session: Session, tm
     # When writing to a new subject and session
     subject = Subject(id="bleh",name="Deb Jectson")
     example_database.write_subject(subject, on_conflict=OnConflictOpts.OVERWRITE)
-    session = Session(id = "bleh_session", name = "Bleh_Session")
+    session = Session(id = "bleh_session", subject_id=subject.id, name = "Bleh_Session")
+    example_database.write_session(subject, session)
     example_database.write_photoscan(session, photoscan_id, photoscan_name, model_data_path, texture_data_path)
 
-    assert(example_database.get_photoscan_ids("bleh") == ["example_photoscan_2"])
+    assert(example_database.get_photoscan_ids("bleh","bleh_session") == ["example_photoscan_2"])
     photoscan_filepath = example_database.get_photoscan_metadata_filepath("bleh", "bleh_session", "example_photoscan_2")
     assert(photoscan_filepath.name == "example_photoscan_2.json")
     assert((photoscan_filepath.parent/"example_photoscan_2.obj").exists())
