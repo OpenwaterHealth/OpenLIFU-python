@@ -537,7 +537,7 @@ class Database:
             photoscan = json.load(f)
             photoscan_dict = {"id": photoscan["id"],\
                     "name": photoscan["name"],\
-                    "model_abspath": Path(photoscan_metadata_filepath).parent/photoscan["obj_filename"],
+                    "model_abspath": Path(photoscan_metadata_filepath).parent/photoscan["model_filename"],
                     "texture_abspath": Path(photoscan_metadata_filepath).parent/photoscan["texture_filename"],
                     "photoscan_approved": photoscan["photoscan_approved"]}
             if "mtl_filename" in photoscan:
