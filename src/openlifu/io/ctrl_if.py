@@ -1,20 +1,41 @@
-from openlifu.io.core import *
-from openlifu.io.config import *
-from openlifu.io.utils import *
 import asyncio
-import struct
 import json
+import logging
 
-from openlifu.io.afe_if import AFE_IF
+logging.basicConfig(level=logging.DEBUG)
+log = logging.getLogger(__name__)
+
+from openlifu.io.config import (
+    OW_CMD_ECHO,
+    OW_CMD_HWID,
+    OW_CMD_PING,
+    OW_CMD_PONG,
+    OW_CMD_RESET,
+    OW_CMD_TOGGLE_LED,
+    OW_CMD_VERSION,
+    OW_CONTROLLER,
+    OW_CTRL_GET_HV,
+    OW_CTRL_GET_SWTRIG,
+    OW_CTRL_SET_HV,
+    OW_CTRL_SET_SWTRIG,
+    OW_CTRL_START_SWTRIG,
+    OW_CTRL_STOP_SWTRIG,
+    OW_TX7332,
+    OW_TX7332_DEMO,
+    OW_TX7332_ENUM,
+)
+from openlifu.io.core import UART, UartPacket
+from openlifu.io.tx7332_if import TX7332_IF
+
 
 class CTRL_IF:
-    
+
     _delay = 0.02
 
     def __init__(self, uart: UART):
         self.uart = uart
         self.packet_count = 0
-        self._afe_instances = []
+        self._tx_instances = []
 
     async def ping(self, packet_id=None):
         if packet_id is None:
@@ -42,7 +63,7 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CMD_ECHO, data=data)
         self.uart.clear_buffer()
@@ -52,7 +73,7 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CMD_TOGGLE_LED)
         self.uart.clear_buffer()
@@ -62,7 +83,7 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CMD_VERSION)
         self.uart.clear_buffer()
@@ -72,7 +93,7 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CMD_HWID)
         self.uart.clear_buffer()
@@ -82,52 +103,68 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CMD_RESET)
         self.uart.clear_buffer()
+        return response
+
+    async def enum_tx7332_devices(self, packet_id=None):
+        if packet_id is None:
+            self.packet_count += 1
+            packet_id = self.packet_count
+
+        self._tx_instances.clear()
+        await asyncio.sleep(self._delay)
+        response = await self.uart.send_ustx(id=packet_id, packetType=OW_TX7332, command=OW_TX7332_ENUM)
+
+        rUartPacket = UartPacket(buffer=response)
+        if rUartPacket.reserved > 0:
+            for i in range(rUartPacket.reserved):
+                self._tx_instances.append(TX7332_IF(self, i))
+
+
+        return self._tx_instances
+
+    async def tx7332_demo(self, packet_id=None):
+        if packet_id is None:
+            self.packet_count += 1
+            packet_id = self.packet_count
+
+        await asyncio.sleep(self._delay)
+        response = await self.uart.send_ustx(id=packet_id, packetType=OW_TX7332, command=OW_TX7332_DEMO)
+
         return response
 
     async def enum_i2c_devices(self, packet_id=None):
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
-        await asyncio.sleep(self._delay)
-        response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CTRL_SCAN_I2C)
-        self.uart.clear_buffer()
-        
-        ret_val = []
-        self._afe_instances.clear()
 
-        try:
-            retPacket = UartPacket(buffer=response)
-            for i in range(retPacket.data_len):
-                i2c_address = retPacket.data[i]
-                afe_instance = AFE_IF(i2c_address, self)
-                self._afe_instances.append(afe_instance)
-                ret_val.append(i2c_address)
-        except Exception as e:
-            print("Error decoding packet:", e)
+        await asyncio.sleep(self._delay)
+        # response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CTRL_SCAN_I2C)
+        self.uart.clear_buffer()
+
+        ret_val = []
         return ret_val
 
     async def set_trigger(self, data=None, packet_id=None):
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
-        await asyncio.sleep(self._delay)
+
         if data:
             try:
                 json_string = json.dumps(data)
             except json.JSONDecodeError as e:
-                print(f"Data must be valid JSON: {e}")
-                return  
+                log.info(f"Data must be valid JSON: {e}")
+                return None
 
             payload = json_string.encode('utf-8')
         else:
             payload = None
 
+        await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=1, packetType=OW_CONTROLLER, command=OW_CTRL_SET_SWTRIG, data=payload)
         self.uart.clear_buffer()
         return response
@@ -136,7 +173,7 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CTRL_GET_SWTRIG, data=None)
         self.uart.clear_buffer()
@@ -145,14 +182,14 @@ class CTRL_IF:
             parsedResp = UartPacket(buffer=response)
             data_object = json.loads(parsedResp.data.decode('utf-8'))
         except json.JSONDecodeError as e:
-            print("Error decoding JSON:", e)
+            log.info(f"Error decoding JSON: {e}")
         return data_object
 
     async def start_trigger(self, packet_id=None):
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CTRL_START_SWTRIG, data=None)
         self.uart.clear_buffer()
@@ -161,7 +198,7 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CTRL_STOP_SWTRIG, data=None)
         self.uart.clear_buffer()
@@ -179,22 +216,18 @@ class CTRL_IF:
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
-        
+
         await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CTRL_GET_HV, data=None)
         self.uart.clear_buffer()
         return response
 
     @property
-    def afe_devices(self):
-        return self._afe_instances
-    
-    def print(self):
-        print("Controller Instance Information")
-        print("  UART Port:")
-        self.uart.print()
+    def tx_devices(self):
+        return self._tx_instances
 
-        print("  AFE Instances:")        
-        for i in range(len(self._afe_instances)):
-            afe_device = self._afe_instances[i]
-            afe_device.print()
+    @property
+    def print(self):
+        print("Controller Instance Information")  # noqa: T201
+        print("  UART Port:")  # noqa: T201
+        self.uart.print()
