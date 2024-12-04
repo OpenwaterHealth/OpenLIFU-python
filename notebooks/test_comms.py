@@ -21,7 +21,6 @@ from openlifu.io.ctrl_if import CTRL_IF
 from openlifu.io.ustx import (
     DelayProfile,
     PulseProfile,
-    TxArray,
     TxModule,
     print_regs,
 )
@@ -65,15 +64,13 @@ async def main():
     focus = np.array([0, 0, 50]) #set focus #left, front, down
     pulse_profile = PulseProfile(profile=1, frequency=400e3, cycles=3)
 
-    tx_dict = {tx.identifier: tx for tx in ustx_ctrl.tx_devices}
-
     arr = Transducer.from_file(R"E:\CURRENT-WORK\openwater\OpenLIFU-python\mappings\M3_rigidflex.json")
     arr.elements = np.array(arr.elements)[np.argsort([el.pin for el in arr.elements])].tolist()
     distances = np.sqrt(np.sum((focus - arr.get_positions(units="mm"))**2, 1))
     tof = distances*1e-3 / 1500
     delays = tof.max() - tof
-    tx_addresses = list(tx_dict.keys())
-    txm = TxModule(i2c_address=0x00)
+
+    txm = TxModule()
     array_delay_profile = DelayProfile(1, delays.tolist())
     txm.add_delay_profile(array_delay_profile)
     txm.add_pulse_profile(pulse_profile)
@@ -95,19 +92,6 @@ async def main():
                 print(f"Writing value 0x{value:X} to register 0x{address:X}")
                 await tx.write_register(address, value)
             time.sleep(0.1)
-            
-    # for tx_idx, module_regs in regs.items():
-    #     tx_inst = tx_dict[tx_idx]
-    #     r = module_regs[0]
-    #     await tx_inst.write_register(0,1) #resetting the device
-    #     for address, value in r.items():
-    #         if isinstance(value, list):
-    #             print(f"0x{tx_idx:x}[{i}] Writing {len(value)}-value block starting at register 0x{address:X}")
-    #             await tx_inst.write_block(address, value)
-    #         else:
-    #             print(f"0x{tx_idx:x}[{i}] Writing value 0x{value:X} to register 0x{address:X}")
-    #             await tx_inst.write_register(address, value)
-    #         time.sleep(0.1)
 
     print("Turn Trigger On")
     await ustx_ctrl.start_trigger()
@@ -118,13 +102,6 @@ async def main():
     await ustx_ctrl.stop_trigger()
 
     s.close()
-
-    #Visualize Delays
-    from matplotlib import colormaps
-    cm = colormaps.get("viridis")
-    delays_norm = delays / delays.max()
-    colors = cm(delays_norm)[:,:3]
-    arr.draw(facecolor=colors)
 
 # Entry point
 if __name__ == "__main__":
