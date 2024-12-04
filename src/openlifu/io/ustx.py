@@ -7,7 +7,7 @@ import numpy as np
 from openlifu.plan.solution import Solution
 from openlifu.util.units import getunitconversion
 
-NUM_TRANSMITTERS = 2
+NUM_TRANSMITTERS = 1
 ADDRESS_GLOBAL_MODE = 0x0
 ADDRESS_STANDBY = 0x1
 ADDRESS_DYNPWR_2 = 0x6

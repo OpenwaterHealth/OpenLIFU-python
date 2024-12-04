@@ -119,6 +119,8 @@ class CTRL_IF:
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_TX7332, command=OW_TX7332_ENUM)
 
         rUartPacket = UartPacket(buffer=response)
+        # Clear the array before appending
+        self._tx_instances.clear()
         if rUartPacket.reserved > 0:
             for i in range(rUartPacket.reserved):
                 self._tx_instances.append(TX7332_IF(self, i))
@@ -157,7 +159,7 @@ class CTRL_IF:
             try:
                 json_string = json.dumps(data)
             except json.JSONDecodeError as e:
-                log.info(f"Data must be valid JSON: {e}")
+                log.error(f"Data must be valid JSON: {e}")
                 return None
 
             payload = json_string.encode('utf-8')
@@ -182,7 +184,7 @@ class CTRL_IF:
             parsedResp = UartPacket(buffer=response)
             data_object = json.loads(parsedResp.data.decode('utf-8'))
         except json.JSONDecodeError as e:
-            log.info(f"Error decoding JSON: {e}")
+            log.error(f"Error decoding JSON: {e}")
         return data_object
 
     async def start_trigger(self, packet_id=None):
@@ -228,6 +230,6 @@ class CTRL_IF:
 
     @property
     def print(self):
-        print("Controller Instance Information")  # noqa: T201
-        print("  UART Port:")  # noqa: T201
+        print("Controller Instance Information") # noqa: T201
+        print("  UART Port:") # noqa: T201
         self.uart.print()
