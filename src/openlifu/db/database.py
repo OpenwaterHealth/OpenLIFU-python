@@ -111,7 +111,7 @@ class Database:
             self.write_solution_ids(session, [])
         if not self.get_runs_filename(subject.id, session_id).exists():
             self.write_run_ids(session.subject_id, session.id, [])
-        if not self.get_photoscan_filename(subject.id, session_id).exists():
+        if not self.get_photoscans_filename(subject.id, session_id).exists():
             self.write_photoscan_ids(session.subject_id, session.id, [])
 
         # Update the list of session IDs for the subject
@@ -278,9 +278,9 @@ class Database:
 
     def write_photoscan(self, session: Session, photoscan_id, photoscan_name, model_data_filepath, texture_data_filepath, mtl_data_filepath: Optional[Path] = None, on_conflict=OnConflictOpts.ERROR):
         if not Path(model_data_filepath).exists():
-            raise ValueError(f'Model data filepath does not exist: {model_data_filepath}')
+            raise FileNotFoundError(f'Model data filepath does not exist: {model_data_filepath}')
         if not Path(texture_data_filepath).exists():
-            raise ValueError(f'Texture data filepath does not exist: {texture_data_filepath}')
+            raise FileNotFoundError(f'Texture data filepath does not exist: {texture_data_filepath}')
 
         photoscan_ids = self.get_photoscan_ids(session.subject_id, session.id)
         if photoscan_id in photoscan_ids:
@@ -296,9 +296,9 @@ class Database:
 
         # Create photoscan metadata
         photoscan_metadata_dict = {"id": photoscan_id, "name": photoscan_name, "model_filename": Path(model_data_filepath).name, "texture_filename": Path(texture_data_filepath).name, "photoscan_approved": False}
-        if mtl_data_filepath:
+        if mtl_data_filepath is not None:
             if not Path(mtl_data_filepath).exists():
-                raise ValueError(f'MTL filepath does not exist: {mtl_data_filepath}')
+                raise FileNotFoundError(f'MTL filepath does not exist: {mtl_data_filepath}')
             else:
                 photoscan_metadata_dict["mtl_filename"] = Path(mtl_data_filepath).name
         photoscan_metadata_json = json.dumps(photoscan_metadata_dict, separators=(',', ':'), cls=PYFUSEncoder)
@@ -311,7 +311,7 @@ class Database:
             file.write(photoscan_metadata_json)
         shutil.copy(Path(model_data_filepath), Path(photoscan_metadata_filepath).parent)
         shutil.copy(Path(texture_data_filepath), Path(photoscan_metadata_filepath).parent)
-        if mtl_data_filepath:
+        if mtl_data_filepath is not None:
             shutil.copy(Path(mtl_data_filepath), Path(photoscan_metadata_filepath).parent)
 
         if photoscan_id not in photoscan_ids:
@@ -451,7 +451,7 @@ class Database:
 
     def get_photoscan_ids(self, subject_id: str, session_id: str) -> List[str]:
         """Get a list of IDs of the photoscans associated with the given session"""
-        photoscan_filename = self.get_photoscan_filename(subject_id, session_id)
+        photoscan_filename = self.get_photoscans_filename(subject_id, session_id)
 
         if not (photoscan_filename.exists() and photoscan_filename.is_file()):
             self.logger.warning("Photoscan file not found for subject %s, session %s.", subject_id, session_id)
@@ -696,7 +696,7 @@ class Database:
         session_dir = self.get_session_dir(subject_id, session_id)
         return Path(session_dir) / 'solutions' / 'solutions.json'
 
-    def get_photoscan_filename(self, subject_id, session_id) -> Path:
+    def get_photoscans_filename(self, subject_id, session_id) -> Path:
         """Get the path to the overall photoscans json file for the requested session"""
         session_dir = self.get_session_dir(subject_id, session_id)
         return Path(session_dir) / 'photoscans' / 'photoscans.json'
@@ -788,7 +788,7 @@ class Database:
 
     def write_photoscan_ids(self, subject_id, session_id, photoscan_ids: List[str]):
         photoscan_data = {'photoscan_ids': photoscan_ids}
-        photoscan_filename = self.get_photoscan_filename(subject_id, session_id)
+        photoscan_filename = self.get_photoscans_filename(subject_id, session_id)
         photoscan_filename.parent.mkdir(exist_ok = True) # Make a photoscan directory in case it does not exist
         with open(photoscan_filename, 'w') as f:
             json.dump(photoscan_data,f)
