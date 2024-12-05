@@ -52,7 +52,7 @@ def mask_focus(
     # e.g. d = sqrt(((x'-x0')/ax)^2 + ((y'-y0')/ay)^2 + ((z'-z0')/az)^2). This is useful for calculating how far
     # away from an oblong focal spot each point is.
     ogrid = offset_grid(data_arr_rescaled, focus)
-    ogrid_aspect_corrected = ogrid*aspect_ratio
+    ogrid_aspect_corrected = ogrid/aspect_ratio
     m = np.sqrt(np.sum(ogrid_aspect_corrected**2, axis=-1))
 
     # mask based on distance
