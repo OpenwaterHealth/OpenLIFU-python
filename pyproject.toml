@@ -42,6 +42,10 @@ dependencies = [
   "nibabel",
   "sphinx",
   "ipykernel",
+  "pyserial",
+  "PyQt5",
+  "crcmod",
+  "qasync",
   "k-wave-python>=0.3.4",
 ]
 

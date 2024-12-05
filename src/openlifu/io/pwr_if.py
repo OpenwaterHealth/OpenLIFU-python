@@ -8,9 +8,9 @@ from openlifu.io.config import (
     OW_CMD_RESET,
     OW_CMD_TOGGLE_LED,
     OW_CMD_VERSION,
-    OW_CTRL_GET_HV,
-    OW_CTRL_SET_HV,
     OW_POWER,
+    OW_POWER_GET_HV,
+    OW_POWER_SET_HV,
 )
 from openlifu.io.core import UART
 
@@ -101,7 +101,7 @@ class PWR_IF:
             packet_id = self.packet_count
 
         await asyncio.sleep(self._delay)
-        await self.uart.send_ustx(id=packet_id, packetType=OW_POWER, command=OW_CTRL_SET_HV, data=data)
+        await self.uart.send_ustx(id=packet_id, packetType=OW_POWER, command=OW_POWER_SET_HV, data=data)
         self.uart.clear_buffer()
 
     async def get_hv_supply(self, packet_id=None):
@@ -110,7 +110,27 @@ class PWR_IF:
             packet_id = self.packet_count
 
         await asyncio.sleep(self._delay)
-        response = await self.uart.send_ustx(id=packet_id, packetType=OW_POWER, command=OW_CTRL_GET_HV, data=None)
+        response = await self.uart.send_ustx(id=packet_id, packetType=OW_POWER, command=OW_POWER_GET_HV, data=None)
+        self.uart.clear_buffer()
+        return response
+
+    async def set_hv_supply_on(self, packet_id=None):
+        if packet_id is None:
+            self.packet_count += 1
+            packet_id = self.packet_count
+
+        response = None
+
+        self.uart.clear_buffer()
+        return response
+
+    async def set_hv_supply_off(self, packet_id=None):
+        if packet_id is None:
+            self.packet_count += 1
+            packet_id = self.packet_count
+
+        response = None
+
         self.uart.clear_buffer()
         return response
 
