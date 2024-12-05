@@ -400,17 +400,15 @@ def test_write_solution_new_session(example_database:Database, example_subject:S
     example_database.write_session(example_subject, session)
     example_database.write_solution(session, solution)
 
-def test_get_photoscan_info(example_database:Database, tmp_path:Path): # TODO: Need to finish this!
+def test_get_photoscan_info(example_database:Database):
     subject_id = "example_subject"
     session_id = "example_session"
     photoscan_id = "example_photoscan"
     photoscan_info = example_database.get_photoscan_info(subject_id, session_id, photoscan_id)
     assert(photoscan_info["id"] == "example_photoscan")
     assert(photoscan_info["name"] == "ExamplePhotoscan")
-    assert(Path(photoscan_info["model_abspath"]) == \
-                        tmp_path/"example_db/subjects/example_subject/sessions/example_session/photoscans/example_photoscan/example_photoscan.obj")
-    assert(Path(photoscan_info["texture_abspath"]) == \
-                        tmp_path/"example_db/subjects/example_subject/sessions/example_session/photoscans/example_photoscan/example_photoscan_texture.exr")
+    assert(Path(photoscan_info["model_abspath"]).exists())
+    assert(Path(photoscan_info["texture_abspath"]).exists())
 
 def test_get_photoscan_ids(example_database:Database):
     assert(example_database.get_photoscan_ids("example_subject", "example_session") == ["example_photoscan"])
@@ -418,30 +416,40 @@ def test_get_photoscan_ids(example_database:Database):
 def test_write_photoscan(example_database:Database, example_session: Session, tmp_path:Path):
     photoscan_id = "example_photoscan_2"
     photoscan_name = "EXAMPLE_PHOTOSCAN_2"
-    model_data_path = Path(tmp_path/'test_db_files/example_photoscan_2.obj')
+    model_data_path = Path(tmp_path/"test_db_files/example_photoscan_2.obj")
     model_data_path.parent.mkdir(parents=True, exist_ok=True)
     model_data_path.touch()
-    texture_data_path = Path(tmp_path/'test_db_files/example_photoscan_texture_2.exr')
+    texture_data_path = Path(tmp_path/"test_db_files/example_photoscan_texture_2.exr")
     texture_data_path.parent.mkdir(parents=True, exist_ok=True)
     texture_data_path.touch()
-    example_database.write_photoscan(example_session, photoscan_id, photoscan_name, model_data_path, texture_data_path)
-
-    assert(example_database.get_photoscan_ids("example_subject", "example_session") == ["example_photoscan", "example_photoscan_2"])
+    mtl_data_path = Path(tmp_path/"test_db_files/example_photoscan.mtl")
+    mtl_data_path.parent.mkdir(parents=True, exist_ok=True)
+    mtl_data_path.touch()
+    example_database.write_photoscan(example_session, photoscan_id, photoscan_name, model_data_path, texture_data_path, mtl_data_path)
+    assert(len(example_database.get_photoscan_ids("example_subject", "example_session")) == 2)
+    assert("example_photoscan" in example_database.get_photoscan_ids("example_subject", "example_session"))
+    assert("example_photoscan_2" in example_database.get_photoscan_ids("example_subject", "example_session"))
 
     photoscan_filepath = example_database.get_photoscan_metadata_filepath("example_subject","example_session","example_photoscan_2")
     assert(photoscan_filepath.name == "example_photoscan_2.json")
     assert((photoscan_filepath.parent/"example_photoscan_2.obj").exists())
     assert((photoscan_filepath.parent/"example_photoscan_texture_2.exr").exists())
+    assert((photoscan_filepath.parent/"example_photoscan.mtl").exists())
+
+    # Test not existent filepath
+    bogus_texture_file = Path(tmp_path/"test_db_files/bogus_photoscan.exr")
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        example_database.write_photoscan(example_session, photoscan_id, photoscan_name, model_data_path, bogus_texture_file, on_conflict=OnConflictOpts.OVERWRITE)
 
     # When writing to a new subject and session
-    subject = Subject(id="bleh",name="Deb Jectson")
-    example_database.write_subject(subject, on_conflict=OnConflictOpts.OVERWRITE)
+    subject = Subject(id="bleh_photoscan_test",name="Deb Jectson")
+    example_database.write_subject(subject)
     session = Session(id = "bleh_session", subject_id=subject.id, name = "Bleh_Session")
     example_database.write_session(subject, session)
     example_database.write_photoscan(session, photoscan_id, photoscan_name, model_data_path, texture_data_path)
 
-    assert(example_database.get_photoscan_ids("bleh","bleh_session") == ["example_photoscan_2"])
-    photoscan_filepath = example_database.get_photoscan_metadata_filepath("bleh", "bleh_session", "example_photoscan_2")
+    assert(example_database.get_photoscan_ids(subject.id,session.id) == ["example_photoscan_2"])
+    photoscan_filepath = example_database.get_photoscan_metadata_filepath(subject.id, session.id, "example_photoscan_2")
     assert(photoscan_filepath.name == "example_photoscan_2.json")
     assert((photoscan_filepath.parent/"example_photoscan_2.obj").exists())
     assert((photoscan_filepath.parent/"example_photoscan_texture_2.exr").exists())
