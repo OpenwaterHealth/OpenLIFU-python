@@ -41,6 +41,34 @@ async def main():
     # Format and print the received data in hex format
     format_and_print_hex(r)
 
+    print("Version Controller")
+    # Send and Receive General ping command
+    r = await pwr_if.version()
+
+    # Format and print the received data in hex format
+    format_and_print_hex(r)
+
+    print("Echo Controller")
+    # Send and Receive General ping command
+    r = await pwr_if.echo(data=b'Hello World')
+
+    # Format and print the received data in hex format
+    format_and_print_hex(r)
+
+    print("Toggle LED Controller")
+    # Send and Receive General ping command
+    r = await pwr_if.toggle_led()
+
+    # Format and print the received data in hex format
+    format_and_print_hex(r)
+
+    print("CHIP ID Controller")
+    # Send and Receive General ping command
+    r = await pwr_if.chipid()
+
+    # Format and print the received data in hex format
+    format_and_print_hex(r)
+
     s.close()
 
 asyncio.run(main())
