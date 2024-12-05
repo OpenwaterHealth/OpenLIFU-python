@@ -10,6 +10,8 @@ from openlifu.io.config import (
     OW_CMD_VERSION,
     OW_POWER,
     OW_POWER_GET_HV,
+    OW_POWER_HV_OFF,
+    OW_POWER_HV_ON,
     OW_POWER_SET_HV,
 )
 from openlifu.io.core import UART
@@ -95,13 +97,19 @@ class PWR_IF:
         self.uart.clear_buffer()
         return response
 
-    async def set_hv_supply(self, data=None, packet_id=None):
+    async def set_hv_supply(self, packet_id=None, dac_input=None):
         if packet_id is None:
             self.packet_count += 1
             packet_id = self.packet_count
 
+        # Validate and process the DAC input
+        if dac_input is not None:
+            dac_input = 0
+        elif not (0 <= dac_input <= 4095):
+            raise ValueError("DAC input must be a 12-bit value (0 to 4095).")
+
         await asyncio.sleep(self._delay)
-        await self.uart.send_ustx(id=packet_id, packetType=OW_POWER, command=OW_POWER_SET_HV, data=data)
+        await self.uart.send_ustx(id=packet_id, packetType=OW_POWER, command=OW_POWER_SET_HV, reserved=dac_input)
         self.uart.clear_buffer()
 
     async def get_hv_supply(self, packet_id=None):
@@ -119,7 +127,9 @@ class PWR_IF:
             self.packet_count += 1
             packet_id = self.packet_count
 
-        response = None
+        await asyncio.sleep(self._delay)
+        response = await self.uart.send_ustx(id=packet_id, packetType=OW_POWER, command=OW_POWER_HV_ON)
+        self.uart.clear_buffer()
 
         self.uart.clear_buffer()
         return response
@@ -129,7 +139,9 @@ class PWR_IF:
             self.packet_count += 1
             packet_id = self.packet_count
 
-        response = None
+        await asyncio.sleep(self._delay)
+        response = await self.uart.send_ustx(id=packet_id, packetType=OW_POWER, command=OW_POWER_HV_OFF)
+        self.uart.clear_buffer()
 
         self.uart.clear_buffer()
         return response

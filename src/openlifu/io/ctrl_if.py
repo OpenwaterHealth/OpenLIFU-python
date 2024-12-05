@@ -14,9 +14,7 @@ from openlifu.io.config import (
     OW_CMD_TOGGLE_LED,
     OW_CMD_VERSION,
     OW_CONTROLLER,
-    OW_CTRL_GET_HV,
     OW_CTRL_GET_SWTRIG,
-    OW_CTRL_SET_HV,
     OW_CTRL_SET_SWTRIG,
     OW_CTRL_START_SWTRIG,
     OW_CTRL_STOP_SWTRIG,
@@ -204,25 +202,6 @@ class CTRL_IF:
         await asyncio.sleep(self._delay)
         await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CTRL_STOP_SWTRIG, data=None)
         self.uart.clear_buffer()
-
-    async def set_hv_supply(self, data=None, packet_id=None):
-        if packet_id is None:
-            self.packet_count += 1
-            packet_id = self.packet_count
-
-        await asyncio.sleep(self._delay)
-        await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CTRL_SET_HV, data=data)
-        self.uart.clear_buffer()
-
-    async def get_hv_supply(self, packet_id=None):
-        if packet_id is None:
-            self.packet_count += 1
-            packet_id = self.packet_count
-
-        await asyncio.sleep(self._delay)
-        response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CTRL_GET_HV, data=None)
-        self.uart.clear_buffer()
-        return response
 
     @property
     def tx_devices(self):

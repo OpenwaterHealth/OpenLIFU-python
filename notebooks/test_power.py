@@ -69,6 +69,23 @@ async def main():
     # Format and print the received data in hex format
     format_and_print_hex(r)
 
+    # Set HV Power
+    print("Set HV Power")
+    r = await pwr_if.set_hv_supply(dac_input=256)
+    format_and_print_hex(r)
+
+    # Turn HV Power ON
+    print("Turn HV Power ON")
+    r = await pwr_if.set_hv_supply_on()
+    format_and_print_hex(r)
+
+    input("Press [ENTER] key to Turn Power Off...")
+
+    # Turn HV Power OFF
+    print("Turn HV Power OFFS")
+    r = await pwr_if.set_hv_supply_off()
+    format_and_print_hex(r)
+
     s.close()
 
 asyncio.run(main())
