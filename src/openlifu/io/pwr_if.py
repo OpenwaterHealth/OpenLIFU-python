@@ -103,13 +103,18 @@ class PWR_IF:
             packet_id = self.packet_count
 
         # Validate and process the DAC input
-        if dac_input is not None:
+        if dac_input is None:
             dac_input = 0
         elif not (0 <= dac_input <= 4095):
             raise ValueError("DAC input must be a 12-bit value (0 to 4095).")
 
+        # Pack the 12-bit DAC input into two bytes
+        data = [
+            (dac_input >> 8) & 0xFF,  # High byte (most significant bits)
+            dac_input & 0xFF          # Low byte (least significant bits)
+        ]
         await asyncio.sleep(self._delay)
-        await self.uart.send_ustx(id=packet_id, packetType=OW_POWER, command=OW_POWER_SET_HV, reserved=dac_input)
+        await self.uart.send_ustx(id=packet_id, packetType=OW_POWER, command=OW_POWER_SET_HV, data=data)
         self.uart.clear_buffer()
 
     async def get_hv_supply(self, packet_id=None):

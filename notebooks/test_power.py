@@ -23,6 +23,7 @@ async def main():
         com_port = list_vcp_with_vid_pid(vid, pid)
         if com_port is None:
             print("No device found")
+            sys.exit()
         else:
             print("Device found at port: ", com_port)
             # Select communication port
@@ -71,7 +72,7 @@ async def main():
 
     # Set HV Power
     print("Set HV Power")
-    r = await pwr_if.set_hv_supply(dac_input=256)
+    r = await pwr_if.set_hv_supply(dac_input=2048)
     format_and_print_hex(r)
 
     # Turn HV Power ON
