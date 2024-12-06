@@ -83,7 +83,7 @@ async def main():
     input("Press [ENTER] key to Turn Power Off...")
 
     # Turn HV Power OFF
-    print("Turn HV Power OFFS")
+    print("Turn HV Power OFF")
     r = await pwr_if.set_hv_supply_off()
     format_and_print_hex(r)
 
