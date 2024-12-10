@@ -19,7 +19,7 @@ from qasync import QEventLoop
 from openlifu.io.core import UART
 from openlifu.io.ctrl_if import CTRL_IF
 from openlifu.io.uartpacket import UartPacket
-from openlifu.io.ustx import DelayProfile, PulseProfile, TxModule, print_regs
+from openlifu.io.ustx import DelayProfile, PulseProfile, TxDeviceController, print_regs
 from openlifu.io.utils import list_vcp_with_vid_pid
 from openlifu.xdc import Transducer
 
@@ -218,7 +218,7 @@ class App(QWidget):
         tof = distances * 1e-3 / 1500
         delays = tof.max() - tof
 
-        txm = TxModule()
+        txm = TxDeviceController()
         array_delay_profile = DelayProfile(1, delays.tolist())
         txm.add_delay_profile(array_delay_profile)
         txm.add_pulse_profile(pulse_profile)

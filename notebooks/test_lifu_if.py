@@ -23,9 +23,9 @@ async def main():
     def on_data_received(data):
         print(f"[Data Received] {data}")
 
-    interface.connected.connect(on_connected)
-    interface.disconnected.connect(on_disconnected)
-    interface.data_received.connect(on_data_received)
+    interface.signal_connect.connect(on_connected)
+    interface.signal_disconnect.connect(on_disconnected)
+    interface.signal_data_received.connect(on_data_received)
 
     try:
         # Start monitoring in the background
@@ -45,7 +45,7 @@ async def main():
 
         # Test HVController
         print("Testing HVController...")
-        hv_controller = interface.HVController
+        hv_controller = interface.hvcontroller
 
         try:
             hv_controller.turn_on()

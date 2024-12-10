@@ -21,7 +21,7 @@ from openlifu.io.ustx import (
     PulseProfile,
     Tx7332Registers,
     TxArray,
-    TxModule,
+    TxDeviceController,
     print_regs,
     swap_byte_order,
 )
@@ -82,7 +82,7 @@ for index in [1,2]:
 
 
 # %%
-txm = TxModule()
+txm = TxDeviceController()
 delays = np.arange(64)*1e-6
 apodizations = np.ones(64)
 module_delay_profile_1 = DelayProfile(1, delays, apodizations)

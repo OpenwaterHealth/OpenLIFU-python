@@ -45,16 +45,16 @@ class LIFUUart:
         self.demo_responses = []  # List of predefined responses for testing
 
         # Signals
-        self.connected = LIFUSignal()
-        self.disconnected = LIFUSignal()
-        self.data_received = LIFUSignal()
+        self.signal_connect = LIFUSignal()
+        self.signal_disconnect = LIFUSignal()
+        self.signal_data_received = LIFUSignal()
 
     def connect(self):
         """Open the serial port."""
         if self.demo_mode:
             log.info("Demo mode: Simulating UART connection.")
             self.running = True
-            self.connected.emit("demo_port")
+            self.signal_connect.emit("demo_port")
             return
         try:
             self.serial = serial.Serial(
@@ -64,7 +64,7 @@ class LIFUUart:
             )
             self.running = True
             log.info("Connected to UART.")
-            self.connected.emit(self.port)
+            self.signal_connect.emit(self.port)
 
             # Start the reading thread
             self.read_thread = threading.Thread(target=self._read_data)
@@ -80,7 +80,7 @@ class LIFUUart:
         self.running = False
         if self.demo_mode:
             log.info("Demo mode: Simulating UART disconnection.")
-            self.disconnected.emit()
+            self.signal_disconnect.emit()
             return
 
         if self.read_thread:
@@ -89,7 +89,7 @@ class LIFUUart:
             self.serial.close()
             self.serial = None
         log.info("Disconnected from UART.")
-        self.disconnected.emit()
+        self.signal_disconnect.emit()
         self.port = None
 
     def is_connected(self) -> bool:
@@ -155,7 +155,7 @@ class LIFUUart:
                 if self.demo_responses:
                     data = self.demo_responses.pop(0)
                     log.info("Demo mode: Simulated data received: %s", data)
-                    self.data_received.emit(data)
+                    self.signal_data_received.emit(data)
                 threading.Event().wait(1000)  # Simulate delay
             return
         while self.running:
@@ -164,7 +164,7 @@ class LIFUUart:
                     data = self.serial.read(self.serial.in_waiting)
                     self.read_buffer.extend(data)
                     log.info("Data received: %s", data)
-                    self.data_received.emit(data)
+                    self.signal_data_received.emit(data)
             except serial.SerialException as e:
                 log.error(f"Serial read error: {e}")
                 self.running = False

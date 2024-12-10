@@ -4,13 +4,29 @@ from openlifu.io.LIFUDevice import LIFUDevice
 from openlifu.io.LIFUHVController import HVController
 from openlifu.io.LIFUSignal import LIFUSignal
 from openlifu.io.LIFUUart import LIFUUart
+from openlifu.plan.solution import Solution
+from openlifu.io.ctrl_if import CTRL_IF
+from openlifu.io.ustx import LIFUTransmitController
+
+STATUS_COMMS_ERROR = -1
+STATUS_SYS_OFF = 0
+STATUS_SYS_POWERUP = 1
+STATUS_SYS_ON = 2
+STATUS_PROGRAMMING = 3
+STATUS_READY = 4
+STATUS_NOT_READY = 5
+STATUS_RUNNING = 6
+STATUS_FINISHED = 7
+STATUS_ERROR = 8
 
 logger = logging.getLogger(__name__)
 
 class LIFUInterface:
-    connected: LIFUSignal = LIFUSignal()
-    disconnected: LIFUSignal = LIFUSignal()
-    data_received: LIFUSignal = LIFUSignal()
+    signal_connect: LIFUSignal = LIFUSignal()
+    signal_disconnect: LIFUSignal = LIFUSignal()
+    signal_data_received: LIFUSignal = LIFUSignal()
+    hvcontroller: HVController = None
+    devicecontroller: LIFUTransmitController = None
 
     def __init__(self, vid: int = 0x0483, pid: int = 0x57AE, baudrate: int = 921600, timeout: int = 10, test_mode=False) -> None:
         """
@@ -27,15 +43,12 @@ class LIFUInterface:
         self.uart = LIFUUart(vid, pid, baudrate, timeout, demo_mode=test_mode)
 
         # Connect signals to internal handlers
-        self.uart.connected.connect(self.connected.emit)
-        self.uart.disconnected.connect(self.disconnected.emit)
-        self.uart.data_received.connect(self.data_received.emit)
+        self.uart.signal_connect.connect(self.signal_connect.emit)
+        self.uart.signal_disconnect.connect(self.signal_disconnect.emit)
+        self.uart.signal_data_received.connect(self.signal_data_received.emit)
 
         # Create a LIFUHVController instance as part of the interface
-        self.HVController = HVController(self)
-
-        # Create a LIFUDevice instance as part of the interface
-        self.Device = LIFUDevice(self)
+        self.hvcontroller = HVController(self)
 
     async def start_monitoring(self, interval: int = 1) -> None:
         """Start monitoring for USB device connections."""
@@ -43,6 +56,22 @@ class LIFUInterface:
             await self.uart.monitor_usb_status(interval)
         except Exception as e:
             logger.error("Error starting monitoring: %s", e)
+
+    def connect_to_device(self) -> None:
+        """Connect to the USB device."""
+        try:
+            self.uart.check_usb_status()
+            if self.is_device_connected():
+                logger.info("Device connected.")
+                ctrl_if = CTRL_IF()
+                ctrl_if.enum_tx7332_devices()
+                self.devicecontroller = LIFUTransmitController(num_transmitters = len(ctrl_if.tx_devices), ctrl_if = ctrl_if)
+            else:
+                logger.error("Device failed to connect.")
+            
+            
+        except Exception as e:
+            logger.error("Error connecting to device: %s", e)
 
     def stop_monitoring(self) -> None:
         """Stop monitoring for USB device connections."""
@@ -59,6 +88,76 @@ class LIFUInterface:
             bool: True if the device is connected, False otherwise.
         """
         return self.uart.is_connected()
+    
+    def set_solution(self, solution: Solution):
+        """
+        Load a solution to the device.
+
+        Args:
+            solution (Solution): The solution to load.
+        """
+        try:
+            logger.info("Loading solution: %s", solution.name)
+            # Convert solution data and send to the device
+            self.devicecontroller.set_solution(solution)
+            self.hvcontroller.set_voltage(solution.pulse.amplitude)    
+            logger.info("Solution '%s' loaded successfully.", solution.name)
+        except Exception as e:
+            logger.error("Error loading solution '%s': %s", solution.name, e)
+            raise
+
+    def get_solution(self) -> Solution:
+        """
+        Retrieve the currently loaded solution from the device.
+
+        Returns:
+            Solution: The currently loaded solution.
+
+        Raises:
+            ValueError: If no solution is loaded.
+        """
+        try:
+            logger.info("Retrieving the currently loaded solution.")
+            # Example command to request solution metadata and data
+            return None
+        except Exception as e:
+            logger.error("Error retrieving the solution: %s", e)
+            raise
+
+
+    def start_sonication(self):
+        """
+        Start sonication.
+
+        Sets the device to a running state and sends a start command if necessary.
+        """
+        try:
+            logger.info("Start Sonication")
+            # Send the solution data to the device
+        except Exception as e:
+            logger.error("Error Starting sonication: %s", e)
+
+    def get_status(self):
+        """
+        Query the device status.
+        
+        Returns:
+            int: The device status.
+        """
+        status = STATUS_OK
+        return status
+
+    def stop_sonication(self):
+        """
+        Stop sonication.
+
+        Stops the current sonication process.
+        """
+        try:
+            logger.info("Stop Sonication")
+            # Send the solution data to the device
+        except Exception as e:
+            logger.error("Error Stopping sonication: %s", e)
 
     def __enter__(self):
         return self

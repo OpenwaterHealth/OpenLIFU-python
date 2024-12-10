@@ -5,7 +5,10 @@ from typing import Dict, List, Literal, Optional, Tuple
 import numpy as np
 
 from openlifu.plan.solution import Solution
+from openlifu.bf.sequence import Sequence
 from openlifu.util.units import getunitconversion
+from openlifu.io.ctrl_if import CTRL_IF
+import time
 
 NUM_TRANSMITTERS = 2
 ADDRESS_GLOBAL_MODE = 0x0
@@ -90,6 +93,9 @@ MAX_ELASTIC_REPEAT = 2**16-1
 DEFAULT_TAIL_COUNT = 29
 DEFAULT_CLK_FREQ = 64e6
 ProfileOpts = Literal['active', 'configured', 'all']
+
+TriggerTypes = Literal['single', 'pulsetrain', 'sequence', 'continuous', 'continuous_pulsetrains']
+TriggerModes = {'single': 0, 'pulsetrain': 1, 'sequence': 2, 'continuous': 3, 'continuous_pulsetrains': 4}
 
 def get_delay_location(channel:int, profile:int=1):
     """
@@ -307,6 +313,7 @@ class Tx7332Registers:
     _pulse_profiles_list: List[PulseProfile] = field(default_factory=list)
     active_delay_profile: Optional[int] = None
     active_pulse_profile: Optional[int] = None
+    num_channels: int = NUM_CHANNELS
 
     def __post_init__(self):
         delay_profiles = self.configured_delay_profiles()
@@ -321,8 +328,8 @@ class Tx7332Registers:
             raise ValueError(f"Pulse profile {self.active_pulse_profile} not found")
 
     def add_delay_profile(self, delay_profile: DelayProfile, activate: Optional[bool]=None):
-        if delay_profile.num_elements != NUM_CHANNELS:
-            raise ValueError(f"Delay profile must have {NUM_CHANNELS} elements")
+        if delay_profile.num_elements != self.num_channels:
+            raise ValueError(f"Delay profile must have {self.num_channels} elements")
         profiles = self.configured_delay_profiles()
         if delay_profile.profile in profiles:
             i = profiles.index(delay_profile.profile)
@@ -533,17 +540,18 @@ class Tx7332Registers:
         return registers
 
 @dataclass
-class TxModule:
-    i2c_addr: int = 0x0
+class LIFUTransmitController:
     bf_clk: int = DEFAULT_CLK_FREQ
     _delay_profiles_list: List[DelayProfile] = field(default_factory=list)
     _pulse_profiles_list: List[PulseProfile] = field(default_factory=list)
     active_delay_profile: Optional[int] = None
     active_pulse_profile: Optional[int] = None
     num_transmitters: int = NUM_TRANSMITTERS
+    ctrl_if: Optional[CTRL_IF] = None
+    sequence: Optional[Sequence] = None
 
     def __post_init__(self):
-        self.transmitters = tuple([Tx7332Registers(bf_clk=self.bf_clk) for _ in range(self.num_transmitters)])
+        self.transmitters = tuple([Tx7332Registers(bf_clk=self.bf_clk) for _ in range(self.num_transmitters)])   
 
     def add_pulse_profile(self, pulse_profile: PulseProfile, activate: Optional[bool]=None):
         """
@@ -769,323 +777,33 @@ class TxModule:
             profile = self.active_pulse_profile
         return [tx.get_pulse_data_registers(profile, pack=pack, pack_single=pack_single) for tx in self.transmitters]
 
-@dataclass
-class TxArray:
-    i2c_addresses: Tuple[int] = (0x0,)
-    bf_clk: int = DEFAULT_CLK_FREQ
-    modules: Dict = field(default_factory=dict)
-    _delay_profiles_list: List[DelayProfile] = field(default_factory=list)
-    _pulse_profiles_list: List[PulseProfile] = field(default_factory=list)
-    active_delay_profile: Optional[int] = None
-    active_pulse_profile: Optional[int] = None
-    num_transmitters: int = NUM_TRANSMITTERS
+    def set_sequence(self, sequence: Sequence):
+        """
+        Set the sequence for all transmitters
 
-    def __post_init__(self):
-        if len(set(self.i2c_addresses)) != len(self.i2c_addresses):
-            raise ValueError("Duplicate I2C addresses found")
-        self.modules = {addr:TxModule(i2c_addr=addr, bf_clk=self.bf_clk, num_transmitters=self.num_transmitters) for addr in self.i2c_addresses}
-        self.num_modules = len(self.modules)
+        :param sequence: Sequence
+        """
+        # Validate sequence compatibility before setting
+        sequence_ok = True
+        if not sequence_ok:
+            raise ValueError("Sequence not compatible with transmit hardware")
+        self.sequence = sequence.copy()
 
-    def add_pulse_profile(self, pulse_profile: PulseProfile, activate: Optional[bool]=None):
+    def get_sequence(self) -> Sequence:
         """
-        Add a pulse profile
+        Get the sequence for all transmitters
 
-        :param p: Pulse profile
-        :param activate: Activate the pulse profile
+        :return: Sequence
         """
-        profiles = self.configured_pulse_profiles()
-        if pulse_profile.profile in profiles:
-            i = profiles.index(pulse_profile.profile)
-            self._pulse_profiles_list[i] = pulse_profile
-        else:
-            self._pulse_profiles_list.append(pulse_profile)
-        if activate is None:
-            activate = self.active_pulse_profile is None
-        if activate:
-            self.active_pulse_profile = pulse_profile.profile
-        for module in self.modules.values():
-            module.add_pulse_profile(pulse_profile, activate)
+        return self.sequence    
 
-    def add_delay_profile(self, delay_profile: DelayProfile, activate: Optional[bool]=None):
+    def set_solution(self, solution: Solution, configure_device: bool = True):
         """
-        Add a delay profile
+        Set the solution for all transmitters
 
-        :param p: Delay profile
-        :param activate: Activate the delay profile
+        :param solution: Solution
+        :param trigger_type: Trigger type
         """
-        if delay_profile.num_elements != NUM_CHANNELS*self.num_transmitters*self.num_modules:
-            raise ValueError(f"Delay profile must have {NUM_CHANNELS*self.num_transmitters*self.num_modules} elements")
-        profiles = self.configured_delay_profiles()
-        if delay_profile.profile in profiles:
-            i = profiles.index(delay_profile.profile)
-            self._delay_profiles_list[i] = delay_profile
-        else:
-            self._delay_profiles_list.append(delay_profile)
-        if activate is None:
-            activate = self.active_delay_profile is None
-        if activate:
-            self.active_delay_profile = delay_profile.profile
-        for i, module in enumerate(self.modules.values()):
-            start_channel = i*NUM_CHANNELS*module.num_transmitters
-            profiles = np.arange(start_channel, start_channel+NUM_CHANNELS*module.num_transmitters, dtype=int)
-            module_delays = np.array(delay_profile.delays)[profiles].tolist()
-            module_apodizations = np.array(delay_profile.apodizations)[profiles].tolist()
-            modulep = DelayProfile(delay_profile.profile, module_delays, module_apodizations, delay_profile.units)
-            module.add_delay_profile(modulep, activate = activate)
-
-    def remove_pulse_profile(self, profile:int):
-        """
-        Remove a pulse profile
-
-        :param profile: Pulse profile number
-        """
-        profiles = self.configured_pulse_profiles()
-        if profile not in profiles:
-            raise ValueError(f"Pulse profile {profile} not found")
-        i = profiles.index(profile)
-        del self._pulse_profiles_list[i]
-        if self.active_pulse_profile == profile:
-            self.active_pulse_profile = None
-        for module in self.modules.values():
-            module.remove_pulse_profile(profile)
-
-    def remove_delay_profile(self, profile:int):
-        """
-        Remove a delay profile
-
-        :param profile: Delay profile number
-        """
-        profiles = self.configured_delay_profiles()
-        if profile not in profiles:
-            raise ValueError(f"Delay profile {profile} not found")
-        i = profiles.index(profile)
-        del self._delay_profiles_list[i]
-        if self.active_delay_profile == profile:
-            self.active_delay_profile = None
-        for module in self.modules.values():
-            module.remove_delay_profile(profile)
-
-    def get_pulse_profile(self, profile:Optional[int]=None) -> PulseProfile:
-        """
-        Retrieve a pulse profile
-
-        :param profile: Pulse profile number
-        :return: Pulse profile
-        """
-        if profile is None:
-            profile = self.active_pulse_profile
-        profiles = self.configured_pulse_profiles()
-        if profile not in profiles:
-            raise ValueError(f"Pulse profile {profile} not found")
-        i = profiles.index(profile)
-        return self._pulse_profiles_list[i]
-
-    def configured_pulse_profiles(self) -> List[int]:
-        """
-        Get the configured pulse profiles
-
-        :return: List of pulse profiles
-        """
-        return [p.profile for p in self._pulse_profiles_list]
-
-    def get_delay_profile(self, profile:Optional[int]=None) -> DelayProfile:
-        """
-        Retrieve a delay profile
-
-        :param profile: Delay profile number
-        :return: Delay profile
-        """
-        if profile is None:
-            profile = self.active_delay_profile
-        profiles = self.configured_delay_profiles()
-        if profile not in profiles:
-            raise ValueError(f"Delay profile {profile} not found")
-        i = profiles.index(profile)
-        return self._delay_profiles_list[i]
-
-    def configured_delay_profiles(self) -> List[int]:
-        """
-        Get the configured delay profiles
-
-        :return: List of delay profiles
-        """
-        return [p.profile for p in self._delay_profiles_list]
-
-    def activate_pulse_profile(self, profile:int=1):
-        """
-        Activates a pulse profile
-
-        :param profile: Pulse profile number
-        """
-        for module in self.modules.values():
-            module.activate_pulse_profile(profile)
-        self.active_pulse_profile = profile
-
-    def activate_delay_profile(self, profile:int=1):
-        """
-        Activates a delay profile
-
-        :param profile: Delay profile number
-        """
-        for module in self.modules.values():
-            module.activate_delay_profile(profile)
-        self.active_delay_profile = profile
-
-    def recompute_pulse_profiles(self):
-        """
-        Recompute the pulse profiles
-        """
-        for module in self.modules.values():
-            profiles = module.configured_pulse_profiles()
-            for profile in profiles:
-                module.remove_pulse_profile(profile)
-            for pulse_profile in self._pulse_profiles_list:
-                module.add_pulse_profile(pulse_profile, activate = pulse_profile.profile == self.active_pulse_profile)
-
-    def recompute_delay_profiles(self):
-        """
-        Recompute the delay profiles
-        """
-        for module in self.modules.values():
-            profiles = module.configured_delay_profiles()
-            for profile in profiles:
-                module.remove_delay_profile(profile)
-        for delay_profile in self._delay_profiles_list:
-            self.add_delay_profile(delay_profile, activate = delay_profile.profile == self.active_delay_profile)
-
-    def get_registers(self, profiles: ProfileOpts = "configured", recompute: bool = False, pack: bool=False, pack_single: bool=False) -> Dict[int, List[Dict[int,int]]]:
-        """
-        Get the registers for all modules
-
-        :param profiles: Profile options
-        :param recompute: Recompute the registers
-        :return: Dictionary of registers for each module
-        """
-        if recompute:
-            self.recompute_delay_profiles()
-            self.recompute_pulse_profiles()
-        return {addr:module.get_registers(profiles, pack=pack, pack_single=pack_single) for addr, module in self.modules.items()}
-
-    def get_delay_control_registers(self, profile:Optional[int]=None) -> Dict[int, List[Dict[int,int]]]:
-        """
-        Get the delay control registers for all modules
-
-        :param profile: Delay profile number
-        :return: Dictionary of delay control registers for each module
-        """
-        if profile is None:
-            profile = self.active_delay_profile
-        return {addr:module.get_delay_control_registers(profile) for addr, module in self.modules.items()}
-
-    def get_pulse_control_registers(self, profile:Optional[int]=None) -> Dict[int, List[Dict[int,int]]]:
-        """
-        Get the pulse control registers for all modules
-
-        :param profile: Pulse profile number
-        :return: Dictionary of pulse control registers for each module
-        """
-        if profile is None:
-            profile = self.active_pulse_profile
-        return {addr:module.get_pulse_control_registers(profile) for addr, module in self.modules.items()}
-
-    def get_delay_data_registers(self, profile:Optional[int]=None, pack: bool=False, pack_single: bool=False) -> Dict[int, List[Dict[int,int]]]:
-        """
-        Get the delay data registers for all modules
-
-        :param profile: Delay profile number
-        :return: Dictionary of delay data registers for each module
-        """
-        if profile is None:
-            profile = self.active_delay_profile
-        return {addr:module.get_delay_data_registers(profile, pack=pack, pack_single=pack_single) for addr, module in self.modules.items()}
-
-    def get_pulse_data_registers(self, profile:Optional[int]=None, pack: bool=False, pack_single: bool=False) -> Dict[int, List[Dict[int,int]]]:
-        """
-        Get the pulse data registers for all modules
-
-        :param profile: Pulse profile number
-        :return: Dictionary of pulse data registers for each module
-        """
-        if profile is None:
-            profile = self.active_pulse_profile
-        return {addr:module.get_pulse_data_registers(profile, pack=pack, pack_single=pack_single) for addr, module in self.modules.items()}
-
-@dataclass
-class HVController:
-    # High Voltage Controller - Interface to high voltage controller
-    device_addr: int = 0x0
-    supply_voltage: float = 0.0
-    output_voltage: float = 0.0
-    is_connected: bool = False
-    is_hv_on: bool = False
-
-    def connect(self):
-        """
-        Connect to the high voltage controller
-        """
-        self.is_connected = True
-
-    def disconnect(self):
-        """
-        Disconnect from the high voltage controller
-        """
-        self.is_connected = False
-
-    def turn_on(self):
-        """
-        Turn on the high voltage
-        """
-        if not self.is_connected:
-            raise ValueError("High voltage controller not connected")
-        self.is_hv_on = True
-
-    def turn_off(self):
-        """
-        Turn off the high voltage
-        """
-        if not self.is_connected:
-            raise ValueError("High voltage controller not connected")
-        self.is_hv_on = False
-
-    def set_voltage(self, voltage: float):
-        """
-        Set the output voltage
-
-        :param voltage: Output voltage
-        """
-        if not self.is_connected:
-            raise ValueError("High voltage controller not connected")
-        if voltage > self.supply_voltage:
-            raise ValueError("Output voltage cannot exceed supply voltage")
-        self.output_voltage = voltage
-
-    def set_supply_voltage(self, voltage: float):
-        """
-        Set the supply voltage
-
-        :param voltage: Supply voltage
-        """
-        if not self.is_connected:
-            raise ValueError("High voltage controller not connected")
-        self.supply_voltage = voltage
-
-@dataclass
-class DeviceInterface:
-    txarray: TxArray
-    hv_controller: HVController
-    is_ready: bool = False
-    is_running: bool = False
-    # USTX I/O
-
-    def load_solution(self, solution: Solution):
-        """
-        Load a solution
-
-        :param solution: Solution to load
-        """
-
-        # Vefiy that the solution has the correct number of elements matching the
-
         n = solution.num_foci()
         for profile in range(n):
             pulse_profile = PulseProfile(
@@ -1094,51 +812,60 @@ class DeviceInterface:
                 cycles= solution.pulse.duration * solution.pulse.frequency,
                 duty_cycle=DEFAULT_PATTERN_DUTY_CYCLE * max(solution.apodization[profile,:])
             )
-            self.txarray.add_pulse_profile(pulse_profile)
+            self.add_pulse_profile(pulse_profile)
             delay_profile = DelayProfile(
                 profile=profile+1,
                 delays=solution.delays[profile,:],
                 apodizations=solution.apodizations[profile, :]
             )
-            self.txarray.add_delay_profile(delay_profile)
+            self.add_delay_profile(delay_profile)
+        self.set_sequence(solution.sequence)
+        if configure_device and self.ctrl_if is not None:
+            self.configure_device()
 
-        sequence = solution.sequence
-        # Write the sequence parameters to the master TX Module
+    def configure_device(self, trigger_type: TriggerTypes = 'sequence', write_pause: int = 0.1):
+        if self.ctrl_if is None:
+            raise ValueError("Control interface not set")
+        trigger_config = {
+            "pulse_interval_msec": int(self.sequence.pulse_interval * 1e3),
+            "pulse_count": self.sequence.pulse_count,
+            "pulse_train_interval_msec": int(self.sequence.pulse_train_interval * 1e3),
+            "pulse_train_count": self.sequence.pulse_train_count,
+            "trigger_mode": TriggerModes[trigger_type],
+            "trigger_width_usec":  5000
+        }
+        self.ctrl_if.set_trigger_config(trigger_config)
+        regs = self.get_registers(profiles="configured", pack=True)
 
-        voltage = solution.pulse.amplitude
-        # Configure the HV Supply
+        # Write Registers to Device #series of loops for programming tx chips
+        for tx, txregs in zip(self.ctrl_if.tx_devices, regs):
+            print(f"Writing to TX{tx.identifier}")
+            tx.write_register(0, 1)
+            for address, value in txregs.items():
+                if isinstance(value, list):
+                    print(f"Writing {len(value)}-value block starting at register 0x{address:X}")
+                    tx.write_block(address, value)
+                else:
+                    print(f"Writing value 0x{value:X} to register 0x{address:X}")
+                    tx.write_register(address, value)
+                time.sleep(write_pause)
 
-        registers = self.txarray.get_registers(pack=True)
-        for profile in range(n):
-            delay_control_registers = self.txarray.get_delay_control_registers(profile)
-            pulse_control_registers = self.txarray.get_pulse_control_registers(profile)
-            # write the delay control registers to the TX Modules
-        # Write All TX7332 Registers from the txarray to the 7332
+    def set_trigger_mode(self, trigger_type: TriggerTypes):
+        if self.ctrl_if is None:
+            raise ValueError("Control interface not set")
+        trigger_config = {
+            "trigger_mode": TriggerModes[trigger_type]
+        }
+        self.ctrl_if.set_trigger_config(trigger_config)
 
-        delay_control_registers = {profile:self.txarray.get_delay_control_registers(profile) for profile in self.txarray.configured_delay_profiles()}
-        pulse_control_registers = {profile:self.txarray.get_pulse_control_registers(profile) for profile in self.txarray.configured_pulse_profiles()}
-        # Write the delay/pulse control registers into the individual Module microcontrollers so that they can increment the settings between pulses (for multiple foci)
+    def start_trigger(self):
+        if self.ctrl_if is None:
+            raise ValueError("Control interface not set")
+        self.ctrl_if.start_trigger()
 
-    def start(self):
-        """ Start Sonication """
-        self.is_running = True
+    def stop_trigger(self):
+        if self.ctrl_if is None:
+            raise ValueError("Control interface not set")
+        self.ctrl_if.stop_trigger()
 
-    def get_status(self):
-        """ Check the Status """
 
-    def pause(self):
-        """ Pause the Sonication """
-        self.is_running = False
-
-    def resume(self):
-        """ Resume the Sonication """
-        self.is_running = True
-
-    def abort(self):
-        """ Abort the Sonication """
-        self.hv_controller.turn_off()
-        self.is_running = False
-
-    def finish(self):
-        """ Once the Sonication has completed, turn of the HV supply etc. """
-        self.hv_controller.turn_off()

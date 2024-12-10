@@ -11,7 +11,7 @@ from openlifu.io.ustx import (
     PulseProfile,
     Tx7332Registers,
     TxArray,
-    TxModule,
+    TxDeviceController,
     print_regs,
     swap_byte_order,
 )
@@ -21,7 +21,7 @@ __all__ = [
     "PulseProfile",
     "DelayProfile",
     "Tx7332Registers",
-    "TxModule",
+    "TxDeviceController",
     "TxArray",
     "print_regs",
     "swap_byte_order",
