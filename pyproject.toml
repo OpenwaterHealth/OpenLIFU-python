@@ -44,6 +44,7 @@ dependencies = [
   "ipykernel",
   "k-wave-python>=0.3.4",
   "nvidia-ml-py",
+  "OpenEXR"
 ]
 
 [project.optional-dependencies]
