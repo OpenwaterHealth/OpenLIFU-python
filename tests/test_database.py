@@ -425,7 +425,7 @@ def test_write_photoscan(example_database:Database, example_session: Session, tm
     mtl_data_path = Path(tmp_path/"test_db_files/example_photoscan.mtl")
     mtl_data_path.parent.mkdir(parents=True, exist_ok=True)
     mtl_data_path.touch()
-    example_database.write_photoscan(example_session, photoscan_id, photoscan_name, model_data_path, texture_data_path, mtl_data_path)
+    example_database.write_photoscan(example_session.subject_id, example_session.id, photoscan_id, photoscan_name, model_data_path, texture_data_path, mtl_data_path)
     assert(len(example_database.get_photoscan_ids("example_subject", "example_session")) == 2)
     assert("example_photoscan" in example_database.get_photoscan_ids("example_subject", "example_session"))
     assert("example_photoscan_2" in example_database.get_photoscan_ids("example_subject", "example_session"))
@@ -439,14 +439,14 @@ def test_write_photoscan(example_database:Database, example_session: Session, tm
     # Test not existent filepath
     bogus_texture_file = Path(tmp_path/"test_db_files/bogus_photoscan.exr")
     with pytest.raises(FileNotFoundError, match="does not exist"):
-        example_database.write_photoscan(example_session, photoscan_id, photoscan_name, model_data_path, bogus_texture_file, on_conflict=OnConflictOpts.OVERWRITE)
+        example_database.write_photoscan(example_session.subject_id, example_session.id, photoscan_id, photoscan_name, model_data_path, bogus_texture_file, on_conflict=OnConflictOpts.OVERWRITE)
 
     # When writing to a new subject and session
     subject = Subject(id="bleh_photoscan_test",name="Deb Jectson")
     example_database.write_subject(subject)
     session = Session(id = "bleh_session", subject_id=subject.id, name = "Bleh_Session")
     example_database.write_session(subject, session)
-    example_database.write_photoscan(session, photoscan_id, photoscan_name, model_data_path, texture_data_path)
+    example_database.write_photoscan(session.subject_id, session.id, photoscan_id, photoscan_name, model_data_path, texture_data_path)
 
     assert(example_database.get_photoscan_ids(subject.id,session.id) == ["example_photoscan_2"])
     photoscan_filepath = example_database.get_photoscan_metadata_filepath(subject.id, session.id, "example_photoscan_2")
