@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import OpenEXR
 import vtk
-from vtk.util import numpy_support
+import vtk.util
 
 
 def read_file_as_vtkpolydata(file_name):
@@ -56,7 +56,7 @@ def convert_numpy_to_vtkimage(image_numpy):
     vtkimage_data.SetNumberOfScalarComponents(image_numpy.shape[2], vtkimage_data.GetInformation())
     pd = vtkimage_data.GetPointData()
     new_rgb_data = image_numpy[::-1].reshape((-1, image_numpy.shape[2]))
-    vtk_array = numpy_support.numpy_to_vtk(new_rgb_data, deep=True, array_type=vtk.VTK_UNSIGNED_SHORT)
+    vtk_array = vtk.util.numpy_support.numpy_to_vtk(new_rgb_data, deep=True, array_type=vtk.VTK_UNSIGNED_SHORT)
     pd.SetScalars(vtk_array)
     return vtkimage_data
 
