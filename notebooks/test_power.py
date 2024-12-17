@@ -1,5 +1,6 @@
 
 import asyncio
+import sys
 
 from openlifu.io.core import UART
 from openlifu.io.pwr_if import PWR_IF
@@ -72,7 +73,7 @@ async def main():
 
     # Set HV Power
     print("Set HV Power")
-    r = await pwr_if.set_hv_supply(dac_input=2048)
+    r = await pwr_if.set_hv_supply(dac_input=1200)
     format_and_print_hex(r)
 
     # Turn HV Power ON

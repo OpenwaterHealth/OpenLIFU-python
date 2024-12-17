@@ -7,6 +7,7 @@ log = logging.getLogger(__name__)
 
 from openlifu.io.config import (
     OW_CMD_ECHO,
+    OW_CMD_GET_TEMP,
     OW_CMD_HWID,
     OW_CMD_PING,
     OW_CMD_PONG,
@@ -95,6 +96,17 @@ class CTRL_IF:
         await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CMD_HWID)
         self.uart.clear_buffer()
+        return response
+
+    async def get_temperature(self, packet_id=None):
+        if packet_id is None:
+            self.packet_count += 1
+            packet_id = self.packet_count
+
+        await asyncio.sleep(self._delay)
+        response = await self.uart.send_ustx(id=packet_id, packetType=OW_CONTROLLER, command=OW_CMD_GET_TEMP)
+        self.uart.clear_buffer()
+
         return response
 
     async def reset(self, packet_id=None):

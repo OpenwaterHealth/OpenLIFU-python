@@ -23,3 +23,12 @@ Then, either
 The paired `.ipynb` files will automatically be kept in sync with the `.py`
 files, so the `.py` files can be used in version control and the `.ipynb` files
 never need to be committed.
+
+# Using repo without installing Open LIFU
+
+from the repository root directory add src directory to python path.
+
+```
+set PYTHONPATH=%cd%\src;%PYTHONPATH%
+
+```
