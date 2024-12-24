@@ -1,5 +1,6 @@
 
 from pathlib import Path
+from typing import Dict, Optional
 
 import numpy as np
 import OpenEXR
@@ -7,7 +8,7 @@ import vtk
 import vtk.util
 
 
-def read_file_as_vtkpolydata(file_name):
+def read_as_vtkpolydata(file_name):
 
     valid_suffixes = ['.g', '.obj', '.stl', '.ply', '.vtk', '.vtp']
     path = Path(file_name)
@@ -55,12 +56,13 @@ def convert_numpy_to_vtkimage(image_numpy):
     vtkimage_data.SetDimensions(image_numpy.shape[1], image_numpy.shape[0], 1)
     vtkimage_data.SetNumberOfScalarComponents(image_numpy.shape[2], vtkimage_data.GetInformation())
     pd = vtkimage_data.GetPointData()
-    new_rgb_data = image_numpy[::-1].reshape((-1, image_numpy.shape[2]))
+    new_rgb_data = image_numpy.reshape((-1, image_numpy.shape[2]))
+    #new_rgb_data = np.flipud(new_rgb_data) # To look like blender format upon loading. Image is instead flipped in texture module.
     vtk_array = vtk.util.numpy_support.numpy_to_vtk(new_rgb_data, deep=True, array_type=vtk.VTK_UNSIGNED_SHORT)
     pd.SetScalars(vtk_array)
     return vtkimage_data
 
-def read_file_as_vtkimagedata(file_name):
+def read_as_vtkimagedata(file_name):
 
     valid_suffixes = ['.jpg', '.png', '.tiff', '.exr']
     path = Path(file_name)
@@ -99,12 +101,60 @@ def read_file_as_vtkimagedata(file_name):
 
 class Photoscan:
 
-    model: vtk.vtkPolyData = None
-    texture: vtk.vtkImageData = None
+    id : Optional[str] = None
+    """ID of this photoscan"""
 
-    def from_file(self, model_filename: Path, texture_filename: Path):
+    name: Optional[str] = None
+    """Photoscan name"""
+
+    approved: bool = False
+    """Approval state of the photoscan. 'True' means means the user has provided some kind of
+    confirmation that the photoscan is good enough to be used."""
+
+    model_abspath: str
+    """ Absolute path to model"""
+
+    texture_abspath: str
+    """Absolute path to texture image"""
+
+    mtl_abspath: Optional[str] = None
+    """Absolute path to materials file"""
+
+    model: vtk.vtkPolyData = None
+    """Loaded model"""
+
+    texture: vtk.vtkImageData = None
+    """Loaded texture image"""
+
+    @staticmethod
+    def from_dict(d:Dict):
         """
-        Returns a tuple containing the model as a vtkPolyData and texture image as vtkImageData.
+        Create a Photoscan from a dictionary
+        param d: Dictionary of photoscan parameters.
+        returns: Photoscan object
         """
-        self.model = read_file_as_vtkpolydata(model_filename)
-        self.texture = read_file_as_vtkimagedata(texture_filename)
+        if 'model_abspath' in d:
+            d['model'] = read_as_vtkpolydata(d['model_abspath'])
+        if 'texture_abspath' in d:
+            d['texture'] = read_as_vtkimagedata(d['texture_abspath'])
+
+        return Photoscan(**d)
+
+    def to_dict(self):
+        """
+        Convert the photoscan to a dictionary"
+
+        : returns: Dictionary of photoscan parameters
+        """
+        d = self.__dict__.copy()
+        return d
+
+    def from_filepaths(self, model_abspath: str, texture_abspath: str):
+        """
+        params: absolute filepath to model and texture files
+        return: Creates a photoscan containing the loaded model and texture data
+        """
+        d = {'model_abspath': model_abspath, 'texture_filename': Path(texture_abspath).name}
+        d['model'] = read_as_vtkpolydata(model_abspath)
+        d['texture'] = read_as_vtkimagedata(texture_abspath)
+        return Photoscan(**d)
