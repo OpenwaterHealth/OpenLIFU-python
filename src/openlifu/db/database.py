@@ -13,6 +13,7 @@ import h5py
 from openlifu.plan import Protocol, Run, Solution
 from openlifu.util.json import PYFUSEncoder
 
+from .photoscans import Photoscan
 from .session import Session
 from .subject import Subject
 
@@ -276,49 +277,55 @@ class Database:
 
         self.logger.info(f"Added volume with ID {volume_id} for subject {subject_id} to the database.")
 
-    def write_photoscan(self, subject_id, session_id, photoscan_id, photoscan_name, model_data_filepath, texture_data_filepath, mtl_data_filepath: Optional[Path] = None, on_conflict=OnConflictOpts.ERROR):
-        if not Path(model_data_filepath).exists():
-            raise FileNotFoundError(f'Model data filepath does not exist: {model_data_filepath}')
-        if not Path(texture_data_filepath).exists():
-            raise FileNotFoundError(f'Texture data filepath does not exist: {texture_data_filepath}')
+    def write_photoscan(self, subject_id, session_id, photoscan: Photoscan, on_conflict=OnConflictOpts.ERROR):
+        if not Path(photoscan.model_abspath).exists():
+            raise FileNotFoundError(f'Model data filepath does not exist: {photoscan.model_abspath}')
+        if not Path(photoscan.texture_abspath).exists():
+            raise FileNotFoundError(f'Texture data filepath does not exist: {photoscan.texture_abspath}')
 
         photoscan_ids = self.get_photoscan_ids(subject_id, session_id)
-        if photoscan_id in photoscan_ids:
+        if photoscan.id in photoscan_ids:
             if on_conflict == OnConflictOpts.ERROR:
-                raise ValueError(f"Photoscan with ID {photoscan_id} already exists for session {session_id}.")
+                raise ValueError(f"Photoscan with ID {photoscan.id} already exists for session {session_id}.")
             elif on_conflict == OnConflictOpts.OVERWRITE:
-                self.logger.info(f"Overwriting photoscan with ID {photoscan_id} for session {session_id}.")
+                self.logger.info(f"Overwriting photoscan with ID {photoscan.id} for session {session_id}.")
             elif on_conflict == OnConflictOpts.SKIP:
-                self.logger.info(f"Skipping photoscan with ID {photoscan_id} for session {session_id} as it already exists.")
+                self.logger.info(f"Skipping photoscan with ID {photoscan.id} for session {session_id} as it already exists.")
                 return
             else:
                 raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
 
         # Create photoscan metadata
-        photoscan_metadata_dict = {"id": photoscan_id, "name": photoscan_name, "model_filename": Path(model_data_filepath).name, "texture_filename": Path(texture_data_filepath).name, "photoscan_approved": False}
-        if mtl_data_filepath is not None:
-            if not Path(mtl_data_filepath).exists():
-                raise FileNotFoundError(f'MTL filepath does not exist: {mtl_data_filepath}')
-            else:
-                photoscan_metadata_dict["mtl_filename"] = Path(mtl_data_filepath).name
-        photoscan_metadata_json = json.dumps(photoscan_metadata_dict, separators=(',', ':'), cls=PYFUSEncoder)
+        if photoscan.mtl_filename is not None and not Path(photoscan.mtl_filename).exists():
+            raise FileNotFoundError(f'MTL filepath does not exist: {photoscan.mtl_filename}')
+
+        photoscan_metadata_dict = photoscan.to_dict()
+        # Remove the model and texture keys when storing as dictionary and convert absolute paths to relative paths
+        photoscan_metadata_dict.pop('model',None)
+        photoscan_metadata_dict.pop('texture', None)
+        photoscan_metadata_dict['model_filename'] = Path(photoscan_metadata_dict.pop('model_abspath')).name
+        photoscan_metadata_dict['texture_filename'] = Path(photoscan_metadata_dict.pop('texture_abspath')).name
+        photoscan_metadata_dict['mtl_filename'] = Path(photoscan_metadata_dict.pop('mtl_abspath')).name
 
         # Save the photoscan metadata to a JSON file and copy photoscan model and texture files to database
-        photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan_id) #subject_id/photoscan/photoscan_id/photoscan_id.json
+        photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan.id) #subject_id/photoscan/photoscan_id/photoscan_id.json
+        photoscan_metadata_json = json.dumps(photoscan_metadata_dict, separators=(',', ':'), cls=PYFUSEncoder)
+
         Path(photoscan_metadata_filepath).parent.parent.mkdir(exist_ok=True) #photoscan directory
         Path(photoscan_metadata_filepath).parent.mkdir(exist_ok=True)
         with open(photoscan_metadata_filepath, 'w') as file:
             file.write(photoscan_metadata_json)
-        shutil.copy(Path(model_data_filepath), Path(photoscan_metadata_filepath).parent)
-        shutil.copy(Path(texture_data_filepath), Path(photoscan_metadata_filepath).parent)
-        if mtl_data_filepath is not None:
-            shutil.copy(Path(mtl_data_filepath), Path(photoscan_metadata_filepath).parent)
 
-        if photoscan_id not in photoscan_ids:
-            photoscan_ids.append(photoscan_id)
+        shutil.copy(Path(photoscan.model_filename), Path(photoscan_metadata_filepath).parent)
+        shutil.copy(Path(photoscan.texture_filename), Path(photoscan_metadata_filepath).parent)
+        if photoscan.mtl_filename is not None:
+            shutil.copy(Path(photoscan.mtl_filename), Path(photoscan_metadata_filepath).parent)
+
+        if photoscan.id not in photoscan_ids:
+            photoscan_ids.append(photoscan.id)
             self.write_photoscan_ids(subject_id,session_id, photoscan_ids)
 
-        self.logger.info(f"Added photoscan with ID {photoscan_id} for session {session_id} to the database.")
+        self.logger.info(f"Added photoscan with ID {photoscan.id} for session {session_id} to the database.")
 
     def write_solution(self, session:Session, solution:Solution, on_conflict: OnConflictOpts=OnConflictOpts.ERROR):
         solution_ids = self.get_solution_ids(session.subject_id, session.id)
@@ -546,6 +553,12 @@ class Database:
             if "mtl_filename" in photoscan:
                 photoscan_dict["mtl_abspath"] = Path(photoscan_metadata_filepath).parent/photoscan["mtl_filename"]
             return photoscan_dict
+
+    def load_photoscan(self, subject_id, session_id, photoscan_id):
+        """Returns a photoscan object included the loaded model and texture images"""
+        photoscan_dict = self.get_photoscan_info(subject_id, session_id, photoscan_id)
+        photoscan = Photoscan.from_dict(photoscan_dict)
+        return photoscan
 
     def load_standoff(self, transducer_id, standoff_id="standoff"):
         raise NotImplementedError("Standoff is not yet implemented")

@@ -8,7 +8,7 @@ import pytest
 from helpers import dataclasses_are_equal
 
 from openlifu import Point, Solution
-from openlifu.db import Session, Subject
+from openlifu.db import Photoscan, Session, Subject
 from openlifu.db.database import Database, OnConflictOpts
 from openlifu.plan import Protocol, Run
 
@@ -414,8 +414,6 @@ def test_get_photoscan_ids(example_database:Database):
     assert(example_database.get_photoscan_ids("example_subject", "example_session") == ["example_photoscan"])
 
 def test_write_photoscan(example_database:Database, example_session: Session, tmp_path:Path):
-    photoscan_id = "example_photoscan_2"
-    photoscan_name = "EXAMPLE_PHOTOSCAN_2"
     model_data_path = Path(tmp_path/"test_db_files/example_photoscan_2.obj")
     model_data_path.parent.mkdir(parents=True, exist_ok=True)
     model_data_path.touch()
@@ -425,7 +423,9 @@ def test_write_photoscan(example_database:Database, example_session: Session, tm
     mtl_data_path = Path(tmp_path/"test_db_files/example_photoscan.mtl")
     mtl_data_path.parent.mkdir(parents=True, exist_ok=True)
     mtl_data_path.touch()
-    example_database.write_photoscan(example_session.subject_id, example_session.id, photoscan_id, photoscan_name, model_data_path, texture_data_path, mtl_data_path)
+
+    photoscan = Photoscan(id = "example_photoscan_2", name =  "EXAMPLE_PHOTOSCAN_2",model_abspath = model_data_path, texture_abspath = texture_data_path,mtl_abspath = mtl_data_path)
+    example_database.write_photoscan(example_session.subject_id, example_session.id, photoscan)
     assert(len(example_database.get_photoscan_ids("example_subject", "example_session")) == 2)
     assert("example_photoscan" in example_database.get_photoscan_ids("example_subject", "example_session"))
     assert("example_photoscan_2" in example_database.get_photoscan_ids("example_subject", "example_session"))
@@ -438,15 +438,16 @@ def test_write_photoscan(example_database:Database, example_session: Session, tm
 
     # Test not existent filepath
     bogus_texture_file = Path(tmp_path/"test_db_files/bogus_photoscan.exr")
+    photoscan.texture_abspath = bogus_texture_file
     with pytest.raises(FileNotFoundError, match="does not exist"):
-        example_database.write_photoscan(example_session.subject_id, example_session.id, photoscan_id, photoscan_name, model_data_path, bogus_texture_file, on_conflict=OnConflictOpts.OVERWRITE)
+        example_database.write_photoscan(example_session.subject_id, example_session.id, photoscan, on_conflict=OnConflictOpts.OVERWRITE)
 
     # When writing to a new subject and session
     subject = Subject(id="bleh_photoscan_test",name="Deb Jectson")
     example_database.write_subject(subject)
     session = Session(id = "bleh_session", subject_id=subject.id, name = "Bleh_Session")
     example_database.write_session(subject, session)
-    example_database.write_photoscan(session.subject_id, session.id, photoscan_id, photoscan_name, model_data_path, texture_data_path)
+    example_database.write_photoscan(session.subject_id, session.id, photoscan)
 
     assert(example_database.get_photoscan_ids(subject.id,session.id) == ["example_photoscan_2"])
     photoscan_filepath = example_database.get_photoscan_metadata_filepath(subject.id, session.id, "example_photoscan_2")
