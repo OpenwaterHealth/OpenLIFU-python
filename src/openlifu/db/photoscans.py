@@ -99,6 +99,25 @@ def read_as_vtkimagedata(file_name):
 
         return image_data
 
+def convert_between_ras_and_lps(mesh):
+
+    transform_ras_to_lps = vtk.vtkTransform()
+    transform_ras_to_lps.Scale(-1,-1,1)
+
+    transformFilter = vtk.vtkTransformPolyDataFilter()
+    transformFilter.SetInputData(mesh)
+    transformFilter.SetTransform(transform_ras_to_lps)
+    transformFilter.Update()
+
+    return transformFilter.GetOutput()
+
+def load_model(file_name):
+
+    mesh = read_as_vtkimagedata(file_name)
+    mesh_ras = convert_between_ras_and_lps(mesh)
+
+    return mesh_ras
+
 class Photoscan:
 
     id : Optional[str] = None
@@ -134,7 +153,7 @@ class Photoscan:
         returns: Photoscan object
         """
         if 'model_abspath' in d:
-            d['model'] = read_as_vtkpolydata(d['model_abspath'])
+            d['model'] = load_model(d['model_abspath'])
         if 'texture_abspath' in d:
             d['texture'] = read_as_vtkimagedata(d['texture_abspath'])
 
@@ -155,6 +174,6 @@ class Photoscan:
         return: Creates a photoscan containing the loaded model and texture data
         """
         d = {'model_abspath': model_abspath, 'texture_filename': Path(texture_abspath).name}
-        d['model'] = read_as_vtkpolydata(model_abspath)
+        d['model'] = load_model(model_abspath)
         d['texture'] = read_as_vtkimagedata(texture_abspath)
         return Photoscan(**d)
