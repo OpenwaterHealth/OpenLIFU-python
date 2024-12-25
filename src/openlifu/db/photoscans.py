@@ -1,4 +1,5 @@
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -113,30 +114,27 @@ def convert_between_ras_and_lps(mesh):
 
 def load_model(file_name):
 
-    mesh = read_as_vtkimagedata(file_name)
+    mesh = read_as_vtkpolydata(file_name)
     mesh_ras = convert_between_ras_and_lps(mesh)
 
     return mesh_ras
 
+@dataclass
 class Photoscan:
 
-    id : Optional[str] = None
+    id : Optional[str] = "photoscan"
     """ID of this photoscan"""
 
-    name: Optional[str] = None
+    name: Optional[str] = "Photoscan"
     """Photoscan name"""
 
-    approved: bool = False
-    """Approval state of the photoscan. 'True' means means the user has provided some kind of
-    confirmation that the photoscan is good enough to be used."""
-
-    model_abspath: str
+    model_abspath: str =  ""
     """ Absolute path to model"""
 
-    texture_abspath: str
+    texture_abspath: str = ""
     """Absolute path to texture image"""
 
-    mtl_abspath: Optional[str] = None
+    mtl_abspath: Optional[str] = ""
     """Absolute path to materials file"""
 
     model: vtk.vtkPolyData = None
@@ -144,6 +142,10 @@ class Photoscan:
 
     texture: vtk.vtkImageData = None
     """Loaded texture image"""
+
+    approved: bool = False
+    """Approval state of the photoscan. 'True' means means the user has provided some kind of
+    confirmation that the photoscan is good enough to be used."""
 
     @staticmethod
     def from_dict(d:Dict):
@@ -173,7 +175,7 @@ class Photoscan:
         params: absolute filepath to model and texture files
         return: Creates a photoscan containing the loaded model and texture data
         """
-        d = {'model_abspath': model_abspath, 'texture_filename': Path(texture_abspath).name}
+        d = {'model_abspath': model_abspath, 'texture_abspath': texture_abspath}
         d['model'] = load_model(model_abspath)
         d['texture'] = read_as_vtkimagedata(texture_abspath)
         return Photoscan(**d)
