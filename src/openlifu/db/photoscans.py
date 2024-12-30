@@ -1,4 +1,5 @@
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional
@@ -7,6 +8,8 @@ import numpy as np
 import OpenEXR
 import vtk
 import vtk.util
+
+from openlifu.util.json import PYFUSEncoder
 
 
 def read_as_vtkpolydata(file_name):
@@ -147,6 +150,41 @@ class Photoscan:
     """Approval state of the photoscan. 'True' means means the user has provided some kind of
     confirmation that the photoscan is good enough to be used."""
 
+    def from_json(json_string: str, parent_dir: Path):
+        """Load a Photoscan from a json string"""
+        photoscan = json.loads(json_string)
+        photoscan_dict = {"id": photoscan["id"],\
+                "name": photoscan["name"],\
+                "model_abspath": parent_dir/photoscan["model_filename"],
+                "texture_abspath": parent_dir/photoscan["texture_filename"],
+                "photoscan_approved": photoscan["photoscan_approved"]}
+        if "mtl_filename" in photoscan:
+            photoscan_dict["mtl_abspath"] = parent_dir/photoscan["mtl_filename"]
+        return Photoscan.from_dict(photoscan_dict)
+
+    def to_json(self, compact: bool) -> str:
+        """Serialize a Photoscan to a json string
+        Args:
+            compact:if enabled then the string is compact (not pretty). Disable for pretty.
+        Returns: A json string representing the complete Photoscan object
+        """
+
+        photoscan_dict = self.to_dict()
+        # Remove the model and texture keys when storing as json and convert absolute paths to relative paths
+        photoscan_dict.pop('model',None)
+        photoscan_dict.pop('texture', None)
+        photoscan_dict['model_filename'] = Path(photoscan_dict.pop('model_abspath')).name
+        photoscan_dict['texture_filename'] = Path(photoscan_dict.pop('texture_abspath')).name
+        if self.mtl_abspath is not None:
+                photoscan_dict['mtl_filename'] = Path(photoscan_dict.pop('mtl_abspath')).name
+        else:
+            photoscan_dict['mtl_filename'] = photoscan_dict.pop('mtl_abspath', None)
+
+        if compact:
+            return json.dumps(photoscan_dict, separators=(',', ':'), cls=PYFUSEncoder)
+        else:
+            return json.dumps(photoscan_dict, indent=4, cls=PYFUSEncoder)
+
     @staticmethod
     def from_dict(d:Dict):
         """
@@ -157,7 +195,7 @@ class Photoscan:
         if 'model_abspath' in d:
             d['model'] = load_model(d['model_abspath'])
         if 'texture_abspath' in d:
-            d['texture'] = read_as_vtkimagedata(d['texture_abspath'])
+            d['texture'] = load_texture(d['texture_abspath'])
 
         return Photoscan(**d)
 
@@ -177,5 +215,5 @@ class Photoscan:
         """
         d = {'model_abspath': model_abspath, 'texture_abspath': texture_abspath}
         d['model'] = load_model(model_abspath)
-        d['texture'] = read_as_vtkimagedata(texture_abspath)
+        d['texture'] = load_texture(texture_abspath)
         return Photoscan(**d)

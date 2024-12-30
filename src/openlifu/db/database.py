@@ -282,6 +282,8 @@ class Database:
             raise FileNotFoundError(f'Model data filepath does not exist: {photoscan.model_abspath}')
         if not Path(photoscan.texture_abspath).exists():
             raise FileNotFoundError(f'Texture data filepath does not exist: {photoscan.texture_abspath}')
+        if photoscan.mtl_abspath is not None and not Path(photoscan.mtl_abspath).exists():
+            raise FileNotFoundError(f'MTL filepath does not exist: {photoscan.mtl_filename}')
 
         photoscan_ids = self.get_photoscan_ids(subject_id, session_id)
         if photoscan.id in photoscan_ids:
@@ -295,31 +297,20 @@ class Database:
             else:
                 raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
 
-        # Create photoscan metadata
-        if photoscan.mtl_filename is not None and not Path(photoscan.mtl_filename).exists():
-            raise FileNotFoundError(f'MTL filepath does not exist: {photoscan.mtl_filename}')
-
-        photoscan_metadata_dict = photoscan.to_dict()
-        # Remove the model and texture keys when storing as dictionary and convert absolute paths to relative paths
-        photoscan_metadata_dict.pop('model',None)
-        photoscan_metadata_dict.pop('texture', None)
-        photoscan_metadata_dict['model_filename'] = Path(photoscan_metadata_dict.pop('model_abspath')).name
-        photoscan_metadata_dict['texture_filename'] = Path(photoscan_metadata_dict.pop('texture_abspath')).name
-        photoscan_metadata_dict['mtl_filename'] = Path(photoscan_metadata_dict.pop('mtl_abspath')).name
+        photoscan_metadata_json = photoscan.to_json(compact = False)
 
         # Save the photoscan metadata to a JSON file and copy photoscan model and texture files to database
         photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan.id) #subject_id/photoscan/photoscan_id/photoscan_id.json
-        photoscan_metadata_json = json.dumps(photoscan_metadata_dict, separators=(',', ':'), cls=PYFUSEncoder)
 
         Path(photoscan_metadata_filepath).parent.parent.mkdir(exist_ok=True) #photoscan directory
         Path(photoscan_metadata_filepath).parent.mkdir(exist_ok=True)
         with open(photoscan_metadata_filepath, 'w') as file:
             file.write(photoscan_metadata_json)
 
-        shutil.copy(Path(photoscan.model_filename), Path(photoscan_metadata_filepath).parent)
-        shutil.copy(Path(photoscan.texture_filename), Path(photoscan_metadata_filepath).parent)
-        if photoscan.mtl_filename is not None:
-            shutil.copy(Path(photoscan.mtl_filename), Path(photoscan_metadata_filepath).parent)
+        shutil.copy(Path(photoscan.model_abspath), Path(photoscan_metadata_filepath).parent)
+        shutil.copy(Path(photoscan.texture_abspath), Path(photoscan_metadata_filepath).parent)
+        if photoscan.mtl_abspath is not None:
+            shutil.copy(Path(photoscan.mtl_abspath), Path(photoscan_metadata_filepath).parent)
 
         if photoscan.id not in photoscan_ids:
             photoscan_ids.append(photoscan.id)
@@ -542,6 +533,7 @@ class Database:
                     "data_abspath": Path(volume_metadata_filepath).parent/volume["data_filename"]}
 
     def get_photoscan_info(self, subject_id, session_id, photoscan_id):
+        """Returns the photoscan information as a dictionary without the loaded model and texture"""
         photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan_id)
         with open(photoscan_metadata_filepath) as f:
             photoscan = json.load(f)
@@ -552,12 +544,13 @@ class Database:
                     "photoscan_approved": photoscan["photoscan_approved"]}
             if "mtl_filename" in photoscan:
                 photoscan_dict["mtl_abspath"] = Path(photoscan_metadata_filepath).parent/photoscan["mtl_filename"]
-            return photoscan_dict
+        return photoscan_dict
 
     def load_photoscan(self, subject_id, session_id, photoscan_id):
         """Returns a photoscan object included the loaded model and texture images"""
-        photoscan_dict = self.get_photoscan_info(subject_id, session_id, photoscan_id)
-        photoscan = Photoscan.from_dict(photoscan_dict)
+        photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan_id)
+        with open(photoscan_metadata_filepath) as f:
+            photoscan = Photoscan.from_json(f, Path(photoscan_metadata_filepath).parent)
         return photoscan
 
     def load_standoff(self, transducer_id, standoff_id="standoff"):
