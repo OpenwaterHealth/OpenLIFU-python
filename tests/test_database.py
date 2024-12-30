@@ -436,12 +436,6 @@ def test_write_photoscan(example_database:Database, example_session: Session, tm
     assert((photoscan_filepath.parent/"example_photoscan_texture_2.exr").exists())
     assert((photoscan_filepath.parent/"example_photoscan.mtl").exists())
 
-    # Test not existent filepath
-    bogus_texture_file = Path(tmp_path/"test_db_files/bogus_photoscan.exr")
-    photoscan.texture_abspath = bogus_texture_file
-    with pytest.raises(FileNotFoundError, match="does not exist"):
-        example_database.write_photoscan(example_session.subject_id, example_session.id, photoscan, on_conflict=OnConflictOpts.OVERWRITE)
-
     # When writing to a new subject and session
     subject = Subject(id="bleh_photoscan_test",name="Deb Jectson")
     example_database.write_subject(subject)
@@ -454,3 +448,9 @@ def test_write_photoscan(example_database:Database, example_session: Session, tm
     assert(photoscan_filepath.name == "example_photoscan_2.json")
     assert((photoscan_filepath.parent/"example_photoscan_2.obj").exists())
     assert((photoscan_filepath.parent/"example_photoscan_texture_2.exr").exists())
+
+    # Test not existent filepath
+    bogus_texture_file = Path(tmp_path/"test_db_files/bogus_photoscan.exr")
+    photoscan.texture_abspath = bogus_texture_file
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        example_database.write_photoscan(example_session.subject_id, example_session.id, photoscan, on_conflict=OnConflictOpts.OVERWRITE)
