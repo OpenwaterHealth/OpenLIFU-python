@@ -7,7 +7,7 @@ from typing import Dict, Optional
 import numpy as np
 import OpenEXR
 import vtk
-import vtk.util
+from vtk.util import numpy_support
 
 from openlifu.util.json import PYFUSEncoder
 
@@ -62,7 +62,7 @@ def convert_numpy_to_vtkimage(image_numpy):
     pd = vtkimage_data.GetPointData()
     new_rgb_data = image_numpy.reshape((-1, image_numpy.shape[2]))
     #new_rgb_data = np.flipud(new_rgb_data) # To look like blender format upon loading. Image is instead flipped in texture module.
-    vtk_array = vtk.util.numpy_support.numpy_to_vtk(new_rgb_data, deep=True, array_type=vtk.VTK_UNSIGNED_SHORT)
+    vtk_array = numpy_support.numpy_to_vtk(new_rgb_data, deep=True, array_type=vtk.VTK_UNSIGNED_SHORT)
     pd.SetScalars(vtk_array)
     return vtkimage_data
 
@@ -117,10 +117,18 @@ def convert_between_ras_and_lps(mesh):
 
 def load_model(file_name):
 
+    if not Path(file_name).exists():
+        raise FileNotFoundError(f'Model filepath does not exist: {file_name}')
     mesh = read_as_vtkpolydata(file_name)
     mesh_ras = convert_between_ras_and_lps(mesh)
 
     return mesh_ras
+
+def load_texture(file_name):
+    if not Path(file_name).exists():
+        raise FileNotFoundError(f'Texture data filepath does not exist: {file_name}')
+    texture = read_as_vtkimagedata(file_name)
+    return texture
 
 @dataclass
 class Photoscan:
@@ -146,20 +154,21 @@ class Photoscan:
     texture: vtk.vtkImageData = None
     """Loaded texture image"""
 
-    approved: bool = False
+    photoscan_approved: bool = False
     """Approval state of the photoscan. 'True' means means the user has provided some kind of
     confirmation that the photoscan is good enough to be used."""
 
+    @staticmethod
     def from_json(json_string: str, parent_dir: Path):
         """Load a Photoscan from a json string"""
         photoscan = json.loads(json_string)
         photoscan_dict = {"id": photoscan["id"],\
                 "name": photoscan["name"],\
-                "model_abspath": parent_dir/photoscan["model_filename"],
-                "texture_abspath": parent_dir/photoscan["texture_filename"],
+                "model_abspath": Path(parent_dir)/photoscan["model_filename"],
+                "texture_abspath": Path(parent_dir)/photoscan["texture_filename"],
                 "photoscan_approved": photoscan["photoscan_approved"]}
         if "mtl_filename" in photoscan:
-            photoscan_dict["mtl_abspath"] = parent_dir/photoscan["mtl_filename"]
+            photoscan_dict["mtl_abspath"] = Path(parent_dir)/photoscan["mtl_filename"]
         return Photoscan.from_dict(photoscan_dict)
 
     def to_json(self, compact: bool) -> str:
@@ -208,7 +217,8 @@ class Photoscan:
         d = self.__dict__.copy()
         return d
 
-    def from_filepaths(self, model_abspath: str, texture_abspath: str):
+    @staticmethod
+    def from_filepaths(model_abspath: str, texture_abspath: str):
         """
         params: absolute filepath to model and texture files
         return: Creates a photoscan containing the loaded model and texture data
@@ -217,3 +227,9 @@ class Photoscan:
         d['model'] = load_model(model_abspath)
         d['texture'] = load_texture(texture_abspath)
         return Photoscan(**d)
+
+    @staticmethod
+    def from_file(filename):
+        with open(filename) as f:
+            json_string = json.dumps(json.load(f))
+        return Photoscan.from_json(json_string, filename.parent)
