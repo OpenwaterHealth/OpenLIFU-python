@@ -14,29 +14,36 @@ def example_database(tmp_path:Path) -> Database:
     shutil.copytree(Path(__file__).parent/'resources/example_db', tmp_path/"example_db")
     return Database(tmp_path/"example_db")
 
-def test_load_photoscans(example_database:Database, tmp_path:Path):
+def test_load_photoscan(example_database:Database, tmp_path:Path):
 
     subject_id = "example_subject"
     session_id = "example_session"
     photoscan_id = "example_photoscan"
     photoscan_info = example_database.get_photoscan_info(subject_id, session_id, photoscan_id)
-    photoscan = Photoscan()
-    photoscan.from_filepaths(photoscan_info["model_abspath"],photoscan_info["texture_abspath"])
+    assert(Path(photoscan_info["texture_abspath"]).exists())
+    photoscan = Photoscan.from_filepaths(photoscan_info["model_abspath"], photoscan_info["texture_abspath"])
     assert photoscan.model is not None
     assert photoscan.texture is not None
     assert isinstance(photoscan.model, vtkPolyData)
     assert isinstance(photoscan.texture,vtkImageData)
 
-    photoscan = Photoscan()
-    photoscan.from_dict(photoscan_info)
+    # From file
+    photoscan_metadata_filepath = example_database.get_photoscan_metadata_filepath(subject_id, session_id, photoscan_id)
+    photoscan = Photoscan.from_file(photoscan_metadata_filepath)
     assert photoscan.model is not None
     assert photoscan.texture is not None
     assert isinstance(photoscan.model, vtkPolyData)
     assert isinstance(photoscan.texture,vtkImageData)
 
-    bogus_file = Path(tmp_path/"test_db_files/bogus_photoscan.bogus")
-    photoscan = Photoscan()
+    bogus_file = Path(tmp_path/"test_db_files/bogus_photoscan.pdf")
+    bogus_file.parent.mkdir(parents=True, exist_ok=True)
+    bogus_file.touch()
     with pytest.raises(ValueError, match="not supported by reader"):
-        photoscan.from_filepaths(photoscan_info["model_abspath"], bogus_file)
+        Photoscan.from_filepaths(photoscan.model_abspath, bogus_file)
     with pytest.raises(ValueError, match="not supported by reader"):
-        photoscan.from_filepaths(bogus_file, photoscan_info["texture_abspath"])
+        Photoscan.from_filepaths(bogus_file,photoscan.texture_abspath)
+
+    # File does not exist
+    bogus_file = Path(tmp_path/"test_db_files/bogus_photoscan.obj")
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        Photoscan.from_filepaths(bogus_file, photoscan.texture_abspath)
