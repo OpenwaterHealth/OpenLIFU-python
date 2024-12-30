@@ -297,15 +297,11 @@ class Database:
             else:
                 raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
 
-        photoscan_metadata_json = photoscan.to_json(compact = False)
+        # photoscan_metadata_json = photoscan.to_json(compact = False)
 
         # Save the photoscan metadata to a JSON file and copy photoscan model and texture files to database
         photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan.id) #subject_id/photoscan/photoscan_id/photoscan_id.json
-
-        Path(photoscan_metadata_filepath).parent.parent.mkdir(exist_ok=True) #photoscan directory
-        Path(photoscan_metadata_filepath).parent.mkdir(exist_ok=True)
-        with open(photoscan_metadata_filepath, 'w') as file:
-            file.write(photoscan_metadata_json)
+        photoscan.to_file(photoscan_metadata_filepath)
 
         shutil.copy(Path(photoscan.model_abspath), Path(photoscan_metadata_filepath).parent)
         shutil.copy(Path(photoscan.texture_abspath), Path(photoscan_metadata_filepath).parent)

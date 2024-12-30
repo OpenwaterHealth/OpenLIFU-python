@@ -159,36 +159,20 @@ class Photoscan:
     confirmation that the photoscan is good enough to be used."""
 
     @staticmethod
-    def from_json(json_string: str, parent_dir: Path):
+    def from_json(json_string: str):
         """Load a Photoscan from a json string"""
-        photoscan = json.loads(json_string)
-        photoscan_dict = {"id": photoscan["id"],\
-                "name": photoscan["name"],\
-                "model_abspath": Path(parent_dir)/photoscan["model_filename"],
-                "texture_abspath": Path(parent_dir)/photoscan["texture_filename"],
-                "photoscan_approved": photoscan["photoscan_approved"]}
-        if "mtl_filename" in photoscan:
-            photoscan_dict["mtl_abspath"] = Path(parent_dir)/photoscan["mtl_filename"]
-        return Photoscan.from_dict(photoscan_dict)
+        return Photoscan.from_dict(json.loads(json_string))
 
     def to_json(self, compact: bool) -> str:
-        """Serialize a Photoscan to a json string
+        """Serialize a Photoscan to a json string. This is different to the format written to file
+        and does not contain the loaded models and texture.
         Args:
             compact:if enabled then the string is compact (not pretty). Disable for pretty.
         Returns: A json string representing the complete Photoscan object
         """
-
         photoscan_dict = self.to_dict()
-        # Remove the model and texture keys when storing as json and convert absolute paths to relative paths
         photoscan_dict.pop('model',None)
         photoscan_dict.pop('texture', None)
-        photoscan_dict['model_filename'] = Path(photoscan_dict.pop('model_abspath')).name
-        photoscan_dict['texture_filename'] = Path(photoscan_dict.pop('texture_abspath')).name
-        if self.mtl_abspath is not None:
-                photoscan_dict['mtl_filename'] = Path(photoscan_dict.pop('mtl_abspath')).name
-        else:
-            photoscan_dict['mtl_filename'] = photoscan_dict.pop('mtl_abspath', None)
-
         if compact:
             return json.dumps(photoscan_dict, separators=(',', ':'), cls=PYFUSEncoder)
         else:
@@ -210,9 +194,8 @@ class Photoscan:
 
     def to_dict(self):
         """
-        Convert the photoscan to a dictionary"
-
-        : returns: Dictionary of photoscan parameters
+        Convert the photoscan to a dictionary
+        returns: Dictionary of photoscan parameters
         """
         d = self.__dict__.copy()
         return d
@@ -230,6 +213,40 @@ class Photoscan:
 
     @staticmethod
     def from_file(filename):
+        """
+        Load a Photoscan from a metadata file and
+        convert relative filepaths to absolute paths
+        """
+        parent_dir = Path(filename).parent
         with open(filename) as f:
-            json_string = json.dumps(json.load(f))
-        return Photoscan.from_json(json_string, filename.parent)
+            photoscan = json.load(f)
+        photoscan_dict = {"id": photoscan["id"],\
+                "name": photoscan["name"],\
+                "model_abspath": str(parent_dir/photoscan["model_filename"]),
+                "texture_abspath": str(parent_dir/photoscan["texture_filename"]),
+                "photoscan_approved": photoscan["photoscan_approved"]}
+        if "mtl_filename" in photoscan:
+            photoscan_dict["mtl_abspath"] = str(parent_dir/photoscan["mtl_filename"])
+        return Photoscan.from_dict(photoscan_dict)
+
+    def to_file(self, filename):
+        """
+        Save the photoscan to a file. Remove the model and texture keys
+        when writing to file and convert absolute paths to relative paths
+
+        :param filename: Name of the file
+        """
+        photoscan_dict = self.to_dict()
+        photoscan_dict.pop('model',None)
+        photoscan_dict.pop('texture', None)
+        photoscan_dict['model_filename'] = str(Path(photoscan_dict.pop('model_abspath')).name)
+        photoscan_dict['texture_filename'] = str(Path(photoscan_dict.pop('texture_abspath')).name)
+        if self.mtl_abspath is not None:
+                photoscan_dict['mtl_filename'] = str(Path(photoscan_dict.pop('mtl_abspath')).name)
+        else:
+            photoscan_dict['mtl_filename'] = photoscan_dict.pop('mtl_abspath', None)
+
+        Path(filename).parent.parent.mkdir(exist_ok=True) #photoscan directory
+        Path(filename).parent.mkdir(exist_ok=True)
+        with open(filename, 'w') as file:
+            file.write(json.dumps(photoscan_dict, indent=4, cls=PYFUSEncoder))
