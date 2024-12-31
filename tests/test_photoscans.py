@@ -6,7 +6,7 @@ from helpers import dataclasses_are_equal
 from vtk import vtkImageData, vtkPolyData
 
 from openlifu.db.database import Database
-from openlifu.db.photoscans import Photoscan
+from openlifu.db.photoscan import Photoscan
 
 
 @pytest.fixture()
