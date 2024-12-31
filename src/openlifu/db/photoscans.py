@@ -209,6 +209,11 @@ class Photoscan:
         d = {'model_abspath': model_abspath, 'texture_abspath': texture_abspath}
         d['model'] = load_model(model_abspath)
         d['texture'] = load_texture(texture_abspath)
+
+        # Set photoscan name and ID based on model filename (without suffix)
+        d['name'] = Path(model_abspath).stem
+        d['id'] = Path(model_abspath).stem
+
         return Photoscan(**d)
 
     @staticmethod
