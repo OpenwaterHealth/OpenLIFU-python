@@ -13,7 +13,7 @@ import h5py
 from openlifu.plan import Protocol, Run, Solution
 from openlifu.util.json import PYFUSEncoder
 
-from .photoscans import Photoscan
+from .photoscan import Photoscan
 from .session import Session
 from .subject import Subject
 

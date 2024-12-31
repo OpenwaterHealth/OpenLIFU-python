@@ -1,5 +1,5 @@
 from .database import Database
-from .photoscans import Photoscan
+from .photoscan import Photoscan
 from .session import Session
 from .subject import Subject
 
