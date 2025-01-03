@@ -547,6 +547,22 @@ class Database:
                 photoscan_dict["mtl_abspath"] = Path(photoscan_metadata_filepath).parent/photoscan["mtl_filename"]
             return photoscan_dict
 
+    def get_transducer_info(self, transducer_id):
+        transducer_metadata_filepath = self.get_transducer_filename(transducer_id)
+        with open(transducer_metadata_filepath) as f:
+            transducer = json.load(f)
+            transducer_dict = {"id": transducer["id"],\
+                    "name": transducer["name"],\
+                    "elements": transducer["elements"], \
+                    "frequency": transducer["frequency"], \
+                    "units": transducer["units"], \
+                    "attrs": transducer["attrs"]}
+            if "registration_surface_model" in transducer:
+                transducer_dict["registration_surface_abspath"] = Path(transducer_metadata_filepath).parent/transducer["registration_surface_filename"]
+            if "transducer_body_model" in transducer:
+                transducer_dict["transducer_body_abspath"] = Path(transducer_metadata_filepath).parent/transducer["transducer_body_filename"]
+            return transducer_dict
+
     def load_standoff(self, transducer_id, standoff_id="standoff"):
         raise NotImplementedError("Standoff is not yet implemented")
         standoff_filename = self.get_standoff_filename(transducer_id, standoff_id)
