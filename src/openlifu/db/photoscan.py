@@ -2,7 +2,7 @@
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 import OpenEXR
@@ -11,6 +11,118 @@ from vtk.util import numpy_support
 
 from openlifu.util.json import PYFUSEncoder
 
+
+@dataclass
+class Photoscan:
+
+    id : str = "photoscan"
+    """ID of this photoscan"""
+
+    name: Optional[str] = "Photoscan"
+    """Photoscan name"""
+
+    model_filename: Optional[str] =  ""
+    """Relative path to model"""
+
+    texture_filename: Optional[str] = ""
+    """Relative path to texture image"""
+
+    mtl_filename: Optional[str] = ""
+    """Relative path to materials file"""
+
+    photoscan_approved: bool = False
+    """Approval state of the photoscan. 'True' means means the user has provided some kind of
+    confirmation that the photoscan is good enough to be used."""
+
+    @staticmethod
+    def from_json(json_string: str):
+        """Load a Photoscan from a json string"""
+        return Photoscan.from_dict(json.loads(json_string))
+
+    def to_json(self, compact: bool) -> str:
+        """Serialize a Photoscan to a json string. This is different to the format written to file
+        and does not contain the loaded models and texture.
+        Args:
+            compact:if enabled then the string is compact (not pretty). Disable for pretty.
+        Returns: A json string representing the complete Photoscan object
+        """
+        if compact:
+            return json.dumps(self.to_dict(), separators=(',', ':'), cls=PYFUSEncoder)
+        else:
+            return json.dumps(self.to_dict(), indent=4, cls=PYFUSEncoder)
+
+    @staticmethod
+    def from_dict(d:Dict):
+        """
+        Create a Photoscan from a dictionary
+        param d: Dictionary of photoscan parameters.
+        returns: Photoscan object
+        """
+        return Photoscan(**d)
+
+    def to_dict(self):
+        """
+        Convert the photoscan to a dictionary
+        returns: Dictionary of photoscan parameters
+        """
+        d = self.__dict__.copy()
+        return d
+
+    @staticmethod
+    def from_file(filename):
+        """
+        Load a Photoscan from a metadata file
+        :param filename: Name of the file
+        """
+        with open(filename) as f:
+            return Photoscan.from_dict(json.load(f))
+
+    def to_file(self, filename):
+        """
+        Save the photoscan to a file.
+        :param filename: Name of the file
+        """
+        Path(filename).parent.parent.mkdir(exist_ok=True) #photoscan directory
+        Path(filename).parent.mkdir(exist_ok=True)
+        with open(filename, 'w') as file:
+            file.write(self.to_json(compact = False))
+
+def load_data_from_filepaths(model_abspath: str, texture_abspath: str) -> Tuple[vtk.vtkPolyData, vtk.vtkImageData]:
+    """
+    This function directly returns the data without creating a photoscan object
+    param model_abspath: absolute filepath to model data
+          texture abspath: absolute filepath to texture data
+    Returns: Photoscan data as (model_vtkpolydata, texture_vtkimagedata)
+    """
+    model_polydata  = load_model(model_abspath)
+    texture_imagedata = load_texture(texture_abspath)
+
+    return (model_polydata, texture_imagedata)
+
+def load_data_from_photoscan(photoscan: Photoscan, parent_dir) -> Tuple[vtk.vtkPolyData, vtk.vtkImageData]:
+    """
+    param parent_dir: parent directory containing model and texture data filepaths
+    Returns: Photoscan data as (model_vtkpolydata, texture_vtkimagedata)
+    """
+    model_polydata  = load_model(Path(parent_dir)/photoscan.model_filename)
+    texture_imagedata = load_texture(Path(parent_dir)/photoscan.texture_filename)
+
+    return (model_polydata, texture_imagedata)
+
+def load_model(file_name):
+    """ This function assumes that the model is saved following the LPS coordinate system."""
+    if not Path(file_name).exists():
+        raise FileNotFoundError(f'Model filepath does not exist: {file_name}')
+    mesh = read_as_vtkpolydata(file_name)
+    mesh_ras = convert_between_ras_and_lps(mesh)
+
+    return mesh_ras
+
+def load_texture(file_name):
+    if not Path(file_name).exists():
+        raise FileNotFoundError(f'Texture data filepath does not exist: {file_name}')
+    texture = read_as_vtkimagedata(file_name)
+    return texture
 
 def read_as_vtkpolydata(file_name):
 
@@ -114,144 +226,3 @@ def convert_between_ras_and_lps(mesh):
     transformFilter.Update()
 
     return transformFilter.GetOutput()
-
-def load_model(file_name):
-
-    if not Path(file_name).exists():
-        raise FileNotFoundError(f'Model filepath does not exist: {file_name}')
-    mesh = read_as_vtkpolydata(file_name)
-    mesh_ras = convert_between_ras_and_lps(mesh)
-
-    return mesh_ras
-
-def load_texture(file_name):
-    if not Path(file_name).exists():
-        raise FileNotFoundError(f'Texture data filepath does not exist: {file_name}')
-    texture = read_as_vtkimagedata(file_name)
-    return texture
-
-@dataclass
-class Photoscan:
-
-    id : Optional[str] = "photoscan"
-    """ID of this photoscan"""
-
-    name: Optional[str] = "Photoscan"
-    """Photoscan name"""
-
-    model_abspath: str =  ""
-    """ Absolute path to model"""
-
-    texture_abspath: str = ""
-    """Absolute path to texture image"""
-
-    mtl_abspath: Optional[str] = ""
-    """Absolute path to materials file"""
-
-    model: vtk.vtkPolyData = None
-    """Loaded model"""
-
-    texture: vtk.vtkImageData = None
-    """Loaded texture image"""
-
-    photoscan_approved: bool = False
-    """Approval state of the photoscan. 'True' means means the user has provided some kind of
-    confirmation that the photoscan is good enough to be used."""
-
-    @staticmethod
-    def from_json(json_string: str):
-        """Load a Photoscan from a json string"""
-        return Photoscan.from_dict(json.loads(json_string))
-
-    def to_json(self, compact: bool) -> str:
-        """Serialize a Photoscan to a json string. This is different to the format written to file
-        and does not contain the loaded models and texture.
-        Args:
-            compact:if enabled then the string is compact (not pretty). Disable for pretty.
-        Returns: A json string representing the complete Photoscan object
-        """
-        photoscan_dict = self.to_dict()
-        photoscan_dict.pop('model',None)
-        photoscan_dict.pop('texture', None)
-        if compact:
-            return json.dumps(photoscan_dict, separators=(',', ':'), cls=PYFUSEncoder)
-        else:
-            return json.dumps(photoscan_dict, indent=4, cls=PYFUSEncoder)
-
-    @staticmethod
-    def from_dict(d:Dict):
-        """
-        Create a Photoscan from a dictionary
-        param d: Dictionary of photoscan parameters.
-        returns: Photoscan object
-        """
-        if 'model_abspath' in d:
-            d['model'] = load_model(d['model_abspath'])
-        if 'texture_abspath' in d:
-            d['texture'] = load_texture(d['texture_abspath'])
-
-        return Photoscan(**d)
-
-    def to_dict(self):
-        """
-        Convert the photoscan to a dictionary
-        returns: Dictionary of photoscan parameters
-        """
-        d = self.__dict__.copy()
-        return d
-
-    @staticmethod
-    def from_filepaths(model_abspath: str, texture_abspath: str):
-        """
-        params: absolute filepath to model and texture files
-        return: Creates a photoscan containing the loaded model and texture data
-        """
-        d = {'model_abspath': model_abspath, 'texture_abspath': texture_abspath}
-        d['model'] = load_model(model_abspath)
-        d['texture'] = load_texture(texture_abspath)
-
-        # Set photoscan name and ID based on model filename (without suffix)
-        d['name'] = Path(model_abspath).stem
-        d['id'] = Path(model_abspath).stem
-
-        return Photoscan(**d)
-
-    @staticmethod
-    def from_file(filename):
-        """
-        Load a Photoscan from a metadata file and
-        convert relative filepaths to absolute paths
-        """
-        parent_dir = Path(filename).parent
-        with open(filename) as f:
-            photoscan = json.load(f)
-        photoscan_dict = {"id": photoscan["id"],\
-                "name": photoscan["name"],\
-                "model_abspath": str(parent_dir/photoscan["model_filename"]),
-                "texture_abspath": str(parent_dir/photoscan["texture_filename"]),
-                "photoscan_approved": photoscan["photoscan_approved"]}
-        if "mtl_filename" in photoscan:
-            photoscan_dict["mtl_abspath"] = str(parent_dir/photoscan["mtl_filename"])
-        return Photoscan.from_dict(photoscan_dict)
-
-    def to_file(self, filename):
-        """
-        Save the photoscan to a file. Remove the model and texture keys
-        when writing to file and convert absolute paths to relative paths
-
-        :param filename: Name of the file
-        """
-        photoscan_dict = self.to_dict()
-        photoscan_dict.pop('model',None)
-        photoscan_dict.pop('texture', None)
-        photoscan_dict['model_filename'] = str(Path(photoscan_dict.pop('model_abspath')).name)
-        photoscan_dict['texture_filename'] = str(Path(photoscan_dict.pop('texture_abspath')).name)
-        if self.mtl_abspath is not None:
-                photoscan_dict['mtl_filename'] = str(Path(photoscan_dict.pop('mtl_abspath')).name)
-        else:
-            photoscan_dict['mtl_filename'] = photoscan_dict.pop('mtl_abspath', None)
-
-        Path(filename).parent.parent.mkdir(exist_ok=True) #photoscan directory
-        Path(filename).parent.mkdir(exist_ok=True)
-        with open(filename, 'w') as file:
-            file.write(json.dumps(photoscan_dict, indent=4, cls=PYFUSEncoder))
