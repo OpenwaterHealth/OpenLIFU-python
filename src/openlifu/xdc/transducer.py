@@ -21,6 +21,10 @@ class Transducer:
     frequency: float = 400.6e3
     units: str = "m"
     attrs: Dict[str, Any] = field(default_factory= dict)
+    registration_surface_filename: Optional[str] = ""
+    """Relative path to an open surface of the transducer to be used for registration"""
+    transducer_body_filename: Optional[str] = ""
+    """Relative path to the closed surface mesh for visualizing the transducer body"""
 
     def __post_init__(self):
         logging.info("Initializing transducer array")
