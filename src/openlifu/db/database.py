@@ -277,13 +277,7 @@ class Database:
 
         self.logger.info(f"Added volume with ID {volume_id} for subject {subject_id} to the database.")
 
-    def write_photoscan(self, subject_id, session_id, photoscan: Photoscan, on_conflict=OnConflictOpts.ERROR):
-        if not Path(photoscan.model_abspath).exists():
-            raise FileNotFoundError(f'Model data filepath does not exist: {photoscan.model_abspath}')
-        if not Path(photoscan.texture_abspath).exists():
-            raise FileNotFoundError(f'Texture data filepath does not exist: {photoscan.texture_abspath}')
-        if photoscan.mtl_abspath is not None and not Path(photoscan.mtl_abspath).exists():
-            raise FileNotFoundError(f'MTL filepath does not exist: {photoscan.mtl_filename}')
+    def write_photoscan(self, subject_id, session_id, photoscan: Photoscan, model_data_filepath: Optional[str] = None, texture_data_filepath: Optional[str] = None, mtl_data_filepath: Optional[str] = None, on_conflict=OnConflictOpts.ERROR):
 
         photoscan_ids = self.get_photoscan_ids(subject_id, session_id)
         if photoscan.id in photoscan_ids:
@@ -297,16 +291,41 @@ class Database:
             else:
                 raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
 
-        # photoscan_metadata_json = photoscan.to_json(compact = False)
-
-        # Save the photoscan metadata to a JSON file and copy photoscan model and texture files to database
         photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan.id) #subject_id/photoscan/photoscan_id/photoscan_id.json
-        photoscan.to_file(photoscan_metadata_filepath)
+        photoscan_parent_dir = Path(photoscan_metadata_filepath).parent
+        photoscan_parent_dir.mkdir(exist_ok=True)
 
-        shutil.copy(Path(photoscan.model_abspath), Path(photoscan_metadata_filepath).parent)
-        shutil.copy(Path(photoscan.texture_abspath), Path(photoscan_metadata_filepath).parent)
-        if photoscan.mtl_abspath is not None:
-            shutil.copy(Path(photoscan.mtl_abspath), Path(photoscan_metadata_filepath).parent)
+        # Copy photoscan model and texture files to database.
+        # If a model and texture data file is not provided, check that there are existing files previously
+        # associated with the photoscan object.
+        if model_data_filepath is None:
+            if not photoscan.model_filename or not (photoscan_parent_dir/photoscan.model_filename).exists():
+                raise ValueError(f"Cannot find model file associated with photoscan {photoscan.id}.")
+        elif not Path(model_data_filepath).exists():
+            raise FileNotFoundError(f'Model data filepath does not exist: {model_data_filepath}')
+        else:
+            photoscan.model_filename = Path(model_data_filepath).name
+            shutil.copy(Path(model_data_filepath), Path(photoscan_metadata_filepath).parent)
+
+        if texture_data_filepath is None:
+            if not photoscan.texture_filename or not (photoscan_parent_dir/photoscan.texture_filename).exists():
+                raise ValueError(f"Cannot find texture file associated with photoscan {photoscan.id}.")
+        elif not Path(texture_data_filepath).exists():
+            raise FileNotFoundError(f'Texture data filepath does not exist: {texture_data_filepath}')
+        else:
+            photoscan.texture_filename = Path(texture_data_filepath).name
+            shutil.copy(Path(texture_data_filepath), Path(photoscan_metadata_filepath).parent)
+
+        # Not necessarily required for a photoscan object
+        if mtl_data_filepath is not None:
+            if not Path(mtl_data_filepath).exists():
+                raise FileNotFoundError(f'MTL filepath does not exist: {mtl_data_filepath}')
+            else:
+                photoscan.mtl_filename = Path(mtl_data_filepath).name
+                shutil.copy(Path(mtl_data_filepath), Path(photoscan_metadata_filepath).parent)
+
+        #Save the photoscan metadata to a JSON file
+        photoscan.to_file(photoscan_metadata_filepath)
 
         if photoscan.id not in photoscan_ids:
             photoscan_ids.append(photoscan.id)
