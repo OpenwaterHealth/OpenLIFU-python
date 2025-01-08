@@ -43,5 +43,28 @@
       ]
     ]
   },
-  "transducer_tracking_approved": false
+  "transducer_tracking_results": [
+    {
+      "photoscan_id": "example_photoscan",
+      "transducer_to_photoscan_transform": {
+        "matrix": [
+          [1.0, 0.0, 0.0, 0.0],
+          [0.0, 1.0, 0.0, 0.0],
+          [0.0, 0.0, 1.0, 0.0],
+          [0.0, 0.0, 0.0, 1.0]
+        ],
+        "units": "mm"
+      },
+      "photoscan_to_volume_transform": {
+        "matrix": [
+          [1.0, 0.0, 0.0, 0.0],
+          [0.0, 1.0, 0.0, 0.0],
+          [0.0, 0.0, 1.0, 0.0],
+          [0.0, 0.0, 0.0, 1.0]
+        ],
+        "units": "mm"
+      },
+      "transducer_tracking_approved": false
+    }
+  ]
 }
