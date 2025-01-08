@@ -194,7 +194,7 @@ class Database:
 
         self.logger.info(f"Added subject with ID {subject_id} to the database.")
 
-    def write_transducer(self, transducer, on_conflict: OnConflictOpts=OnConflictOpts.ERROR):
+    def write_transducer(self, transducer, registration_surface_model_filepath: Optional[str] = None, transducer_body_model_filepath: Optional[str] = None, on_conflict: OnConflictOpts=OnConflictOpts.ERROR):
         transducer_id = transducer.id
         transducer_ids = self.get_transducer_ids()
 
@@ -210,6 +210,30 @@ class Database:
                 raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
 
         transducer_filename = self.get_transducer_filename(transducer_id)
+        transducer_parent_dir = transducer_filename.parent
+        transducer_parent_dir.mkdir(exist_ok = True)
+
+        # Copy the transducer data files to database.
+        # If tranducer data files not provided, check that any files previously
+        # associated with the transducer object exist.
+        if registration_surface_model_filepath:
+            if not Path(registration_surface_model_filepath).exists():
+                raise FileNotFoundError(f'Registration surface model filepath does not exist: {registration_surface_model_filepath}')
+            transducer.registration_surface_filename = Path(registration_surface_model_filepath).name
+            shutil.copy(Path(registration_surface_model_filepath), transducer_parent_dir)
+        elif transducer.registration_surface_filename:
+            if not (transducer_parent_dir/transducer.registration_surface_filename).exists():
+                raise ValueError(f"Cannot find registration surface file associated with transducer {transducer.id}.")
+
+        if transducer_body_model_filepath:
+            if not Path(transducer_body_model_filepath).exists():
+                raise FileNotFoundError(f'Transducer body model filepath does not exist: {transducer_body_model_filepath}')
+            transducer.transducer_body_filename = Path(transducer_body_model_filepath).name
+            shutil.copy(Path(transducer_body_model_filepath), transducer_parent_dir)
+        elif transducer.transducer_body_filename:
+            if not (transducer_parent_dir/transducer.transducer_body_filename).exists():
+                raise ValueError(f"Cannot find transducer body file associated with transducer {transducer.id}.")
+
         transducer.to_file(transducer_filename)
 
         if transducer_id not in transducer_ids:
@@ -584,9 +608,9 @@ class Database:
                     "frequency": transducer["frequency"], \
                     "units": transducer["units"], \
                     "attrs": transducer["attrs"]}
-            if "registration_surface_model" in transducer:
+            if "registration_surface_filename" in transducer:
                 transducer_dict["registration_surface_abspath"] = Path(transducer_metadata_filepath).parent/transducer["registration_surface_filename"]
-            if "transducer_body_model" in transducer:
+            if "transducer_body_filename" in transducer:
                 transducer_dict["transducer_body_abspath"] = Path(transducer_metadata_filepath).parent/transducer["transducer_body_filename"]
             return transducer_dict
 
