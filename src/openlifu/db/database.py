@@ -298,31 +298,32 @@ class Database:
         # Copy photoscan model and texture files to database.
         # If a model and texture data file is not provided, check that there are existing files previously
         # associated with the photoscan object.
-        if model_data_filepath is None:
-            if not photoscan.model_filename or not (photoscan_parent_dir/photoscan.model_filename).exists():
-                raise ValueError(f"Cannot find model file associated with photoscan {photoscan.id}.")
-        elif not Path(model_data_filepath).exists():
-            raise FileNotFoundError(f'Model data filepath does not exist: {model_data_filepath}')
-        else:
+        if model_data_filepath:
+            if not Path(model_data_filepath).exists():
+                raise FileNotFoundError(f'Model data filepath does not exist: {model_data_filepath}')
             photoscan.model_filename = Path(model_data_filepath).name
             shutil.copy(Path(model_data_filepath), Path(photoscan_metadata_filepath).parent)
+        elif not photoscan.model_filename or not (photoscan_parent_dir/photoscan.model_filename).exists():
+            raise ValueError(f"Cannot find model file associated with photoscan {photoscan.id}.")
 
-        if texture_data_filepath is None:
-            if not photoscan.texture_filename or not (photoscan_parent_dir/photoscan.texture_filename).exists():
-                raise ValueError(f"Cannot find texture file associated with photoscan {photoscan.id}.")
-        elif not Path(texture_data_filepath).exists():
-            raise FileNotFoundError(f'Texture data filepath does not exist: {texture_data_filepath}')
-        else:
+        if texture_data_filepath:
+            if not Path(texture_data_filepath).exists():
+                raise FileNotFoundError(f'Texture data filepath does not exist: {texture_data_filepath}')
             photoscan.texture_filename = Path(texture_data_filepath).name
             shutil.copy(Path(texture_data_filepath), Path(photoscan_metadata_filepath).parent)
+        elif not photoscan.texture_filename or not (photoscan_parent_dir/photoscan.texture_filename).exists():
+            raise ValueError(f"Cannot find texture file associated with photoscan {photoscan.id}.")
 
         # Not necessarily required for a photoscan object
-        if mtl_data_filepath is not None:
+        if mtl_data_filepath:
             if not Path(mtl_data_filepath).exists():
                 raise FileNotFoundError(f'MTL filepath does not exist: {mtl_data_filepath}')
-            else:
-                photoscan.mtl_filename = Path(mtl_data_filepath).name
-                shutil.copy(Path(mtl_data_filepath), Path(photoscan_metadata_filepath).parent)
+            photoscan.mtl_filename = Path(mtl_data_filepath).name
+            shutil.copy(Path(mtl_data_filepath), Path(photoscan_metadata_filepath).parent)
+        elif photoscan.mtl_file:
+            if not (photoscan_parent_dir/photoscan.mtl_filename).exists():
+                raise ValueError(f"Cannot find photoscan materials file associated with photoscan {photoscan.id}.")
+
 
         #Save the photoscan metadata to a JSON file
         photoscan.to_file(photoscan_metadata_filepath)
