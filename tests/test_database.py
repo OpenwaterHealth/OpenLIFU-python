@@ -4,12 +4,14 @@ from contextlib import nullcontext as does_not_raise
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
 import pytest
 from helpers import dataclasses_are_equal
 
 from openlifu import Point, Solution
 from openlifu.db import Session, Subject
 from openlifu.db.database import Database, OnConflictOpts
+from openlifu.db.session import ArrayTransform, TransducerTrackingResult
 from openlifu.plan import Protocol, Run
 from openlifu.xdc import Transducer
 
@@ -37,6 +39,12 @@ def example_transducer(example_database : Database) -> Transducer:
     return Transducer.from_file(
         filename = Path(example_database.path)/"transducers/example_transducer/example_transducer.json",
         )
+
+@pytest.fixture()
+def example_transducer_tracking_result() -> TransducerTrackingResult:
+    return TransducerTrackingResult(photoscan_id="example_photoscan",
+                                    transducer_to_photoscan_transform = ArrayTransform(np.eye(4),"mm"),
+                                    photoscan_to_volume_transform = ArrayTransform(np.eye(4),"mm"))
 
 def test_write_protocol(example_database: Database):
     protocol = Protocol(name="bleh", id="a_protocol_called_bleh")
@@ -192,6 +200,12 @@ def test_write_session_associated_object_structure_created(example_database: Dat
     assert example_database.get_solutions_filename(example_subject.id, session.id).is_file()
     assert example_database.get_runs_filename(example_subject.id, session.id).is_file()
 
+def test_write_session_with_transducer_tracking_results(example_database: Database, example_subject: Subject, example_transducer_tracking_result):
+    """ Test that when there is a transducer tracking result class associated with a session, the session
+    is correctly written to file."""
+    session = Session(name="bleh", id='a_session',subject_id=example_subject.id)
+    session.transducer_tracking_results = [example_transducer_tracking_result]
+    example_database.write_session(example_subject, session)
 
 def test_write_run(example_database: Database, tmp_path:Path):
     subject_id = "example_subject"

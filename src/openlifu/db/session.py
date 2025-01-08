@@ -26,6 +26,26 @@ class ArrayTransform:
     first represent the points in these units.)"""
 
 @dataclass
+class TransducerTrackingResult:
+    """
+    Class representing the results of running the transducer tracking
+    algorithm.
+    """
+
+    photoscan_id: str
+    """ID of the photoscan object used for transducer tracking"""
+
+    transducer_to_photoscan_transform: ArrayTransform
+    """Transform output by transducer tracking algorithm to register the transducer surface to the photoscan model"""
+
+    photoscan_to_volume_transform: ArrayTransform
+    """Transform output by the transducer tracking algorithm to register the photoscan model the volume's skin segmentation"""
+
+    transducer_tracking_approved: Optional[bool] = False
+    """Approval state of transducer tracking result. `True` means the user has provided some kind of
+    confirmation that the transducer transforms in this result agrees with reality."""
+
+@dataclass
 class Session:
     """
     Class representing an openlifu session, which consists essentially of a patient scan, a protocol
@@ -72,9 +92,8 @@ class Session:
     """Approval state of virtual fit. `None` if there is no approval, otherwise this is the ID
     of the target for which virtual fitting has been marked approved."""
 
-    transducer_tracking_approved: Optional[bool] = False
-    """Approval state of transducer tracking. `True` means the user has provided some kind of
-    confirmation that the transducer transform in this session agrees with reality."""
+    transducer_tracking_results: Optional[List[TransducerTrackingResult]] = field(default_factory=list)
+    """List of any transducer tracking results"""
 
     def __post_init__(self):
         if self.id is None and self.name is None:
@@ -121,6 +140,11 @@ class Session:
             raise ValueError("Sessions no longer recognize a volume attribute -- it is now volume_id.")
         if 'array_transform' in d:
             d['array_transform'] = ArrayTransform(np.array(d['array_transform']['matrix']), d['array_transform']['units'])
+        if 'transducer_tracking_results' in d:
+            d['transducer_tracking_results'] = [TransducerTrackingResult(t['photoscan_id'],
+                                                                         ArrayTransform(np.array(t['transducer_to_photoscan_transform']['matrix']),t['transducer_to_photoscan_transform']['units']),
+                                                                         ArrayTransform(np.array(t['photoscan_to_volume_transform']['matrix']), t['photoscan_to_volume_transform']['units']),
+                                                                         t['transducer_tracking_approved']) for t in d['transducer_tracking_results']]
         if isinstance(d['targets'], list):
             if len(d['targets'])>0 and isinstance(d['targets'][0], dict):
                 d['targets'] = [Point.from_dict(p) for p in d['targets']]
@@ -150,7 +174,7 @@ class Session:
         d['markers'] = [p.to_dict() for p in d['markers']]
 
         d['array_transform'] = asdict(d['array_transform'])
-
+        d['transducer_tracking_results'] = [asdict(t) for t in d['transducer_tracking_results']]
         return d
 
     @staticmethod
