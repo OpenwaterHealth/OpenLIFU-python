@@ -166,6 +166,15 @@ class Database:
                     f"The virtual_fit_results of session {session.id} provides no transforms for target {target_id}."
                 )
 
+        # Validate the transducer tracking result's photoscan_id
+        if session.transducer_tracking_results:
+            for result in session.transducer_tracking_results:
+                if result.photoscan_id not in self.get_photoscan_ids(subject.id, session.id):
+                    raise ValueError(
+                f"Photoscan id {result.photoscan_id} provided in the transducer_tracking_results has not "
+                "been associated with this session."
+            )
+
         # Check if the session already exists in the database
         session_ids = self.get_session_ids(subject.id)
 

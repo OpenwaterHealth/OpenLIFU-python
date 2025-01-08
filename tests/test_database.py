@@ -310,12 +310,21 @@ def test_write_session_associated_object_structure_created(example_database: Dat
     assert example_database.get_solutions_filename(example_subject.id, session.id).is_file()
     assert example_database.get_runs_filename(example_subject.id, session.id).is_file()
 
-def test_write_session_with_transducer_tracking_results(example_database: Database, example_subject: Subject, example_transducer_tracking_result):
+def test_write_session_with_invalid_photoscan_id(example_database: Database, example_subject: Subject, example_transducer_tracking_result):
     """ Test that when there is a transducer tracking result class associated with a session, the session
     is correctly written to file."""
     session = Session(name="bleh", id='a_session',subject_id=example_subject.id)
     session.transducer_tracking_results = [example_transducer_tracking_result]
-    example_database.write_session(example_subject, session)
+    example_transducer_tracking_result.photoscan_id = "bogus_photoscan"
+    with pytest.raises(ValueError, match="been associated with this session"):
+        example_database.write_session(example_subject, session)
+
+def test_write_session_with_transducer_tracking_results(example_database: Database, example_subject: Subject, example_transducer_tracking_result):
+    """ Test that when you write a session with a transducer tracking result associated with an
+      invalid photoscan, an error is raised."""
+    session = Session(name="bleh", id='example_session',subject_id=example_subject.id)
+    session.transducer_tracking_results = [example_transducer_tracking_result]
+    example_database.write_session(example_subject, session, on_conflict = OnConflictOpts.OVERWRITE)
 
 def test_write_run(example_database: Database, tmp_path:Path):
     subject_id = "example_subject"
