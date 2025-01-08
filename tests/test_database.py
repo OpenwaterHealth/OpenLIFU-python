@@ -14,6 +14,7 @@ from openlifu.db import Session, Subject
 from openlifu.db.database import Database, OnConflictOpts
 from openlifu.photoscan import Photoscan
 from openlifu.plan import Protocol, Run
+from openlifu.xdc import Transducer
 
 
 @pytest.fixture()
@@ -33,6 +34,12 @@ def example_subject(example_database : Database) -> Subject:
     return Subject.from_file(
         filename = Path(example_database.path)/"subjects/example_subject/example_subject.json",
     )
+
+@pytest.fixture()
+def example_transducer(example_database : Database) -> Transducer:
+    return Transducer.from_file(
+        filename = Path(example_database.path)/"transducers/example_transducer/example_transducer.json",
+        )
 
 def test_write_protocol(example_database: Database):
     protocol = Protocol(name="bleh", id="a_protocol_called_bleh")
@@ -492,3 +499,45 @@ def test_session_date_modified_updates_on_write(example_database:Database, examp
         # Assert the modified time was updated
         assert session.date_modified - tolerance <= updated_time <= session.date_modified + tolerance
         assert session.date_modified > initial_modified_time - tolerance
+
+def test_get_transducer_ids(example_database:Database):
+    assert(example_database.get_transducer_ids() == ["example_transducer"])
+
+def test_write_transducer_nodata(example_database:Database, example_transducer: Transducer):
+    example_transducer.id = "example_transducer_2"
+
+    example_database.write_transducer(example_transducer)
+    assert(len(example_database.get_transducer_ids()) == 2)
+    assert("example_transducer" in example_database.get_transducer_ids())
+    assert("example_transducer_2" in example_database.get_transducer_ids())
+
+    transducer_filepath = example_database.get_transducer_filename("example_transducer_2")
+    assert(transducer_filepath.name == "example_transducer_2.json")
+
+def test_write_transducer(example_database:Database, example_transducer: Transducer, tmp_path:Path):
+    example_transducer.id = "example_transducer_2"
+    registration_surface_path = Path(tmp_path/"test_db_files/example_registration_surface.obj")
+    registration_surface_path.parent.mkdir(parents=True, exist_ok=True)
+    registration_surface_path.touch()
+    transducer_body_path = Path(tmp_path/"test_db_files/example_transducer_body.obj")
+    transducer_body_path.parent.mkdir(parents=True, exist_ok=True)
+    transducer_body_path.touch()
+
+    example_database.write_transducer(example_transducer, registration_surface_path, transducer_body_path)
+    transducer_filepath = example_database.get_transducer_filename("example_transducer_2")
+    assert(transducer_filepath.name == "example_transducer_2.json")
+    transducer_info = example_database.get_transducer_info("example_transducer_2")
+    assert(transducer_info["id"] == "example_transducer_2")
+    assert(transducer_info["name"] == "Example Transducer")
+    assert(Path(transducer_info["registration_surface_abspath"]).exists())
+    assert(Path(transducer_info["transducer_body_abspath"]).exists())
+
+    # Test not existent filepath
+    bogus_body_file = Path(tmp_path/"test_db_files/bogus_transducer_body.obj")
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        example_database.write_transducer(example_transducer, registration_surface_path, bogus_body_file, on_conflict=OnConflictOpts.OVERWRITE)
+
+    # Test when previously associated data files are missing
+    example_transducer.registration_surface_filename = "bogus_transducer_model.obj"
+    with pytest.raises(ValueError, match="file associated with transducer"):
+        example_database.write_transducer(example_transducer, on_conflict=OnConflictOpts.OVERWRITE)
