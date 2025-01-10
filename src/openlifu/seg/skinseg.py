@@ -1,13 +1,13 @@
 import numpy as np
+import skimage.filters
+import skimage.measure
 from scipy.ndimage import distance_transform_edt
-from skimage.filters import threshold_otsu
-from skimage.measure import label, regionprops
 
 
 def take_largest_connected_component(mask: np.ndarray) -> np.ndarray:
     """Given a boolean image array (or any integer numpy array), return a mask of the largest connected component."""
-    mask_labeled = label(mask)
-    connected_component_info = regionprops(mask_labeled)
+    mask_labeled = skimage.measure.label(mask)
+    connected_component_info = skimage.measure.regionprops(mask_labeled)
     largest_connected_componet_label = connected_component_info[np.argmax([rp.area for rp in connected_component_info])].label
     return (mask_labeled == largest_connected_componet_label)
 
@@ -47,7 +47,7 @@ def compute_foreground_mask(
         vol_array,
         [lower_quantile_for_otsu_threshold,upper_quantile_for_otsu_threshold]
     )
-    threshold_foreground = threshold_otsu(
+    threshold_foreground = skimage.filters.threshold_otsu(
         vol_array[(vol_array >= threshold_lower) & (vol_array <= threshold_upper)]
     )
     foreground_mask = vol_array >= threshold_foreground
