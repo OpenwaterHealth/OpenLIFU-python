@@ -124,3 +124,83 @@ def vtk_img_from_array_and_affine(vol_array:np.ndarray, affine:np.ndarray) -> vt
     vtk_img.GetPointData().SetScalars(vol_array_vtk)
 
     return vtk_img
+
+def create_closed_surface_from_labelmap(
+    binary_labelmap:vtk.vtkImageData,
+    decimation_factor:float=0.,
+    smoothing_factor:float=0.5
+) -> vtk.vtkPolyData:
+    """ Create a surface mesh vtkPolyData from a binary labelmap vtkImageData.
+
+    Args:
+        binary_labelmap: input vtkImageData binary labelmap
+        decimation_factor: 0.0 for no decimation, 1.0 for maximum reduction.
+        smoothing_factor: 0.0 for no smoothing, 1.0 for maximum smoothing.
+
+    Returns:
+        vtkPolyData: the resulting surface mesh
+
+    The algorithm here is based on the labelmap-to-closed-surface algorithm in 3D Slicer:
+    https://github.com/Slicer/Slicer/blob/677932127c73a6c78654d4afd9458a655a4eef63/Libs/vtkSegmentationCore/vtkBinaryLabelmapToClosedSurfaceConversionRule.cxx#L246-L476
+    """
+
+    # step 1: pad by 1 pixel all around with 0s, to ensure that the surface is still closed
+    # even if the labelmap runs up against the image boundary.
+    padder = vtk.vtkImageConstantPad()
+    padder.SetInputData(binary_labelmap)
+    extent = binary_labelmap.GetExtent()
+    padder.SetOutputWholeExtent(
+        extent[0] - 1, extent[1] + 1,
+        extent[2] - 1, extent[3] + 1,
+        extent[4] - 1, extent[5] + 1,
+    )
+    padder.Update()
+    padded_labelmap = padder.GetOutput()
+
+    # step 1: extract surface
+    flying_edges = vtk.vtkDiscreteFlyingEdges3D()
+    flying_edges.SetInputData(padded_labelmap)
+    flying_edges.ComputeGradientsOff()
+    flying_edges.ComputeNormalsOff()
+    flying_edges.Update()
+    surface_mesh = flying_edges.GetOutput()
+
+    # step 2: decimation
+    if decimation_factor > 0.0:
+        decimator = vtk.vtkDecimatePro()
+        decimator.SetInputData(surface_mesh)
+        decimator.SetFeatureAngle(60)
+        decimator.SplittingOff()
+        decimator.PreserveTopologyOn()
+        decimator.SetMaximumError(1)
+        decimator.SetTargetReduction(decimation_factor)
+        decimator.Update()
+        surface_mesh = decimator.GetOutput()
+
+    # step 3: smoothing
+    if smoothing_factor > 0.0:
+        smoother = vtk.vtkWindowedSincPolyDataFilter()
+        smoother.SetInputData(surface_mesh)
+
+        # map smoothing factor to passband and iterations, copying the approach taken by Slicer
+        passband = pow(10.0, -4.0 * smoothing_factor)
+        num_iterations = 20 + int(smoothing_factor * 40)
+
+        smoother.SetNumberOfIterations(num_iterations)
+        smoother.SetPassBand(passband)
+        smoother.BoundarySmoothingOff()
+        smoother.FeatureEdgeSmoothingOff()
+        smoother.NonManifoldSmoothingOn()
+        smoother.NormalizeCoordinatesOn()
+        smoother.Update()
+        surface_mesh = smoother.GetOutput()
+
+    # step 4: compute normals
+    normals = vtk.vtkPolyDataNormals()
+    normals.SetInputData(surface_mesh)
+    normals.ConsistencyOn()
+    normals.SplittingOff()
+    normals.Update()
+    surface_mesh = normals.GetOutput()
+
+    return surface_mesh
