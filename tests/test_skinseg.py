@@ -6,6 +6,7 @@ from scipy.linalg import expm
 
 from openlifu.seg.skinseg import (
     compute_foreground_mask,
+    create_closed_surface_from_labelmap,
     take_largest_connected_component,
     vtk_img_from_array_and_affine,
 )
@@ -62,3 +63,21 @@ def test_vtk_img_from_array_and_affine():
     point_id = vtk_img.FindPoint([x,y,z])
 
     assert vtk_img.GetPointData().GetScalars().GetTuple1(point_id) == pytest.approx(vol_array[i,j,k])
+
+def test_create_closed_surface_from_labelmap():
+    # create a ball of radius 7 for a labelmap
+    labelmap = np.zeros((20,20,20))
+    sphere_radius = 7
+    sphere_center = np.array([10,10,10])
+    add_ball(labelmap, tuple(sphere_center), sphere_radius)
+    labelmap_vtk = vtk_img_from_array_and_affine(labelmap, affine = np.eye(4))
+
+    # run the algorithm to be tested
+    surface = create_closed_surface_from_labelmap(labelmap_vtk, decimation_factor=0.1)
+
+    # verify that the points on the generated mesh are not too far off being at distance 7 from the ball center
+    points = surface.GetPoints()
+    for i in range(points.GetNumberOfPoints()):
+        point_position = np.array(points.GetPoint(i))
+        point_distance_from_sphere_center = np.linalg.norm(point_position - sphere_center, ord=2)
+        assert np.abs(point_distance_from_sphere_center - sphere_radius) < 1.
