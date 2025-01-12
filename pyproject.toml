@@ -151,6 +151,7 @@ ignore = [
   "PLR09",    # Too many <...>
   "PLR2004",  # Magic value used in comparison
   "ISC001",   # Conflicts with formatter
+  "PLC3002",  # Unnecessary inline lambda (in fact using an inline lambda can improve readability)
 
   # Exceptions below are specific to this project.
   # They may be relaxed later in future code improvements.

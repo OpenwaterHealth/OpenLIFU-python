@@ -1,7 +1,9 @@
 import numpy as np
 import skimage.filters
 import skimage.measure
+import vtk
 from scipy.ndimage import distance_transform_edt
+from vtk.util.numpy_support import numpy_to_vtk
 
 
 def take_largest_connected_component(mask: np.ndarray) -> np.ndarray:
@@ -80,3 +82,45 @@ def compute_foreground_mask(
     foreground_mask = ~take_largest_connected_component(~foreground_mask)
 
     return foreground_mask
+
+
+def vtk_img_from_array_and_affine(vol_array:np.ndarray, affine:np.ndarray) -> vtk.vtkImageData:
+    """ Convert a numpy (array, affine) pair into a vtkImageData.
+
+    Args:
+        vol_array: a 3D image numpy array with float type data
+        affine: a numpy array of shape (4,4) representing the affine matrix of the 3D image.
+
+    Returns: vtkImageData with a copy of vol_array as the underlying image data,
+        and with origin, spacing, and direction matrix set according to the affine matrix.
+
+    Since a vtkImageData is intended to represent image data on a structured grid with *orthogonal* axes,
+    the upper-left 3x3 submatrix of the affine matrix should be an orthogonal matrix. There will be no error
+    if it isn't, since the "direction matrix" of a vtkImageData can be set to be non-orthogonal -- it just isn't
+    the intended usage of vtkImageData and could be misinterpreted by downstream vtk filters.
+
+    Maintain a reference to vol_array, so that it is not garbage collected
+    (which could leave the vtkImageData pointing to invalid memory -- see vtk.util.numpy_support.numpy_to_vtk documentation).
+    """
+
+    matrix_3x3 = affine[:3, :3]
+    origin = affine[:3, 3]
+    spacing = np.linalg.norm(matrix_3x3, axis=0)
+    direction_matrix = matrix_3x3 / spacing[np.newaxis,:]
+
+    vtk_img = vtk.vtkImageData()
+    vtk_img.SetDimensions(vol_array.shape)
+    vtk_img.SetOrigin(origin.tolist())
+    vtk_img.SetSpacing(spacing.tolist())
+
+    direction_matrix_vtk = vtk.vtkMatrix3x3()
+    for i in range(3):
+        for j in range(3):
+            direction_matrix_vtk.SetElement(i, j, direction_matrix[i, j])
+    vtk_img.SetDirectionMatrix(direction_matrix_vtk)
+
+    vol_array_flat = vol_array.transpose((2,1,0)).ravel(order='C')
+    vol_array_vtk = numpy_to_vtk(num_array=vol_array_flat, deep=True, array_type=vtk.VTK_FLOAT)
+    vtk_img.GetPointData().SetScalars(vol_array_vtk)
+
+    return vtk_img
