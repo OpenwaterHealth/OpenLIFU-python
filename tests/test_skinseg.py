@@ -1,10 +1,13 @@
 from typing import Tuple
 
 import numpy as np
+import pytest
+from scipy.linalg import expm
 
 from openlifu.seg.skinseg import (
     compute_foreground_mask,
     take_largest_connected_component,
+    vtk_img_from_array_and_affine,
 )
 
 
@@ -45,3 +48,17 @@ def test_compute_foreground_mask():
     assert np.all(
         compute_foreground_mask(vol_array) == expected_output
     )
+
+def test_vtk_img_from_array_and_affine():
+    rng = np.random.default_rng(241)
+    vol_array = rng.random((5,4,3))
+    affine = np.eye(4)
+    affine[:3,:3] = expm((lambda A: (A - A.T)/2)(rng.normal(size=(3,3)))) # generate a random orthogonal matrix
+    affine[:3,3] = rng.random(3) # generate a random origin
+    vtk_img = vtk_img_from_array_and_affine(vol_array, affine)
+
+    i,j,k = 2,3,1 # We will test at the point with these indices i,j,k. The image value there should be vol_array[i,j,k].
+    x,y,z,_ = affine @ np.array([i,j,k,1]) # the physical coordinates of the test point
+    point_id = vtk_img.FindPoint([x,y,z])
+
+    assert vtk_img.GetPointData().GetScalars().GetTuple1(point_id) == pytest.approx(vol_array[i,j,k])
