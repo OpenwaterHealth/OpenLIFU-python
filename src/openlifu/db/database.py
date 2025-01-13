@@ -565,8 +565,7 @@ class Database:
     def load_photoscan(self, subject_id, session_id, photoscan_id):
         """Returns a photoscan object included the loaded model and texture images"""
         photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan_id)
-        with open(photoscan_metadata_filepath) as f:
-            photoscan = Photoscan.from_json(f, Path(photoscan_metadata_filepath).parent)
+        photoscan = Photoscan.from_file(photoscan_metadata_filepath)
         return photoscan
 
     def load_standoff(self, transducer_id, standoff_id="standoff"):
