@@ -7,7 +7,7 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 import OpenEXR
 import vtk
-from vtk.util import numpy_support
+from vtk.util.numpy_support import numpy_to_vtk
 
 from openlifu.util.json import PYFUSEncoder
 
@@ -174,7 +174,7 @@ def convert_numpy_to_vtkimage(image_numpy):
     pd = vtkimage_data.GetPointData()
     new_rgb_data = image_numpy.reshape((-1, image_numpy.shape[2]))
     #new_rgb_data = np.flipud(new_rgb_data) # To look like blender format upon loading. Image is instead flipped in texture module.
-    vtk_array = numpy_support.numpy_to_vtk(new_rgb_data, deep=True, array_type=vtk.VTK_UNSIGNED_SHORT)
+    vtk_array = numpy_to_vtk(new_rgb_data, deep=True, array_type=vtk.VTK_UNSIGNED_SHORT)
     pd.SetScalars(vtk_array)
     return vtkimage_data
 
