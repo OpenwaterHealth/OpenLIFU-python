@@ -209,6 +209,7 @@ def read_as_vtkimagedata(file_name):
                 B = exr_file.channels()['B'].pixels
                 # Combine channels into a single RGB image (H x W x 3)
                 rgb_data = np.stack([R, G, B], axis=-1)
+                rgb_data = rgb_data.astype(np.float32)
                 # Normalize the data to 0-255 range for compatibility with VTK
                 rgb_data = np.clip(rgb_data*(2**16-1), 0, 65535)
                 image_data = convert_numpy_to_vtkimage(rgb_data)
