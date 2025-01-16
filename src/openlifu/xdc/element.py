@@ -196,6 +196,10 @@ class Element:
     @staticmethod
     def from_dict(d):
         if isinstance(d, dict):
-            return [Element(**d)]
+            return Element(**d)
+        elif isinstance(d, Element):
+            return d
         else:
-            return [Element(**di) for di in d]
+            raise ValueError("Cannot convert to Element")
+        #else:
+        #    return [Element(**di) for di in d]

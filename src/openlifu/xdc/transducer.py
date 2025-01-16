@@ -29,6 +29,17 @@ class Transducer:
         for element in self.elements:
             element.rescale(self.units)
 
+    def __str__(self):
+        return (
+            f"Transducer:\n"
+            f"  id: {self.id}\n" 
+            f"  name: {self.name}\n" 
+            f"  elements: [{self.numelements()} Elements]\n" 
+            f"  frequency: {self.frequency}\n"
+            f"  units: {self.units}\n"
+            f"  attrs: {self.attrs}"
+        )        
+
     def calc_output(self, input_signal, dt, delays: np.ndarray = None, apod: np.ndarray = None):
         if delays is None:
             delays = np.zeros(self.numelements())
@@ -179,8 +190,16 @@ class Transducer:
     @staticmethod
     def from_dict(d, **kwargs):
         d = d.copy()
-        d["elements"] = Element.from_dict(d["elements"])
-        return Transducer(**d, **kwargs)
+        # assign all other props to the attrs dict
+        d.update(kwargs)
+        for key in list(d.keys()):
+            if key not in ["id", "name", "elements", "frequency", "units", "attrs"]:
+                if 'attrs' not in d:
+                    d['attrs'] = {key: d.pop(key)}
+                else:
+                    d["attrs"][key] = d.pop(key)
+        d["elements"] = tuple(Element.from_dict(di) for di in d["elements"])
+        return Transducer(**d)
 
     @staticmethod
     def from_json(json_string : str) -> "Transducer":
