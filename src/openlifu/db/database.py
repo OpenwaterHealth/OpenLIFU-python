@@ -320,7 +320,7 @@ class Database:
                 raise FileNotFoundError(f'MTL filepath does not exist: {mtl_data_filepath}')
             photoscan.mtl_filename = Path(mtl_data_filepath).name
             shutil.copy(Path(mtl_data_filepath), Path(photoscan_metadata_filepath).parent)
-        elif photoscan.mtl_file:
+        elif photoscan.mtl_filename:
             if not (photoscan_parent_dir/photoscan.mtl_filename).exists():
                 raise ValueError(f"Cannot find photoscan materials file associated with photoscan {photoscan.id}.")
 
