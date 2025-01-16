@@ -6,6 +6,8 @@ import numpy as np
 import xarray as xa
 
 from openlifu.util.dict_conversion import DictMixin
+from openlifu.geo import Point
+from openlifu.seg import SegmentationMethod
 from openlifu.util.units import getunitconversion
 from openlifu.xdc import Transducer
 
@@ -100,12 +102,38 @@ class SimSetup(DictMixin):
 
     def get_size(self, dims: Optional[str]=None):
         dims = self.dims if dims is None else dims
-        n = [int(np.round(np.diff(ext)/self.spacing))+1 for ext in [self.x_extent, self.y_extent, self.z_extent]]
+        n = [int((np.round(np.diff(ext)/self.spacing)).item())+1 for ext in [self.x_extent, self.y_extent, self.z_extent]]
         return np.array([n[self.dims.index(dim)] for dim in dims]).squeeze()
 
     def get_spacing(self, units: Optional[str] = None):
         units = self.units if units is None else units
         return getunitconversion(self.units, units)*self.spacing
 
-    def transform_scene(self, scene, id: Optional[str] = None, name: Optional[str] = None, units: Optional[str] = None):
-        raise NotImplementedError
+    def setup_sim_scene(
+            self,
+            seg_method: SegmentationMethod,
+            volume: Optional[xa.DataArray] = None
+        ) -> Tuple[xa.DataArray, Transducer, Point]:
+        """ Prepare a simulation scene composed of a simulation grid
+
+        Setup a simulation scene with a simulation grid including physical properties.
+        A segmentation is performed to detect the medium, so we can assign
+        physical properties to each voxel, later used by the ultrasound simulation.
+        This assume that the input volume is resampled to the geo-referenced simulation grid (lon, lat, ele).
+
+        Args:
+            seg_method: seg.SegmentationMethod
+            volume: xa.DataArray
+                Optional volume to be used for simulation grid definition (Default: None).
+                The volume is assumed to be resampled on sim grid coordinates.
+
+        Returns
+            params: The xa.DataArray simulation grid with physical properties for each voxel
+        """
+        if volume is None:
+            sim_coords = self.get_coords()
+            params = seg_method.ref_params(sim_coords)
+        else:
+            params = seg_method.seg_params(volume)
+
+        return params

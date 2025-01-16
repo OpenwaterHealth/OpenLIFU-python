@@ -10,9 +10,10 @@ class FocalPattern(ABC):
     """
     Abstract base class for representing a focal pattern
 
-    :ivar target_pressure: Target pressure of the focal pattern in Pa
+    :ivar target_pressure: Target pressure of the focal pattern in given units
     """
-    target_pressure: float = 1.0 # Pa
+    target_pressure: float = 1.0
+    units: str = "Pa"
 
     @abstractmethod
     def get_targets(self, target: Point):

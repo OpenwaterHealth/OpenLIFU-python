@@ -47,16 +47,19 @@ dependencies = [
   "crcmod",
   "qasync",
   "k-wave-python>=0.3.4",
+  "nvidia-ml-py",
 ]
 
 [project.optional-dependencies]
 test = [
   "pytest >=6",
   "pytest-cov >=3",
+  "pytest-mock",
 ]
 dev = [
   "pytest >=6",
   "pytest-cov >=3",
+  "pytest-mock",
   "dvc[gdrive]",
 ]
 docs = [

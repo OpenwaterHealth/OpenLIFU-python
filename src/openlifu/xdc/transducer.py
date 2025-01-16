@@ -153,8 +153,6 @@ class Transducer:
         if self.units != units:
             for element in self.elements:
                 element.rescale(units)
-            scl = getunitconversion(self.units, units)
-            self.matrix[0:3, 3] *= scl
             self.units = units
 
     def to_dict(self):
@@ -204,13 +202,29 @@ class Transducer:
 
     @staticmethod
     def gen_matrix_array(nx=2, ny=2, pitch=1, kerf=0, units="mm", impulse_response=1, impulse_dt=1, id='array', name='Array', attrs={}):
+        """Generate a 2D flat matrix array
+
+        Args:
+            nx: number of elements in the x direction
+            ny: number of elements in the y direction
+            pitch: distance between element centers
+            kerf: distance between element edges
+            units: units of the array dimensions
+            impulse_response: impulse response of the elements
+            impulse_dt: time step of the impulse response
+            id: unique identifier
+            name: name of the array
+            attrs: additional attributes
+
+        Returns: a Transducer object representing the array
+        """
         N = nx * ny
-        xpos = [(i - nx // 2) * pitch for i in range(nx)]
-        ypos = [(i - ny // 2) * pitch for i in range(ny)]
+        xpos = (np.arange(nx) - (nx - 1) / 2) * pitch # x positions, centered about x=0
+        ypos = (np.arange(ny) - (ny - 1) / 2) * pitch # y positions, centered about y=0
         elements = []
         for i in range(N):
-            x = xpos[i % nx]
-            y = ypos[i // nx]
+            x = xpos[i % nx] # inner loop through x positions
+            y = ypos[i // nx] # outer loop through y positions
             elements.append(Element(
                 x=x,
                 y=y,

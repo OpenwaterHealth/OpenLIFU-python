@@ -1,7 +1,6 @@
 import numpy as np
 from xarray import Dataset
 
-#TODO: use Pint (https://github.com/hgrecco/pint) instead to manage physics units in python
 
 def getunittype(unit):
     unit = unit.lower()

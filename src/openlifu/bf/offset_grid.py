@@ -20,7 +20,7 @@ def offset_grid(data_arr: Dataset, focus: Point):
     Returns:
         A list of distance arrays offsets 'dx', 'dy', 'dz' for each point in the coordinate system.
     """
-    m = focus.get_matrix()
+    m = focus.get_matrix(center_on_point=True)
 
     # Create a grid of homogeneous points in the coordinate system
     xyz = get_ndgrid_from_arr(data_arr)
