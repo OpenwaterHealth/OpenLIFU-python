@@ -20,6 +20,7 @@ from openlifu.io.config import (
     OW_CTRL_STOP_SWTRIG,
     OW_ERROR,
     OW_TX7332,
+    OW_TX7332_DEMO,
     OW_TX7332_ENUM,
 )
 from openlifu.io.LIFUUart import LIFUUart
@@ -427,6 +428,34 @@ class TxDevice:
 
             logger.info("TX Device Count: %d", len(self._tx_instances))
             return self._tx_instances
+
+        except Exception as e:
+            logger.error("Error Enumerating TX Devices: %s", e)
+            raise
+
+    def demo_tx7332(self) -> list[TX7332_IF]:
+        """
+        Sets all TX7332 chip registers with a test waveform.
+
+        Returns:
+            bool: True if all chips are programmed successfully, False otherwise.
+
+        Raises:
+            ValueError: If the UART is not connected.
+        """
+        try:
+            if not self.uart.is_connected():
+                raise ValueError("TX Device  not connected")
+
+            self._tx_instances.clear()
+            r = self.uart.send_packet(id=None, packetType=OW_TX7332, command=OW_TX7332_DEMO)
+            self.uart.clear_buffer()
+            # r.print_packet()
+            if r.packet_type == OW_ERROR:
+                logger.error("Error demoing TX devices")
+                return False
+
+            return True
 
         except Exception as e:
             logger.error("Error Enumerating TX Devices: %s", e)
