@@ -14,15 +14,15 @@ from openlifu.io.config import (
     OW_POWER_HV_ON,
     OW_POWER_SET_HV,
 )
-from openlifu.io.core import UART
 
 
 class PWR_IF:
 
     _delay = 0.02
 
-    def __init__(self, uart: UART):
-        self.uart = uart
+    def __init__(self, ctrl_if):
+        self.ctrl_if = ctrl_if
+        self.uart = ctrl_if.uart
         self.packet_count = 0
 
     async def ping(self, packet_id=None):

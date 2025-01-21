@@ -1,12 +1,10 @@
 import logging
 
-from openlifu.io.LIFUDevice import LIFUDevice
 from openlifu.io.LIFUHVController import HVController
 from openlifu.io.LIFUSignal import LIFUSignal
+from openlifu.io.LIFUTXDevice import TxDevice
 from openlifu.io.LIFUUart import LIFUUart
 from openlifu.plan.solution import Solution
-from openlifu.io.ctrl_if import CTRL_IF
-from openlifu.io.ustx import LIFUTransmitController
 
 STATUS_COMMS_ERROR = -1
 STATUS_SYS_OFF = 0
@@ -26,9 +24,9 @@ class LIFUInterface:
     signal_disconnect: LIFUSignal = LIFUSignal()
     signal_data_received: LIFUSignal = LIFUSignal()
     hvcontroller: HVController = None
-    devicecontroller: LIFUTransmitController = None
+    txdevice: TxDevice = None
 
-    def __init__(self, vid: int = 0x0483, pid: int = 0x57AE, baudrate: int = 921600, timeout: int = 10, test_mode=False) -> None:
+    def __init__(self, vid: int = 0x0483, pid: int = 0x57AF, baudrate: int = 921600, timeout: int = 10, test_mode=False) -> None:
         """
         Initialize the LIFUInterface.
 
@@ -40,15 +38,15 @@ class LIFUInterface:
         """
         logger.debug("Initializing LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", vid, pid, baudrate, timeout)
 
-        self.uart = LIFUUart(vid, pid, baudrate, timeout, demo_mode=test_mode)
+        self.txdevice = TxDevice(uart = LIFUUart(0x0483, 0x57AF, 921600, 10, demo_mode=test_mode))
 
         # Connect signals to internal handlers
-        self.uart.signal_connect.connect(self.signal_connect.emit)
-        self.uart.signal_disconnect.connect(self.signal_disconnect.emit)
-        self.uart.signal_data_received.connect(self.signal_data_received.emit)
-
+        # self.uart.signal_connect.connect(self.signal_connect.emit)
+        # self.uart.signal_disconnect.connect(self.signal_disconnect.emit)
+        # self.uart.signal_data_received.connect(self.signal_data_received.emit)
+#
         # Create a LIFUHVController instance as part of the interface
-        self.hvcontroller = HVController(self)
+        self.hvcontroller = HVController(uart = LIFUUart(0x0483, 0x57AE, 921600, 10, demo_mode=test_mode))
 
     async def start_monitoring(self, interval: int = 1) -> None:
         """Start monitoring for USB device connections."""
@@ -57,21 +55,6 @@ class LIFUInterface:
         except Exception as e:
             logger.error("Error starting monitoring: %s", e)
 
-    def connect_to_device(self) -> None:
-        """Connect to the USB device."""
-        try:
-            self.uart.check_usb_status()
-            if self.is_device_connected():
-                logger.info("Device connected.")
-                ctrl_if = CTRL_IF()
-                ctrl_if.enum_tx7332_devices()
-                self.devicecontroller = LIFUTransmitController(num_transmitters = len(ctrl_if.tx_devices), ctrl_if = ctrl_if)
-            else:
-                logger.error("Device failed to connect.")
-            
-            
-        except Exception as e:
-            logger.error("Error connecting to device: %s", e)
 
     def stop_monitoring(self) -> None:
         """Stop monitoring for USB device connections."""
@@ -87,8 +70,10 @@ class LIFUInterface:
         Returns:
             bool: True if the device is connected, False otherwise.
         """
-        return self.uart.is_connected()
-    
+        tx_connected = self.txdevice.is_connected()
+        hv_connected = self.hvcontroller.is_connected()
+        return tx_connected, hv_connected
+
     def set_solution(self, solution: Solution):
         """
         Load a solution to the device.
@@ -100,7 +85,7 @@ class LIFUInterface:
             logger.info("Loading solution: %s", solution.name)
             # Convert solution data and send to the device
             self.devicecontroller.set_solution(solution)
-            self.hvcontroller.set_voltage(solution.pulse.amplitude)    
+            self.hvcontroller.set_voltage(solution.pulse.amplitude)
             logger.info("Solution '%s' loaded successfully.", solution.name)
         except Exception as e:
             logger.error("Error loading solution '%s': %s", solution.name, e)
@@ -140,11 +125,11 @@ class LIFUInterface:
     def get_status(self):
         """
         Query the device status.
-        
+
         Returns:
             int: The device status.
         """
-        status = STATUS_OK
+        status = STATUS_ERROR
         return status
 
     def stop_sonication(self):
@@ -164,3 +149,7 @@ class LIFUInterface:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.stop_monitoring()
+        if self.txdevice:
+            self.txdevice.disconnect()
+        if self.hvcontroller:
+            self.hvcontroller.disconnect()

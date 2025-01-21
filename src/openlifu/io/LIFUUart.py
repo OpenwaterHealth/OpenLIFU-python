@@ -2,11 +2,19 @@ import asyncio
 import json
 import logging
 import threading
+import time
 
 import serial
 import serial.tools.list_ports
 
-from openlifu.io.config import OW_ACK, OW_CMD_NOP, OW_END_BYTE, OW_JSON, OW_START_BYTE
+from openlifu.io.config import (
+    OW_ACK,
+    OW_BAD_PARSE,
+    OW_CMD_NOP,
+    OW_END_BYTE,
+    OW_JSON,
+    OW_START_BYTE,
+)
 from openlifu.io.LIFUSignal import LIFUSignal
 from openlifu.io.uartpacket import UartPacket
 from openlifu.io.utils import util_crc16
@@ -39,6 +47,7 @@ class LIFUUart:
         self.running = False
         self.read_thread = None
         self.read_buffer = []
+        self.asyncMode = False
         self.loop = asyncio.get_event_loop()
         self.monitoring_task = None
         self.demo_mode = demo_mode
@@ -53,7 +62,6 @@ class LIFUUart:
         """Open the serial port."""
         if self.demo_mode:
             log.info("Demo mode: Simulating UART connection.")
-            self.running = True
             self.signal_connect.emit("demo_port")
             return
         try:
@@ -62,14 +70,14 @@ class LIFUUart:
                 baudrate=self.baudrate,
                 timeout=self.timeout
             )
-            self.running = True
             log.info("Connected to UART.")
             self.signal_connect.emit(self.port)
 
-            # Start the reading thread
-            self.read_thread = threading.Thread(target=self._read_data)
-            self.read_thread.daemon = True
-            self.read_thread.start()
+            if self.asyncMode:
+                # Start the reading thread
+                self.read_thread = threading.Thread(target=self._read_data)
+                self.read_thread.daemon = True
+                self.read_thread.start()
         except Exception as e:
             log.error(f"Failed to connect to {self.port}: {e}")
             self.running = False
@@ -100,7 +108,7 @@ class LIFUUart:
             bool: True if connected, False otherwise.
         """
         if self.demo_mode:
-            return self.running
+            return True
         return self.port is not None and self.serial is not None and self.serial.is_open
 
     def check_usb_status(self):
@@ -157,8 +165,8 @@ class LIFUUart:
                     log.info("Demo mode: Simulated data received: %s", data)
                     self.signal_data_received.emit(data)
                 threading.Event().wait(1000)  # Simulate delay
-            return
-        while self.running:
+            return None
+        if self.running:
             try:
                 if self.serial.in_waiting > 0:
                     data = self.serial.read(self.serial.in_waiting)
@@ -168,6 +176,8 @@ class LIFUUart:
             except serial.SerialException as e:
                 log.error(f"Serial read error: {e}")
                 self.running = False
+        else:
+            return self.read_packet()
 
     def _tx(self, data: bytes):
         """Send data over UART."""
@@ -185,41 +195,135 @@ class LIFUUart:
         except Exception as e:
             log.error(f"Error during transmission: {e}")
 
-    async def send_packet(self, id=None, packetType=OW_ACK, command=OW_CMD_NOP, addr=0, reserved=0, data=None):
-        """Send a packet over UART."""
-        if not self.serial or not self.serial.is_open:
-            log.error("Cannot send packet. Serial port is not connected.")
-            return
+    def read_packet(self) -> UartPacket:
+        """
+        Read a packet from the UART interface.
 
-        if id is None:
-            self.packet_count += 1
-            id = self.packet_count
+        This method waits for data to arrive on the serial interface, collects the data,
+        and parses it into a UartPacket. If no valid data is received within the timeout,
+        a default error packet is returned.
 
-        if data:
-            if packetType == OW_JSON:
-                payload = json.dumps(data).encode('utf-8')
+        Returns:
+            UartPacket: Parsed packet from the UART interface or an error packet if parsing fails.
+
+        Raises:
+            ValueError: If no data is received within the timeout.
+        """
+        timeout = 0.5  # Timeout in seconds
+        start_time = time.monotonic()
+        raw_data = b""
+
+        while time.monotonic() - start_time < timeout:
+            raw_data += self.serial.read_all()
+            if raw_data:  # Exit loop if data is received
+                break
+            time.sleep(0.1)  # Short delay to avoid busy waiting
+
+        try:
+            if not raw_data:
+                raise ValueError("No data received from UART within timeout")
+
+            # Attempt to parse the raw data into a UartPacket
+            packet = UartPacket(buffer=raw_data)
+
+        except Exception as e:
+            # Log the error and create a default error packet
+            log.error(f"Error parsing packet: {e}")
+            packet = UartPacket(
+                id=0,
+                packet_type=OW_BAD_PARSE,
+                command=0,
+                addr=0,
+                reserved=0,
+                data=[]
+            )
+
+        return packet
+
+    def send_packet(self, id=None, packetType=OW_ACK, command=OW_CMD_NOP, addr=0, reserved=0, data=None):
+        """
+        Send a packet over UART.
+
+        Args:
+            id (int, optional): Packet ID. If not provided, a unique ID is auto-generated.
+            packetType (int): Type of the packet (e.g., OW_ACK, OW_JSON).
+            command (int): Command to be sent with the packet.
+            addr (int): Address field in the packet.
+            reserved (int): Reserved field in the packet.
+            data (bytes or dict, optional): Payload data. If packetType is OW_JSON, data is serialized to JSON.
+
+        Returns:
+            UartPacket: Parsed response packet if `self.running` is False.
+            None: If `self.running` is True or in case of an error.
+
+        Raises:
+            ValueError: If data serialization fails or invalid parameters are provided.
+        """
+        try:
+            # Check if serial port is open
+            if not self.serial or not self.serial.is_open:
+                log.error("Cannot send packet. Serial port is not connected.")
+                return None
+
+            # Generate packet ID if not provided
+            if id is None:
+                self.packet_count += 1
+                id = self.packet_count
+
+            # Handle payload
+            if data:
+                if packetType == OW_JSON:
+                    try:
+                        payload = json.dumps(data).encode('utf-8')
+                    except (TypeError, ValueError) as e:
+                        log.error(f"Error serializing data to JSON: {e}")
+                        raise ValueError("Invalid data for JSON serialization") from e
+                else:
+                    if not isinstance(data, (bytes, bytearray)):
+                        raise ValueError("Data must be bytes or bytearray if not OW_JSON")
+                    payload = data
+                payload_length = len(payload)
             else:
-                payload = data
-            payload_length = len(payload)
-        else:
-            payload_length = 0
+                payload_length = 0
+                payload = b''
 
-        packet = bytearray()
-        packet.append(OW_START_BYTE)
-        packet.extend(id.to_bytes(2, 'big'))
-        packet.append(packetType)
-        packet.append(command)
-        packet.append(addr)
-        packet.append(reserved)
-        packet.extend(payload_length.to_bytes(2, 'big'))
-        if payload_length > 0:
-            packet.extend(payload)
-        crc_value = util_crc16(packet[1:])
-        packet.extend(crc_value.to_bytes(2, 'big'))
-        packet.append(OW_END_BYTE)
-        UartPacket(buffer=packet).print_packet()
+            # Construct packet
+            packet = bytearray()
+            packet.append(OW_START_BYTE)
+            packet.extend(id.to_bytes(2, 'big'))
+            packet.append(packetType)
+            packet.append(command)
+            packet.append(addr)
+            packet.append(reserved)
+            packet.extend(payload_length.to_bytes(2, 'big'))
+            if payload_length > 0:
+                packet.extend(payload)
 
-        self._tx(packet)
+            # Calculate and append CRC
+            crc_value = util_crc16(packet[1:])  # Exclude start byte from CRC
+            packet.extend(crc_value.to_bytes(2, 'big'))
+
+            # Append end byte
+            packet.append(OW_END_BYTE)
+
+            # Log packet for debugging
+            # UartPacket(buffer=packet).print_packet()
+
+            # Transmit packet
+            self._tx(packet)
+
+            # If not in running mode, read and return the response packet
+            if not self.running:
+                return self.read_packet()
+            else:
+                return None
+
+        except ValueError as ve:
+            log.error(f"Validation error in send_packet: {ve}")
+            raise
+        except Exception as e:
+            log.error(f"Unexpected error in send_packet: {e}")
+            raise
 
     def clear_buffer(self):
         """Clear the read buffer."""

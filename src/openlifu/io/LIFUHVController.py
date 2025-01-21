@@ -4,30 +4,34 @@ import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from openlifu.io.LIFUInterface import LIFUInterface
+    from openlifu.io.LIFUUart import LIFUUart
 
 logger = logging.getLogger(__name__)
 
 class HVController:
-    def __init__(self, lifu_interface: LIFUInterface):
+    def __init__(self, uart: LIFUUart = None):
         """
         Initialize the HVController.
 
         Args:
-            lifu_interface (LIFUInterface): The LIFUInterface instance for communication.
+            uart (LIFUUart): The LIFUUart instance for communication.
         """
-        self.interface = lifu_interface
+        self.uart = uart
 
         # Initialize the high voltage state (should get this from device)
         self.output_voltage = 0.0
         self.is_hv_on = False
+
+    def is_connected(self):
+        if self.uart:
+            return self.uart.is_connected()
 
     def turn_on(self):
         """
         Turn on the high voltage.
         """
         try:
-            if not self.interface.is_device_connected():
+            if not self.uart.is_connected():
                 raise ValueError("High voltage controller not connected")
 
             logger.info("Turning on high voltage.")
@@ -43,7 +47,7 @@ class HVController:
         Turn off the high voltage.
         """
         try:
-            if not self.interface.is_device_connected():
+            if not self.uart.is_connected():
                 raise ValueError("High voltage controller not connected")
 
             logger.info("Turning off high voltage.")
@@ -65,7 +69,7 @@ class HVController:
             Raises:
                 ValueError: If the controller is not connected or voltage exceeds supply voltage.
             """
-            if not self.interface.is_device_connected():
+            if not self.uart.is_connected():
                 raise ValueError("High voltage controller not connected")
 
             try:

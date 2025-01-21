@@ -75,5 +75,8 @@ class UartPacket:
         logger.info(f"  Address: {hex(self.addr)}")
         logger.info(f"  Reserved: {hex(self.reserved)}")
         logger.info(f"  Data Length: {self.data_len}")
-        logger.info(f"  Data: {self.data.hex()}")
+        if self.data_len > 0:
+            logger.info(f"  Data: {self.data.hex()}")
+        else:
+            logger.info("  Data: None")
         logger.info(f"  CRC: {hex(self.crc)}")
