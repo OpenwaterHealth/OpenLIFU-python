@@ -5,7 +5,7 @@ import pytest
 from vtk import vtkImageData, vtkPolyData
 
 from openlifu.db.database import Database
-from openlifu.db.photoscan import (
+from openlifu.photoscan import (
     Photoscan,
     load_data_from_filepaths,
     load_data_from_photoscan,

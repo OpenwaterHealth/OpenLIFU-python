@@ -10,10 +10,10 @@ from typing import List, Optional
 
 import h5py
 
+from openlifu.photoscan import Photoscan
 from openlifu.plan import Protocol, Run, Solution
 from openlifu.util.json import PYFUSEncoder
 
-from .photoscan import Photoscan
 from .session import Session
 from .subject import Subject
 
