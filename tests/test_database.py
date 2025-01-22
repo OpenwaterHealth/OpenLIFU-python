@@ -8,8 +8,9 @@ import pytest
 from helpers import dataclasses_are_equal
 
 from openlifu import Point, Solution
-from openlifu.db import Photoscan, Session, Subject
+from openlifu.db import Session, Subject
 from openlifu.db.database import Database, OnConflictOpts
+from openlifu.photoscan import Photoscan
 from openlifu.plan import Protocol, Run
 
 
