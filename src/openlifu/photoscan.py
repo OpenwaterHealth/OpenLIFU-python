@@ -9,8 +9,6 @@ import OpenEXR
 import vtk
 from vtk.util.numpy_support import numpy_to_vtk
 
-from openlifu.util.json import PYFUSEncoder
-
 
 @dataclass
 class Photoscan:
@@ -46,6 +44,8 @@ class Photoscan:
             compact:if enabled then the string is compact (not pretty). Disable for pretty.
         Returns: A json string representing the complete Photoscan object
         """
+        from openlifu.util.json import PYFUSEncoder
+
         if compact:
             return json.dumps(self.to_dict(), separators=(',', ':'), cls=PYFUSEncoder)
         else:
