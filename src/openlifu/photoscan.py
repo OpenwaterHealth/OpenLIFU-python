@@ -21,13 +21,13 @@ class Photoscan:
     name: Optional[str] = "Photoscan"
     """Photoscan name"""
 
-    model_filename: Optional[str] =  ""
+    model_filename: Optional[str] =  None
     """Relative path to model"""
 
-    texture_filename: Optional[str] = ""
+    texture_filename: Optional[str] = None
     """Relative path to texture image"""
 
-    mtl_filename: Optional[str] = ""
+    mtl_filename: Optional[str] = None
     """Relative path to materials file"""
 
     photoscan_approved: bool = False
@@ -35,7 +35,7 @@ class Photoscan:
     confirmation that the photoscan is good enough to be used."""
 
     @staticmethod
-    def from_json(json_string: str):
+    def from_json(json_string: str) -> "Photoscan":
         """Load a Photoscan from a json string"""
         return Photoscan.from_dict(json.loads(json_string))
 
@@ -52,7 +52,7 @@ class Photoscan:
             return json.dumps(self.to_dict(), indent=4, cls=PYFUSEncoder)
 
     @staticmethod
-    def from_dict(d:Dict):
+    def from_dict(d:Dict) -> "Photoscan":
         """
         Create a Photoscan from a dictionary
         param d: Dictionary of photoscan parameters.
@@ -60,7 +60,7 @@ class Photoscan:
         """
         return Photoscan(**d)
 
-    def to_dict(self):
+    def to_dict(self) -> Dict:
         """
         Convert the photoscan to a dictionary
         returns: Dictionary of photoscan parameters
@@ -69,7 +69,7 @@ class Photoscan:
         return d
 
     @staticmethod
-    def from_file(filename):
+    def from_file(filename) -> "Photoscan":
         """
         Load a Photoscan from a metadata file
         :param filename: Name of the file
@@ -89,7 +89,7 @@ class Photoscan:
 
 def load_data_from_filepaths(model_abspath: str, texture_abspath: str) -> Tuple[vtk.vtkPolyData, vtk.vtkImageData]:
     """
-    This function directly returns the data without creating a photoscan object
+    This function returns the data directly from the model and texture filepaths without requiring a photoscan object.
     param model_abspath: absolute filepath to model data
           texture abspath: absolute filepath to texture data
     Returns: Photoscan data as (model_vtkpolydata, texture_vtkimagedata)
@@ -109,8 +109,11 @@ def load_data_from_photoscan(photoscan: Photoscan, parent_dir) -> Tuple[vtk.vtkP
 
     return (model_polydata, texture_imagedata)
 
-def load_model(file_name):
-    """ This function assumes that the model is saved following the LPS coordinate system."""
+def load_model(file_name) -> vtk.vtkPolyData:
+    """
+    This function assumes that the model is saved to file in LPS coordinates.
+    The model that is returned is in RAS coordinates
+    """
     if not Path(file_name).exists():
         raise FileNotFoundError(f'Model filepath does not exist: {file_name}')
     mesh = read_as_vtkpolydata(file_name)
@@ -118,7 +121,7 @@ def load_model(file_name):
 
     return mesh_ras
 
-def load_texture(file_name):
+def load_texture(file_name) -> vtk.vtkImageData:
     if not Path(file_name).exists():
         raise FileNotFoundError(f'Texture data filepath does not exist: {file_name}')
     texture = read_as_vtkimagedata(file_name)
@@ -126,97 +129,73 @@ def load_texture(file_name):
 
 def read_as_vtkpolydata(file_name):
 
-    valid_suffixes = ['.g', '.obj', '.stl', '.ply', '.vtk', '.vtp']
+    suffix_to_reader_dict = {
+        '.ply' : vtk.vtkPLYReader,
+        '.vtp' : vtk.vtkXMLPolyDataReader,
+        '.obj' : vtk.vtkOBJReader,
+        '.stl' : vtk.vtkSTLReader,
+        '.vtk' : vtk.vtkPolyDataReader,
+        '.g' : vtk.vtkBYUReader
+    }
     path = Path(file_name)
-    if path.suffix:
-        ext = path.suffix.lower()
-    if path.suffix not in valid_suffixes:
-        raise ValueError(f"File format {path.suffix} not supported by reader")
+    ext = path.suffix.lower()
+    if path.suffix not in suffix_to_reader_dict:
+        raise ValueError(f"File format {ext} not supported by reader")
+    reader = suffix_to_reader_dict[ext]()
+    if ext == '.g':
+        reader.SetGeometryName(file_name)
     else:
-        if ext == ".ply":
-            reader = vtk.vtkPLYReader()
-            reader.SetFileName(file_name)
-            reader.Update()
-            poly_data = reader.GetOutput()
-        elif ext == ".vtp":
-            reader = vtk.vtkXMLPolyDataReader()
-            reader.SetFileName(file_name)
-            reader.Update()
-            poly_data = reader.GetOutput()
-        elif ext == ".obj":
-            reader = vtk.vtkOBJReader()
-            reader.SetFileName(file_name)
-            reader.Update()
-            poly_data = reader.GetOutput()
-        elif ext == ".stl":
-            reader = vtk.vtkSTLReader()
-            reader.SetFileName(file_name)
-            reader.Update()
-            poly_data = reader.GetOutput()
-        elif ext == ".vtk":
-            reader = vtk.vtkPolyDataReader()
-            reader.SetFileName(file_name)
-            reader.Update()
-            poly_data = reader.GetOutput()
-        elif ext == ".g":
-            reader = vtk.vtkBYUReader()
-            reader.SetGeometryFileName(file_name)
-            reader.Update()
-            poly_data = reader.GetOutput()
+        reader.SetFileName(file_name)
+    reader.Update()
+    poly_data = reader.GetOutput()
 
-        return poly_data
+    return poly_data
 
-def convert_numpy_to_vtkimage(image_numpy):
-
+def convert_numpy_to_vtkimage(image_numpy: np.ndarray) -> vtk.vtkImageData:
+    """
+    Converts a numpy array with dimensions [HxWx3] representing an RGB image into vtkImageData
+    """
     vtkimage_data = vtk.vtkImageData()
     vtkimage_data.SetDimensions(image_numpy.shape[1], image_numpy.shape[0], 1)
     vtkimage_data.SetNumberOfScalarComponents(image_numpy.shape[2], vtkimage_data.GetInformation())
     pd = vtkimage_data.GetPointData()
     new_rgb_data = image_numpy.reshape((-1, image_numpy.shape[2]))
-    #new_rgb_data = np.flipud(new_rgb_data) # To look like blender format upon loading. Image is instead flipped in texture module.
     vtk_array = numpy_to_vtk(new_rgb_data, deep=True, array_type=vtk.VTK_UNSIGNED_SHORT)
     pd.SetScalars(vtk_array)
     return vtkimage_data
 
-def read_as_vtkimagedata(file_name):
+def read_as_vtkimagedata(file_name) -> vtk.vtkImageData:
 
-    valid_suffixes = ['.jpg', '.png', '.tiff', '.exr']
+    suffix_to_reader_dict = {
+        '.jpg' : vtk.vtkJPEGReader,
+        '.png' : vtk.vtkPNGReader,
+        '.tiff' : vtk.vtkTIFFReader,
+    }
     path = Path(file_name)
-    if path.suffix:
-        ext = path.suffix.lower()
-    if path.suffix not in valid_suffixes:
-        raise ValueError(f"File format {path.suffix} not supported by reader")
+    ext = path.suffix.lower()
+    if ext == '.exr':
+        with OpenEXR.File(str(file_name), separate_channels = True) as exr_file:
+            R = exr_file.channels()['R'].pixels
+            G = exr_file.channels()['G'].pixels
+            B = exr_file.channels()['B'].pixels
+            # Combine channels into a single RGB image (H x W x 3)
+            rgb_data = np.stack([R, G, B], axis=-1, dtype = np.float32)
+            # EXR stores pixel data using half 16-bit floating point values. Convert data to an 8-bit image compatibility with VTK
+            rgb_data = np.clip(rgb_data*(2**16-1), 0, 65535)
+            image_data = convert_numpy_to_vtkimage(rgb_data)
+    elif ext in suffix_to_reader_dict:
+        reader = suffix_to_reader_dict[ext]()
+        reader.SetFileName(file_name)
+        reader.Update()
+        image_data = reader.GetOutput()
     else:
-        if ext == ".jpg":
-            reader = vtk.vtkJPEGReader()
-            reader.SetFileName(file_name)
-            reader.Update()
-            image_data = reader.GetOutput()
-        elif ext == ".png":
-            reader = vtk.vtkPNGReader()
-            reader.SetFileName(file_name)
-            reader.Update()
-            image_data = reader.GetOutput()
-        elif ext == ".tiff":
-            reader = vtk.vtkTIFFReader()
-            reader.SetFileName(file_name)
-            reader.Update()
-            image_data = reader.GetOutput()
-        elif ext == ".exr":
-            with OpenEXR.File(str(file_name), separate_channels = True) as exr_file:
-                R = exr_file.channels()['R'].pixels
-                G = exr_file.channels()['G'].pixels
-                B = exr_file.channels()['B'].pixels
-                # Combine channels into a single RGB image (H x W x 3)
-                rgb_data = np.stack([R, G, B], axis=-1)
-                rgb_data = rgb_data.astype(np.float32)
-                # Normalize the data to 0-255 range for compatibility with VTK
-                rgb_data = np.clip(rgb_data*(2**16-1), 0, 65535)
-                image_data = convert_numpy_to_vtkimage(rgb_data)
+        raise ValueError(f"File format {path.suffix} not supported by reader")
 
-        return image_data
+    return image_data
 
-def convert_between_ras_and_lps(mesh):
+def convert_between_ras_and_lps(mesh : vtk.vtkPointSet) -> vtk.vtkPointSet:
+    """Converts a mesh (polydata, unstructured grid or even just a point cloud) between the LPS (left-posterior-superior) coordinate system and
+      RAS (right-anterior-superior) coordinate system."""
 
     transform_ras_to_lps = vtk.vtkTransform()
     transform_ras_to_lps.Scale(-1,-1,1)
