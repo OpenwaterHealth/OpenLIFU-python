@@ -112,7 +112,7 @@ class Database:
             self.write_solution_ids(session, [])
         if not self.get_runs_filename(subject.id, session_id).exists():
             self.write_run_ids(session.subject_id, session.id, [])
-        if not self.get_photoscan_filename(subject.id, session_id).exists():
+        if not self.get_photoscans_filename(subject.id, session_id).exists():
             self.write_photoscan_ids(session.subject_id, session.id, [])
 
         # Update the list of session IDs for the subject
@@ -278,6 +278,9 @@ class Database:
         self.logger.info(f"Added volume with ID {volume_id} for subject {subject_id} to the database.")
 
     def write_photoscan(self, subject_id, session_id, photoscan: Photoscan, model_data_filepath: Optional[str] = None, texture_data_filepath: Optional[str] = None, mtl_data_filepath: Optional[str] = None, on_conflict=OnConflictOpts.ERROR):
+        """ Writes a photoscan object to database and copies the associated model and texture data filepaths that are required for generating a photoscan into the database.
+        .mtl files are not required for generating a photoscan but can be provided if present.
+        When a photoscan that is already present in the database is being re-written,the associated model and texture files do not need to be provided """
 
         photoscan_ids = self.get_photoscan_ids(subject_id, session_id)
         if photoscan.id in photoscan_ids:
@@ -291,39 +294,41 @@ class Database:
             else:
                 raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
 
-        photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan.id) #subject_id/photoscan/photoscan_id/photoscan_id.json
-        photoscan_parent_dir = Path(photoscan_metadata_filepath).parent
+        photoscan_metadata_filepath = Path(self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan.id)) #subject_id/photoscan/photoscan_id/photoscan_id.json
+        photoscan_parent_dir = photoscan_metadata_filepath.parent
         photoscan_parent_dir.mkdir(exist_ok=True)
 
         # Copy photoscan model and texture files to database.
         # If a model and texture data file is not provided, check that there are existing files previously
         # associated with the photoscan object.
         if model_data_filepath:
-            if not Path(model_data_filepath).exists():
+            model_data_filepath = Path(model_data_filepath)
+            if not model_data_filepath.exists():
                 raise FileNotFoundError(f'Model data filepath does not exist: {model_data_filepath}')
-            photoscan.model_filename = Path(model_data_filepath).name
-            shutil.copy(Path(model_data_filepath), Path(photoscan_metadata_filepath).parent)
+            photoscan.model_filename = model_data_filepath.name
+            shutil.copy(model_data_filepath, photoscan_metadata_filepath.parent)
         elif not photoscan.model_filename or not (photoscan_parent_dir/photoscan.model_filename).exists():
             raise ValueError(f"Cannot find model file associated with photoscan {photoscan.id}.")
 
         if texture_data_filepath:
-            if not Path(texture_data_filepath).exists():
+            texture_data_filepath = Path(texture_data_filepath)
+            if not texture_data_filepath.exists():
                 raise FileNotFoundError(f'Texture data filepath does not exist: {texture_data_filepath}')
-            photoscan.texture_filename = Path(texture_data_filepath).name
-            shutil.copy(Path(texture_data_filepath), Path(photoscan_metadata_filepath).parent)
+            photoscan.texture_filename = texture_data_filepath.name
+            shutil.copy(texture_data_filepath, photoscan_metadata_filepath.parent)
         elif not photoscan.texture_filename or not (photoscan_parent_dir/photoscan.texture_filename).exists():
             raise ValueError(f"Cannot find texture file associated with photoscan {photoscan.id}.")
 
         # Not necessarily required for a photoscan object
         if mtl_data_filepath:
-            if not Path(mtl_data_filepath).exists():
+            mtl_data_filepath = Path(mtl_data_filepath)
+            if not mtl_data_filepath.exists():
                 raise FileNotFoundError(f'MTL filepath does not exist: {mtl_data_filepath}')
-            photoscan.mtl_filename = Path(mtl_data_filepath).name
-            shutil.copy(Path(mtl_data_filepath), Path(photoscan_metadata_filepath).parent)
+            photoscan.mtl_filename = mtl_data_filepath.name
+            shutil.copy(mtl_data_filepath, photoscan_metadata_filepath.parent)
         elif photoscan.mtl_filename:
             if not (photoscan_parent_dir/photoscan.mtl_filename).exists():
                 raise ValueError(f"Cannot find photoscan materials file associated with photoscan {photoscan.id}.")
-
 
         #Save the photoscan metadata to a JSON file
         photoscan.to_file(photoscan_metadata_filepath)
@@ -465,7 +470,7 @@ class Database:
 
     def get_photoscan_ids(self, subject_id: str, session_id: str) -> List[str]:
         """Get a list of IDs of the photoscans associated with the given session"""
-        photoscan_filename = self.get_photoscan_filename(subject_id, session_id)
+        photoscan_filename = self.get_photoscans_filename(subject_id, session_id)
 
         if not (photoscan_filename.exists() and photoscan_filename.is_file()):
             self.logger.warning("Photoscan file not found for subject %s, session %s.", subject_id, session_id)
@@ -549,7 +554,7 @@ class Database:
                     "data_abspath": Path(volume_metadata_filepath).parent/volume["data_filename"]}
 
     def get_photoscan_info(self, subject_id, session_id, photoscan_id):
-        """Returns the photoscan information as a dictionary without the loaded model and texture"""
+        """Returns the photoscan information with absolute paths to any data"""
         photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan_id)
         with open(photoscan_metadata_filepath) as f:
             photoscan = json.load(f)
@@ -563,7 +568,7 @@ class Database:
         return photoscan_dict
 
     def load_photoscan(self, subject_id, session_id, photoscan_id):
-        """Returns a photoscan object included the loaded model and texture images"""
+        """Returns a photoscan object"""
         photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan_id)
         photoscan = Photoscan.from_file(photoscan_metadata_filepath)
         return photoscan
@@ -717,7 +722,7 @@ class Database:
         session_dir = self.get_session_dir(subject_id, session_id)
         return Path(session_dir) / 'solutions' / 'solutions.json'
 
-    def get_photoscan_filename(self, subject_id, session_id) -> Path:
+    def get_photoscans_filename(self, subject_id, session_id) -> Path:
         """Get the path to the overall photoscans json file for the requested session"""
         session_dir = self.get_session_dir(subject_id, session_id)
         return Path(session_dir) / 'photoscans' / 'photoscans.json'
@@ -809,7 +814,7 @@ class Database:
 
     def write_photoscan_ids(self, subject_id, session_id, photoscan_ids: List[str]):
         photoscan_data = {'photoscan_ids': photoscan_ids}
-        photoscan_filename = self.get_photoscan_filename(subject_id, session_id)
+        photoscan_filename = self.get_photoscans_filename(subject_id, session_id)
         photoscan_filename.parent.mkdir(exist_ok = True) # Make a photoscan directory in case it does not exist
         with open(photoscan_filename, 'w') as f:
             json.dump(photoscan_data,f)
