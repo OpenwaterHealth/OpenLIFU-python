@@ -181,3 +181,8 @@ class Session:
         Path(filename).parent.mkdir(exist_ok=True)
         with open(filename, 'w') as file:
             file.write(self.to_json(compact=False))
+
+    def update_modified_time(self, time: Optional[datetime] = None):
+        if time is None:
+            time = datetime.now()
+        self.date_modified = time

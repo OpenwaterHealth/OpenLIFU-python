@@ -105,6 +105,7 @@ class Database:
 
         # Save the session to a JSON file
         session_filename = self.get_session_filename(subject.id, session_id)
+        session.update_modified_time()
         session.to_file(session_filename)
 
         # Create empty runs.json, solutions.json and photoscans.json files for session if needed

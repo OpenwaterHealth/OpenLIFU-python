@@ -1,8 +1,10 @@
 import logging
 import shutil
 from contextlib import nullcontext as does_not_raise
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
+from unittest.mock import patch
 
 import pytest
 from helpers import dataclasses_are_equal
@@ -464,3 +466,29 @@ def test_write_photoscan(example_database:Database, example_session: Session, tm
     photoscan.texture_abspath = bogus_texture_file
     with pytest.raises(FileNotFoundError, match="does not exist"):
         example_database.write_photoscan(example_session.subject_id, example_session.id, photoscan, model_data_path, bogus_texture_file, on_conflict=OnConflictOpts.OVERWRITE)
+
+def test_session_created_date():
+    """Test that created date is recent when a session is created."""
+    tolerance = timedelta(seconds=2)  # Allow for minor timing discrepancies
+
+    session = Session()
+    now = datetime.now()
+    assert(now - tolerance <= session.date_created <= now + tolerance)
+
+def test_session_date_modified_updates_on_write(example_database:Database, example_subject:Subject):
+    """Test that the modified time updates when a session file is written."""
+    tolerance = timedelta(seconds=2)  # Allow for minor timing discrepancies
+
+    # Mocking time so testing only passes simulated time, not real time
+    with patch('openlifu.db.session.datetime') as derptime:
+        session = Session(name="qwerty", id='aoeuidhtns', subject_id=example_subject.id)
+        initial_modified_time = session.date_modified
+
+        # Update the mock to return a new time
+        updated_time = datetime.now() + timedelta(seconds=1e6)
+        derptime.now.return_value = updated_time
+        example_database.write_session(example_subject, session)
+
+        # Assert the modified time was updated
+        assert session.date_modified - tolerance <= updated_time <= session.date_modified + tolerance
+        assert session.date_modified > initial_modified_time - tolerance
