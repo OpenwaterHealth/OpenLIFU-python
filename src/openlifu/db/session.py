@@ -41,7 +41,7 @@ class Session:
     name: Optional[str] = None
     """Session name"""
 
-    date: datetime = field(default_factory=datetime.now)
+    date_created: datetime = field(default_factory=datetime.now)
     """Date of creation of the session"""
 
     date_modified: datetime = field(default_factory=datetime.now)
@@ -113,8 +113,8 @@ class Session:
         :param db: Database object
         :returns: Session object
         """
-        if 'date' in d:
-            d['date'] = datetime.fromisoformat(d['date'])
+        if 'date_created' in d:
+            d['date_created'] = datetime.fromisoformat(d['date_created'])
         if 'date_modified' in d:
             d['date_modified'] = datetime.fromisoformat(d['date_modified'])
         if 'volume' in d:
@@ -144,7 +144,7 @@ class Session:
         :returns: Dictionary of session parameters
         """
         d = self.__dict__.copy()
-        d['date'] = d['date'].isoformat()
+        d['date_created'] = d['date_created'].isoformat()
         d['date_modified'] = d['date_modified'].isoformat()
         d['targets'] = [p.to_dict() for p in d['targets']]
         d['markers'] = [p.to_dict() for p in d['markers']]
