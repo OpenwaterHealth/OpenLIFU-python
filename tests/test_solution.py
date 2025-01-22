@@ -41,7 +41,7 @@ def example_solution() -> Solution:
         name="Test Solution",
         protocol_id="prot_123",
         transducer_id="trans_456",
-        created_on=datetime(2024, 1, 1, 12, 0),
+        date_created=datetime(2024, 1, 1, 12, 0),
         description="This is a test solution for a unit test.",
         delays=np.array([[0.0, 1.0, 2.0, 3.0]]),
         apodizations=np.array([[0.5, 0.75, 1.0, 0.85]]),
