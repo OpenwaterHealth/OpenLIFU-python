@@ -7,6 +7,7 @@ from openlifu.io.config import (
     OW_CMD_ECHO,
     OW_CMD_HWID,
     OW_CMD_PING,
+    OW_CMD_RESET,
     OW_CMD_TOGGLE_LED,
     OW_CMD_VERSION,
     OW_ERROR,
@@ -307,4 +308,32 @@ class HVController:
             return voltage
         except Exception as e:
             logger.error("Error getting output voltage: %s", e)
+            raise
+
+    def soft_reset(self) -> bool:
+        """
+        Perform a soft reset on the Console device.
+
+        Returns:
+            bool: True if the reset was successful, False otherwise.
+
+        Raises:
+            ValueError: If the UART is not connected.
+            Exception: If an error occurs while resetting the device.
+        """
+        try:
+            if not self.uart.is_connected():
+                raise ValueError("Console Device  not connected")
+
+            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_CMD_RESET)
+            self.uart.clear_buffer()
+            # r.print_packet()
+            if r.packet_type == OW_ERROR:
+                logger.error("Error resetting device")
+                return False
+            else:
+                return True
+
+        except Exception as e:
+            logger.error("Error Enumerating Console Devices: %s", e)
             raise

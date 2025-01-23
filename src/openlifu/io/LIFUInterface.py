@@ -26,7 +26,7 @@ class LIFUInterface:
     hvcontroller: HVController = None
     txdevice: TxDevice = None
 
-    def __init__(self, vid: int = 0x0483, pid: int = 0x57AF, baudrate: int = 921600, timeout: int = 10, test_mode=False) -> None:
+    def __init__(self, vid: int = 0x0483, tx_pid: int = 0x57AF, con_pid: int = 0x57A0, baudrate: int = 921600, timeout: int = 10, test_mode=False) -> None:
         """
         Initialize the LIFUInterface.
 
@@ -36,17 +36,18 @@ class LIFUInterface:
             baudrate (int): Communication baud rate.
             timeout (int): Read timeout in seconds.
         """
-        logger.debug("Initializing LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", vid, pid, baudrate, timeout)
+        logger.debug("Initializing TX Module of LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", vid, tx_pid, baudrate, timeout)
 
-        self.txdevice = TxDevice(uart = LIFUUart(0x0483, 0x57AF, 921600, 10, demo_mode=test_mode))
+        self.txdevice = TxDevice(uart = LIFUUart(vid, tx_pid, baudrate, timeout, demo_mode=test_mode))
 
         # Connect signals to internal handlers
         # self.uart.signal_connect.connect(self.signal_connect.emit)
         # self.uart.signal_disconnect.connect(self.signal_disconnect.emit)
         # self.uart.signal_data_received.connect(self.signal_data_received.emit)
 #
+        logger.debug("Initializing Console of LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", vid, con_pid, baudrate, timeout)
         # Create a LIFUHVController instance as part of the interface
-        self.hvcontroller = HVController(uart = LIFUUart(0x0483, 0x57A0, 921600, 10, demo_mode=test_mode))
+        self.hvcontroller = HVController(uart = LIFUUart(vid, con_pid, baudrate, timeout, demo_mode=test_mode))
 
     async def start_monitoring(self, interval: int = 1) -> None:
         """Start monitoring for USB device connections."""

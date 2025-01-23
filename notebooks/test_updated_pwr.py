@@ -48,3 +48,21 @@ if interface.hvcontroller.turn_12v_on():
         print("Failed to turn off 12V")
 else:
     print("Failed to turn on 12V.")
+
+# Set HV Power
+print("Set HV Power to +/- 12V")
+r = interface.hvcontroller.set_voltage(voltage=12.0)
+
+
+
+print("Reset DevConsoleice:")
+# Ask the user for confirmation
+user_input = input("Do you want to reset the Console? (y/n): ").strip().lower()
+
+if user_input == 'y':
+    if interface.hvcontroller.soft_reset():
+        print("Reset Successful.")
+elif user_input == 'n':
+    print("Reset canceled.")
+else:
+    print("Invalid input. Please enter 'y' or 'n'.")
