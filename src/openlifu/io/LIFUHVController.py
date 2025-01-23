@@ -307,8 +307,7 @@ class HVController:
                 raise ValueError("Voltage input must be within the valid range 5 to 100 Volts).")
 
             try:
-                # dac_input = int((voltage / 100) * 4095)
-                dac_input = 1000
+                dac_input = int((voltage / 150) * 4095)
                 # Pack the 12-bit DAC input into two bytes
                 data = bytes([
                     (dac_input >> 8) & 0xFF,  # High byte (most significant bits)
