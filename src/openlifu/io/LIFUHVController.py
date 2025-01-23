@@ -12,6 +12,7 @@ from openlifu.io.config import (
     OW_ERROR,
     OW_POWER,
     OW_POWER_12V_OFF,
+    OW_POWER_12V_ON,
 )
 
 if TYPE_CHECKING:
