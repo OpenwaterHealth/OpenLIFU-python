@@ -9,6 +9,8 @@ from openlifu.io.config import (
     OW_CMD_TOGGLE_LED,
     OW_CMD_VERSION,
     OW_POWER,
+    OW_POWER_12V_OFF,
+    OW_POWER_12V_ON,
     OW_POWER_GET_HV,
     OW_POWER_HV_OFF,
     OW_POWER_HV_ON,
@@ -135,8 +137,6 @@ class PWR_IF:
         await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_POWER, command=OW_POWER_HV_ON)
         self.uart.clear_buffer()
-
-        self.uart.clear_buffer()
         return response
 
     async def set_hv_supply_off(self, packet_id=None):
@@ -147,7 +147,26 @@ class PWR_IF:
         await asyncio.sleep(self._delay)
         response = await self.uart.send_ustx(id=packet_id, packetType=OW_POWER, command=OW_POWER_HV_OFF)
         self.uart.clear_buffer()
+        return response
 
+
+    async def set_12v_on(self, packet_id=None):
+        if packet_id is None:
+            self.packet_count += 1
+            packet_id = self.packet_count
+
+        await asyncio.sleep(self._delay)
+        response = await self.uart.send_ustx(id=packet_id, packetType=OW_POWER, command=OW_POWER_12V_ON)
+        self.uart.clear_buffer()
+        return response
+
+    async def set_12v_off(self, packet_id=None):
+        if packet_id is None:
+            self.packet_count += 1
+            packet_id = self.packet_count
+
+        await asyncio.sleep(self._delay)
+        response = await self.uart.send_ustx(id=packet_id, packetType=OW_POWER, command=OW_POWER_12V_OFF)
         self.uart.clear_buffer()
         return response
 
