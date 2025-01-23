@@ -57,7 +57,7 @@ class TxDevice:
         if self.uart:
             return self.uart.is_connected()
 
-    def ping(self) -> None:
+    def ping(self) -> bool:
         """
         Send a ping command to the TX device to verify connectivity.
 
@@ -74,6 +74,12 @@ class TxDevice:
             self.uart.clear_buffer()
             logger.info("Received Ping from Device.")
             # r.print_packet()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error sending ping")
+                return False
+            else:
+                return True
 
         except Exception as e:
             logger.error("Error Sending Ping: %s", e)
@@ -433,7 +439,7 @@ class TxDevice:
             logger.error("Error Enumerating TX Devices: %s", e)
             raise
 
-    def demo_tx7332(self) -> list[TX7332_IF]:
+    def demo_tx7332(self) -> bool:
         """
         Sets all TX7332 chip registers with a test waveform.
 
@@ -447,7 +453,6 @@ class TxDevice:
             if not self.uart.is_connected():
                 raise ValueError("TX Device  not connected")
 
-            self._tx_instances.clear()
             r = self.uart.send_packet(id=None, packetType=OW_TX7332, command=OW_TX7332_DEMO)
             self.uart.clear_buffer()
             # r.print_packet()

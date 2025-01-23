@@ -87,6 +87,10 @@ To commit updates to the sample database:
    git push
    dvc push #Requires access to remote storage
 
+Set Python Path
+.. code:: sh
+   set PYTHONPATH=%cd%\src
+
 Disclaimer
 ----------
 

@@ -16,11 +16,8 @@ from PyQt5.QtWidgets import (
 )
 from qasync import QEventLoop
 
-from openlifu.io.core import UART
-from openlifu.io.ctrl_if import CTRL_IF
-from openlifu.io.uartpacket import UartPacket
-from openlifu.io.ustx import DelayProfile, PulseProfile, TxDeviceController, print_regs
-from openlifu.io.utils import list_vcp_with_vid_pid
+from openlifu.io.LIFUInterface import LIFUInterface
+from openlifu.io.ustx import DelayProfile, PulseProfile, TxModule, print_regs
 from openlifu.xdc import Transducer
 
 
@@ -31,7 +28,7 @@ class App(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.ustx_ctrl = None
+        self.interface = None
         self.configured = False  # System configuration status
         self.trigger_on = False  # Trigger status
         self.tasks = []
@@ -152,44 +149,29 @@ class App(QWidget):
         # Show the window
         self.show()
 
-    def find_usb_comm(self):
-        vid = 0x483  # Example VID for demonstration
-        pid = 0x57AF  # Example PID for demonstration
-
-        com_port = list_vcp_with_vid_pid(vid, pid)
-        if com_port is None:
-            print("No device found")
-            return None
-        print("Device found at port:", com_port)
-        return UART(com_port, timeout=5)
-
     async def async_init(self):
         await self.init_ustx()
 
     async def init_ustx(self):
-        if self.CTRL_BOARD:
-            comm_port = self.find_usb_comm()
-            if comm_port is None:
-                print("No device found")
-                return
+        self.interface = LIFUInterface(test_mode=False)
+        tx_connected, hv_connected = self.interface.is_device_connected()
+        # TODO: handle not fully connected
+        if tx_connected and hv_connected:
+            print("LIFU Device Fully connected.")
         else:
-            comm_port = UART(self.PORT_NAME, timeout=5)
-        self.ustx_ctrl = CTRL_IF(comm_port)
-        if self.ustx_ctrl is None:
-            print("Failed to initialize USTx controller")
-            return
-        print("USTx controller initialized")
+            print(f'LIFU Device NOT Fully Connected. TX: {tx_connected}, HV: {hv_connected}')
+
+        print("USTx Interface initialized")
         try:
-            r = await self.ustx_ctrl.ping()
-            parsedResp = UartPacket(buffer=r)
-            print("Received From Controller Packet ID:", parsedResp.id)
-            await self.get_trigger()
+            if self.interface.txdevice.ping():
+                print("Ping successful")
+            self.get_trigger()
         except ValueError as e:
             print(f"{e}")
             sys.exit(0)
 
         print("Enumerate TX Chips")
-        r = await self.ustx_ctrl.enum_tx7332_devices()
+        r = self.interface.txdevice.enum_tx7332_devices()
         print("TX Device Count:", len(r))
 
     def reset_fields(self):
@@ -218,7 +200,7 @@ class App(QWidget):
         tof = distances * 1e-3 / 1500
         delays = tof.max() - tof
 
-        txm = TxDeviceController()
+        txm = TxModule()
         array_delay_profile = DelayProfile(1, delays.tolist())
         txm.add_delay_profile(array_delay_profile)
         txm.add_pulse_profile(pulse_profile)
@@ -230,8 +212,8 @@ class App(QWidget):
 
         print("Write TX Chips")
         # Write Registers to Device #series of loops for programming tx chips
-        for tx, txregs in zip(self.ustx_ctrl.tx_devices, regs):
-            print(f"Writing to TX{tx.identifier}")
+        for tx, txregs in zip(self.interface.txdevice.tx_devices(), regs):
+            print(f"Writing to TX{tx.get_index()}")
             await tx.write_register(0, 1)
             for address, value in txregs.items():
                 if isinstance(value, list):
@@ -255,8 +237,8 @@ class App(QWidget):
 
     async def get_trigger(self):
         """Function to get the current trigger status."""
-        if self.ustx_ctrl is not None:
-            trigger_config = await self.ustx_ctrl.get_trigger()
+        if self.interface is not None:
+            trigger_config = self.interface.txdevice.get_trigger()
             if trigger_config is not None:
                 self.trigger_freq_input.setText(str(trigger_config.get('TriggerFrequencyHz', 0)))
             return trigger_config
@@ -264,7 +246,7 @@ class App(QWidget):
 
     async def set_trigger(self, new_frequency):
         """Function to set the trigger status."""
-        if self.ustx_ctrl is not None:
+        if self.interface is not None:
             trigger_config = {
                 "TriggerFrequencyHz": 10,
                 "TriggerMode": 1,
@@ -272,19 +254,19 @@ class App(QWidget):
                 "TriggerPulseWidthUsec":  5000
             }
             trigger_config["TriggerFrequencyHz"] = new_frequency
-            r = await self.ustx_ctrl.set_trigger(data=trigger_config)
+            r = self.interface.txdevice.set_trigger(data=trigger_config)
 
     async def start_trigger(self):
         """Function to handle start trigger."""
         print("Turn Trigger On")
-        await self.ustx_ctrl.start_trigger()
+        self.interface.txdevice.start_trigger()
         self.trigger_on = True
         self.update_trigger_label()
 
     async def stop_trigger(self):
         """Function to handle stop trigger."""
         print("Turn Trigger Off")
-        await self.ustx_ctrl.stop_trigger()
+        self.interface.txdevice.stop_trigger()
         self.trigger_on = False
         self.update_trigger_label()
 
@@ -306,9 +288,10 @@ class App(QWidget):
         """Function to shutdown USTX."""
         print('Shutting down USTX...')
         if self.trigger_on:
-            await self.stop_trigger()
-        if self.ustx_ctrl is not None:
-            self.ustx_ctrl.uart.close()
+            self.stop_trigger()
+        if self.interface is not None:
+            self.interface.close()
+
 
 # Function to launch the application
 def launch_app():

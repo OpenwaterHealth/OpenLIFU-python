@@ -144,6 +144,9 @@ class LIFUInterface:
         except Exception as e:
             logger.error("Error Stopping sonication: %s", e)
 
+    def close(self):
+        pass
+
     def __enter__(self):
         return self
 
