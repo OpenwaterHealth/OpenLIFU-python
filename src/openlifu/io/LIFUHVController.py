@@ -14,6 +14,9 @@ from openlifu.io.config import (
     OW_POWER,
     OW_POWER_12V_OFF,
     OW_POWER_12V_ON,
+    OW_POWER_HV_OFF,
+    OW_POWER_HV_ON,
+    OW_POWER_SET_HV,
 )
 
 if TYPE_CHECKING:
@@ -44,22 +47,6 @@ class HVController:
     def is_connected(self):
         if self.uart:
             return self.uart.is_connected()
-
-    def turn_on(self):
-        """
-        Turn on the high voltage.
-        """
-        try:
-            if not self.uart.is_connected():
-                raise ValueError("High voltage controller not connected")
-
-            logger.info("Turning on high voltage.")
-
-            self.is_hv_on = True
-            logger.info("High voltage turned on successfully.")
-        except Exception as e:
-            logger.error("Error turning on high voltage: %s", e)
-            raise
 
     def ping(self) -> bool:
         """
@@ -246,19 +233,55 @@ class HVController:
             logger.error("Error turning on 12V: %s", e)
             raise
 
-    def turn_off(self):
+
+    def turn_hv_on(self):
+        """
+        Turn on the high voltage.
+        """
+        try:
+            if not self.uart.is_connected():
+                raise ValueError("Console not connected")
+
+            logger.info("Turning on high voltage.")
+
+            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_POWER_HV_ON)
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error turning on HV Supply")
+                return False
+            else:
+                self.is_hv_on = True
+                logger.info("HV Supply turned on successfully.")
+                return True
+
+        except Exception as e:
+            logger.error("Error turning on high voltage: %s", e)
+            raise
+
+    def turn_hv_off(self):
         """
         Turn off the high voltage.
         """
         try:
             if not self.uart.is_connected():
-                raise ValueError("High voltage controller not connected")
+                raise ValueError("Console not connected")
 
             logger.info("Turning off high voltage.")
-            # Example command to turn off high voltage (adjust packetType and command as needed)
 
-            self.is_hv_on = False
-            logger.info("High voltage turned off successfully.")
+            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_POWER_HV_OFF)
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error turning off HV Supply")
+                return False
+            else:
+                self.is_hv_on = False
+                logger.info("HV Supply turned off successfully.")
+                return True
+
         except Exception as e:
             logger.error("Error turning off high voltage: %s", e)
             raise
@@ -276,12 +299,34 @@ class HVController:
             if not self.uart.is_connected():
                 raise ValueError("High voltage controller not connected")
 
-            try:
-                self.supply_voltage = voltage
-                logger.info("Setting output voltage to %.2fV.", voltage)
-                # Example command to set the voltage (adjust packetType, command, and format as needed)
 
-                logger.info("Output voltage set to %.2fV successfully.", voltage)
+            # Validate and process the DAC input
+            if voltage is None:
+                voltage = 0
+            elif not (5.0<= voltage <= 100.0):
+                raise ValueError("Voltage input must be within the valid range 5 to 100 Volts).")
+
+            try:
+                # dac_input = int((voltage / 100) * 4095)
+                dac_input = 1000
+                # Pack the 12-bit DAC input into two bytes
+                data = bytes([
+                    (dac_input >> 8) & 0xFF,  # High byte (most significant bits)
+                    dac_input & 0xFF          # Low byte (least significant bits)
+                ])
+
+                r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_POWER_SET_HV, data=data)
+                self.uart.clear_buffer()
+                # r.print_packet()
+
+                if r.packet_type == OW_ERROR:
+                    logger.error("Error setting HV")
+                    return False
+                else:
+                    self.supply_voltage = voltage
+                    logger.info("Output voltage set to %.2fV successfully.", voltage)
+                    return True
+
             except Exception as e:
                 logger.error("Error setting output voltage: %s", e)
                 raise

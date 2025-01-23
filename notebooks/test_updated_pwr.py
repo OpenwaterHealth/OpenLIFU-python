@@ -51,9 +51,19 @@ else:
 
 # Set HV Power
 print("Set HV Power to +/- 12V")
-r = interface.hvcontroller.set_voltage(voltage=12.0)
+if interface.hvcontroller.set_voltage(voltage=12.0):
+    print("Voltage set to 12V.")
 
-
+print("Test HV Supply...")
+if interface.hvcontroller.turn_hv_on():
+    print("HV ON Press enter to TURN OFF:")
+    input()  # Wait for the user to press Enter
+    if interface.hvcontroller.turn_hv_off():
+        print("HV OFF.")
+    else:
+        print("Failed to turn off HV")
+else:
+    print("Failed to turn on HV.")
 
 print("Reset DevConsoleice:")
 # Ask the user for confirmation
