@@ -46,7 +46,7 @@ class LIFUInterface:
         # self.uart.signal_data_received.connect(self.signal_data_received.emit)
 #
         # Create a LIFUHVController instance as part of the interface
-        self.hvcontroller = HVController(uart = LIFUUart(0x0483, 0x57AE, 921600, 10, demo_mode=test_mode))
+        self.hvcontroller = HVController(uart = LIFUUart(0x0483, 0x57A0, 921600, 10, demo_mode=test_mode))
 
     async def start_monitoring(self, interval: int = 1) -> None:
         """Start monitoring for USB device connections."""
