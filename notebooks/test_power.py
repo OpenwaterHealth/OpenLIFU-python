@@ -79,10 +79,10 @@ async def main():
     input("Press [ENTER] key to Turn 12V Off...")
 
     # Turn 12V Power OFF
-    print("Turn HV Power OFF")
+    print("Turn 12V Power OFF")
     r = await pwr_if.set_12v_off()
     format_and_print_hex(r)
-    
+
     # Set HV Power
     print("Set HV Power")
     r = await pwr_if.set_hv_supply(dac_input=1200)
