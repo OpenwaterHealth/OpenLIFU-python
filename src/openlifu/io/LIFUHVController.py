@@ -14,6 +14,7 @@ from openlifu.io.config import (
     OW_POWER,
     OW_POWER_12V_OFF,
     OW_POWER_12V_ON,
+    OW_POWER_GET_HV,
     OW_POWER_HV_OFF,
     OW_POWER_HV_ON,
     OW_POWER_SET_HV,
@@ -308,6 +309,7 @@ class HVController:
 
             try:
                 dac_input = int((voltage / 150) * 4095)
+                # logger.info("Setting DAC Value %d.", dac_input)
                 # Pack the 12-bit DAC input into two bytes
                 data = bytes([
                     (dac_input >> 8) & 0xFF,  # High byte (most significant bits)
@@ -332,7 +334,7 @@ class HVController:
 
     def get_voltage(self) -> float:
         """
-        Get the current output voltage.
+        Get the current output voltage setting.
 
         Returns:
             float: The current output voltage.
@@ -340,16 +342,30 @@ class HVController:
         Raises:
             ValueError: If the controller is not connected.
         """
-        if not self.interface.is_device_connected():
+        if not self.uart.is_connected():
             raise ValueError("High voltage controller not connected")
 
         try:
             logger.info("Getting current output voltage.")
-            # Example command to request voltage reading (adjust packetType and command as needed)
 
-            voltage = self.supply_voltage
-            logger.info("Current output voltage: %.2fV.", voltage)
-            return voltage
+            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_POWER_GET_HV)
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error setting HV")
+                return 0.0
+            elif r.data_len == 2:
+                dac_value = r.data[1] << 8 | r.data[0]
+                # logger.info("Got DAC Value %d.", dac_value)
+                voltage = dac_value / 4095 * 150
+                self.supply_voltage = voltage
+                logger.info("Output voltage set to %.2fV successfully.", voltage)
+                return voltage
+            else:
+                logger.error("Error getting output voltage from device")
+                return 0.0
+
         except Exception as e:
             logger.error("Error getting output voltage: %s", e)
             raise

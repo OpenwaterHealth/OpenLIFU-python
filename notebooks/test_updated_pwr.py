@@ -49,10 +49,18 @@ if interface.hvcontroller.turn_12v_on():
 else:
     print("Failed to turn on 12V.")
 
-# Set HV Power
+# Set High Voltage Level
 print("Set HV Power to +/- 12V")
 if interface.hvcontroller.set_voltage(voltage=12.0):
-    print("Voltage set to 12V.")
+    print("Voltage set to 12.0 V.")
+else:
+    print("Failed to set voltage.")
+
+# Get Set High Voltage Setting
+print("Get HV Setting")
+read_set_voltage = interface.hvcontroller.get_voltage()
+print(f"Voltage set to {read_set_voltage} V.")
+
 
 print("Test HV Supply...")
 if interface.hvcontroller.turn_hv_on():
