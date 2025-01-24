@@ -45,12 +45,13 @@ class LIFUUart:
         self.packet_count = 0
         self.serial = None
         self.running = False
-        self.read_thread = None
-        self.read_buffer = []
         self.asyncMode = False
         self.loop = asyncio.get_event_loop()
         self.monitoring_task = None
         self.demo_mode = demo_mode
+        self.read_thread = None
+        self.read_buffer = []
+        self.last_rx = time.monotonic()
         self.demo_responses = []  # List of predefined responses for testing
 
         # Signals
@@ -156,7 +157,7 @@ class LIFUUart:
         return None
 
 
-    def _read_data(self):
+    def _read_data(self, timeout=20):
         """Read data from the serial port in a separate thread."""
         if self.demo_mode:
             while self.running:
@@ -177,7 +178,7 @@ class LIFUUart:
                 log.error(f"Serial read error: {e}")
                 self.running = False
         else:
-            return self.read_packet()
+            return self.read_packet(timeout=timeout)
 
     def _tx(self, data: bytes):
         """Send data over UART."""
@@ -195,7 +196,7 @@ class LIFUUart:
         except Exception as e:
             log.error(f"Error during transmission: {e}")
 
-    def read_packet(self) -> UartPacket:
+    def read_packet(self, timeout=20) -> UartPacket:
         """
         Read a packet from the UART interface.
 
@@ -209,15 +210,17 @@ class LIFUUart:
         Raises:
             ValueError: If no data is received within the timeout.
         """
-        timeout = 0.5  # Timeout in seconds
         start_time = time.monotonic()
         raw_data = b""
+        count = 0
 
-        while time.monotonic() - start_time < timeout:
+        while timeout == -1 or time.monotonic() - start_time < timeout:
+            time.sleep(0.05)  # Wait briefly before retrying
             raw_data += self.serial.read_all()
-            if raw_data:  # Exit loop if data is received
-                break
-            time.sleep(0.1)  # Short delay to avoid busy waiting
+            if raw_data:  # Break if data is received
+                count += 1
+                if count > 1:
+                    break
 
         try:
             if not raw_data:
@@ -240,7 +243,7 @@ class LIFUUart:
 
         return packet
 
-    def send_packet(self, id=None, packetType=OW_ACK, command=OW_CMD_NOP, addr=0, reserved=0, data=None):
+    def send_packet(self, id=None, packetType=OW_ACK, command=OW_CMD_NOP, addr=0, reserved=0, data=None, timeout=20):
         """
         Send a packet over UART.
 
@@ -251,6 +254,7 @@ class LIFUUart:
             addr (int): Address field in the packet.
             reserved (int): Reserved field in the packet.
             data (bytes or dict, optional): Payload data. If packetType is OW_JSON, data is serialized to JSON.
+            timeout (in seconds, optional): timeout setting -1 waits forever.
 
         Returns:
             UartPacket: Parsed response packet if `self.running` is False.
@@ -314,7 +318,7 @@ class LIFUUart:
 
             # If not in running mode, read and return the response packet
             if not self.running:
-                return self.read_packet()
+                return self.read_packet(timeout=timeout)
             else:
                 return None
 
