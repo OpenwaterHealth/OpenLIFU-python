@@ -8,6 +8,7 @@ from openlifu.io.config import (
     OW_CMD_RESET,
     OW_CMD_TOGGLE_LED,
     OW_CMD_VERSION,
+    OW_ERROR,
     OW_POWER,
     OW_POWER_12V_OFF,
     OW_POWER_12V_ON,
@@ -118,6 +119,37 @@ class PWR_IF:
         await asyncio.sleep(self._delay)
         await self.uart.send_ustx(id=packet_id, packetType=OW_POWER, command=OW_POWER_SET_HV, data=data)
         self.uart.clear_buffer()
+
+    async def set_voltage(self, voltage: float, packet_id=None, ):
+        # Validate and process the DAC input
+        if voltage is None:
+            voltage = 0
+        elif not (5.0<= voltage <= 100.0):
+            raise ValueError("Voltage input must be within the valid range 5 to 100 Volts).")
+
+        try:
+            dac_input = int((voltage / 150) * 4095)
+            # logger.info("Setting DAC Value %d.", dac_input)
+            # Pack the 12-bit DAC input into two bytes
+            data = bytes([
+                (dac_input >> 8) & 0xFF,  # High byte (most significant bits)
+                dac_input & 0xFF          # Low byte (least significant bits)
+            ])
+
+            await self.uart.send_ustx(id=packet_id, packetType=OW_POWER, command=OW_POWER_SET_HV, data=data)
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            if r.packet_type == OW_ERROR:
+                return False
+            else:
+                self.supply_voltage = voltage
+                print("Output voltage set to %.2fV successfully.", voltage)
+                return True
+
+        except Exception as e:
+            print("Error setting output voltage: %s", e)
+            raise
 
     async def get_hv_supply(self, packet_id=None):
         if packet_id is None:
