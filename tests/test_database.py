@@ -526,11 +526,11 @@ def test_write_transducer(example_database:Database, example_transducer: Transdu
     example_database.write_transducer(example_transducer, registration_surface_path, transducer_body_path)
     transducer_filepath = example_database.get_transducer_filename("example_transducer_2")
     assert(transducer_filepath.name == "example_transducer_2.json")
-    transducer_info = example_database.get_transducer_info("example_transducer_2")
-    assert(transducer_info["id"] == "example_transducer_2")
-    assert(transducer_info["name"] == "Example Transducer")
-    assert(Path(transducer_info["registration_surface_abspath"]).exists())
-    assert(Path(transducer_info["transducer_body_abspath"]).exists())
+    transducer_filepaths = example_database.get_transducer_absolute_filepaths("example_transducer_2")
+    assert(transducer_filepaths["id"] == "example_transducer_2")
+    assert(transducer_filepaths["name"] == "Example Transducer")
+    assert(Path(transducer_filepaths["registration_surface_abspath"]).exists())
+    assert(Path(transducer_filepaths["transducer_body_abspath"]).exists())
 
     # Test not existent filepath
     bogus_body_file = Path(tmp_path/"test_db_files/bogus_transducer_body.obj")
