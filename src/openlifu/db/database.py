@@ -195,6 +195,10 @@ class Database:
         self.logger.info(f"Added subject with ID {subject_id} to the database.")
 
     def write_transducer(self, transducer, registration_surface_model_filepath: Optional[str] = None, transducer_body_model_filepath: Optional[str] = None, on_conflict: OnConflictOpts=OnConflictOpts.ERROR):
+        """ Writes a transducer object to database and copies the affiliated transducer data files i.e. transdcer body and
+        registration surface model files to the database.These model files are optional data attributes that are only required if running
+        transducer tracking. When a transducer that is already present in the database is being re-written,
+        the associated transducer model files do not need to be provided """
         transducer_id = transducer.id
         transducer_ids = self.get_transducer_ids()
 
@@ -217,19 +221,21 @@ class Database:
         # If tranducer data files not provided, check that any files previously
         # associated with the transducer object exist.
         if registration_surface_model_filepath:
-            if not Path(registration_surface_model_filepath).exists():
+            registration_surface_model_filepath = Path(registration_surface_model_filepath)
+            if not registration_surface_model_filepath.exists():
                 raise FileNotFoundError(f'Registration surface model filepath does not exist: {registration_surface_model_filepath}')
-            transducer.registration_surface_filename = Path(registration_surface_model_filepath).name
-            shutil.copy(Path(registration_surface_model_filepath), transducer_parent_dir)
+            transducer.registration_surface_filename = registration_surface_model_filepath.name
+            shutil.copy(registration_surface_model_filepath, transducer_parent_dir)
         elif transducer.registration_surface_filename:
             if not (transducer_parent_dir/transducer.registration_surface_filename).exists():
                 raise ValueError(f"Cannot find registration surface file associated with transducer {transducer.id}.")
 
         if transducer_body_model_filepath:
-            if not Path(transducer_body_model_filepath).exists():
+            transducer_body_model_filepath = Path(transducer_body_model_filepath)
+            if not transducer_body_model_filepath.exists():
                 raise FileNotFoundError(f'Transducer body model filepath does not exist: {transducer_body_model_filepath}')
-            transducer.transducer_body_filename = Path(transducer_body_model_filepath).name
-            shutil.copy(Path(transducer_body_model_filepath), transducer_parent_dir)
+            transducer.transducer_body_filename = transducer_body_model_filepath.name
+            shutil.copy(transducer_body_model_filepath, transducer_parent_dir)
         elif transducer.transducer_body_filename:
             if not (transducer_parent_dir/transducer.transducer_body_filename).exists():
                 raise ValueError(f"Cannot find transducer body file associated with transducer {transducer.id}.")
@@ -598,21 +604,22 @@ class Database:
         photoscan = Photoscan.from_file(photoscan_metadata_filepath)
         return photoscan
 
-    def get_transducer_info(self, transducer_id):
+    def get_transducer_absolute_filepaths(self, transducer_id):
+        """ Returns the absolute filepaths for the data files i.e.
+        transducer body and registration surface model files affiliated with the transducer"""
         transducer_metadata_filepath = self.get_transducer_filename(transducer_id)
         with open(transducer_metadata_filepath) as f:
             transducer = json.load(f)
-            transducer_dict = {"id": transducer["id"],\
-                    "name": transducer["name"],\
-                    "elements": transducer["elements"], \
-                    "frequency": transducer["frequency"], \
-                    "units": transducer["units"], \
-                    "attrs": transducer["attrs"]}
+            if "registration_surface_filename" not in transducer and "transducer_body_filename" not in transducer:
+                raise ValueError(f"Data filepaths not found affiliated with transducer {transducer_id}")
+            transducer_filepaths_dict = {"id": transducer["id"],\
+                    "name": transducer["name"],
+                    }
             if "registration_surface_filename" in transducer:
-                transducer_dict["registration_surface_abspath"] = Path(transducer_metadata_filepath).parent/transducer["registration_surface_filename"]
+                transducer_filepaths_dict["registration_surface_abspath"] = Path(transducer_metadata_filepath).parent/transducer["registration_surface_filename"]
             if "transducer_body_filename" in transducer:
-                transducer_dict["transducer_body_abspath"] = Path(transducer_metadata_filepath).parent/transducer["transducer_body_filename"]
-            return transducer_dict
+                transducer_filepaths_dict["transducer_body_abspath"] = Path(transducer_metadata_filepath).parent/transducer["transducer_body_filename"]
+            return transducer_filepaths_dict
 
     def load_standoff(self, transducer_id, standoff_id="standoff"):
         raise NotImplementedError("Standoff is not yet implemented")
