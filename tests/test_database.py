@@ -71,6 +71,29 @@ def test_write_protocol(example_database: Database):
     reloaded_protocol = example_database.load_protocol(protocol.id)
     assert reloaded_protocol.name == "new_name"
 
+def test_delete_protocol(example_database: Database):
+    # Write a protocol
+    protocol = Protocol(name="bleh", id="a_protocol_to_be_deleted")
+    example_database.write_protocol(protocol)
+    assert protocol.id in example_database.get_protocol_ids()
+
+    # Protocol is deleted
+    example_database.delete_protocol(protocol.id)
+    assert protocol.id not in example_database.get_protocol_ids()
+    with pytest.raises(FileNotFoundError):
+        example_database.load_protocol(protocol.id)
+
+    # Error option
+    with pytest.raises(ValueError, match="does not exist in the database"):
+        example_database.delete_protocol("non_existent_protocol", on_conflict=OnConflictOpts.ERROR)
+
+    # Skip option
+    example_database.delete_protocol("non_existent_protocol", on_conflict=OnConflictOpts.SKIP)
+
+    # Invalid option
+    with pytest.raises(ValueError, match="Invalid"):
+        example_database.delete_protocol("non_existent_protocol", on_conflict=OnConflictOpts.OVERWRITE)
+
 def test_load_session_from_file(example_session : Session, example_database : Database):
 
     # Test that Session loaded via Session.from_file is correct
