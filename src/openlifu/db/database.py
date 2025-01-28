@@ -13,6 +13,7 @@ import h5py
 from openlifu.photoscan import Photoscan
 from openlifu.plan import Protocol, Run, Solution
 from openlifu.util.json import PYFUSEncoder
+from openlifu.xdc import Transducer
 
 from .session import Session
 from .subject import Subject
@@ -194,11 +195,16 @@ class Database:
 
         self.logger.info(f"Added subject with ID {subject_id} to the database.")
 
-    def write_transducer(self, transducer, registration_surface_model_filepath: Optional[str] = None, transducer_body_model_filepath: Optional[str] = None, on_conflict: OnConflictOpts=OnConflictOpts.ERROR):
-        """ Writes a transducer object to database and copies the affiliated transducer data files i.e. transdcer body and
-        registration surface model files to the database.These model files are optional data attributes that are only required if running
-        transducer tracking. When a transducer that is already present in the database is being re-written,
-        the associated transducer model files do not need to be provided """
+    def write_transducer(self, transducer, registration_surface_model_filepath: Optional[str] = None, transducer_body_model_filepath: Optional[str] = None, on_conflict: OnConflictOpts=OnConflictOpts.ERROR) -> None:
+        """ Writes a transducer object to database and copies the affiliated transducer data files to the database if provided. When a transducer that is already present in the database is being re-written,
+        the associated model data files do not need to be provided if they have previously been added to the database.
+        Args:
+            transducer: Transducer to be written
+            transducer_body_model_filepath (optional): Model file containing a mesh of transducer body mesh. This is a closed surface meant for visualization of the transducer.
+            registration_surface_model_filepath (optional): Model file containing an open-surface sub-mesh of the transducer body model. This model is meant to be used for registration during transducer tracking.
+        Returns:
+            None: This method does not return a value
+        """
         transducer_id = transducer.id
         transducer_ids = self.get_transducer_ids()
 
@@ -604,9 +610,19 @@ class Database:
         photoscan = Photoscan.from_file(photoscan_metadata_filepath)
         return photoscan
 
-    def get_transducer_absolute_filepaths(self, transducer_id):
-        """ Returns the absolute filepaths for the data files i.e.
-        transducer body and registration surface model files affiliated with the transducer"""
+    def get_transducer_absolute_filepaths(self, transducer_id:str) -> dict:
+        """ Returns the absolute filepaths to the model data files i.e. transducer body and registration surface model files affiliated with the transducer, with ID `transducer_id`.
+        Unlike `load_transducer`, which specifies the relative paths to the model datafiles along with other transducer attributes, this function only returns the absolute filepaths to
+        the datafiles based on the Database directory.
+        Args:
+            transducer_id: Transducer ID
+        Returns:
+            dict: A dictionary containing the absolute filepaths to the affiliated transducer data files with the following keys:
+                - "id" (str): transducer ID
+                - "name" (str): transducer name
+                - "registration_surface_abspath" (str): absolute path to the transducer registration surface (open-surface mesh used for transducer tracking registration)
+                - "transducer_body_abspath" (str): absolute path to the transducer body model (closed-surface mesh for visualizing the transducer)
+        """
         transducer_metadata_filepath = self.get_transducer_filename(transducer_id)
         with open(transducer_metadata_filepath) as f:
             transducer = json.load(f)
@@ -634,7 +650,15 @@ class Database:
         sys = UltrasoundSystem.from_file(sys_filename)
         return sys
 
-    def load_transducer(self, transducer_id):
+    def load_transducer(self, transducer_id) -> "Transducer":
+        """Given a transducer_id, reads the corresponding transducer file from database and returns a transducer object.
+        Note: the transducer object includes the relative path to the affiliated transducer model data. `get_transducer_absolute_filepaths`, should
+        be used to obtain the absolute data filepaths based on the Database directory path.
+        Args:
+            transducer_id: Transducer ID
+        Returns:
+            Corresponding Transducer object
+        """
         from openlifu.xdc import Transducer
         transducer_filename = self.get_transducer_filename(transducer_id)
         transducer = Transducer.from_file(transducer_filename)
