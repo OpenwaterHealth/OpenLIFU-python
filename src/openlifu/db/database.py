@@ -659,7 +659,6 @@ class Database:
         Returns:
             Corresponding Transducer object
         """
-        from openlifu.xdc import Transducer
         transducer_filename = self.get_transducer_filename(transducer_id)
         transducer = Transducer.from_file(transducer_filename)
         return transducer
