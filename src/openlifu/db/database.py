@@ -71,6 +71,29 @@ class Database:
 
         self.logger.info(f"Added Sonication Protocol with ID {protocol_id} to the database.")
 
+    def delete_protocol(self, protocol_id: str, on_conflict: OnConflictOpts = OnConflictOpts.ERROR):
+        # Check if the sonication protocol ID already exists in the database
+        protocol_ids = self.get_protocol_ids()
+
+        if protocol_id not in protocol_ids:
+            if on_conflict == OnConflictOpts.ERROR:
+                raise ValueError(f"Protocol ID {protocol_id} does not exist in the database.")
+            elif on_conflict == OnConflictOpts.SKIP:
+                self.logger.info(f"Cannot delete protocol ID {protocol_id} as it does not exist in the database.")
+                return
+            else:
+                raise ValueError("Invalid 'on_conflict' option.")
+
+        # Delete the directory of the protocol
+        protocol_dir = self.get_protocol_dir(protocol_id)
+        if Path.is_dir(protocol_dir):
+            shutil.rmtree(protocol_dir)
+
+        if protocol_id in protocol_ids:
+            protocol_ids.remove(protocol_id)
+            self.write_protocol_ids(protocol_ids)
+
+        self.logger.info(f"Removed Sonication Protocol with ID {protocol_id} from the database.")
 
     def write_session(self, subject:Subject, session:Session, on_conflict=OnConflictOpts.ERROR):
         # Generate session ID
@@ -765,8 +788,11 @@ class Database:
     def get_protocols_filename(self):
         return Path(self.path) / 'protocols' / 'protocols.json'
 
+    def get_protocol_dir(self, protocol_id):
+        return Path(self.path) / 'protocols' / protocol_id
+
     def get_protocol_filename(self, protocol_id):
-        return Path(self.path) / 'protocols' / protocol_id / f'{protocol_id}.json'
+        return self.get_protocol_dir(protocol_id) / f'{protocol_id}.json'
 
     def get_session_dir(self, subject_id, session_id):
         return Path(self.get_subject_dir(subject_id)) / 'sessions' / session_id
