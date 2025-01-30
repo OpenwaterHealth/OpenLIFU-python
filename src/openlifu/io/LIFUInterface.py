@@ -75,7 +75,7 @@ class LIFUInterface:
         hv_connected = self.hvcontroller.is_connected()
         return tx_connected, hv_connected
 
-    def set_solution(self, solution: Solution):
+    def set_solution(self, solution: Solution) -> bool:
         """
         Load a solution to the device.
 
@@ -88,6 +88,7 @@ class LIFUInterface:
             self.devicecontroller.set_solution(solution)
             self.hvcontroller.set_voltage(solution.pulse.amplitude)
             logger.info("Solution '%s' loaded successfully.", solution.name)
+            return True
         except Exception as e:
             logger.error("Error loading solution '%s': %s", solution.name, e)
             raise
