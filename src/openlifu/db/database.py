@@ -613,7 +613,7 @@ class Database:
                     "name": volume["name"],\
                     "data_abspath": Path(volume_metadata_filepath).parent/volume["data_filename"]}
 
-    def get_photoscan_info(self, subject_id, session_id, photoscan_id):
+    def get_photoscan_absolute_filepaths_info(self, subject_id, session_id, photoscan_id):
         """Returns the photoscan information with absolute paths to any data"""
         photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan_id)
         with open(photoscan_metadata_filepath) as f:
