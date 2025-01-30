@@ -433,11 +433,11 @@ def test_write_solution_new_session(example_database:Database, example_subject:S
     example_database.write_session(example_subject, session)
     example_database.write_solution(session, solution)
 
-def test_get_photoscan_info(example_database:Database):
+def test_get_photoscan_absolute_filepaths_info(example_database:Database):
     subject_id = "example_subject"
     session_id = "example_session"
     photoscan_id = "example_photoscan"
-    photoscan_info = example_database.get_photoscan_info(subject_id, session_id, photoscan_id)
+    photoscan_info = example_database.get_photoscan_absolute_filepaths_info(subject_id, session_id, photoscan_id)
     assert(photoscan_info["id"] == "example_photoscan")
     assert(photoscan_info["name"] == "ExamplePhotoscan")
     assert(Path(photoscan_info["model_abspath"]).exists())
