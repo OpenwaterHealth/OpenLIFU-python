@@ -10,8 +10,10 @@ from typing import List, Optional
 
 import h5py
 
+from openlifu.photoscan import Photoscan
 from openlifu.plan import Protocol, Run, Solution
 from openlifu.util.json import PYFUSEncoder
+from openlifu.xdc import Transducer
 
 from .session import Session
 from .subject import Subject
@@ -69,6 +71,29 @@ class Database:
 
         self.logger.info(f"Added Sonication Protocol with ID {protocol_id} to the database.")
 
+    def delete_protocol(self, protocol_id: str, on_conflict: OnConflictOpts = OnConflictOpts.ERROR):
+        # Check if the sonication protocol ID already exists in the database
+        protocol_ids = self.get_protocol_ids()
+
+        if protocol_id not in protocol_ids:
+            if on_conflict == OnConflictOpts.ERROR:
+                raise ValueError(f"Protocol ID {protocol_id} does not exist in the database.")
+            elif on_conflict == OnConflictOpts.SKIP:
+                self.logger.info(f"Cannot delete protocol ID {protocol_id} as it does not exist in the database.")
+                return
+            else:
+                raise ValueError("Invalid 'on_conflict' option.")
+
+        # Delete the directory of the protocol
+        protocol_dir = self.get_protocol_dir(protocol_id)
+        if Path.is_dir(protocol_dir):
+            shutil.rmtree(protocol_dir)
+
+        if protocol_id in protocol_ids:
+            protocol_ids.remove(protocol_id)
+            self.write_protocol_ids(protocol_ids)
+
+        self.logger.info(f"Removed Sonication Protocol with ID {protocol_id} from the database.")
 
     def write_session(self, subject:Subject, session:Session, on_conflict=OnConflictOpts.ERROR):
         # Generate session ID
@@ -104,6 +129,7 @@ class Database:
 
         # Save the session to a JSON file
         session_filename = self.get_session_filename(subject.id, session_id)
+        session.update_modified_time()
         session.to_file(session_filename)
 
         # Create empty runs.json, solutions.json and photoscans.json files for session if needed
@@ -192,7 +218,16 @@ class Database:
 
         self.logger.info(f"Added subject with ID {subject_id} to the database.")
 
-    def write_transducer(self, transducer, on_conflict: OnConflictOpts=OnConflictOpts.ERROR):
+    def write_transducer(self, transducer, registration_surface_model_filepath: Optional[str] = None, transducer_body_model_filepath: Optional[str] = None, on_conflict: OnConflictOpts=OnConflictOpts.ERROR) -> None:
+        """ Writes a transducer object to database and copies the affiliated transducer data files to the database if provided. When a transducer that is already present in the database is being re-written,
+        the associated model data files do not need to be provided if they have previously been added to the database.
+        Args:
+            transducer: Transducer to be written
+            transducer_body_model_filepath (optional): Model file containing a mesh of transducer body mesh. This is a closed surface meant for visualization of the transducer.
+            registration_surface_model_filepath (optional): Model file containing an open-surface sub-mesh of the transducer body model. This model is meant to be used for registration during transducer tracking.
+        Returns:
+            None: This method does not return a value
+        """
         transducer_id = transducer.id
         transducer_ids = self.get_transducer_ids()
 
@@ -208,6 +243,32 @@ class Database:
                 raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
 
         transducer_filename = self.get_transducer_filename(transducer_id)
+        transducer_parent_dir = transducer_filename.parent
+        transducer_parent_dir.mkdir(exist_ok = True)
+
+        # Copy the transducer data files to database.
+        # If tranducer data files not provided, check that any files previously
+        # associated with the transducer object exist.
+        if registration_surface_model_filepath:
+            registration_surface_model_filepath = Path(registration_surface_model_filepath)
+            if not registration_surface_model_filepath.exists():
+                raise FileNotFoundError(f'Registration surface model filepath does not exist: {registration_surface_model_filepath}')
+            transducer.registration_surface_filename = registration_surface_model_filepath.name
+            shutil.copy(registration_surface_model_filepath, transducer_parent_dir)
+        elif transducer.registration_surface_filename:
+            if not (transducer_parent_dir/transducer.registration_surface_filename).exists():
+                raise ValueError(f"Cannot find registration surface file associated with transducer {transducer.id}.")
+
+        if transducer_body_model_filepath:
+            transducer_body_model_filepath = Path(transducer_body_model_filepath)
+            if not transducer_body_model_filepath.exists():
+                raise FileNotFoundError(f'Transducer body model filepath does not exist: {transducer_body_model_filepath}')
+            transducer.transducer_body_filename = transducer_body_model_filepath.name
+            shutil.copy(transducer_body_model_filepath, transducer_parent_dir)
+        elif transducer.transducer_body_filename:
+            if not (transducer_parent_dir/transducer.transducer_body_filename).exists():
+                raise ValueError(f"Cannot find transducer body file associated with transducer {transducer.id}.")
+
         transducer.to_file(transducer_filename)
 
         if transducer_id not in transducer_ids:
@@ -276,49 +337,67 @@ class Database:
 
         self.logger.info(f"Added volume with ID {volume_id} for subject {subject_id} to the database.")
 
-    def write_photoscan(self, session: Session, photoscan_id, photoscan_name, model_data_filepath, texture_data_filepath, mtl_data_filepath: Optional[Path] = None, on_conflict=OnConflictOpts.ERROR):
-        if not Path(model_data_filepath).exists():
-            raise FileNotFoundError(f'Model data filepath does not exist: {model_data_filepath}')
-        if not Path(texture_data_filepath).exists():
-            raise FileNotFoundError(f'Texture data filepath does not exist: {texture_data_filepath}')
+    def write_photoscan(self, subject_id, session_id, photoscan: Photoscan, model_data_filepath: Optional[str] = None, texture_data_filepath: Optional[str] = None, mtl_data_filepath: Optional[str] = None, on_conflict=OnConflictOpts.ERROR):
+        """ Writes a photoscan object to database and copies the associated model and texture data filepaths that are required for generating a photoscan into the database.
+        .mtl files are not required for generating a photoscan but can be provided if present.
+        When a photoscan that is already present in the database is being re-written,the associated model and texture files do not need to be provided """
 
-        photoscan_ids = self.get_photoscan_ids(session.subject_id, session.id)
-        if photoscan_id in photoscan_ids:
+        photoscan_ids = self.get_photoscan_ids(subject_id, session_id)
+        if photoscan.id in photoscan_ids:
             if on_conflict == OnConflictOpts.ERROR:
-                raise ValueError(f"Photoscan with ID {photoscan_id} already exists for session {session.id}.")
+                raise ValueError(f"Photoscan with ID {photoscan.id} already exists for session {session_id}.")
             elif on_conflict == OnConflictOpts.OVERWRITE:
-                self.logger.info(f"Overwriting photoscan with ID {photoscan_id} for session {session.id}.")
+                self.logger.info(f"Overwriting photoscan with ID {photoscan.id} for session {session_id}.")
             elif on_conflict == OnConflictOpts.SKIP:
-                self.logger.info(f"Skipping photoscan with ID {photoscan_id} for session {session.id} as it already exists.")
+                self.logger.info(f"Skipping photoscan with ID {photoscan.id} for session {session_id} as it already exists.")
                 return
             else:
                 raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
 
-        # Create photoscan metadata
-        photoscan_metadata_dict = {"id": photoscan_id, "name": photoscan_name, "model_filename": Path(model_data_filepath).name, "texture_filename": Path(texture_data_filepath).name, "photoscan_approved": False}
-        if mtl_data_filepath is not None:
-            if not Path(mtl_data_filepath).exists():
+        photoscan_metadata_filepath = Path(self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan.id)) #subject_id/photoscan/photoscan_id/photoscan_id.json
+        photoscan_parent_dir = photoscan_metadata_filepath.parent
+        photoscan_parent_dir.mkdir(exist_ok=True)
+
+        # Copy photoscan model and texture files to database.
+        # If a model and texture data file is not provided, check that there are existing files previously
+        # associated with the photoscan object.
+        if model_data_filepath:
+            model_data_filepath = Path(model_data_filepath)
+            if not model_data_filepath.exists():
+                raise FileNotFoundError(f'Model data filepath does not exist: {model_data_filepath}')
+            photoscan.model_filename = model_data_filepath.name
+            shutil.copy(model_data_filepath, photoscan_metadata_filepath.parent)
+        elif not photoscan.model_filename or not (photoscan_parent_dir/photoscan.model_filename).exists():
+            raise ValueError(f"Cannot find model file associated with photoscan {photoscan.id}.")
+
+        if texture_data_filepath:
+            texture_data_filepath = Path(texture_data_filepath)
+            if not texture_data_filepath.exists():
+                raise FileNotFoundError(f'Texture data filepath does not exist: {texture_data_filepath}')
+            photoscan.texture_filename = texture_data_filepath.name
+            shutil.copy(texture_data_filepath, photoscan_metadata_filepath.parent)
+        elif not photoscan.texture_filename or not (photoscan_parent_dir/photoscan.texture_filename).exists():
+            raise ValueError(f"Cannot find texture file associated with photoscan {photoscan.id}.")
+
+        # Not necessarily required for a photoscan object
+        if mtl_data_filepath:
+            mtl_data_filepath = Path(mtl_data_filepath)
+            if not mtl_data_filepath.exists():
                 raise FileNotFoundError(f'MTL filepath does not exist: {mtl_data_filepath}')
-            else:
-                photoscan_metadata_dict["mtl_filename"] = Path(mtl_data_filepath).name
-        photoscan_metadata_json = json.dumps(photoscan_metadata_dict, separators=(',', ':'), cls=PYFUSEncoder)
+            photoscan.mtl_filename = mtl_data_filepath.name
+            shutil.copy(mtl_data_filepath, photoscan_metadata_filepath.parent)
+        elif photoscan.mtl_filename:
+            if not (photoscan_parent_dir/photoscan.mtl_filename).exists():
+                raise ValueError(f"Cannot find photoscan materials file associated with photoscan {photoscan.id}.")
 
-        # Save the photoscan metadata to a JSON file and copy photoscan model and texture files to database
-        photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(session.subject_id, session.id, photoscan_id) #subject_id/photoscan/photoscan_id/photoscan_id.json
-        Path(photoscan_metadata_filepath).parent.parent.mkdir(exist_ok=True) #photoscan directory
-        Path(photoscan_metadata_filepath).parent.mkdir(exist_ok=True)
-        with open(photoscan_metadata_filepath, 'w') as file:
-            file.write(photoscan_metadata_json)
-        shutil.copy(Path(model_data_filepath), Path(photoscan_metadata_filepath).parent)
-        shutil.copy(Path(texture_data_filepath), Path(photoscan_metadata_filepath).parent)
-        if mtl_data_filepath is not None:
-            shutil.copy(Path(mtl_data_filepath), Path(photoscan_metadata_filepath).parent)
+        #Save the photoscan metadata to a JSON file
+        photoscan.to_file(photoscan_metadata_filepath)
 
-        if photoscan_id not in photoscan_ids:
-            photoscan_ids.append(photoscan_id)
-            self.write_photoscan_ids(session.subject_id,session.id, photoscan_ids)
+        if photoscan.id not in photoscan_ids:
+            photoscan_ids.append(photoscan.id)
+            self.write_photoscan_ids(subject_id,session_id, photoscan_ids)
 
-        self.logger.info(f"Added photoscan with ID {photoscan_id} for session {session.id} to the database.")
+        self.logger.info(f"Added photoscan with ID {photoscan.id} for session {session_id} to the database.")
 
     def write_solution(self, session:Session, solution:Solution, on_conflict: OnConflictOpts=OnConflictOpts.ERROR):
         solution_ids = self.get_solution_ids(session.subject_id, session.id)
@@ -535,6 +614,7 @@ class Database:
                     "data_abspath": Path(volume_metadata_filepath).parent/volume["data_filename"]}
 
     def get_photoscan_info(self, subject_id, session_id, photoscan_id):
+        """Returns the photoscan information with absolute paths to any data"""
         photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan_id)
         with open(photoscan_metadata_filepath) as f:
             photoscan = json.load(f)
@@ -545,7 +625,40 @@ class Database:
                     "photoscan_approved": photoscan["photoscan_approved"]}
             if "mtl_filename" in photoscan:
                 photoscan_dict["mtl_abspath"] = Path(photoscan_metadata_filepath).parent/photoscan["mtl_filename"]
-            return photoscan_dict
+        return photoscan_dict
+
+    def load_photoscan(self, subject_id, session_id, photoscan_id):
+        """Returns a photoscan object"""
+        photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan_id)
+        photoscan = Photoscan.from_file(photoscan_metadata_filepath)
+        return photoscan
+
+    def get_transducer_absolute_filepaths(self, transducer_id:str) -> dict:
+        """ Returns the absolute filepaths to the model data files i.e. transducer body and registration surface model files affiliated with the transducer, with ID `transducer_id`.
+        Unlike `load_transducer`, which specifies the relative paths to the model datafiles along with other transducer attributes, this function only returns the absolute filepaths to
+        the datafiles based on the Database directory.
+        Args:
+            transducer_id: Transducer ID
+        Returns:
+            dict: A dictionary containing the absolute filepaths to the affiliated transducer data files with the following keys:
+                - "id" (str): transducer ID
+                - "name" (str): transducer name
+                - "registration_surface_abspath" (str): absolute path to the transducer registration surface (open-surface mesh used for transducer tracking registration)
+                - "transducer_body_abspath" (str): absolute path to the transducer body model (closed-surface mesh for visualizing the transducer)
+        """
+        transducer_metadata_filepath = self.get_transducer_filename(transducer_id)
+        with open(transducer_metadata_filepath) as f:
+            transducer = json.load(f)
+            if "registration_surface_filename" not in transducer and "transducer_body_filename" not in transducer:
+                raise ValueError(f"Data filepaths not found affiliated with transducer {transducer_id}")
+            transducer_filepaths_dict = {"id": transducer["id"],\
+                    "name": transducer["name"],
+                    }
+            if "registration_surface_filename" in transducer:
+                transducer_filepaths_dict["registration_surface_abspath"] = Path(transducer_metadata_filepath).parent/transducer["registration_surface_filename"]
+            if "transducer_body_filename" in transducer:
+                transducer_filepaths_dict["transducer_body_abspath"] = Path(transducer_metadata_filepath).parent/transducer["transducer_body_filename"]
+            return transducer_filepaths_dict
 
     def load_standoff(self, transducer_id, standoff_id="standoff"):
         raise NotImplementedError("Standoff is not yet implemented")
@@ -560,8 +673,15 @@ class Database:
         sys = UltrasoundSystem.from_file(sys_filename)
         return sys
 
-    def load_transducer(self, transducer_id):
-        from openlifu.xdc import Transducer
+    def load_transducer(self, transducer_id) -> "Transducer":
+        """Given a transducer_id, reads the corresponding transducer file from database and returns a transducer object.
+        Note: the transducer object includes the relative path to the affiliated transducer model data. `get_transducer_absolute_filepaths`, should
+        be used to obtain the absolute data filepaths based on the Database directory path.
+        Args:
+            transducer_id: Transducer ID
+        Returns:
+            Corresponding Transducer object
+        """
         transducer_filename = self.get_transducer_filename(transducer_id)
         transducer = Transducer.from_file(transducer_filename)
         return transducer
@@ -668,8 +788,11 @@ class Database:
     def get_protocols_filename(self):
         return Path(self.path) / 'protocols' / 'protocols.json'
 
+    def get_protocol_dir(self, protocol_id):
+        return Path(self.path) / 'protocols' / protocol_id
+
     def get_protocol_filename(self, protocol_id):
-        return Path(self.path) / 'protocols' / protocol_id / f'{protocol_id}.json'
+        return self.get_protocol_dir(protocol_id) / f'{protocol_id}.json'
 
     def get_session_dir(self, subject_id, session_id):
         return Path(self.get_subject_dir(subject_id)) / 'sessions' / session_id

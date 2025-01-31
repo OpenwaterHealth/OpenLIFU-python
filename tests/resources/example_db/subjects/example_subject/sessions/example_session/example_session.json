@@ -2,7 +2,7 @@
   "id": "example_session",
   "subject_id": "example_subject",
   "name": "Example Session",
-  "date": "2024-04-09 11:27:30",
+  "date_created": "2024-04-09 11:27:30",
   "targets": {
     "id": "example_target",
     "name": "Example Target",

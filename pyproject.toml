@@ -42,8 +42,9 @@ dependencies = [
   "nibabel",
   "sphinx",
   "ipykernel",
-  "k-wave-python>=0.3.4",
+  "k-wave-python==0.3.4",
   "nvidia-ml-py",
+  "OpenEXR"
 ]
 
 [project.optional-dependencies]
@@ -198,6 +199,7 @@ isort.required-imports = ["from __future__ import annotations"]
 [tool.pylint]
 py-version = "3.8"
 ignore-paths = [".*/_version.py"]
+ignored-modules = ["vtk.util"]
 reports.output-format = "colorized"
 similarities.ignore-imports = "yes"
 messages_control.disable = [

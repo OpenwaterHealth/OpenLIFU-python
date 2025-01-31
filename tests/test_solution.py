@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -41,7 +41,7 @@ def example_solution() -> Solution:
         name="Test Solution",
         protocol_id="prot_123",
         transducer_id="trans_456",
-        created_on=datetime(2024, 1, 1, 12, 0),
+        date_created=datetime(2024, 1, 1, 12, 0),
         description="This is a test solution for a unit test.",
         delays=np.array([[0.0, 1.0, 2.0, 3.0]]),
         apodizations=np.array([[0.5, 0.75, 1.0, 0.85]]),
@@ -133,3 +133,11 @@ def test_json_serialize_deserialize_solution_analysis(compact_representation: bo
     analysis_json = analysis.to_json(compact=compact_representation)
     analysis_reconstructed = SolutionAnalysis.from_json(analysis_json)
     assert dataclasses_are_equal(analysis_reconstructed, analysis)
+
+def test_solution_created_date():
+    """Test that created date is recent when a solution is created."""
+    tolerance = timedelta(seconds=2)
+
+    solution = Solution()
+    now = datetime.now()
+    assert(now - tolerance <= solution.date_created <= now + tolerance)

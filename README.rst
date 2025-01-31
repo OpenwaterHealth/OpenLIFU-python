@@ -53,7 +53,7 @@ Dev mode
 ^^^^^^^^
 .. code:: sh
 
-   pip install -e .[dev]
+   pip install -e '.[dev]'
 
 Version control of database using DVC (Data Version Control)
 -------------------------------------------------------------

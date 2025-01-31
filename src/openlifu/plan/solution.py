@@ -42,7 +42,7 @@ class Solution:
     transducer_id: Optional[str] = None
     """ID of the transducer that was used when generating this solution"""
 
-    created_on: datetime = field(default_factory=datetime.now)
+    date_created: datetime = field(default_factory=datetime.now)
     """Solution creation time"""
 
     description: str = ""
@@ -378,7 +378,7 @@ class Solution:
         Returns: The new Solution object.
         """
         solution_dict = json.loads(json_string)
-        solution_dict["created_on"] = datetime.fromisoformat(solution_dict["created_on"])
+        solution_dict["date_created"] = datetime.fromisoformat(solution_dict["date_created"])
         if solution_dict["delays"] is not None:
             solution_dict["delays"] = np.array(solution_dict["delays"])
         if solution_dict["apodizations"] is not None:
