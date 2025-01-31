@@ -1,7 +1,10 @@
+from typing import Callable, List, Optional, Tuple
+
 import numpy as np
 import skimage.filters
 import skimage.measure
 import vtk
+from scipy.interpolate import LinearNDInterpolator
 from scipy.ndimage import distance_transform_edt
 from vtk.util.numpy_support import numpy_to_vtk
 
@@ -204,3 +207,159 @@ def create_closed_surface_from_labelmap(
     surface_mesh = normals.GetOutput()
 
     return surface_mesh
+
+def cartesian_to_spherical(x:float,y:float,z:float) -> Tuple[float, float, float]:
+    """Convert cartesian coordinates to spherical coordinates
+
+    Args: x, y, z are cartesian coordinates
+    Returns: r, theta, phi, where
+        r is the radial spherical coordinate, a nonnegative float.
+        theta is the polar spherical coordinate, aka the angle off the z-axis, aka the non-azimuthal spherical angle.
+            theta is in the range [0,pi].
+        phi is the azimuthal spherical coordinate, in the range [-pi,pi]
+
+    Angles are in radians.
+    """
+    return (np.sqrt(x**2+y**2+z**2), np.arctan2(np.sqrt(x**2+y**2),z), np.arctan2(y,x))
+
+def spherical_to_cartesian(r: float, th:float, ph:float) -> Tuple[float, float, float]:
+    """Convert spherical coordinates to cartesian coordinates
+
+    Args:
+        r: the radial spherical coordinate
+        th: the polar spherical coordinate theta, aka the angle off the z-axis, aka the non-azimuthal spherical angle
+        ph: the azimuthal spherical coordinate phi
+    Returns the cartesian coordinates x,y,z
+
+    Angles are in radians.
+    """
+    return (r*np.sin(th)*np.cos(ph), r*np.sin(th)*np.sin(ph), r*np.cos(th))
+
+def spherical_interpolator_from_mesh(
+    surface_mesh: vtk.vtkPolyData,
+    origin: Tuple[float, float, float] = (0.,0.,0.),
+    xyz_direction_columns: Optional[np.ndarray] = None,
+    dist_tolerance: float = 0.0001
+) -> Callable[[float, float], float]:
+    """Create a spherical interpolator from a vtkPolyData.
+
+    Here a "spherical interpolator" is a function that maps angles from a spherical coordinate system
+    to r values (radial spherical coordinate values) by interpolating over a set of known values.
+    It's essentially a "spherical plotter."
+
+    Args:
+        surface_mesh: The mesh containing the points to be interpolated over
+        origin: The origin of the spherical coordinate system
+        xyz_direction_columns: A matrix of shape (3,3) the columns of which are unit vectors that describe
+            the cartesian x,y,z axis directions on which to base the spherical coordinate system. For example
+            the spherical azimuthal angle is the polar angle of the projection of the point into the x-y-plane, etc.
+            See the documentation on `spherical_to_cartesian` and `cartesian_to_spherical` for a complete description
+            of how the spherical angles relate to the x, y, and z axes. If not provided, the xyz_direction_columns will
+            be an identity matrix, which means that the coordinates in which surface_mesh is given will directly be
+            interpreted as the x,y,z upon which a spherical coordinate system will be based.
+        dist_tolerance: A vertex of the surface_mesh will only be included if it is the furthest point from the origin
+            that is on the mesh along the ray emanating from the origin and passing through the vertex. The
+            dist_tolerance is the threshold for determining whether an intersection of the ray with the mesh
+            counts as being a distinct further out point from the vertex.
+
+    Returns:
+        A spherical interpolator, which is a callable that maps (theta,phi) pairs of spherical coordinates (phi being azimuthal)
+        to r values (radial spherical coordinate values). The angles are in radians.
+    """
+
+    if xyz_direction_columns is None:
+        xyz_direction_columns = np.eye(3, dtype=float)
+
+    xyz_affine = np.eye(4)
+    xyz_affine[:3,:3] = xyz_direction_columns
+    xyz_affine[:3,3] = origin
+    # Now xyz_affine is a coordinate transformation matrix that transforms from the xyz system to the coord system of the vtkPolyData
+    # We want to apply the inverse to the vtkPolyData
+    xyz_affine_inverse = np.linalg.inv(xyz_affine)
+    xyz_affine_inverse_vtkmat = vtk.vtkMatrix4x4()
+    xyz_affine_inverse_vtkmat.DeepCopy(xyz_affine_inverse.ravel())
+    xyz_inverse_transform = vtk.vtkTransform()
+    xyz_inverse_transform.SetMatrix(xyz_affine_inverse_vtkmat)
+    transform_filter = vtk.vtkTransformPolyDataFilter()
+    transform_filter.SetTransform(xyz_inverse_transform)
+    transform_filter.SetInputData(surface_mesh)
+    transform_filter.Update()
+    surface_mesh_transformed = transform_filter.GetOutput()
+
+    spherical_coords_on_mesh : List[Tuple[float,float,float]] = []
+
+    points = surface_mesh_transformed.GetPoints()
+
+    # The farthest point from the origin is this far out:
+    r_max = np.max([np.sqrt(np.sum(np.array(points.GetPoint(i))**2)) for i in range(points.GetNumberOfPoints())])
+
+    sqdist_tolerance = dist_tolerance**2
+
+    locator = vtk.vtkCellLocator() # Tried vtkOBBTree and it seems vtkCellLocator is much faster for this application
+    locator.SetDataSet(surface_mesh_transformed)
+    locator.BuildLocator()
+
+    for i in range(points.GetNumberOfPoints()):
+        point = np.array(points.GetPoint(i))
+        point_r_squared = np.sum(point**2)
+
+        # A point that is distance 2*r_max from the origin along the same ray as `point`
+        # We will check for intersections along the line segment from `point` to `distant_point_along_same_ray_as_point`
+        # The distance 2*r_max is chosen just to ensure that the line segment captures any possible intersection in the infinite
+        # ray emanating from `point` outward
+        distant_point_along_same_ray_as_point = (2*r_max/np.sqrt(point_r_squared)) * point
+
+        intersection_points = vtk.vtkPoints()
+        cell_ids = vtk.vtkIdList()
+        locator.IntersectWithLine(
+            point, # p1
+            distant_point_along_same_ray_as_point, # p2
+            0., # tol
+            intersection_points, # points
+            cell_ids, # cellIds
+        )
+
+        point_is_the_furthest_out = True
+        for j in range(intersection_points.GetNumberOfPoints()):
+            intersection_point = np.array(intersection_points.GetPoint(j))
+            sqdist = np.sum((point-intersection_point)**2) # squared distance from point to intersection point
+            if sqdist > sqdist_tolerance:
+                point_is_the_furthest_out = False
+                break
+
+        if point_is_the_furthest_out:
+            spherical_coords_on_mesh.append(cartesian_to_spherical(*point)) # append the (r, theta, phi) triple
+
+    spherical_coords_on_mesh = np.array(spherical_coords_on_mesh)
+
+    # We clone the points with a +/- 2pi translation in the phi (azimuthal) coordinate, creating 3 times as many points
+    # This will help the LinearNDInterpolator to better handle phi values as they wrap around
+    spherical_coords_on_mesh = np.concatenate(
+        [
+            spherical_coords_on_mesh,
+            spherical_coords_on_mesh + np.array([0.,0.,2*np.pi]).reshape((1,3)), # add 2pi to phi coordinate
+            spherical_coords_on_mesh - np.array([0.,0.,2*np.pi]).reshape((1,3)), # subtract 2pi from phi coordinate
+        ],
+        axis=0
+    )
+
+    # We clone the points with a pi translation in the phi (azimuthal) coordinate and suitable flips in theta,
+    # creating another 3 times as many points. This will help the LinearNDInterpolator to better
+    # handle theta values close to the poles (theta=0 and theta=pi).
+    spherical_coords_on_mesh = np.concatenate(
+        [
+            spherical_coords_on_mesh,
+            # theta |--> -theta, phi |--> phi+pi, introduces negative theta values
+            (spherical_coords_on_mesh * np.array([1.,-1.,1.]).reshape((1,3))) + np.array([0.,0.,np.pi]).reshape((1,3)),
+            # theta |--> 2pi-theta, phi |--> phi+pi, introduces theta values greater than pi
+            (spherical_coords_on_mesh * np.array([1.,-1.,1.]).reshape((1,3))) + np.array([0.,2*np.pi,np.pi]).reshape((1,3)),
+        ],
+        axis=0
+    )
+
+    interpolator = LinearNDInterpolator(
+        points = spherical_coords_on_mesh[:,[1,2]], # The (theta, phi) spherical coordinates
+        values = spherical_coords_on_mesh[:,0], # The r spherical coordinates
+    )
+
+    return interpolator
