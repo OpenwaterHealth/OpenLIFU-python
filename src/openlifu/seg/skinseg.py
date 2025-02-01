@@ -1,3 +1,17 @@
+"""Tools to get a skin surface from an MRI.
+
+Example workflow, starting from
+
+- an MRI volume `vol_array`, as a numpy array
+- an associated 4x4 `affine` transform, as a numpy array
+- a desired spherical coordinate system `origin` location inside the volume (e.g. the sonication target)
+
+foreground_mask_array = compute_foreground_mask(vol_array)
+foreground_mask_vtk_image = vtk_img_from_array_and_affine(foreground_mask_array, affine)
+skin_mesh = create_closed_surface_from_labelmap(foreground_mask_vtk_image)
+skin_interpolator = spherical_interpolator_from_mesh(skin_mesh, origin)
+"""
+
 from typing import Callable, List, Optional, Tuple
 
 import numpy as np
@@ -265,6 +279,20 @@ def spherical_interpolator_from_mesh(
     Returns:
         A spherical interpolator, which is a callable that maps (theta,phi) pairs of spherical coordinates (phi being azimuthal)
         to r values (radial spherical coordinate values). The angles are in radians.
+
+    Summary of the algorithm:
+        - Transform the input mesh based on the desired origin and orientation of the spherical coordinate system.
+        - We will gather some points into a set $S$. For each point $P$ on the mesh consider the ray $\\vec{OP}$
+          from the origin through $P$ and look at all the intersections of this ray $\\vec{OP}$ with the mesh.
+          If none of those intersections are further out from the origin than $P$ is, then we put $P$ into our set $S$.
+        - Using the spherical coordinates of the points in $S$, build a `scipy.interpolate.LinearNDInterpolator`
+          that interpolates spherical $r$ values from the spherical $(\\theta,\\phi)$ values.
+        - Problem: All the gathered $(\\theta,\\phi)$ values are likely strictly inside the square $[0,\\pi]\\times[-\\pi,\\pi]$,
+          and `LinearNDInterpolator` does not _extrapolate_, and so angles close to the "seams" of the spherical coordinate
+          system (the boundaries of that square) generate NaNs through the interpolator. The solution used here is to first
+          clone the gathered points with appropriate angular shifts so as to cover those seams, and then give that larger set
+          of points to the interpolator.
+        - Return the interpolator.
     """
 
     if xyz_direction_columns is None:
