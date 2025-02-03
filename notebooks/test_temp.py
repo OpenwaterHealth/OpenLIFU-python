@@ -39,6 +39,16 @@ async def main():
     r = await ustx_ctrl.ping()
     format_and_print_hex(r)
 
+    print("Set Trigger")
+    trigger_config = {
+        "TriggerFrequencyHz": 10,
+        "TriggerMode": 1,
+        "TriggerPulseCount": 0,
+        "TriggerPulseWidthUsec": 5000
+    }
+    
+    r = await ustx_ctrl.set_trigger(data=trigger_config)
+
     print("Get Temperature")
     for _ in range(10):  # Loop 10 times
         r = await ustx_ctrl.get_temperature()

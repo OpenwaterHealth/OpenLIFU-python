@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 import struct
 from typing import List
 
@@ -8,6 +9,7 @@ log = logging.getLogger(__name__)
 
 
 from openlifu.io.config import (
+    OW_ERROR,
     OW_TX7332,
     OW_TX7332_RREG,
     OW_TX7332_WBLOCK,
@@ -116,6 +118,54 @@ class TX7332_IF:
 
         return responses
 
+
+    def __parse_ti_cfg_file(self, file_path: str) -> list[tuple[str, int, int]]:
+        """Parses the given configuration file and extracts all register groups, addresses, and values."""
+        parsed_data = []
+        pattern = re.compile(r"([\w\d\-]+)\|0x([0-9A-Fa-f]+)\t0x([0-9A-Fa-f]+)")
+
+        with open(file_path) as file:
+            for line in file:
+                match = pattern.match(line.strip())
+                if match:
+                    group_name = match.group(1)  # Capture register group name
+                    register_address = int(match.group(2), 16)  # Convert hex address to integer
+                    register_value = int(match.group(3), 16)  # Convert hex value to integer
+                    parsed_data.append((group_name, register_address, register_value))
+
+        return parsed_data
+
+    async def write_ti_config_file(self, file_path:str, packet_id=None) -> bool:
+        """
+        Reads a TI configuration file and writes the parsed registers to the device.
+
+        :param file_path: Path to the TI config file.
+        """
+        try:
+
+            if packet_id is None:
+                self.ctrl_if.packet_count += 1
+                packet_id = self.ctrl_if.packet_count
+                
+
+            parsed_registers = self.__parse_ti_cfg_file(file_path)
+
+            for group, addr, value in parsed_registers:
+                await asyncio.sleep(self._delay)
+        
+                print(f"{group:<20}0x{addr:02X}      0x{value:08X}")
+                data = struct.pack('<HI', addr, value)
+                response = await self.uart.send_ustx(id=packet_id, packetType=OW_TX7332, command=OW_TX7332_WREG, addr=self.identifier, data=data)
+                if response.packet_type == OW_ERROR:
+                    print("Error writing TX device")
+                    return False
+
+            return True
+
+        except Exception as e:
+            print("Error parsing and writing TI config to TX Device: %s", e)
+            raise
+        
     def print(self):
         print("Controller Instance Information") # noqa: T201
         print(f"  Transmitter: {self.identifier}") # noqa: T201
