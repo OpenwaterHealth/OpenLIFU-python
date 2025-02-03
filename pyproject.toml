@@ -42,7 +42,7 @@ dependencies = [
   "nibabel",
   "sphinx",
   "ipykernel",
-  "k-wave-python==0.3.4",
+  "k-wave-python==0.4.0",
   "nvidia-ml-py",
   "OpenEXR"
 ]
