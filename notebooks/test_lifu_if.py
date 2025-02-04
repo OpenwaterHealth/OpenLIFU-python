@@ -2,6 +2,7 @@ import asyncio
 
 from openlifu.io.LIFUInterface import LIFUInterface
 
+# set PYTHONPATH=%cd%\src;%PYTHONPATH%
 
 async def main():
     """

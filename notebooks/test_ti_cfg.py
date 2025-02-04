@@ -1,13 +1,32 @@
-
+# ---
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: light
+#       format_version: '1.5'
+#       jupytext_version: 1.16.3
+#   kernelspec:
+#     display_name: ustx
+#     language: python
+#     name: python3
+# ---
 import asyncio
-import struct
 import time
 
-from openlifu.io.core import UART, UartPacket
-from openlifu.io.ctrl_if import CTRL_IF
-from openlifu.io.utils import format_and_print_hex, list_vcp_with_vid_pid
+import numpy as np
 
-# set PYTHONPATH=%cd%\src;%PYTHONPATH%
+from openlifu.io.core import UART
+from openlifu.io.ctrl_if import CTRL_IF
+from openlifu.io.ustx import (
+    DelayProfile,
+    PulseProfile,
+    TxModule,
+    print_regs,
+)
+from openlifu.io.utils import list_vcp_with_vid_pid
+from openlifu.xdc import Transducer
+
 
 async def main():
     # Select communication port
@@ -36,20 +55,17 @@ async def main():
     # Initialize the USTx controller object
     ustx_ctrl = CTRL_IF(s)
 
-    print("Test PING")
-    r = await ustx_ctrl.ping()
-    format_and_print_hex(r)
+    # enumerate devices
+    print("Enumerate TX Chips")
+    r = await ustx_ctrl.enum_tx7332_devices()
+    print("TX Device Count:", len(r))
 
-    print("Set Trigger")
-    trigger_config = {
-        "TriggerFrequencyHz": 10,
-        "TriggerMode": 1,
-        "TriggerPulseCount": 0,
-        "TriggerPulseWidthUsec": 5000
-    }
-    
-    r = await ustx_ctrl.set_trigger(data=trigger_config)
-
+    # load config 
+    r = await ustx_ctrl.enum_tx7332_devices()
+    for tx in ustx_ctrl.tx_devices:
+        print(f"TX{tx.identifier} write registers")
+        r = await tx.write_ti_config_file(file_path="notebooks/ti_example.cfg")
+        
 
     print("Turn Trigger On")
     await ustx_ctrl.start_trigger()
@@ -58,18 +74,6 @@ async def main():
 
     print("Turn Trigger Off")
     await ustx_ctrl.stop_trigger()
-
-    print("Get Temperature")
-    for _ in range(10):  # Loop 10 times
-        r = await ustx_ctrl.get_temperature()
-        packet = UartPacket(buffer=r)
-        if packet.data_len == 4:
-            try:
-                temperature = struct.unpack('<f', packet.data)[0]
-                print("  Temperature (°C):", f"{temperature:.2f}")
-            except Exception as e:
-                print("  Error decoding float:", str(e))
-        time.sleep(1)  # Sleep for 1 second
 
     s.close()
 

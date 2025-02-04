@@ -4,6 +4,8 @@ import re
 import struct
 from typing import List
 
+from openlifu.io.core import UartPacket
+
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
@@ -155,8 +157,10 @@ class TX7332_IF:
         
                 print(f"{group:<20}0x{addr:02X}      0x{value:08X}")
                 data = struct.pack('<HI', addr, value)
-                response = await self.uart.send_ustx(id=packet_id, packetType=OW_TX7332, command=OW_TX7332_WREG, addr=self.identifier, data=data)
-                if response.packet_type == OW_ERROR:
+                response = await self.uart.send_ustx(id=packet_id, packetType=OW_TX7332, command=OW_TX7332_WREG, addr=self.identifier, data=data)                
+                self.uart.clear_buffer()
+                rUartPacket = UartPacket(buffer=response)
+                if rUartPacket.packet_type == OW_ERROR:
                     print("Error writing TX device")
                     return False
 

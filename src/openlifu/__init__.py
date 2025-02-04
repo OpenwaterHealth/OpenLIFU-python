@@ -38,7 +38,6 @@ from openlifu.seg import (
 from openlifu.sim import SimSetup
 from openlifu.xdc import Transducer
 
-from ._version import version as __version__
 
 __all__ = [
     "Point",
