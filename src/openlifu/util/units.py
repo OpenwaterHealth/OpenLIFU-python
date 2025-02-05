@@ -1,5 +1,5 @@
 import numpy as np
-from xarray import Dataset
+from xarray import Dataset, DataArray
 
 
 def getunittype(unit):

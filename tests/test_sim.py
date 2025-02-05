@@ -42,4 +42,4 @@ def test_run_simulation_runs():
     assert isinstance(dataset, xarray.Dataset)
     assert 'p_max' in dataset
     assert 'p_min' in dataset
-    assert 'ita' in dataset
+    assert 'intensity' in dataset

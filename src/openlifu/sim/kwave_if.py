@@ -123,5 +123,5 @@ def run_simulation(arr: xdc.Transducer,
                          coords=params.coords,
                          name='I',
                          attrs={'units':'W/cm^2', 'long_name':'Intensity'})
-    ds = xa.Dataset({'p_max':p_max, 'p_min':p_min, 'ita':intensity})
+    ds = xa.Dataset({'p_max':p_max, 'p_min':p_min, 'intensity':intensity})
     return ds, output

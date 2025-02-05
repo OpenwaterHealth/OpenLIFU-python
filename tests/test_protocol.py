@@ -105,7 +105,7 @@ def test_calc_solution_use_gpu(
         {
             'p_min': xa.DataArray(data=np.empty((3, 2, 3)), dims=["x", "y", "z"], attrs={'units': "Pa"}),
             'p_max': xa.DataArray(data=np.empty((3, 2, 3)),dims=["x", "y", "z"],attrs={'units': "Pa"}),
-            'ita': xa.DataArray(data=np.empty((3, 2, 3)),dims=["x", "y", "z"],attrs={'units': "W/cm^2"}),
+            'intensity': xa.DataArray(data=np.empty((3, 2, 3)),dims=["x", "y", "z"],attrs={'units': "W/cm^2"}),
         },
         coords={
             'x': xa.DataArray(dims=["x"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
