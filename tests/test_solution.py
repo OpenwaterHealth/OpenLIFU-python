@@ -61,7 +61,7 @@ def example_solution() -> Solution:
                     dims=["focal_point_index", "x", "y", "z"],
                     attrs={'units': "Pa"}
                 ),
-                'ita': xa.DataArray(
+                'intensity': xa.DataArray(
                     data=rng.random((1, 3, 2, 3)),
                     dims=["focal_point_index", "x", "y", "z"],
                     attrs={'units': "W/cm^2"}

@@ -121,6 +121,10 @@ class Transducer:
         units = self.units if units is None else units
         matrix = transform if transform is not None else np.eye(4)
         return [element.get_corners(units=units, matrix=matrix) for element in self.elements]
+    
+    def get_effective_origin(self, apodizations, units=None):
+        units = self.units if units is None else units
+        return (apodizations.reshape(-1,1) * self.get_positions(units=units)).sum(axis=0)/apodizations.sum()
 
     def get_positions(self, transform:Optional[np.ndarray]=None, units:Optional[str]=None):
         units = self.units if units is None else units
@@ -243,3 +247,4 @@ class Transducer:
                 units=units
             ))
         return Transducer(elements=elements, id=id, name=name, attrs=attrs)
+

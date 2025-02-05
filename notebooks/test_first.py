@@ -92,7 +92,7 @@ ds['p_min'].sel(ele=0).plot.imshow()
 ds['p_min'].sel(ele=0).plot.imshow()
 
 # %% [markdown]
-# We can examine the output object, which is an `xarray.DataSet` object with 3 data variables: `p_max` (Peak Positive Pressure), `p_min` (Peak Negative Pressure), and `ita` (Time Averaged Intensity). It's attributes also contain the `source` pulse (an `xarray.DataArray`), and `output`, the raw K-Wave output structure.
+# We can examine the output object, which is an `xarray.DataSet` object with 3 data variables: `p_max` (Peak Positive Pressure), `p_min` (Peak Negative Pressure), and `intensity` (Time Averaged Intensity). It's attributes also contain the `source` pulse (an `xarray.DataArray`), and `output`, the raw K-Wave output structure.
 
 # %%
 ds
