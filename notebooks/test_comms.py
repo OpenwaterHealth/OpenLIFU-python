@@ -62,7 +62,7 @@ async def main():
 
 
     focus = np.array([0, 0, 50]) #set focus #left, front, down
-    pulse_profile = PulseProfile(profile=1, frequency=400e3, cycles=3)
+    pulse_profile = PulseProfile(profile=1, frequency=166e3, cycles=3)
 
     arr = Transducer.from_file(R"E:\CURRENT-WORK\openwater\OpenLIFU-python\mappings\M3_rigidflex.json")
     arr.elements = np.array(arr.elements)[np.argsort([el.pin for el in arr.elements])].tolist()
