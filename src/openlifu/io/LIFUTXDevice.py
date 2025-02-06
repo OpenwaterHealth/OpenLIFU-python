@@ -852,27 +852,9 @@ class TxDevice:
 
             for group, addr, value in parsed_registers:
                 logger.info(f"{group:<20}0x{addr:02X}      0x{value:08X}")
-                data = struct.pack('<HI', addr, value)
-
-                # Send the write command to the device
-                r = self.uart.send_packet(
-                    id=None,
-                    packetType=OW_TX7332,
-                    command=OW_TX7332_WREG,
-                    addr=txchip_id,
-                    data=data
-                )
-
-                # Clear UART buffer after sending the packet
-                self.uart.clear_buffer()
-
-                # Check the response for errors
-                if r.packet_type == OW_ERROR:
-                    logger.error("Error writing TX register value")
+                if not self.write_register(identifier=txchip_id, address=addr, value=value):
+                    logger.error(f"Error writing TX CHIP ID: {txchip_id} register 0x{addr:02X} with value 0x{value:08X}")
                     return False
-
-                logger.info(f"Successfully wrote value 0x{value:08X} to register 0x{addr:04X}")
-
 
             return True
 
