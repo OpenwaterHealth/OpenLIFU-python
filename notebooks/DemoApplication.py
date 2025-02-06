@@ -1,5 +1,4 @@
 import sys
-import time
 
 import numpy as np
 from PyQt5.QtWidgets import (
@@ -186,7 +185,6 @@ class App(QWidget):
                 else:
                     print(f"Writing value 0x{value:X} to register 0x{address:X}")
                     self.interface.txdevice.write_register(identifier=tx.identifier, address=address, value=value)
-                time.sleep(0.1)
 
         self.configured = True
         self.config_status_label.setText('System: Configured')
