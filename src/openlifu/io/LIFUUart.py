@@ -192,6 +192,7 @@ class LIFUUart:
             if self.align > 0:
                 while len(data) % self.align != 0:
                     data += bytes([OW_END_BYTE])
+            # log.info(f"TX: {len(data)} bytes")
             self.serial.write(data)
         except Exception as e:
             log.error(f"Error during transmission: {e}")

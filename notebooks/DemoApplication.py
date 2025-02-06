@@ -182,10 +182,10 @@ class App(QWidget):
             for address, value in txregs.items():
                 if isinstance(value, list):
                     print(f"Writing {len(value)}-value block starting at register 0x{address:X}")
-                    tx.write_block(address, value)
+                    self.interface.txdevice.write_block(identifier=tx.identifier, start_address=address, reg_values=value)
                 else:
                     print(f"Writing value 0x{value:X} to register 0x{address:X}")
-                    tx.write_register(address, value)
+                    self.interface.txdevice.write_register(identifier=tx.identifier, address=address, value=value)
                 time.sleep(0.1)
 
         self.configured = True
