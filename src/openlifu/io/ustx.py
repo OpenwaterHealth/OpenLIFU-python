@@ -482,7 +482,7 @@ class Tx7332Registers:
         levels = pattern['levels']
         lengths = pattern['lengths']
         nperiods = len(levels)
-        level_lut = {-1: 0b01, 0: 0b00, 1: 0b10}
+        level_lut = {-1: 0b01, 0: 0b11, 1: 0b10}  # Map levels to register values 0b11 drive to ground 0b00 high impedance
         for i, (level, length) in enumerate(zip(levels, lengths)):
             address, lsb_lvl, lsb_length = get_pattern_location(i+1, pulse_profile.profile)
             if address not in data_registers:

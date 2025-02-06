@@ -4,7 +4,7 @@ import json
 import logging
 import re
 import struct
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from openlifu.io.config import (
     OW_CMD_ECHO,
@@ -489,7 +489,7 @@ class TxDevice:
             logger.error("Error Enumerating TX Devices: %s", e)
             raise
 
-    def write_register(self, address: int, value: int) -> bool:
+    def write_register(self, identifier:int, address: int, value: int) -> bool:
         """
         Write a value to a register in the TX device.
 
@@ -510,9 +510,9 @@ class TxDevice:
                 raise ValueError("TX Device not connected")
 
             # Validate the identifier
-            if self.identifier < 0:
+            if identifier < 0:
                 raise ValueError("TX Chip address NOT SET")
-            if self.identifier > 1:
+            if identifier > 1:
                 raise ValueError("TX Chip address must be in the range 0-1")
 
             # Pack the address and value into the required format
@@ -527,7 +527,7 @@ class TxDevice:
                 id=None,
                 packetType=OW_TX7332,
                 command=OW_TX7332_WREG,
-                addr=self.identifier,
+                addr=identifier,
                 data=data
             )
 
@@ -616,7 +616,7 @@ class TxDevice:
             logger.error(f"Unexpected error in read_register: {e}")
             raise
 
-    def write_block(self, start_address: int, reg_values: List[int]) -> bool:
+    def write_block(self, identifier: int, start_address: int, reg_values: List[int]) -> bool:
         """
         Write a block of register values to the TX device.
 
@@ -636,9 +636,9 @@ class TxDevice:
                 raise ValueError("TX Device not connected")
 
             # Validate the identifier
-            if self.identifier < 0:
+            if identifier < 0:
                 raise ValueError("TX Chip address NOT SET")
-            if self.identifier > 1:
+            if identifier > 1:
                 raise ValueError("TX Chip address must be in the range 0-1")
 
             # Validate the reg_values list
@@ -671,7 +671,7 @@ class TxDevice:
                     id=None,
                     packetType=OW_TX7332,
                     command=OW_TX7332_WBLOCK,
-                    addr=self.identifier,
+                    addr=identifier,
                     data=data
                 )
 
@@ -830,12 +830,20 @@ class TxDevice:
             logger.error(f"Unexpected error in write_block: {e}")
             raise
 
-    def apply_ti_config_file(self, file_path:str) -> bool:
+    def apply_ti_config_file(self, txchip_id:int, file_path:str) -> bool:
         """
         Reads a TI configuration file and writes the parsed registers to the device.
 
         :param file_path: Path to the TI config file.
         """
+
+
+        # Validate the identifier
+        if txchip_id < 0:
+            raise ValueError("TX Chip address NOT SET")
+        if txchip_id > 1:
+            raise ValueError("TX Chip address must be in the range 0-1")
+
         try:
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
@@ -844,9 +852,27 @@ class TxDevice:
 
             for group, addr, value in parsed_registers:
                 logger.info(f"{group:<20}0x{addr:02X}      0x{value:08X}")
-                if not self.write_register(self, address=addr, value=value):
-                    logger.error("Error writing TX device")
+                data = struct.pack('<HI', addr, value)
+
+                # Send the write command to the device
+                r = self.uart.send_packet(
+                    id=None,
+                    packetType=OW_TX7332,
+                    command=OW_TX7332_WREG,
+                    addr=txchip_id,
+                    data=data
+                )
+
+                # Clear UART buffer after sending the packet
+                self.uart.clear_buffer()
+
+                # Check the response for errors
+                if r.packet_type == OW_ERROR:
+                    logger.error("Error writing TX register value")
                     return False
+
+                logger.info(f"Successfully wrote value 0x{value:08X} to register 0x{addr:04X}")
+
 
             return True
 

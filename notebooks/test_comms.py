@@ -16,15 +16,7 @@ import time
 
 import numpy as np
 
-from openlifu.io.core import UART
-from openlifu.io.ctrl_if import CTRL_IF
-from openlifu.io.ustx import (
-    DelayProfile,
-    PulseProfile,
-    TxDeviceController,
-    print_regs,
-)
-from openlifu.io.utils import list_vcp_with_vid_pid
+from openlifu.io.ustx import DelayProfile, PulseProfile, print_regs
 from openlifu.xdc import Transducer
 
 
