@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import pytest
 from helpers import dataclasses_are_equal
+from vtk import vtkImageData, vtkPolyData
 
 from openlifu import Point, Solution
 from openlifu.db import Session, Subject
@@ -496,6 +497,19 @@ def test_write_photoscan(example_database:Database, example_session: Session, tm
     photoscan.texture_abspath = bogus_texture_file
     with pytest.raises(FileNotFoundError, match="does not exist"):
         example_database.write_photoscan(example_session.subject_id, example_session.id, photoscan, model_data_path, bogus_texture_file, on_conflict=OnConflictOpts.OVERWRITE)
+
+def test_load_photoscan(example_database:Database, example_session:Session):
+    with pytest.raises(FileNotFoundError,match="Photoscan file not found"):
+        example_database.load_photoscan(example_session.subject_id, example_session.id, "bogus_photoscan_id")
+
+    example_photoscan = example_database.load_photoscan(example_session.subject_id, example_session.id, "example_photoscan")
+    assert example_photoscan.name == "ExamplePhotoscan"
+
+    example_photoscan, (model_data, texture_data) = example_database.load_photoscan(example_session.subject_id, example_session.id, "example_photoscan", load_data=True)
+    assert model_data is not None
+    assert texture_data is not None
+    assert isinstance(model_data, vtkPolyData)
+    assert isinstance(texture_data,vtkImageData)
 
 def test_session_created_date():
     """Test that created date is recent when a session is created."""
