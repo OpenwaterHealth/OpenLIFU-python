@@ -13,6 +13,7 @@ from vtk import vtkImageData, vtkPolyData
 from openlifu import Point, Solution
 from openlifu.db import Session, Subject
 from openlifu.db.database import Database, OnConflictOpts
+from openlifu.login import User
 from openlifu.photoscan import Photoscan
 from openlifu.plan import Protocol, Run
 from openlifu.xdc import Transducer
@@ -94,6 +95,59 @@ def test_delete_protocol(example_database: Database):
     # Invalid option
     with pytest.raises(ValueError, match="Invalid"):
         example_database.delete_protocol("non_existent_protocol", on_conflict=OnConflictOpts.OVERWRITE)
+
+def test_write_user(example_database: Database):
+    user = User(name="thelegend27", password_hash="abc", id="a_user_called_thelegend27")
+
+    # User id is not in list initially
+    assert user.id not in example_database.get_user_ids()
+
+    # Can add a new user, and it loads back in correctly.
+    example_database.write_user(user)
+    reloaded_user = example_database.load_user(user.id)
+    assert dataclasses_are_equal(reloaded_user,user)
+
+    # User id is now in the list
+    assert user.id in example_database.get_user_ids()
+
+    # Error raised when the user already exists
+    with pytest.raises(ValueError, match="already exists"):
+        example_database.write_user(user, on_conflict=OnConflictOpts.ERROR)
+
+    # Skip option
+    user.name = "new_name"
+    example_database.write_user(user, on_conflict=OnConflictOpts.SKIP)
+    reloaded_user = example_database.load_user(user.id)
+    assert reloaded_user.name == "thelegend27"
+
+    # Overwrite option
+    user.name = "new_name"
+    example_database.write_user(user, on_conflict=OnConflictOpts.OVERWRITE)
+    reloaded_user = example_database.load_user(user.id)
+    assert reloaded_user.name == "new_name"
+
+def test_delete_user(example_database: Database):
+    # Write a user
+    user = User(name="thelegend27", id="a_user_to_be_deleted")
+    example_database.write_user(user)
+    assert user.id in example_database.get_user_ids()
+
+    # User is deleted
+    example_database.delete_user(user.id)
+    assert user.id not in example_database.get_user_ids()
+    with pytest.raises(FileNotFoundError):
+        example_database.load_user(user.id)
+
+    # Error option
+    with pytest.raises(ValueError, match="does not exist in the database"):
+        example_database.delete_user("non_existent_user", on_conflict=OnConflictOpts.ERROR)
+
+    # Skip option
+    example_database.delete_user("non_existent_user", on_conflict=OnConflictOpts.SKIP)
+
+    # Invalid option
+    with pytest.raises(ValueError, match="Invalid"):
+        example_database.delete_user("non_existent_user", on_conflict=OnConflictOpts.OVERWRITE)
 
 def test_load_session_from_file(example_session : Session, example_database : Database):
 

@@ -10,6 +10,7 @@ from typing import List, Optional
 
 import h5py
 
+from openlifu.login import User
 from openlifu.photoscan import Photoscan, load_data_from_photoscan
 from openlifu.plan import Protocol, Run, Solution
 from openlifu.util.json import PYFUSEncoder
@@ -43,6 +44,55 @@ class Database:
         with h5py.File(gridweight_filename, "w") as f:
             f.create_dataset("grid_weights", data=grid_weights)
         self.logger.info(f"Added grid weights with hash {grid_hash} for transducer {transducer_id} to the database.")
+
+    def write_user(self, user: User, on_conflict: OnConflictOpts = OnConflictOpts.ERROR) -> None:
+        # Check if the sonication user ID already exists in the database
+        user_id = user.id
+        user_ids = self.get_user_ids()
+
+        if user_id in user_ids:
+            if on_conflict == OnConflictOpts.ERROR:
+                raise ValueError(f"User with ID {user_id} already exists in the database.")
+            elif on_conflict == OnConflictOpts.OVERWRITE:
+                self.logger.info(f"Overwriting User with ID {user_id} in the database.")
+            elif on_conflict == OnConflictOpts.SKIP:
+                self.logger.info(f"Skipping User with ID {user_id} as it already exists in the database.")
+                return  # Skip adding the User
+
+        # Save the user to a JSON file
+        user_filename = self.get_user_filename(user_id)
+        user.to_file(str(user_filename))
+
+        # Update the list of User IDs
+        if user_id not in user_ids:
+            user_ids.append(user_id)
+            self.write_user_ids(user_ids)
+
+        self.logger.info(f"Added User with ID {user_id} to the database.")
+
+    def delete_user(self, user_id: str, on_conflict: OnConflictOpts = OnConflictOpts.ERROR) -> None:
+        # Check if the user ID already exists in the database
+        user_ids = self.get_user_ids()
+
+        if user_id not in user_ids:
+            if on_conflict == OnConflictOpts.ERROR:
+                raise ValueError(f"User ID {user_id} does not exist in the database.")
+            elif on_conflict == OnConflictOpts.SKIP:
+                self.logger.info(f"Cannot delete user ID {user_id} as it does not exist in the database.")
+                return
+            else:
+                raise ValueError("Invalid 'on_conflict' option.")
+
+        # Delete the directory of the user
+        user_dir = self.get_user_dir(user_id)
+        if Path.is_dir(user_dir):
+            shutil.rmtree(user_dir)
+
+        if user_id in user_ids:
+            user_ids.remove(user_id)
+            self.write_user_ids(user_ids)
+
+        self.logger.info(f"Removed Sonication User with ID {user_id} from the database.")
 
     def write_protocol(self, protocol: Protocol, on_conflict: OnConflictOpts = OnConflictOpts.ERROR):
         # Check if the sonication protocol ID already exists in the database
@@ -467,6 +517,19 @@ class Database:
             self.logger.warning("Connected transducer file not found.")
             return None
 
+    def get_user_ids(self) -> List[str]:
+        users_filename = self.get_users_filename()
+
+        if os.path.isfile(users_filename):
+            with open(users_filename) as file:
+                user_data = json.load(file)
+                user_ids = user_data.get("user_ids", [])
+            self.logger.info("User IDs: %s", user_ids)
+            return user_ids
+        else:
+            self.logger.warning("Users file not found.")
+            return []
+
     def get_protocol_ids(self):
         protocols_filename = self.get_protocols_filename()
 
@@ -730,6 +793,31 @@ class Database:
             self.logger.error("Protocols file not found.")
             raise FileNotFoundError("Protocols file not found.")
 
+    def load_user(self, user_id) -> User:
+        user_filename = self.get_user_filename(user_id)
+        if os.path.isfile(user_filename):
+            user = User.from_file(user_filename)
+            self.logger.info(f"Loaded User {user_id}")
+            return user
+        else:
+            self.logger.error(f"User file not found for ID: {user_id}")
+            raise FileNotFoundError(f"User file not found for ID: {user_id}")
+
+    def load_all_users(self) -> List[User]:
+        users_filename = self.get_users_filename()
+        if os.path.isfile(users_filename):
+            with open(users_filename) as file:
+                data = json.load(file)
+                user_ids = data.get('user_ids', [])
+            users = []
+            for user_id in user_ids:
+                user = self.load_user(user_id)
+                users.append(user)
+            return users
+        else:
+            self.logger.error("Users file not found.")
+            raise FileNotFoundError("Users file not found.")
+
     def load_session(self, subject, session_id, options=None):
         if options is None:
             options = {}
@@ -803,6 +891,15 @@ class Database:
 
     def get_protocol_filename(self, protocol_id):
         return self.get_protocol_dir(protocol_id) / f'{protocol_id}.json'
+
+    def get_users_filename(self) -> Path:
+        return Path(self.path) / 'users' / 'users.json'
+
+    def get_user_dir(self, user_id) -> Path:
+        return Path(self.path) / 'users' / user_id
+
+    def get_user_filename(self, user_id) -> Path:
+        return self.get_user_dir(user_id) / f'{user_id}.json'
 
     def get_session_dir(self, subject_id, session_id):
         return Path(self.get_subject_dir(subject_id)) / 'sessions' / session_id
@@ -879,6 +976,12 @@ class Database:
         protocols_filename = self.get_protocols_filename()
         with open(protocols_filename, 'w') as f:
             json.dump(protocol_data, f)
+
+    def write_user_ids(self, user_ids) -> None:
+        user_data = {'user_ids': user_ids}
+        users_filename = self.get_users_filename()
+        with open(users_filename, 'w') as f:
+            json.dump(user_data, f)
 
     def write_session_ids(self, subject_id, session_ids):
         session_data = {'session_ids': session_ids}
