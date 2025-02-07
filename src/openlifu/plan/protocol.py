@@ -252,7 +252,7 @@ class Protocol:
         simulation_result_aggregated: xa.Dataset = xa.Dataset()
         scaled_solution_analysis: SolutionAnalysis = SolutionAnalysis()
         foci: List[Point] = self.focal_pattern.get_targets(target)
-        simulation_cycles = np.max([np.round(self.pulse.duration * self.pulse.frequency), 20])
+        simulation_cycles = np.min([np.round(self.pulse.duration * self.pulse.frequency), 20])
 
         # updating solution sequence if pulse mismatch
         if (self.sequence.pulse_count % len(foci)) != 0:
@@ -273,7 +273,7 @@ class Protocol:
                     cycles = simulation_cycles,
                     dt=sim_options.dt,
                     t_end=sim_options.t_end,
-                    amplitude = 1,
+                    amplitude = self.pulse.amplitude,
                     gpu = use_gpu
                 )
             delays_to_stack.append(delays)
