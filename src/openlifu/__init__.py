@@ -67,5 +67,6 @@ __all__ = [
     "offset_grid",
     "SimSetup",
     "Database",
+    "User",
     "__version__",
 ]
