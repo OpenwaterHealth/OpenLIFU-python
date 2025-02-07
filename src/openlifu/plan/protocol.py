@@ -28,18 +28,43 @@ OnPulseMismatchAction = Enum("OnPulseMismatchAction", ["ERROR", "ROUND", "ROUNDU
 @dataclass
 class Protocol:
     id: str = "protocol"
+    """ The unique identifier of the protocol """
+
     name: str = "Protocol"
+    """ The name of the protocol """
+
     description: str = ""
+    """ A more detailed description of the protocol """
+
     pulse: bf.Pulse = field(default_factory=bf.Pulse)
+    """ The pulse definition used in the protocol """
+
     sequence: bf.Sequence = field(default_factory=bf.Sequence)
+    """ The sequence of pulses used in the protocol """
+
     focal_pattern: bf.FocalPattern = field(default_factory=bf.SinglePoint)
+    """ The focal pattern used in the protocol. By default, a single point is used """
+
     sim_setup: sim.SimSetup = field(default_factory=sim.SimSetup)
+    """ Configuration options for using k-wave to simulate wave propagation """
+
     delay_method: bf.DelayMethod = field(default_factory=bf.delay_methods.Direct)
+    """ The method used to calculate transmit delays. By default, delays are calculated using a nominal speed of sound """
+
     apod_method: bf.ApodizationMethod = field(default_factory=bf.apod_methods.Uniform)
+    """ The method used to calculate transmit apodizations. By default, apodizations are uniform """
+
     seg_method: seg.SegmentationMethod = field(default_factory=seg.seg_methods.Water)
+    """ The method used to segment the subject's MRI for delay calculation. By default, the entire field is assumed to be water """
+
     param_constraints: dict = field(default_factory=dict)  #TODO: this seems to be used only in `plan.check_analysis` but not called anywhere
+    """ The constraints on the analysis parameters. If computed parameters are outside of the ranges defined here, warnings or errors may be flagged to reject the solution """
+
     target_constraints: List[TargetConstraints] = field(default_factory=list)
+    """ The constraints on the target position. If the target is outside of the bounds defined here, warnings or errors may be flagged to reject the solution """
+
     analysis_options: SolutionAnalysisOptions = field(default_factory=SolutionAnalysisOptions)
+    """ Options to adjust solution analysis. By default, the analysis is configured with default options """
 
     def __post_init__(self):
         self.logger = logging.getLogger(__name__)
