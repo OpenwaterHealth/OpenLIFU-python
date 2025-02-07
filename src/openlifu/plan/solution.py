@@ -140,7 +140,7 @@ class Solution:
                 apod_signal = input_signal * self.apodizations[focus_index, i]
                 output_signal[i] = transducer.elements[i].calc_output(apod_signal, dt)
 
-            p0_Pa = np.max(output_signal)
+            p0_Pa = np.max(output_signal, axis=1)
 
             # get focus region masks (for mainlobe, sidelobe and beamwidth)
             # mainlobe_mask = mask_focus(
@@ -199,8 +199,8 @@ class Solution:
             solution_analysis.global_isppa_Wcm2 += [float(ipa_Wcm2.where(z_mask).max())]
             i0_Wcm2 = (p0_Pa**2 / (2*standoff_Z)) * 1e-4
             i0ta_Wcm2 = i0_Wcm2 * pulsetrain_dutycycle * treatment_dutycycle
-            power_W[focus_index] = np.mean(np.sum(i0ta_Wcm2*ele_sizes_cm2*self.apodizations[focus_index, :]))
-            TIC[focus_index] = c_tic*power_W[focus_index]/d_eq_cm
+            power_W[focus_index] = np.mean(np.sum(i0ta_Wcm2 * ele_sizes_cm2 * self.apodizations[focus_index, :]))
+            TIC[focus_index] = power_W[focus_index] / (d_eq_cm * c_tic)
             solution_analysis.p0_Pa += [np.max(p0_Pa)]
         solution_analysis.TIC = np.mean(TIC)
         solution_analysis.power_W = np.mean(power_W)
