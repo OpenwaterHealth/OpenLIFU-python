@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 import threading
 import time
@@ -12,7 +11,6 @@ from openlifu.io.config import (
     OW_BAD_PARSE,
     OW_CMD_NOP,
     OW_END_BYTE,
-    OW_JSON,
     OW_START_BYTE,
 )
 from openlifu.io.LIFUSignal import LIFUSignal
@@ -250,11 +248,11 @@ class LIFUUart:
 
         Args:
             id (int, optional): Packet ID. If not provided, a unique ID is auto-generated.
-            packetType (int): Type of the packet (e.g., OW_ACK, OW_JSON).
+            packetType (int): Type of the packet (e.g., OW_ACK).
             command (int): Command to be sent with the packet.
             addr (int): Address field in the packet.
             reserved (int): Reserved field in the packet.
-            data (bytes or dict, optional): Payload data. If packetType is OW_JSON, data is serialized to JSON.
+            data (bytes or dict, optional): Payload data.
             timeout (in seconds, optional): timeout setting -1 waits forever.
 
         Returns:
@@ -277,16 +275,9 @@ class LIFUUart:
 
             # Handle payload
             if data:
-                if packetType == OW_JSON:
-                    try:
-                        payload = json.dumps(data).encode('utf-8')
-                    except (TypeError, ValueError) as e:
-                        log.error(f"Error serializing data to JSON: {e}")
-                        raise ValueError("Invalid data for JSON serialization") from e
-                else:
-                    if not isinstance(data, (bytes, bytearray)):
-                        raise ValueError("Data must be bytes or bytearray if not OW_JSON")
-                    payload = data
+                if not isinstance(data, (bytes, bytearray)):
+                    raise ValueError("Data must be bytes or bytearray")
+                payload = data
                 payload_length = len(payload)
             else:
                 payload_length = 0
