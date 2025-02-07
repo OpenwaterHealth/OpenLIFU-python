@@ -106,7 +106,7 @@ def calc_dist_from_focus(da: xa.DataArray, focus, origin=DEFAULT_ORIGIN, aspect_
         dist = xa.DataArray(dist, coords=da.coords, dims=da.dims)
     return dist
 
-def mask_focus(da: xa.DataArray, focus, distance, origin=DEFAULT_ORIGIN, aspect_ratio=[1,1,1], operator='<'):
+def get_mask(da: xa.DataArray, focus, distance, origin=DEFAULT_ORIGIN, aspect_ratio=[1,1,1], operator='<'):
     dist = calc_dist_from_focus(da, focus, origin=origin, aspect_ratio=aspect_ratio)
     if operator == '<':
         mask = dist < distance
@@ -118,6 +118,10 @@ def mask_focus(da: xa.DataArray, focus, distance, origin=DEFAULT_ORIGIN, aspect_
         mask = dist >= distance
     else:
         raise ValueError("Operator must be 'lt' or 'gt'")
+    return mask
+
+def mask_focus(da: xa.DataArray, focus, distance, origin=DEFAULT_ORIGIN, aspect_ratio=[1,1,1], operator='<'):
+    mask = get_mask(da, focus, distance, origin=origin, aspect_ratio=aspect_ratio, operator=operator)
     return da.where(mask)
 
 def interp_transformed_axis(da: xa.DataArray, focus, dim, origin=DEFAULT_ORIGIN, min_offset=None, max_offset=None):
