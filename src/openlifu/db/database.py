@@ -10,7 +10,7 @@ from typing import List, Optional
 
 import h5py
 
-from openlifu.photoscan import Photoscan
+from openlifu.photoscan import Photoscan, load_data_from_photoscan
 from openlifu.plan import Protocol, Run, Solution
 from openlifu.util.json import PYFUSEncoder
 from openlifu.xdc import Transducer
@@ -616,21 +616,27 @@ class Database:
     def get_photoscan_absolute_filepaths_info(self, subject_id, session_id, photoscan_id):
         """Returns the photoscan information with absolute paths to any data"""
         photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan_id)
+        photoscan_metadata_directory = Path(photoscan_metadata_filepath).parent
         with open(photoscan_metadata_filepath) as f:
             photoscan = json.load(f)
             photoscan_dict = {"id": photoscan["id"],\
                     "name": photoscan["name"],\
-                    "model_abspath": Path(photoscan_metadata_filepath).parent/photoscan["model_filename"],
-                    "texture_abspath": Path(photoscan_metadata_filepath).parent/photoscan["texture_filename"],
+                    "model_abspath": photoscan_metadata_directory/photoscan["model_filename"],
+                    "texture_abspath": photoscan_metadata_directory/photoscan["texture_filename"],
                     "photoscan_approved": photoscan["photoscan_approved"]}
             if "mtl_filename" in photoscan:
                 photoscan_dict["mtl_abspath"] = Path(photoscan_metadata_filepath).parent/photoscan["mtl_filename"]
         return photoscan_dict
 
-    def load_photoscan(self, subject_id, session_id, photoscan_id):
-        """Returns a photoscan object"""
+    def load_photoscan(self, subject_id, session_id, photoscan_id, load_data = False):
+        """Returns a photoscan object and optionally, also returns the loaded model and texture
+        data as Tuple[vtkPolyData, vtkImageData] if load_data = True."""
         photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan_id)
         photoscan = Photoscan.from_file(photoscan_metadata_filepath)
+
+        if load_data:
+            (model_data, texture_data) = load_data_from_photoscan(photoscan, Path(photoscan_metadata_filepath.parent))
+            return photoscan, (model_data, texture_data)
         return photoscan
 
     def get_transducer_absolute_filepaths(self, transducer_id:str) -> dict:

@@ -16,7 +16,7 @@ class Photoscan:
     id : str = "photoscan"
     """ID of this photoscan"""
 
-    name: Optional[str] = "Photoscan"
+    name: str = "Photoscan"
     """Photoscan name"""
 
     model_filename: Optional[str] =  None
