@@ -35,7 +35,7 @@ def test_load_photoscan(example_database:Database, tmp_path:Path):
     subject_id = "example_subject"
     session_id = "example_session"
     photoscan_id = "example_photoscan"
-    photoscan_info = example_database.get_photoscan_info(subject_id, session_id, photoscan_id)
+    photoscan_info = example_database.get_photoscan_absolute_filepaths_info(subject_id, session_id, photoscan_id)
     [model, texture] = load_data_from_filepaths(photoscan_info["model_abspath"], photoscan_info["texture_abspath"])
     assert model is not None
     assert texture is not None

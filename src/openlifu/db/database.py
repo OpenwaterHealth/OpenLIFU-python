@@ -631,7 +631,11 @@ class Database:
     def load_photoscan(self, subject_id, session_id, photoscan_id, load_data = False):
         """Returns a photoscan object and optionally, also returns the loaded model and texture
         data as Tuple[vtkPolyData, vtkImageData] if load_data = True."""
+
         photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan_id)
+        if not photoscan_metadata_filepath.exists() or not photoscan_metadata_filepath.is_file():
+            raise FileNotFoundError(f"Photoscan file not found for photoscan {photoscan_id}, session {session_id}")
+
         photoscan = Photoscan.from_file(photoscan_metadata_filepath)
 
         if load_data:
