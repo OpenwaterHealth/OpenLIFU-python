@@ -178,6 +178,7 @@ class Solution:
             for dim, scale in zip(pnp_MPa.dims, options.mainlobe_aspect_ratio):
                 for threshdB in [3, 6]:
                     attr_name = f'beamwidth_{dim}_{threshdB}dB_mm'
+                    bw0 = getattr(solution_analysis, attr_name)
                     cutoff = pk*10**(-threshdB / 20)
                     bw = get_beamwidth(
                         pnp_MPa,
@@ -188,8 +189,8 @@ class Solution:
                         min_offset=-scale*options.beamwidth_radius,
                         max_offset=scale*options.beamwidth_radius)
                     bw = getunitconversion(options.distance_units, "mm") * bw
-                    bw0 = getattr(solution_analysis, attr_name)
-                    setattr(solution_analysis, attr_name, bw0+[bw])
+                    bw = [*bw0, bw]
+                    setattr(solution_analysis, attr_name, bw)
 
             solution_analysis.mainlobe_isppa_Wcm2 += [float(ipa_Wcm2.where(mainlobe_mask).max())]
             solution_analysis.mainlobe_ispta_mWcm2 += [float(ita_mWcm2.where(mainlobe_mask).max())]
