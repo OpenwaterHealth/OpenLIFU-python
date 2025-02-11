@@ -160,6 +160,12 @@ def test_load_all_users(example_database: Database):
     assert len(loaded_users) == 1 + previous_number_of_users_in_database
     assert any(dataclasses_are_equal(u, user) for u in loaded_users)
 
+    example_database.delete_user(user.id, on_conflict=OnConflictOpts.ERROR)
+
+    loaded_users = example_database.load_all_users()
+    assert len(loaded_users) == previous_number_of_users_in_database
+    assert not any(dataclasses_are_equal(u, user) for u in loaded_users)
+
 def test_load_session_from_file(example_session : Session, example_database : Database):
 
     # Test that Session loaded via Session.from_file is correct
