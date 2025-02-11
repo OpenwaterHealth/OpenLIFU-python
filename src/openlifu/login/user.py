@@ -4,8 +4,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from openlifu.util.json import PYFUSEncoder
 
+# Prevent app-level circular imports
+def get_encoder():
+    from openlifu.util.json import PYFUSEncoder
+    return PYFUSEncoder
 
 @dataclass
 class User:
@@ -60,9 +63,9 @@ class User:
         Returns: A json string representing the complete User object.
         """
         if compact:
-            return json.dumps(self.to_dict(), separators=(',', ':'), cls=PYFUSEncoder)
+            return json.dumps(self.to_dict(), separators=(',', ':'), cls=get_encoder())
         else:
-            return json.dumps(self.to_dict(), indent=4, cls=PYFUSEncoder)
+            return json.dumps(self.to_dict(), indent=4, cls=get_encoder())
 
     def to_file(self, filename: str):
         """
