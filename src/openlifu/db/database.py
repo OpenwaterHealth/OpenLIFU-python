@@ -977,7 +977,7 @@ class Database:
         with open(protocols_filename, 'w') as f:
             json.dump(protocol_data, f)
 
-    def write_user_ids(self, user_ids) -> None:
+    def write_user_ids(self, user_ids: List[str]) -> None:
         user_data = {'user_ids': user_ids}
         users_filename = self.get_users_filename()
         with open(users_filename, 'w') as f:
