@@ -1,14 +1,9 @@
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-
-# Prevent app-level circular imports
-def get_encoder():
-    from openlifu.util.json import PYFUSEncoder
-    return PYFUSEncoder
 
 @dataclass
 class User:
@@ -18,7 +13,7 @@ class User:
     password_hash: Optional[str] = None
     """ A hashed user password for authentication. """
 
-    roles: Optional[List[str]] = None
+    roles: List[str] = field(default_factory=list)
     """ A list of roles """
 
     name: str = "User"
@@ -63,9 +58,9 @@ class User:
         Returns: A json string representing the complete User object.
         """
         if compact:
-            return json.dumps(self.to_dict(), separators=(',', ':'), cls=get_encoder())
+            return json.dumps(self.to_dict(), separators=(',', ':'))
         else:
-            return json.dumps(self.to_dict(), indent=4, cls=get_encoder())
+            return json.dumps(self.to_dict(), indent=4)
 
     def to_file(self, filename: str):
         """
@@ -74,7 +69,6 @@ class User:
         Args:
             filename: Name of the file
         """
-        Path(filename).parent.parent.mkdir(exist_ok=True)
-        Path(filename).parent.mkdir(exist_ok=True)
+        Path(filename).parent.mkdir(exist_ok=True, parents=True)
         with open(filename, 'w') as file:
             file.write(self.to_json(compact=False))

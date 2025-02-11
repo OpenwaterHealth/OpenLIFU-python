@@ -148,6 +148,18 @@ def test_delete_user(example_database: Database):
     with pytest.raises(ValueError, match="Invalid"):
         example_database.delete_user("non_existent_user", on_conflict=OnConflictOpts.OVERWRITE)
 
+def test_load_all_users(example_database: Database):
+    previous_number_of_users_in_database = len(example_database.load_all_users())
+
+    # Create a user and write it to the database
+    user = User(name="thelegend28", id="additional_user_to_be_loaded_then_deleted")
+    example_database.write_user(user)
+
+    # Load all users and check if they match
+    loaded_users = example_database.load_all_users()
+    assert len(loaded_users) == 1 + previous_number_of_users_in_database
+    assert any(dataclasses_are_equal(u, user) for u in loaded_users)
+
 def test_load_session_from_file(example_session : Session, example_database : Database):
 
     # Test that Session loaded via Session.from_file is correct
