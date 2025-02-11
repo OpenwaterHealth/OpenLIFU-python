@@ -1092,7 +1092,7 @@ class DeviceInterface:
                 profile=profile+1,
                 frequency= solution.pulse.frequency,
                 cycles= solution.pulse.duration * solution.pulse.frequency,
-                duty_cycle=DEFAULT_PATTERN_DUTY_CYCLE * max(solution.apodization[profile,:])
+                duty_cycle=DEFAULT_PATTERN_DUTY_CYCLE * max(solution.apodizations[profile,:])
             )
             self.txarray.add_pulse_profile(pulse_profile)
             delay_profile = DelayProfile(
