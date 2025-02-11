@@ -19,11 +19,10 @@ from openlifu.bf import (
     mask_focus,
     offset_grid,
 )
-from openlifu.db import Database
+from openlifu.db import Database, User
 
 #from . import bf, db, io, plan, seg, sim, xdc, geo
 from openlifu.geo import Point
-from openlifu.login import User
 from openlifu.plan import Protocol, Solution
 from openlifu.seg import (
     AIR,
