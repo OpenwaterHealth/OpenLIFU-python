@@ -11,9 +11,8 @@ from helpers import dataclasses_are_equal
 from vtk import vtkImageData, vtkPolyData
 
 from openlifu import Point, Solution
-from openlifu.db import Session, Subject
+from openlifu.db import Session, Subject, User
 from openlifu.db.database import Database, OnConflictOpts
-from openlifu.login import User
 from openlifu.photoscan import Photoscan
 from openlifu.plan import Protocol, Run
 from openlifu.xdc import Transducer

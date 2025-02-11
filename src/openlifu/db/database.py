@@ -10,7 +10,6 @@ from typing import List, Optional
 
 import h5py
 
-from openlifu.login import User
 from openlifu.photoscan import Photoscan, load_data_from_photoscan
 from openlifu.plan import Protocol, Run, Solution
 from openlifu.util.json import PYFUSEncoder
@@ -18,6 +17,7 @@ from openlifu.xdc import Transducer
 
 from .session import Session
 from .subject import Subject
+from .user import User
 
 OnConflictOpts = Enum('OnConflictOpts', ['ERROR', 'OVERWRITE', 'SKIP'])
 
