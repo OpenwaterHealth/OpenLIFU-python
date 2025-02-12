@@ -46,6 +46,8 @@ dependencies = [
   "nvidia-ml-py",
   "OpenEXR",
   "scikit-image",
+  "crcmod",
+  "pyserial",
 ]
 
 [project.optional-dependencies]
