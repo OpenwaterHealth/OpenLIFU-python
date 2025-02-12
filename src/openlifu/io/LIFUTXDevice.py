@@ -12,6 +12,7 @@ from openlifu.io.config import (
     OW_CMD_HWID,
     OW_CMD_PING,
     OW_CMD_RESET,
+    OW_CMD_TEST,
     OW_CMD_TOGGLE_LED,
     OW_CMD_VERSION,
     OW_CONTROLLER,
@@ -425,7 +426,35 @@ class TxDevice:
                 return True
 
         except Exception as e:
-            logger.error("Error Enumerating TX Devices: %s", e)
+            logger.error("Error Trying to reset TX Device: %s", e)
+            raise
+
+    def run_test(self) -> bool:
+        """
+        Perform a self test on the TX device.
+
+        Returns:
+            bool: True if the test was successful, False otherwise.
+
+        Raises:
+            ValueError: If the UART is not connected.
+            Exception: If an error occurs while test was performed on the device.
+        """
+        try:
+            if not self.uart.is_connected():
+                raise ValueError("TX Device not connected")
+
+            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_TEST)
+            self.uart.clear_buffer()
+            # r.print_packet()
+            if r.packet_type == OW_ERROR:
+                logger.error("Error running test on device")
+                return False
+            else:
+                return True
+
+        except Exception as e:
+            logger.error("Error running test on TX Devices: %s", e)
             raise
 
     def enum_tx7332_devices(self) -> list[TX7332_IF]:
