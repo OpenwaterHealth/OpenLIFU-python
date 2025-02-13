@@ -8,9 +8,9 @@ import serial.tools.list_ports
 
 from openlifu.io.config import (
     OW_ACK,
-    OW_BAD_PARSE,
     OW_CMD_NOP,
     OW_END_BYTE,
+    OW_ERROR,
     OW_START_BYTE,
 )
 from openlifu.io.LIFUSignal import LIFUSignal
@@ -44,7 +44,6 @@ class LIFUUart:
         self.serial = None
         self.running = False
         self.asyncMode = False
-        self.loop = asyncio.get_event_loop()
         self.monitoring_task = None
         self.demo_mode = demo_mode
         self.read_thread = None
@@ -233,7 +232,7 @@ class LIFUUart:
             log.error(f"Error parsing packet: {e}")
             packet = UartPacket(
                 id=0,
-                packet_type=OW_BAD_PARSE,
+                packet_type=OW_ERROR,
                 command=0,
                 addr=0,
                 reserved=0,
@@ -324,13 +323,6 @@ class LIFUUart:
     def clear_buffer(self):
         """Clear the read buffer."""
         self.read_buffer = []
-
-    def run_coroutine(self, coro):
-        """Runs a coroutine using the internal event loop."""
-        if not self.loop.is_running():
-            return self.loop.run_until_complete(coro)
-        else:
-            return asyncio.create_task(coro)
 
     def add_demo_response(self, response: bytes):
         """Add a predefined response for demo mode."""
