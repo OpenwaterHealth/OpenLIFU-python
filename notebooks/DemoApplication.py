@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import (
 )
 
 from openlifu.io.LIFUInterface import LIFUInterface
-from openlifu.io.ustx import DelayProfile, PulseProfile, TxModule, print_regs
+from openlifu.io.ustx import Tx7332DelayProfile, Tx7332PulseProfile, TxModuleRegisters, print_regs
 from openlifu.xdc import Transducer
 
 
@@ -152,7 +152,7 @@ class App(QWidget):
         print(f'Setting configuration: Left={left}, Front={front}, Down={down}, Frequency={frequency}, Cycles={cycles}')
 
         focus = np.array([left, front, down])
-        pulse_profile = PulseProfile(profile=1, frequency=frequency, cycles=cycles)
+        pulse_profile = Tx7332PulseProfile(profile=1, frequency=frequency, cycles=cycles)
 
         arr = Transducer.from_file(R"notebooks\pinmap.json")
         arr.elements = np.array(arr.elements)[np.argsort([el.pin for el in arr.elements])].tolist()
@@ -160,8 +160,8 @@ class App(QWidget):
         tof = distances * 1e-3 / 1500
         delays = tof.max() - tof
 
-        txm = TxModule()
-        array_delay_profile = DelayProfile(1, delays.tolist())
+        txm = TxModuleRegisters()
+        array_delay_profile = Tx7332DelayProfile(1, delays.tolist())
         txm.add_delay_profile(array_delay_profile)
         txm.add_pulse_profile(pulse_profile)
         regs = txm.get_registers(profiles="configured", pack=True)
@@ -201,7 +201,7 @@ class App(QWidget):
             "TriggerPulseCount": 0,
             "TriggerPulseWidthUsec": 5000,
         }
-        self.interface.txdevice.set_trigger(trigger_config)
+        self.interface.txdevice.set_trigger_json(trigger_config)
 
     def start_trigger(self):
         self.interface.txdevice.start_trigger()

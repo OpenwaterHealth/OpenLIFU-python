@@ -272,7 +272,7 @@ def swap_byte_order(regs):
     return swapped
 
 @dataclass
-class DelayProfile:
+class Tx7332DelayProfile:
     profile: int
     delays: List[float]
     apodizations: Optional[List[int]] = None
@@ -288,7 +288,7 @@ class DelayProfile:
             raise ValueError(f"Invalid Profile {self.profile}")
 
 @dataclass
-class PulseProfile:
+class Tx7332PulseProfile:
     profile: int
     frequency: float
     cycles: int
@@ -303,8 +303,8 @@ class PulseProfile:
 @dataclass
 class Tx7332Registers:
     bf_clk: float = DEFAULT_CLK_FREQ
-    _delay_profiles_list: List[DelayProfile] = field(default_factory=list)
-    _pulse_profiles_list: List[PulseProfile] = field(default_factory=list)
+    _delay_profiles_list: List[Tx7332DelayProfile] = field(default_factory=list)
+    _pulse_profiles_list: List[Tx7332PulseProfile] = field(default_factory=list)
     active_delay_profile: Optional[int] = None
     active_pulse_profile: Optional[int] = None
 
@@ -320,7 +320,7 @@ class Tx7332Registers:
         if self.active_pulse_profile is not None and self.active_pulse_profile not in pulse_profiles:
             raise ValueError(f"Pulse profile {self.active_pulse_profile} not found")
 
-    def add_delay_profile(self, delay_profile: DelayProfile, activate: Optional[bool]=None):
+    def add_delay_profile(self, delay_profile: Tx7332DelayProfile, activate: Optional[bool]=None):
         if delay_profile.num_elements != NUM_CHANNELS:
             raise ValueError(f"Delay profile must have {NUM_CHANNELS} elements")
         profiles = self.configured_delay_profiles()
@@ -334,7 +334,7 @@ class Tx7332Registers:
         if activate:
             self.active_delay_profile = delay_profile.profile
 
-    def add_pulse_profile(self, pulse_profile: PulseProfile, activate: Optional[bool]=None):
+    def add_pulse_profile(self, pulse_profile: Tx7332PulseProfile, activate: Optional[bool]=None):
         profiles = self.configured_pulse_profiles()
         if pulse_profile.profile in profiles:
             i = profiles.index(pulse_profile.profile)
@@ -364,7 +364,7 @@ class Tx7332Registers:
         if self.active_pulse_profile == profile:
             self.active_pulse_profile = None
 
-    def get_delay_profile(self, profile: Optional[int]=None) -> DelayProfile:
+    def get_delay_profile(self, profile: Optional[int]=None) -> Tx7332DelayProfile:
         if profile is None:
             profile = self.active_delay_profile
         profiles = self.configured_delay_profiles()
@@ -376,7 +376,7 @@ class Tx7332Registers:
     def configured_delay_profiles(self) -> List[int]:
         return [p.profile for p in self._delay_profiles_list]
 
-    def get_pulse_profile(self, profile: Optional[int]=None) -> PulseProfile:
+    def get_pulse_profile(self, profile: Optional[int]=None) -> Tx7332PulseProfile:
         if profile is None:
             profile = self.active_pulse_profile
         profiles = self.configured_pulse_profiles()
@@ -533,11 +533,11 @@ class Tx7332Registers:
         return registers
 
 @dataclass
-class TxModule:
+class TxModuleRegisters:
     i2c_addr: int = 0x0
     bf_clk: int = DEFAULT_CLK_FREQ
-    _delay_profiles_list: List[DelayProfile] = field(default_factory=list)
-    _pulse_profiles_list: List[PulseProfile] = field(default_factory=list)
+    _delay_profiles_list: List[Tx7332DelayProfile] = field(default_factory=list)
+    _pulse_profiles_list: List[Tx7332PulseProfile] = field(default_factory=list)
     active_delay_profile: Optional[int] = None
     active_pulse_profile: Optional[int] = None
     num_transmitters: int = NUM_TRANSMITTERS
@@ -545,7 +545,7 @@ class TxModule:
     def __post_init__(self):
         self.transmitters = tuple([Tx7332Registers(bf_clk=self.bf_clk) for _ in range(self.num_transmitters)])
 
-    def add_pulse_profile(self, pulse_profile: PulseProfile, activate: Optional[bool]=None):
+    def add_pulse_profile(self, pulse_profile: Tx7332PulseProfile, activate: Optional[bool]=None):
         """
         Add a pulse profile
 
@@ -565,7 +565,7 @@ class TxModule:
         for tx in self.transmitters:
             tx.add_pulse_profile(pulse_profile, activate = activate)
 
-    def add_delay_profile(self, delay_profile: DelayProfile, activate: Optional[bool]=None):
+    def add_delay_profile(self, delay_profile: Tx7332DelayProfile, activate: Optional[bool]=None):
         """
         Add a delay profile
 
@@ -589,7 +589,7 @@ class TxModule:
             profiles = np.arange(start_channel, start_channel+NUM_CHANNELS, dtype=int)
             tx_delays = np.array(delay_profile.delays)[profiles].tolist()
             tx_apodizations = np.array(delay_profile.apodizations)[profiles].tolist()
-            txp = DelayProfile(delay_profile.profile, tx_delays, tx_apodizations, delay_profile.units)
+            txp = Tx7332DelayProfile(delay_profile.profile, tx_delays, tx_apodizations, delay_profile.units)
             tx.add_delay_profile(txp, activate = activate)
 
     def remove_delay_profile(self, profile:int):
@@ -624,7 +624,7 @@ class TxModule:
         for tx in self.transmitters:
             tx.remove_pulse_profile(profile)
 
-    def get_delay_profile(self, profile:Optional[int]=None) -> DelayProfile:
+    def get_delay_profile(self, profile:Optional[int]=None) -> Tx7332DelayProfile:
         """
         Retrieve a delay profile
 
@@ -647,7 +647,7 @@ class TxModule:
         """
         return [p.profile for p in self._delay_profiles_list]
 
-    def get_pulse_profile(self, profile:Optional[int]=None) -> PulseProfile:
+    def get_pulse_profile(self, profile:Optional[int]=None) -> Tx7332PulseProfile:
         """
         Retrieve a pulse profile
 
@@ -770,12 +770,12 @@ class TxModule:
         return [tx.get_pulse_data_registers(profile, pack=pack, pack_single=pack_single) for tx in self.transmitters]
 
 @dataclass
-class TxArray:
+class TxDeviceRegisters:
     i2c_addresses: Tuple[int] = (0x0,)
     bf_clk: int = DEFAULT_CLK_FREQ
     modules: Dict = field(default_factory=dict)
-    _delay_profiles_list: List[DelayProfile] = field(default_factory=list)
-    _pulse_profiles_list: List[PulseProfile] = field(default_factory=list)
+    _delay_profiles_list: List[Tx7332DelayProfile] = field(default_factory=list)
+    _pulse_profiles_list: List[Tx7332PulseProfile] = field(default_factory=list)
     active_delay_profile: Optional[int] = None
     active_pulse_profile: Optional[int] = None
     num_transmitters: int = NUM_TRANSMITTERS
@@ -783,10 +783,10 @@ class TxArray:
     def __post_init__(self):
         if len(set(self.i2c_addresses)) != len(self.i2c_addresses):
             raise ValueError("Duplicate I2C addresses found")
-        self.modules = {addr:TxModule(i2c_addr=addr, bf_clk=self.bf_clk, num_transmitters=self.num_transmitters) for addr in self.i2c_addresses}
+        self.modules = {addr:TxModuleRegisters(i2c_addr=addr, bf_clk=self.bf_clk, num_transmitters=self.num_transmitters) for addr in self.i2c_addresses}
         self.num_modules = len(self.modules)
 
-    def add_pulse_profile(self, pulse_profile: PulseProfile, activate: Optional[bool]=None):
+    def add_pulse_profile(self, pulse_profile: Tx7332PulseProfile, activate: Optional[bool]=None):
         """
         Add a pulse profile
 
@@ -806,7 +806,7 @@ class TxArray:
         for module in self.modules.values():
             module.add_pulse_profile(pulse_profile, activate)
 
-    def add_delay_profile(self, delay_profile: DelayProfile, activate: Optional[bool]=None):
+    def add_delay_profile(self, delay_profile: Tx7332DelayProfile, activate: Optional[bool]=None):
         """
         Add a delay profile
 
@@ -830,7 +830,7 @@ class TxArray:
             profiles = np.arange(start_channel, start_channel+NUM_CHANNELS*module.num_transmitters, dtype=int)
             module_delays = np.array(delay_profile.delays)[profiles].tolist()
             module_apodizations = np.array(delay_profile.apodizations)[profiles].tolist()
-            modulep = DelayProfile(delay_profile.profile, module_delays, module_apodizations, delay_profile.units)
+            modulep = Tx7332DelayProfile(delay_profile.profile, module_delays, module_apodizations, delay_profile.units)
             module.add_delay_profile(modulep, activate = activate)
 
     def remove_pulse_profile(self, profile:int):
@@ -865,7 +865,7 @@ class TxArray:
         for module in self.modules.values():
             module.remove_delay_profile(profile)
 
-    def get_pulse_profile(self, profile:Optional[int]=None) -> PulseProfile:
+    def get_pulse_profile(self, profile:Optional[int]=None) -> Tx7332PulseProfile:
         """
         Retrieve a pulse profile
 
@@ -888,7 +888,7 @@ class TxArray:
         """
         return [p.profile for p in self._pulse_profiles_list]
 
-    def get_delay_profile(self, profile:Optional[int]=None) -> DelayProfile:
+    def get_delay_profile(self, profile:Optional[int]=None) -> Tx7332DelayProfile:
         """
         Retrieve a delay profile
 
@@ -1071,7 +1071,7 @@ class HVController:
 
 @dataclass
 class DeviceInterface:
-    txarray: TxArray
+    txarray: TxDeviceRegisters
     hv_controller: HVController
     is_ready: bool = False
     is_running: bool = False
@@ -1088,14 +1088,14 @@ class DeviceInterface:
 
         n = solution.num_foci()
         for profile in range(n):
-            pulse_profile = PulseProfile(
+            pulse_profile = Tx7332PulseProfile(
                 profile=profile+1,
                 frequency= solution.pulse.frequency,
                 cycles= solution.pulse.duration * solution.pulse.frequency,
                 duty_cycle=DEFAULT_PATTERN_DUTY_CYCLE * max(solution.apodizations[profile,:])
             )
             self.txarray.add_pulse_profile(pulse_profile)
-            delay_profile = DelayProfile(
+            delay_profile = Tx7332DelayProfile(
                 profile=profile+1,
                 delays=solution.delays[profile,:],
                 apodizations=solution.apodizations[profile, :]

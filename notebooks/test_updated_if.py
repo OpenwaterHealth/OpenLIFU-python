@@ -42,16 +42,14 @@ temperature = interface.txdevice.get_temperature()
 print(f"Temperature: {temperature} °C")
 
 print("Enumerate TX7332 chips")
-tx_devices = interface.txdevice.enum_tx7332_devices()
-if tx_devices:
-    print(f"Number of TX7332 devices found: {len(tx_devices)}")
-    for idx, device in enumerate(tx_devices):
-        print(f"Device {idx + 1}: {device}")
+num_tx_devices = interface.txdevice.enum_tx7332_devices()
+if num_tx_devices > 0:
+    print(f"Number of TX7332 devices found: {num_tx_devices}")    
 else:
-    print("No TX7332 devices found.")
+    raise("No TX7332 devices found.")
 
 print("Get Trigger")
-trigger_setting = interface.txdevice.get_trigger()
+trigger_setting = interface.txdevice.get_trigger_json()
 if trigger_setting:
     print(f"Trigger Setting: {trigger_setting}")
 else:
@@ -75,7 +73,7 @@ json_trigger_data = {
     "TriggerPulseCount": 0,
     "TriggerPulseWidthUsec": 20000
 }
-trigger_setting = interface.txdevice.set_trigger(data=json_trigger_data)
+trigger_setting = interface.txdevice.set_trigger_json(data=json_trigger_data)
 if trigger_setting:
     print(f"Trigger Setting: {trigger_setting}")
 else:

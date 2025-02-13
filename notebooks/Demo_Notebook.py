@@ -19,9 +19,9 @@ import numpy as np
 from openlifu.io.core import UART
 from openlifu.io.ctrl_if import CTRL_IF
 from openlifu.io.ustx import (
-    DelayProfile,
-    PulseProfile,
-    TxArray,
+    Tx7332DelayProfile,
+    Tx7332PulseProfile,
+    TxDeviceRegisters,
     print_regs,
 )
 from openlifu.io.utils import list_vcp_with_vid_pid
@@ -62,7 +62,7 @@ async def main():
 
 
     focus = np.array([0, 0, 50]) #set focus #left, front, down
-    pulse_profile = PulseProfile(profile=1, frequency=400e3, cycles=3)
+    pulse_profile = Tx7332PulseProfile(profile=1, frequency=400e3, cycles=3)
 
     tx_dict = {tx.identifier: tx for tx in ustx_ctrl.tx_devices}
 
@@ -73,8 +73,8 @@ async def main():
     delays = tof.max() - tof
     tx_addresses = list(tx_dict.keys())
     tx_addresses = tx_addresses[:int(arr.numelements()/32)]
-    txa = TxArray(i2c_addresses=tx_addresses)
-    array_delay_profile = DelayProfile(1, delays.tolist())
+    txa = TxDeviceRegisters(i2c_addresses=tx_addresses)
+    array_delay_profile = Tx7332DelayProfile(1, delays.tolist())
     txa.add_delay_profile(array_delay_profile)
     txa.add_pulse_profile(pulse_profile)
     regs = txa.get_registers(profiles="configured", pack=True)
