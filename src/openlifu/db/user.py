@@ -2,7 +2,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 @dataclass
@@ -10,7 +10,7 @@ class User:
     id: str = "user"
     """ The unique identifier of the user """
 
-    password_hash: Optional[str] = None
+    password_hash: str = ""
     """ A hashed user password for authentication. """
 
     roles: List[str] = field(default_factory=list)
