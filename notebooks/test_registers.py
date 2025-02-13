@@ -6,9 +6,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.2
+#       jupytext_version: 1.16.4
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: env
 #     language: python
 #     name: python3
 # ---
@@ -16,12 +16,11 @@
 # %%
 import numpy as np
 
-from openlifu.io.ustx import (
+from openlifu.io.LIFUTXDevice import (
     Tx7332DelayProfile,
     Tx7332PulseProfile,
     Tx7332Registers,
     TxDeviceRegisters,
-    TxDeviceController,
     print_regs,
     swap_byte_order,
 )
@@ -82,7 +81,7 @@ for index in [1,2]:
 
 
 # %%
-txm = TxDeviceController()
+txm = TxDeviceRegisters()
 delays = np.arange(64)*1e-6
 apodizations = np.ones(64)
 module_delay_profile_1 = Tx7332DelayProfile(1, delays, apodizations)
@@ -96,7 +95,7 @@ for i, r in enumerate(txm.get_delay_data_registers()):
     print_regs(r)
 
 # %%
-txm.get_delay_control_registers()
+module_delay_profile_1
 
 # %%
 x = np.linspace(-0.5, 0.5, 64)*4e-2
@@ -155,47 +154,4 @@ for k, rm in r.items():
         print(f"x{addr:03x}: {' | '.join([' '.join(rr[i]) for i in profiles])}")
 
 # %%
-txa = TxDeviceRegisters(i2c_addresses=[0x10, 0x11, 0x12, 0x13])
-delays = np.linspace(0, 64e-6, 64*4)
-apodizations = np.ones(64*4)
-array_delay_profile_1 = Tx7332DelayProfile(1, delays, apodizations)
-txa.add_delay_profile(array_delay_profile_1)
-txa.add_pulse_profile(pulse_profile_1)
-txa.add_pulse_profile(pulse_profile_2)
-reg_dict = txa.get_delay_control_registers()
-print(reg_dict)
-print('')
-
-for addr, rm in reg_dict.items():
-    print(f'I2C: 0x{addr:02x}')
-    for i, r in enumerate(rm):
-        print(f'CONTROL {i}')
-        print_regs(r)
-    print('')
-
-
-# %%
-print_regs(txa.modules[16].transmitters[1].get_registers(pack=False))
-print('-')
-print_regs(txa.modules[16].transmitters[1].get_registers(pack=True))
-
-# %%
-print('ORIGINAL')
-print_regs(txa.modules[16].transmitters[1].get_delay_data_registers(pack=True))
-print('')
-print('BYTE_SWAP')
-print_regs(swap_byte_order(txa.modules[16].transmitters[1].get_delay_data_registers(pack=True)))
-
-
-# %%
-regs = txa.get_registers(pack=True)
-print(regs)
-for addr, rm in regs.items():
-    print(f'I2C: 0x{addr:02x}')
-    for i, r in enumerate(rm):
-        print(f'MODULE {i}')
-        print_regs(r)
-    print('')
-
-# %%
-{index:txa.get_pulse_control_registers(profile=index) for index in txa.configured_pulse_profiles()}
+txm.get_registers(pack=False, pack_single=False)
