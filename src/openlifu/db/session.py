@@ -1,8 +1,9 @@
+import copy
 import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -22,7 +23,7 @@ class ArrayTransform:
 
     units : str
     """The units of the space on which to apply the transform matrix , e.g. "mm"
-    (In order to apply the transform to transducer points,.
+    (In order to apply the transform to transducer points,
     first represent the points in these units.)"""
 
 @dataclass
@@ -68,9 +69,17 @@ class Session:
     attrs: dict = field(default_factory=dict)
     """Dictionary of additional custom attributes to save to the session"""
 
-    virtual_fit_approval_for_target_id: Optional[str] = None
-    """Approval state of virtual fit. `None` if there is no approval, otherwise this is the ID
-    of the target for which virtual fitting has been marked approved."""
+    virtual_fit_results: Dict[str,Tuple[bool,List[ArrayTransform]]] = field(default_factory=dict)
+    """Virtual fit results. This is a dictionary mapping target IDs to pairs `(approval, transforms)`,
+    where:
+
+        `approval` is a boolean indicating whether the virtual fit for that target has been approved, and
+        `transforms` is a list of transducer transforms resulting from the virtual fit for that target.
+
+    The idea is that the list of transforms would be ordered from best to worst, and should of course
+    contain at least one transform. The "approval" is intended to apply to the first transform in the list
+    only. None of the other transforms in the list are considered to be approved.
+    """
 
     transducer_tracking_approved: Optional[bool] = False
     """Approval state of transducer tracking. `True` means the user has provided some kind of
@@ -128,6 +137,12 @@ class Session:
             d['targets'] = [Point.from_dict(d['targets'])]
         elif isinstance(d['targets'], Point):
             d['targets'] = [d['targets']]
+        if 'virtual_fit_results' in d:
+            for target_id,(approval,transforms) in d['virtual_fit_results'].items():
+                d['virtual_fit_results'][target_id] = (
+                    approval,
+                    [ArrayTransform(t_dict["matrix"], t_dict["units"]) for t_dict in transforms],
+                )
         if isinstance(d['markers'], list):
             if len(d['markers'])>0 and isinstance(d['markers'][0], dict):
                 d['markers'] = [Point.from_dict(p) for p in d['markers']]
@@ -143,13 +158,19 @@ class Session:
 
         :returns: Dictionary of session parameters
         """
-        d = self.__dict__.copy()
+        d = copy.deepcopy(self.__dict__) # Deep copy needed so that we don't modify the internals of self below
         d['date_created'] = d['date_created'].isoformat()
         d['date_modified'] = d['date_modified'].isoformat()
         d['targets'] = [p.to_dict() for p in d['targets']]
         d['markers'] = [p.to_dict() for p in d['markers']]
 
         d['array_transform'] = asdict(d['array_transform'])
+
+        for target_id,(approval,transforms) in d['virtual_fit_results'].items():
+            d['virtual_fit_results'][target_id] = (
+                approval,
+                [asdict(t) for t in transforms],
+            )
 
         return d
 

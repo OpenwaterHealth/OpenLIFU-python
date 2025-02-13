@@ -3,9 +3,10 @@ import shutil
 from contextlib import nullcontext as does_not_raise
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
+from typing import List
 from unittest.mock import patch
 
+import numpy as np
 import pytest
 from helpers import dataclasses_are_equal
 from vtk import vtkImageData, vtkPolyData
@@ -13,6 +14,7 @@ from vtk import vtkImageData, vtkPolyData
 from openlifu import Point, Solution
 from openlifu.db import Session, Subject, User
 from openlifu.db.database import Database, OnConflictOpts
+from openlifu.db.session import ArrayTransform
 from openlifu.photoscan import Photoscan
 from openlifu.plan import Protocol, Run
 from openlifu.xdc import Transducer
@@ -347,26 +349,37 @@ def test_write_session_mismatched_id(example_database: Database, example_subject
         example_database.write_session(example_subject, session)
 
 @pytest.mark.parametrize(
-    ("virtual_fit_approval_for_target_id", "expectation"),
+    ("target_ids", "numbers_of_transforms", "expectation"),
     [
-        (None, does_not_raise()), # see https://docs.pytest.org/en/6.2.x/example/parametrize.html#parametrizing-conditional-raising
-        ("an_existing_target_id", does_not_raise()),
-        ("bogus_target_id", pytest.raises(ValueError, match="virtual_fit_approval_for_target_id.*not in")),
+        # see https://docs.pytest.org/en/6.2.x/example/parametrize.html#parametrizing-conditional-raising
+        ([], [], does_not_raise()),
+        (["an_existing_target_id"], [1], does_not_raise()),
+        (["an_existing_target_id"], [2], does_not_raise()),
+        (["bogus_target_id"], [1], pytest.raises(ValueError, match="references a target")),
+        (["an_existing_target_id", "bogus_target_id"], [1,1], pytest.raises(ValueError, match="references a target")),
+        (["an_existing_target_id"], [0], pytest.raises(ValueError, match="provides no transforms")),
     ]
 )
 def test_write_session_with_invalid_fit_approval(
     example_database: Database,
     example_subject: Subject,
-    virtual_fit_approval_for_target_id: Optional[str],
+    target_ids: List[str],
+    numbers_of_transforms: List[int],
     expectation,
 ):
-    """Verify that writing a session with fit approval raises the invalid target error if and only if the
-    target being approved does not exist."""
+    """Verify that write_session complains appropriately about invalid virtual fit results"""
+    rng = np.random.default_rng()
     session = Session(
         id="unique_id_2764592837465",
         subject_id=example_subject.id,
         targets=[Point(id="an_existing_target_id")],
-        virtual_fit_approval_for_target_id=virtual_fit_approval_for_target_id,
+        virtual_fit_results={
+            target_id : (
+                True,
+                [ArrayTransform(matrix=rng.random(size=(4,4)),units="mm") for _ in range(num_transforms)],
+            )
+            for target_id, num_transforms in zip(target_ids, numbers_of_transforms)
+        },
     )
     with expectation:
         example_database.write_session(example_subject, session)

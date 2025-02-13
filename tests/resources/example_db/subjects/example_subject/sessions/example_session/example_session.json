@@ -27,6 +27,21 @@
   },
   "attrs": {},
   "date_modified": "2024-04-09 11:27:30",
-  "virtual_fit_approval_for_target_id": "example_target",
+  "virtual_fit_results": {
+    "example_target": [
+      true,
+      [
+        {
+          "matrix": [
+            [1.1, 0, 0, 0],
+            [0, 1.2, 0, 0],
+            [0, 0, 1.3, 0],
+            [0, 0.05, 0, 1.4]
+          ],
+          "units": "mm"
+        }
+      ]
+    ]
+  },
   "transducer_tracking_approved": false
 }
