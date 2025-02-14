@@ -87,7 +87,7 @@ class LIFUInterface:
         try:
             logger.info("Loading solution: %s", solution.name)
             # Convert solution data and send to the device
-            self.devicecontroller.set_solution(solution)
+            self.txdevice.set_solution(solution)
             self.hvcontroller.set_voltage(solution.pulse.amplitude)
             logger.info("Solution '%s' loaded successfully.", solution.name)
             return True
