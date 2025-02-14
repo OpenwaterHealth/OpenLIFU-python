@@ -2,7 +2,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
-from openlifu.io.dict_conversion import DictMixin
+from openlifu.util.dict_conversion import DictMixin
 
 
 @dataclass

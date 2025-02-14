@@ -6,8 +6,8 @@ import numpy as np
 import xarray as xa
 
 from openlifu.geo import Point
-from openlifu.io.dict_conversion import DictMixin
 from openlifu.seg import SegmentationMethod
+from openlifu.util.dict_conversion import DictMixin
 from openlifu.util.units import getunitconversion
 from openlifu.xdc import Transducer
 
