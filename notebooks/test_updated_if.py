@@ -46,7 +46,7 @@ num_tx_devices = interface.txdevice.enum_tx7332_devices()
 if num_tx_devices > 0:
     print(f"Number of TX7332 devices found: {num_tx_devices}")
 else:
-    raise("No TX7332 devices found.")
+    raise Exception("No TX7332 devices found.")
 
 print("Get Trigger")
 trigger_setting = interface.txdevice.get_trigger_json()

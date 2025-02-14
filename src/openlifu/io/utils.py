@@ -44,6 +44,7 @@ def util_crc16(buf):
 
     return crc
 
+# ruff: noqa: T201
 def format_and_print_hex(data):
     """
     Format the received data as hex and print it.
