@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 
-from openlifu.io.dict_conversion import DictMixin
+from openlifu.util.dict_conversion import DictMixin
 
 
 @dataclass
