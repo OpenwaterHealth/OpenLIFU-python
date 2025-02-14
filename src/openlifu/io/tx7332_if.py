@@ -2,8 +2,8 @@ import logging
 import struct
 from typing import List
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 from openlifu.io.config import (

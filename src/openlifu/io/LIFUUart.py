@@ -18,8 +18,8 @@ from openlifu.io.uartpacket import UartPacket
 from openlifu.io.utils import util_crc16
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger("UART")
+log.setLevel(logging.DEBUG)
 
 
 class LIFUUart:
