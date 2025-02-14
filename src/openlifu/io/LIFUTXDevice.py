@@ -5,7 +5,7 @@ import logging
 import re
 import struct
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Dict, List, Literal, Optional
+from typing import TYPE_CHECKING, Dict, List, Literal
 
 import numpy as np
 
@@ -1177,7 +1177,7 @@ def get_delay_location(channel:int, profile:int=1):
     lsb = channel_map['lsb']
     return address, lsb
 
-def set_register_value(reg_value:int, value:int, lsb:int=0, width: Optional[int]=None):
+def set_register_value(reg_value:int, value:int, lsb:int=0, width: int | None=None):
     """
     Sets the value of a parameter in a register integer
 
@@ -1194,7 +1194,7 @@ def set_register_value(reg_value:int, value:int, lsb:int=0, width: Optional[int]
         raise ValueError(f"Value {value} does not fit in {width} bits")
     return (reg_value & ~(mask << lsb)) | ((int(value) & mask) << lsb)
 
-def get_register_value(reg_value:int, lsb:int=0, width: Optional[int]=None):
+def get_register_value(reg_value:int, lsb:int=0, width: int | None=None):
     """
     Extracts the value of a parameter from a register integer
 
@@ -1344,7 +1344,7 @@ def swap_byte_order(regs):
 class Tx7332DelayProfile:
     profile: int
     delays: List[float]
-    apodizations: Optional[List[int]] = None
+    apodizations: List[int] | None = None
     units: str = 's'
 
     def __post_init__(self):
@@ -1374,8 +1374,8 @@ class Tx7332Registers:
     bf_clk: float = DEFAULT_CLK_FREQ
     _delay_profiles_list: List[Tx7332DelayProfile] = field(default_factory=list)
     _pulse_profiles_list: List[Tx7332PulseProfile] = field(default_factory=list)
-    active_delay_profile: Optional[int] = None
-    active_pulse_profile: Optional[int] = None
+    active_delay_profile: int | None = None
+    active_pulse_profile: int | None = None
 
     def __post_init__(self):
         delay_profile_indices = self.configured_delay_profiles()
@@ -1389,7 +1389,7 @@ class Tx7332Registers:
         if self.active_pulse_profile is not None and self.active_pulse_profile not in pulse_profile_indices:
             raise ValueError(f"Pulse profile {self.active_pulse_profile} not found")
 
-    def add_delay_profile(self, p: Tx7332DelayProfile, activate: Optional[bool]=None):
+    def add_delay_profile(self, p: Tx7332DelayProfile, activate: bool | None=None):
         if p.num_elements != NUM_CHANNELS:
             raise ValueError(f"Delay profile must have {NUM_CHANNELS} elements")
         profile_indices = self.configured_delay_profiles()
@@ -1403,7 +1403,7 @@ class Tx7332Registers:
         if activate:
             self.active_delay_profile = p.profile
 
-    def add_pulse_profile(self, p: Tx7332PulseProfile, activate: Optional[bool]=None):
+    def add_pulse_profile(self, p: Tx7332PulseProfile, activate: bool | None=None):
         profile_indices = self.configured_pulse_profiles()
         if p.profile in profile_indices:
             i = profile_indices.index(p.profile)
@@ -1433,7 +1433,7 @@ class Tx7332Registers:
         if self.active_pulse_profile == index:
             self.active_pulse_profile = None
 
-    def get_delay_profile(self, profile: Optional[int]=None) -> Tx7332DelayProfile:
+    def get_delay_profile(self, profile: int | None=None) -> Tx7332DelayProfile:
         if profile is None:
             profile = self.active_delay_profile
         profiles = self.configured_delay_profiles()
@@ -1445,7 +1445,7 @@ class Tx7332Registers:
     def configured_delay_profiles(self) -> List[int]:
         return [p.profile for p in self._delay_profiles_list]
 
-    def get_pulse_profile(self, profile: Optional[int]=None) -> Tx7332PulseProfile:
+    def get_pulse_profile(self, profile: int | None=None) -> Tx7332PulseProfile:
         if profile is None:
             profile = self.active_pulse_profile
         profiles = self.configured_pulse_profiles()
@@ -1467,7 +1467,7 @@ class Tx7332Registers:
             raise ValueError(f"Pulse profile {profile} not configured")
         self.active_pulse_profile = profile
 
-    def get_delay_control_registers(self, profile: Optional[int]=None) -> Dict[int,int]:
+    def get_delay_control_registers(self, profile: int | None=None) -> Dict[int,int]:
         if profile is None:
             profile = self.active_delay_profile
         delay_profile = self.get_delay_profile(profile)
@@ -1480,7 +1480,7 @@ class Tx7332Registers:
         return {ADDRESS_DELAY_SEL: delay_sel_register,
                 ADDRESS_APODIZATION: apod_register}
 
-    def get_pulse_control_registers(self, profile: Optional[int]=None) -> Dict[int,int]:
+    def get_pulse_control_registers(self, profile: int | None=None) -> Dict[int,int]:
         if profile is None:
             profile = self.active_pulse_profile
         profile_index = self.get_pulse_profile(profile)
@@ -1527,7 +1527,7 @@ class Tx7332Registers:
                      ADDRESS_PATTERN_SEL_G2: reg_pat_sel}
         return registers
 
-    def get_delay_data_registers(self, profile: Optional[int]=None, pack: bool=False, pack_single: bool=False) -> Dict[int,int]:
+    def get_delay_data_registers(self, profile: int | None=None, pack: bool=False, pack_single: bool=False) -> Dict[int,int]:
         if profile is None:
             profile = self.active_delay_profile
         delay_profile = self.get_delay_profile(profile)
@@ -1542,7 +1542,7 @@ class Tx7332Registers:
             data_registers = pack_registers(data_registers, pack_single=pack_single)
         return data_registers
 
-    def get_pulse_data_registers(self, profile: Optional[int]=None, pack: bool=False, pack_single: bool=False) -> Dict[int,int]:
+    def get_pulse_data_registers(self, profile: int | None=None, pack: bool=False, pack_single: bool=False) -> Dict[int,int]:
         if profile is None:
             profile = self.active_pulse_profile
         profile_index = self.get_pulse_profile(profile)
@@ -1605,14 +1605,14 @@ class TxDeviceRegisters:
     bf_clk: int = DEFAULT_CLK_FREQ
     _delay_profiles_list: List[Tx7332DelayProfile] = field(default_factory=list)
     _profiles_list: List[Tx7332PulseProfile] = field(default_factory=list)
-    active_delay_profile: Optional[int] = None
-    active_profile: Optional[int] = None
+    active_delay_profile: int | None = None
+    active_profile: int | None = None
     num_transmitters: int = NUM_TRANSMITTERS
 
     def __post_init__(self):
         self.transmitters = tuple([Tx7332Registers(bf_clk=self.bf_clk) for _ in range(self.num_transmitters)])
 
-    def add_pulse_profile(self, profile_index: Tx7332PulseProfile, activate: Optional[bool]=None):
+    def add_pulse_profile(self, profile_index: Tx7332PulseProfile, activate: bool | None=None):
         """
         Add a pulse profile
 
@@ -1632,7 +1632,7 @@ class TxDeviceRegisters:
         for tx in self.transmitters:
             tx.add_pulse_profile(profile_index, activate = activate)
 
-    def add_delay_profile(self, delay_profile: Tx7332DelayProfile, activate: Optional[bool]=None):
+    def add_delay_profile(self, delay_profile: Tx7332DelayProfile, activate: bool | None=None):
         """
         Add a delay profile
 
@@ -1691,7 +1691,7 @@ class TxDeviceRegisters:
         for tx in self.transmitters:
             tx.remove_pulse_profile(profile)
 
-    def get_delay_profile(self, profile:Optional[int]=None) -> Tx7332DelayProfile:
+    def get_delay_profile(self, profile:int | None=None) -> Tx7332DelayProfile:
         """
         Retrieve a delay profile
 
@@ -1714,7 +1714,7 @@ class TxDeviceRegisters:
         """
         return [p.profile for p in self._delay_profiles_list]
 
-    def get_pulse_profile(self, profile:Optional[int]=None) -> Tx7332PulseProfile:
+    def get_pulse_profile(self, profile:int | None=None) -> Tx7332PulseProfile:
         """
         Retrieve a pulse profile
 
@@ -1792,7 +1792,7 @@ class TxDeviceRegisters:
             self.recompute_pulse_profiles()
         return [tx.get_registers(profiles, pack=pack, pack_single=pack_single) for tx in self.transmitters]
 
-    def get_delay_control_registers(self, profile:Optional[int]=None) -> List[Dict[int,int]]:
+    def get_delay_control_registers(self, profile:int | None=None) -> List[Dict[int,int]]:
         """
         Get the delay control registers for all transmitters
 
@@ -1803,7 +1803,7 @@ class TxDeviceRegisters:
             profile = self.active_delay_profile
         return [tx.get_delay_control_registers(profile) for tx in self.transmitters]
 
-    def get_pulse_control_registers(self, profile:Optional[int]=None) -> List[Dict[int,int]]:
+    def get_pulse_control_registers(self, profile:int | None=None) -> List[Dict[int,int]]:
         """
         Get the pulse control registers for all transmitters
 
@@ -1814,7 +1814,7 @@ class TxDeviceRegisters:
             profile = self.active_profile
         return [tx.get_pulse_control_registers(profile) for tx in self.transmitters]
 
-    def get_delay_data_registers(self, profile:Optional[int]=None, pack: bool=False, pack_single: bool=False) -> List[Dict[int,int]]:
+    def get_delay_data_registers(self, profile:int | None=None, pack: bool=False, pack_single: bool=False) -> List[Dict[int,int]]:
         """
         Get the delay data registers for all transmitters
 
@@ -1825,7 +1825,7 @@ class TxDeviceRegisters:
             profile = self.active_delay_profile
         return [tx.get_delay_data_registers(profile, pack=pack, pack_single=pack_single) for tx in self.transmitters]
 
-    def get_pulse_data_registers(self, profile:Optional[int]=None, pack: bool=False, pack_single: bool=False) -> List[Dict[int,int]]:
+    def get_pulse_data_registers(self, profile:int | None=None, pack: bool=False, pack_single: bool=False) -> List[Dict[int,int]]:
         """
         Get the pulse data registers for all transmitters
 
