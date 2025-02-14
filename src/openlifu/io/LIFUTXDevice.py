@@ -149,7 +149,7 @@ class TxDevice:
             logger.info("TX Device connected.")
         else:
             logger.info("TX Device NOT Connected.")
-    
+
     def __parse_ti_cfg_file(self, file_path: str) -> list[tuple[str, int, int]]:
         """Parses the given configuration file and extracts all register groups, addresses, and values."""
         parsed_data = []
