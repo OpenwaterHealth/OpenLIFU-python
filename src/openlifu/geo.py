@@ -35,7 +35,7 @@ class Point:
         else:
             return self.position[self.dims.index(dim)]*scl
 
-    def get_matrix(self, origin: np.ndarray = np.eye(4), center_on_point: bool = False, local: bool = False):
+    def get_matrix(self, origin: np.ndarray = np.eye(4), center_on_point: bool = True, local: bool = False):
         pos = np.dot(np.linalg.inv(origin), np.append(self.position, 1.0))[:3]
         if center_on_point:
             center = pos

@@ -16,6 +16,7 @@
   },
   "focal_pattern": {
     "target_pressure": 1.0e6,
+    "units": "Pa",
     "class": "SinglePoint"
   },
   "delay_method": {
@@ -87,7 +88,19 @@
     "t_end": 0,
     "options": {}
   },
-  "param_constraints": {},
-  "target_constraints": {},
-  "analysis_options": {}
+  "param_constraints": [],
+  "target_constraints": [],
+  "analysis_options": {
+    "standoff_sound_speed": 1500.0,
+    "standoff_density": 1000.0,
+    "ref_sound_speed": 1500.0,
+    "ref_density": 1000.0,
+    "focus_diameter": 0.5,
+    "mainlobe_aspect_ratio": [1.0, 1.0, 5.0],
+    "mainlobe_radius": 2.5e-3,
+    "beamwidth_radius": 5e-3,
+    "sidelobe_radius": 3e-3,
+    "sidelobe_zmin": 1e-3,
+    "distance_units": "m"
+  }
 }

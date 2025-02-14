@@ -1,0 +1,7 @@
+{
+  "id": "example_user",
+  "password_hash": "example_pw_hash",
+  "roles": ["example_role_1", "example_role_2"],
+  "name": "Example User",
+  "description": "This user is an example."
+}

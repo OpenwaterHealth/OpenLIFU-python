@@ -98,7 +98,7 @@ def get_beamwidth(vol: DataArray, coords_units: str, focus: Point, cutoff: float
             inlier_hull = ConvexHull(inlier_points)
     except QhullError:
         # If convex hull creation fails (e.g., too few points), add jitter and try again
-        logging.warning("Invalid inliers, attempting to add jitter to create a valid volume...")  #TODO: should be using self.logger
+        logging.warning("Invalid inliers, attempting to add jitter to create a valid volume...")
         minmax_coords = np.array([(np.min(coords[i]), np.max(coords[i])) for i in range(len(coords))])  #TODO: min-max should be from coords.extent
         coords_shape = tuple([len(coords[i]) for i in range(len(coords))])
         dx = np.mean(np.diff(minmax_coords) / (np.array(coords_shape) - 1))

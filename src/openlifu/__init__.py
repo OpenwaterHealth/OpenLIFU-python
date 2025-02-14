@@ -19,7 +19,7 @@ from openlifu.bf import (
     mask_focus,
     offset_grid,
 )
-from openlifu.db import Database
+from openlifu.db import Database, User
 
 #from . import bf, db, io, plan, seg, sim, xdc, geo
 from openlifu.geo import Point
@@ -67,5 +67,6 @@ __all__ = [
     "offset_grid",
     "SimSetup",
     "Database",
+    "User",
     "__version__",
 ]

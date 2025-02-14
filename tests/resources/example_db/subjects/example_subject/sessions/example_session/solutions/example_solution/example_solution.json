@@ -3,7 +3,7 @@
   "name": "Example Solution",
   "protocol_id": "example_protocol",
   "transducer_id": "example_transducer",
-  "created_on": "2024-01-30T09:18:11",
+  "date_created": "2024-01-30T09:18:11",
   "description": "Example plan created 30-Jan-2024 09:16:02",
   "delays": [
     [

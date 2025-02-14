@@ -1,16 +1,21 @@
 import logging
 import shutil
 from contextlib import nullcontext as does_not_raise
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
+from unittest.mock import patch
 
 import pytest
 from helpers import dataclasses_are_equal
+from vtk import vtkImageData, vtkPolyData
 
 from openlifu import Point, Solution
-from openlifu.db import Session, Subject
+from openlifu.db import Session, Subject, User
 from openlifu.db.database import Database, OnConflictOpts
-from openlifu.plan import Run
+from openlifu.photoscan import Photoscan
+from openlifu.plan import Protocol, Run
+from openlifu.xdc import Transducer
 
 
 @pytest.fixture()
@@ -30,6 +35,136 @@ def example_subject(example_database : Database) -> Subject:
     return Subject.from_file(
         filename = Path(example_database.path)/"subjects/example_subject/example_subject.json",
     )
+
+@pytest.fixture()
+def example_transducer(example_database : Database) -> Transducer:
+    return Transducer.from_file(
+        filename = Path(example_database.path)/"transducers/example_transducer/example_transducer.json",
+        )
+
+def test_write_protocol(example_database: Database):
+    protocol = Protocol(name="bleh", id="a_protocol_called_bleh")
+
+    # Protocol id is not in list initially
+    assert protocol.id not in example_database.get_protocol_ids()
+
+    # Can add a new protocol, and it loads back in correctly.
+    example_database.write_protocol(protocol)
+    reloaded_protocol = example_database.load_protocol(protocol.id)
+    assert dataclasses_are_equal(reloaded_protocol,protocol)
+
+    # Protocol id is now in the list
+    assert protocol.id in example_database.get_protocol_ids()
+
+    # Error raised when the protocol already exists
+    with pytest.raises(ValueError, match="already exists"):
+        example_database.write_protocol(protocol, on_conflict=OnConflictOpts.ERROR)
+
+    # Skip option
+    protocol.name = "new_name"
+    example_database.write_protocol(protocol, on_conflict=OnConflictOpts.SKIP)
+    reloaded_protocol = example_database.load_protocol(protocol.id)
+    assert reloaded_protocol.name == "bleh"
+
+    # Overwrite option
+    protocol.name = "new_name"
+    example_database.write_protocol(protocol, on_conflict=OnConflictOpts.OVERWRITE)
+    reloaded_protocol = example_database.load_protocol(protocol.id)
+    assert reloaded_protocol.name == "new_name"
+
+def test_delete_protocol(example_database: Database):
+    # Write a protocol
+    protocol = Protocol(name="bleh", id="a_protocol_to_be_deleted")
+    example_database.write_protocol(protocol)
+    assert protocol.id in example_database.get_protocol_ids()
+
+    # Protocol is deleted
+    example_database.delete_protocol(protocol.id)
+    assert protocol.id not in example_database.get_protocol_ids()
+    with pytest.raises(FileNotFoundError):
+        example_database.load_protocol(protocol.id)
+
+    # Error option
+    with pytest.raises(ValueError, match="does not exist in the database"):
+        example_database.delete_protocol("non_existent_protocol", on_conflict=OnConflictOpts.ERROR)
+
+    # Skip option
+    example_database.delete_protocol("non_existent_protocol", on_conflict=OnConflictOpts.SKIP)
+
+    # Invalid option
+    with pytest.raises(ValueError, match="Invalid"):
+        example_database.delete_protocol("non_existent_protocol", on_conflict=OnConflictOpts.OVERWRITE)
+
+def test_write_user(example_database: Database):
+    user = User(name="thelegend27", password_hash="abc", id="a_user_called_thelegend27")
+
+    # User id is not in list initially
+    assert user.id not in example_database.get_user_ids()
+
+    # Can add a new user, and it loads back in correctly.
+    example_database.write_user(user)
+    reloaded_user = example_database.load_user(user.id)
+    assert dataclasses_are_equal(reloaded_user,user)
+
+    # User id is now in the list
+    assert user.id in example_database.get_user_ids()
+
+    # Error raised when the user already exists
+    with pytest.raises(ValueError, match="already exists"):
+        example_database.write_user(user, on_conflict=OnConflictOpts.ERROR)
+
+    # Skip option
+    user.name = "new_name"
+    example_database.write_user(user, on_conflict=OnConflictOpts.SKIP)
+    reloaded_user = example_database.load_user(user.id)
+    assert reloaded_user.name == "thelegend27"
+
+    # Overwrite option
+    user.name = "new_name"
+    example_database.write_user(user, on_conflict=OnConflictOpts.OVERWRITE)
+    reloaded_user = example_database.load_user(user.id)
+    assert reloaded_user.name == "new_name"
+
+def test_delete_user(example_database: Database):
+    # Write a user
+    user = User(name="thelegend27", id="a_user_to_be_deleted")
+    example_database.write_user(user)
+    assert user.id in example_database.get_user_ids()
+
+    # User is deleted
+    example_database.delete_user(user.id)
+    assert user.id not in example_database.get_user_ids()
+    with pytest.raises(FileNotFoundError):
+        example_database.load_user(user.id)
+
+    # Error option
+    with pytest.raises(ValueError, match="does not exist in the database"):
+        example_database.delete_user("non_existent_user", on_conflict=OnConflictOpts.ERROR)
+
+    # Skip option
+    example_database.delete_user("non_existent_user", on_conflict=OnConflictOpts.SKIP)
+
+    # Invalid option
+    with pytest.raises(ValueError, match="Invalid"):
+        example_database.delete_user("non_existent_user", on_conflict=OnConflictOpts.OVERWRITE)
+
+def test_load_all_users(example_database: Database):
+    previous_number_of_users_in_database = len(example_database.load_all_users())
+
+    # Create a user and write it to the database
+    user = User(name="thelegend28", id="additional_user_to_be_loaded_then_deleted")
+    example_database.write_user(user)
+
+    # Load all users and check if they match
+    loaded_users = example_database.load_all_users()
+    assert len(loaded_users) == 1 + previous_number_of_users_in_database
+    assert any(dataclasses_are_equal(u, user) for u in loaded_users)
+
+    example_database.delete_user(user.id, on_conflict=OnConflictOpts.ERROR)
+
+    loaded_users = example_database.load_all_users()
+    assert len(loaded_users) == previous_number_of_users_in_database
+    assert not any(dataclasses_are_equal(u, user) for u in loaded_users)
 
 def test_load_session_from_file(example_session : Session, example_database : Database):
 
@@ -65,6 +200,10 @@ def test_write_subject(example_database : Database):
     session_ids = example_database.get_session_ids(subject.id)
     assert session_ids == []
 
+    # Add a session so we can later test that overwriting a subject doesn't wipe out the session
+    session = Session(id="jectson_session_1", subject_id=subject.id)
+    example_database.write_session(subject, session)
+
     # Error raised when the subject already exists
     with pytest.raises(ValueError, match="already exists"):
         example_database.write_subject(subject, on_conflict=OnConflictOpts.ERROR)
@@ -79,6 +218,13 @@ def test_write_subject(example_database : Database):
     example_database.write_subject(subject, on_conflict=OnConflictOpts.OVERWRITE)
     reloaded_subject = example_database.load_subject("bleh")
     assert reloaded_subject.name == "Deb Jectson"
+
+    # Ensure that after overwrite of a subject the sessions are still there
+    assert session.id in example_database.get_session_ids(subject.id)
+    assert dataclasses_are_equal(
+        example_database.load_session(subject, session.id),
+        session
+    )
 
 def test_write_subject_associated_object_structure_created(example_database : Database):
     """Test that when you create a new subject, the file structure needed for other objects that can be written
@@ -97,6 +243,12 @@ def test_write_session(example_database: Database, example_subject: Subject):
     reloaded_session = example_database.load_session(example_subject, session.id)
     assert dataclasses_are_equal(reloaded_session,session)
 
+    # Add a solution and a run to later test that overwriting a session doesn't wipe them out
+    solution = Solution(id="please_keep_me")
+    run = Run(id="please_keep_me_too")
+    example_database.write_solution(session,solution)
+    example_database.write_run(run,session)
+
     # Error raised when the session already exists
     with pytest.raises(ValueError, match="already exists"):
         example_database.write_session(example_subject, session, on_conflict=OnConflictOpts.ERROR)
@@ -112,6 +264,14 @@ def test_write_session(example_database: Database, example_subject: Subject):
     example_database.write_session(example_subject, session, on_conflict=OnConflictOpts.OVERWRITE)
     reloaded_session = example_database.load_session(example_subject, session.id)
     assert reloaded_session.name == "new_name"
+
+    # Ensure that after overwrite of a session the runs and solutions are still there
+    assert solution.id in example_database.get_solution_ids(session.subject_id, session.id)
+    assert dataclasses_are_equal(
+        example_database.load_solution(session, solution.id),
+        solution,
+    )
+    assert run.id in example_database.get_run_ids(session.subject_id, session.id)
 
     # When writing to a new subject
     new_subject = Subject(id="bleh_new",name="Deb Jectson")
@@ -344,3 +504,148 @@ def test_write_solution_new_session(example_database:Database, example_subject:S
     solution = Solution(name="bleh", id='new_solution')
     example_database.write_session(example_subject, session)
     example_database.write_solution(session, solution)
+
+def test_get_photoscan_absolute_filepaths_info(example_database:Database):
+    subject_id = "example_subject"
+    session_id = "example_session"
+    photoscan_id = "example_photoscan"
+    photoscan_info = example_database.get_photoscan_absolute_filepaths_info(subject_id, session_id, photoscan_id)
+    assert(photoscan_info["id"] == "example_photoscan")
+    assert(photoscan_info["name"] == "ExamplePhotoscan")
+    assert(Path(photoscan_info["model_abspath"]).exists())
+    assert(Path(photoscan_info["texture_abspath"]).exists())
+
+def test_get_photoscan_ids(example_database:Database):
+    assert(example_database.get_photoscan_ids("example_subject", "example_session") == ["example_photoscan"])
+
+def test_write_photoscan(example_database:Database, example_session: Session, tmp_path:Path):
+    model_data_path = Path(tmp_path/"test_db_files/example_photoscan_2.obj")
+    model_data_path.parent.mkdir(parents=True, exist_ok=True)
+    model_data_path.touch()
+    texture_data_path = Path(tmp_path/"test_db_files/example_photoscan_texture_2.exr")
+    texture_data_path.parent.mkdir(parents=True, exist_ok=True)
+    texture_data_path.touch()
+    mtl_data_path = Path(tmp_path/"test_db_files/example_photoscan.mtl")
+    mtl_data_path.parent.mkdir(parents=True, exist_ok=True)
+    mtl_data_path.touch()
+
+    photoscan = Photoscan(id = "example_photoscan_2", name =  "EXAMPLE_PHOTOSCAN_2")
+    example_database.write_photoscan(example_session.subject_id, example_session.id, photoscan,
+                                     model_data_filepath= model_data_path,
+                                     texture_data_filepath=texture_data_path,
+                                     mtl_data_filepath=mtl_data_path)
+    assert(len(example_database.get_photoscan_ids("example_subject", "example_session")) == 2)
+    assert("example_photoscan" in example_database.get_photoscan_ids("example_subject", "example_session"))
+    assert("example_photoscan_2" in example_database.get_photoscan_ids("example_subject", "example_session"))
+
+    photoscan_filepath = example_database.get_photoscan_metadata_filepath("example_subject","example_session","example_photoscan_2")
+    assert(photoscan_filepath.name == "example_photoscan_2.json")
+    assert((photoscan_filepath.parent/"example_photoscan_2.obj").exists())
+    assert((photoscan_filepath.parent/"example_photoscan_texture_2.exr").exists())
+    assert((photoscan_filepath.parent/"example_photoscan.mtl").exists())
+
+    # When writing to a new subject and session
+    subject = Subject(id="bleh_photoscan_test",name="Deb Jectson")
+    example_database.write_subject(subject)
+    session = Session(id = "bleh_session", subject_id=subject.id, name = "Bleh_Session")
+    example_database.write_session(subject, session)
+    with pytest.raises(ValueError, match = "file associated with photoscan"):
+        example_database.write_photoscan(session.subject_id, session.id, photoscan)
+
+    example_database.write_photoscan(session.subject_id, session.id, photoscan,
+                                     model_data_path,
+                                     texture_data_path,
+                                     mtl_data_path)
+
+    assert(example_database.get_photoscan_ids(subject.id,session.id) == ["example_photoscan_2"])
+    photoscan_filepath = example_database.get_photoscan_metadata_filepath(subject.id, session.id, "example_photoscan_2")
+    assert(photoscan_filepath.name == "example_photoscan_2.json")
+    assert((photoscan_filepath.parent/"example_photoscan_2.obj").exists())
+    assert((photoscan_filepath.parent/"example_photoscan_texture_2.exr").exists())
+
+    # Test not existent filepath
+    bogus_texture_file = Path(tmp_path/"test_db_files/bogus_photoscan.exr")
+    photoscan.texture_abspath = bogus_texture_file
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        example_database.write_photoscan(example_session.subject_id, example_session.id, photoscan, model_data_path, bogus_texture_file, on_conflict=OnConflictOpts.OVERWRITE)
+
+def test_load_photoscan(example_database:Database, example_session:Session):
+    with pytest.raises(FileNotFoundError,match="Photoscan file not found"):
+        example_database.load_photoscan(example_session.subject_id, example_session.id, "bogus_photoscan_id")
+
+    example_photoscan = example_database.load_photoscan(example_session.subject_id, example_session.id, "example_photoscan")
+    assert example_photoscan.name == "ExamplePhotoscan"
+
+    example_photoscan, (model_data, texture_data) = example_database.load_photoscan(example_session.subject_id, example_session.id, "example_photoscan", load_data=True)
+    assert model_data is not None
+    assert texture_data is not None
+    assert isinstance(model_data, vtkPolyData)
+    assert isinstance(texture_data,vtkImageData)
+
+def test_session_created_date():
+    """Test that created date is recent when a session is created."""
+    tolerance = timedelta(seconds=2)  # Allow for minor timing discrepancies
+
+    session = Session()
+    now = datetime.now()
+    assert(now - tolerance <= session.date_created <= now + tolerance)
+
+def test_session_date_modified_updates_on_write(example_database:Database, example_subject:Subject):
+    """Test that the modified time updates when a session file is written."""
+    tolerance = timedelta(seconds=2)  # Allow for minor timing discrepancies
+
+    # Mocking time so testing only passes simulated time, not real time
+    with patch('openlifu.db.session.datetime') as derptime:
+        session = Session(name="qwerty", id='aoeuidhtns', subject_id=example_subject.id)
+        initial_modified_time = session.date_modified
+
+        # Update the mock to return a new time
+        updated_time = datetime.now() + timedelta(seconds=1e6)
+        derptime.now.return_value = updated_time
+        example_database.write_session(example_subject, session)
+
+        # Assert the modified time was updated
+        assert session.date_modified - tolerance <= updated_time <= session.date_modified + tolerance
+        assert session.date_modified > initial_modified_time - tolerance
+
+def test_get_transducer_ids(example_database:Database):
+    assert(example_database.get_transducer_ids() == ["example_transducer"])
+
+def test_write_transducer_nodata(example_database:Database, example_transducer: Transducer):
+    example_transducer.id = "example_transducer_2"
+
+    example_database.write_transducer(example_transducer)
+    assert(len(example_database.get_transducer_ids()) == 2)
+    assert("example_transducer" in example_database.get_transducer_ids())
+    assert("example_transducer_2" in example_database.get_transducer_ids())
+
+    transducer_filepath = example_database.get_transducer_filename("example_transducer_2")
+    assert(transducer_filepath.name == "example_transducer_2.json")
+
+def test_write_transducer(example_database:Database, example_transducer: Transducer, tmp_path:Path):
+    example_transducer.id = "example_transducer_2"
+    registration_surface_path = Path(tmp_path/"test_db_files/example_registration_surface.obj")
+    registration_surface_path.parent.mkdir(parents=True, exist_ok=True)
+    registration_surface_path.touch()
+    transducer_body_path = Path(tmp_path/"test_db_files/example_transducer_body.obj")
+    transducer_body_path.parent.mkdir(parents=True, exist_ok=True)
+    transducer_body_path.touch()
+
+    example_database.write_transducer(example_transducer, registration_surface_path, transducer_body_path)
+    transducer_filepath = example_database.get_transducer_filename("example_transducer_2")
+    assert(transducer_filepath.name == "example_transducer_2.json")
+    transducer_filepaths = example_database.get_transducer_absolute_filepaths("example_transducer_2")
+    assert(transducer_filepaths["id"] == "example_transducer_2")
+    assert(transducer_filepaths["name"] == "Example Transducer")
+    assert(Path(transducer_filepaths["registration_surface_abspath"]).exists())
+    assert(Path(transducer_filepaths["transducer_body_abspath"]).exists())
+
+    # Test not existent filepath
+    bogus_body_file = Path(tmp_path/"test_db_files/bogus_transducer_body.obj")
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        example_database.write_transducer(example_transducer, registration_surface_path, bogus_body_file, on_conflict=OnConflictOpts.OVERWRITE)
+
+    # Test when previously associated data files are missing
+    example_transducer.registration_surface_filename = "bogus_transducer_model.obj"
+    with pytest.raises(ValueError, match="file associated with transducer"):
+        example_database.write_transducer(example_transducer, on_conflict=OnConflictOpts.OVERWRITE)

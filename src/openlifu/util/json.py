@@ -6,6 +6,7 @@ import numpy as np
 
 from openlifu.db.subject import Subject
 from openlifu.geo import Point
+from openlifu.plan.solution_analysis import SolutionAnalysisOptions
 from openlifu.seg.material import Material
 from openlifu.xdc.element import Element
 from openlifu.xdc.transducer import Transducer
@@ -31,10 +32,12 @@ class PYFUSEncoder(json.JSONEncoder):
             return obj.to_dict()
         if isinstance(obj, Subject):
             return obj.to_dict()
+        if isinstance(obj, SolutionAnalysisOptions):
+            return obj.to_dict()
         return super().default(obj)
 
 def to_json(obj, filename):
-    dirname = Path(filename)
+    dirname = Path(filename).parent
     if dirname and not dirname.exists():
         dirname.mkdir(parents=True)
     with open(filename, 'w') as file:

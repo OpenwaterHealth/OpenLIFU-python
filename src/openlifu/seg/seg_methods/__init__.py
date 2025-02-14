@@ -1,6 +1,5 @@
 from . import seg_method
 from .seg_method import SegmentationMethod, UniformSegmentation
-from .segment_mri import SegmentMRI
 from .tissue import Tissue
 from .water import Water
 
@@ -10,5 +9,4 @@ __all__ = [
     "UniformSegmentation",
     "Water",
     "Tissue",
-    "SegmentMRI",
 ]

@@ -3,16 +3,18 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import numpy as np
 import xarray as xa
 
 from openlifu.bf import Pulse, Sequence, mask_focus
+from openlifu.bf.focal_patterns import FocalPattern
 from openlifu.bf.mask_focus import MaskOp
 from openlifu.geo import Point
+from openlifu.plan.solution_analysis import SolutionAnalysis, SolutionAnalysisOptions
 from openlifu.util.json import PYFUSEncoder
-from openlifu.util.units import rescale_data_arr
+from openlifu.util.units import getunitconversion, rescale_data_arr
 from openlifu.xdc import Transducer
 
 
@@ -21,41 +23,6 @@ def _construct_nc_filepath_from_json_filepath(json_filepath:Path) -> Path:
     nc_filename = json_filepath.name.split(".")[0] + ".nc"
     nc_filepath = json_filepath.parent / nc_filename
     return nc_filepath
-
-
-@dataclass
-class SolutionAnalysis:
-    mainlobe_pnp_MPa: list[float] = field(default_factory=list)
-    mainlobe_isppa_Wcm2: list[float] = field(default_factory=list)
-    mainlobe_ispta_mWcm2: list[float] = field(default_factory=list)
-    beamwidth_lat_3dB_mm: list[float] = field(default_factory=list)
-    beamwidth_ax_3dB_mm: list[float] = field(default_factory=list)
-    beamwidth_lat_6dB_mm: list[float] = field(default_factory=list)
-    beamwidth_ax_6dB_mm: list[float] = field(default_factory=list)
-    sidelobe_pnp_MPa: list[float] = field(default_factory=list)
-    sidelobe_isppa_Wcm2: list[float] = field(default_factory=list)
-    global_pnp_MPa: list[float] = field(default_factory=list)
-    global_isppa_Wcm2: list[float] = field(default_factory=list)
-    p0_Pa: list[float] = field(default_factory=list)
-    TIC: float = None
-    power_W: float = None
-    MI: float = None
-    global_ispta_mWcm2: float = None
-
-
-@dataclass
-class SolutionOptions:
-    standoff_sound_speed: float = 1500.0
-    standoff_density: float = 1000.0
-    ref_sound_speed: float = 1500.0
-    ref_density: float = 1000.0
-    focus_diameter: float = 0.5
-    mainlobe_aspect_ratio: tuple[float, float, float] = (1., 1., 5.)
-    mainlobe_radius: float = 2.5e-3
-    beamwidth_radius: float = 5e-3
-    sidelobe_radius: float = 3e-3
-    sidelobe_zmin: float = 1e-3
-    distance_units: str = "m"
 
 
 @dataclass
@@ -75,7 +42,7 @@ class Solution:
     transducer_id: Optional[str] = None
     """ID of the transducer that was used when generating this solution"""
 
-    created_on: datetime = field(default_factory=datetime.now)
+    date_created: datetime = field(default_factory=datetime.now)
     """Solution creation time"""
 
     description: str = ""
@@ -120,11 +87,11 @@ class Solution:
         """Get the number of foci"""
         return len(self.foci)
 
-    def analyze(self, transducer: Transducer, options: SolutionOptions = SolutionOptions()) -> SolutionAnalysis:
+    def analyze(self, transducer: Transducer, options: SolutionAnalysisOptions = SolutionAnalysisOptions()) -> SolutionAnalysis:
         """Analyzes the treatment solution.
 
         Args:
-            transducer: A Transducer item.  #TODO: this should be instantiated at the database level, not here ?
+            transducer: A Transducer item.
             options: A struct for solution analysis options.
 
         Returns: A struct containing the results of the analysis.
@@ -176,7 +143,7 @@ class Solution:
 
             # get focus region masks (for mainlobe, sidelobe and beamwidth)
             mainlobe_mask = mask_focus(
-                self.simulation_result,  #TODO: Original code uses coords, but too complicated to maniplulate a Coordinates class
+                self.simulation_result,
                 foc,
                 options.mainlobe_radius,
                 mask_op=MaskOp.LESS_EQUAL,
@@ -199,7 +166,7 @@ class Solution:
             #     distance=options.beamwidth_radius,
             #     options=mask_options)
 
-            pk = np.max(pnp_MPa.data[focus_index] * mainlobe_mask)  #TODO: pnp_MPa supposed to be a list for each focus: pnp_MPa(focus_index)
+            pk = np.max(pnp_MPa.data[focus_index] * mainlobe_mask).item()  #TODO: pnp_MPa supposed to be a list for each focus: pnp_MPa(focus_index)
             solution_analysis.mainlobe_pnp_MPa += [pk]
 
         #     thresh_m3dB = pk*10**(-3 / 20)
@@ -263,6 +230,69 @@ class Solution:
         # solution_analysis.global_ispta_mWcm2 = np.max(ita_mWcm2.data*z_mask)
 
         return solution_analysis
+
+    def compute_scaling_factors(
+            self,
+            focal_pattern: FocalPattern,
+            analysis: SolutionAnalysis
+        ) -> Tuple[np.ndarray, float, float]:
+        """
+
+        Compute the scaling factors used to re-scale the apodizations, simulation results and pulse amplitude.
+
+        Args:
+            focal_pattern: FocalPattern
+            analysis: SolutionAnalysis
+
+        Returns:
+            apod_factors: A np.ndarray apodization factors
+            v0: A float representing the original pulse amplitude
+            v1: A float representing the new pulse amplitude
+        """
+        scaling_factors = np.zeros(self.num_foci())
+
+        for i in range(self.num_foci()):
+            focal_pattern_pressure_in_MPa = focal_pattern.target_pressure * getunitconversion(focal_pattern.units, "MPa")
+            scaling_factors[i] = focal_pattern_pressure_in_MPa / analysis.mainlobe_pnp_MPa[i]
+        max_scaling = np.max(scaling_factors)
+        v0 = self.pulse.amplitude
+        v1 = v0 * max_scaling
+        apod_factors = scaling_factors / max_scaling
+
+        return apod_factors, v0, v1
+
+    def scale(
+            self,
+            transducer: Transducer,
+            focal_pattern: FocalPattern,
+            analysis_options: SolutionAnalysisOptions = SolutionAnalysisOptions()
+    ) -> SolutionAnalysis:
+        """
+        Scale the solution in-place to match the target pressure.
+
+        Args:
+            transducer: xdc.Transducer
+            focal_pattern: FocalPattern
+            analysis_options: plan.solution.SolutionAnalysisOptions
+
+        Returns:
+            analysis_scaled: the resulting plan.solution.SolutionAnalysis from scaled solution
+        """
+        analysis = self.analyze(transducer, options=analysis_options)
+
+        apod_factors, v0, v1 = self.compute_scaling_factors(focal_pattern, analysis)
+
+        for i in range(self.num_foci()):
+            scaling = v1/v0*apod_factors[i]
+            self.simulation_result['p_min'][i].data *= scaling
+            self.simulation_result['p_max'][i].data *= scaling
+            self.simulation_result['ita'][i].data *= scaling**2
+            self.apodizations[i] = self.apodizations[i]*apod_factors[i]
+        self.pulse.amplitude = v1
+
+        analysis_scaled = self.analyze(transducer, options=analysis_options)
+
+        return analysis_scaled
 
     def get_pulsetrain_dutycycle(self) -> float:
         """
@@ -348,7 +378,7 @@ class Solution:
         Returns: The new Solution object.
         """
         solution_dict = json.loads(json_string)
-        solution_dict["created_on"] = datetime.fromisoformat(solution_dict["created_on"])
+        solution_dict["date_created"] = datetime.fromisoformat(solution_dict["date_created"])
         if solution_dict["delays"] is not None:
             solution_dict["delays"] = np.array(solution_dict["delays"])
         if solution_dict["apodizations"] is not None:
