@@ -134,7 +134,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 class TxDevice:
-    def __init__(self, uart: LIFUUart = None):
+    def __init__(self, uart: LIFUUart):
         """
         Initialize the TxDevice.
 
@@ -149,7 +149,7 @@ class TxDevice:
             logger.info("TX Device connected.")
         else:
             logger.info("TX Device NOT Connected.")
-
+    
     def __parse_ti_cfg_file(self, file_path: str) -> list[tuple[str, int, int]]:
         """Parses the given configuration file and extracts all register groups, addresses, and values."""
         parsed_data = []
@@ -1073,16 +1073,13 @@ class TxDevice:
         self.set_sequence(sequence)
         # Write the sequence parameters to the master TX Module
 
+        # Write All TX7332 Registers from the tx_registers to the 7332
         self.apply_all_registers()
 
-        for profile in range(n):
-            delay_control_registers = self.tx_registers.get_delay_control_registers(profile)
-            pulse_control_registers = self.tx_registers.get_pulse_control_registers(profile)
-            # write the delay control registers to the TX Modules
-        # Write All TX7332 Registers from the tx_registers to the 7332
-
+        # Buffer the pulse and delay profiles in the microcontroller(s), so that they can be used to switch profiles on trigger detection
         delay_control_registers = {profile:self.tx_registers.get_delay_control_registers(profile) for profile in self.tx_registers.configured_delay_profiles()}
         pulse_control_registers = {profile:self.tx_registers.get_pulse_control_registers(profile) for profile in self.tx_registers.configured_pulse_profiles()}
+        # TODO: Add these to the firmware
 
     def apply_all_registers(self):
         """

@@ -105,13 +105,7 @@ class LIFUInterface:
         Raises:
             ValueError: If no solution is loaded.
         """
-        try:
-            logger.info("Retrieving the currently loaded solution.")
-            # Example command to request solution metadata and data
-            return None
-        except Exception as e:
-            logger.error("Error retrieving the solution: %s", e)
-            raise
+        raise NotImplementedError("Parsing of register values on hardware is not implemented yet.")
 
 
     def start_sonication(self):
