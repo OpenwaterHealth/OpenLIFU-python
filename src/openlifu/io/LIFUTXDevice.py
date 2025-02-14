@@ -127,7 +127,6 @@ from openlifu.io.config import (
     OW_TX7332_WREG,
 )
 from openlifu.io.LIFUUart import LIFUUart
-from openlifu.io.tx7332_if import TX7332_IF
 
 if TYPE_CHECKING:
     pass
@@ -629,12 +628,12 @@ class TxDevice:
             logger.error("Error running test on TX Devices: %s", e)
             raise
 
-    def enum_tx7332_devices(self) -> list[TX7332_IF]:
+    def enum_tx7332_devices(self) -> int:
         """
         Enumerate TX7332 devices connected to the TX device.
 
         Returns:
-            list[TX7332_IF]: A list of TX7332 interface instances.
+            n_transmitters: number of devices detected.
 
         Raises:
             ValueError: If the UART is not connected.
@@ -1137,16 +1136,6 @@ class TxDevice:
         except Exception as e:
             logger.error("Error parsing and writing TI config to TX Device: %s", e)
             raise
-
-    @property
-    def tx_devices(self) -> list[TX7332_IF]:
-        """
-        Get the list of enumerated TX devices.
-
-        Returns:
-            list[TX7332_IF]: The list of TX7332 interface instances.
-        """
-        return self._tx_instances
 
     @property
     def print(self) -> None:
