@@ -4,12 +4,13 @@ import json
 import logging
 import re
 import struct
-from typing import TYPE_CHECKING, List, Dict, Literal, Optional, Tuple
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Dict, List, Literal, Optional
+
 import numpy as np
 
-from openlifu.plan.solution import Solution
 from openlifu.bf.sequence import Sequence
+from openlifu.plan.solution import Solution
 from openlifu.util.units import getunitconversion
 
 NUM_TRANSMITTERS = 2
@@ -347,11 +348,11 @@ class TxDevice:
             logger.error("Error retrieving temperature: %s", e)
             raise
 
-    def set_trigger(self, 
+    def set_trigger(self,
                     pulse_interval: float,
-                    pulse_count: int = 1, 
-                    pulse_width: int = DEFAULT_PULSE_WIDTH_US, 
-                    pulse_train_interval: float = 0.0, 
+                    pulse_count: int = 1,
+                    pulse_width: int = DEFAULT_PULSE_WIDTH_US,
+                    pulse_train_interval: float = 0.0,
                     pulse_train_count: int = 1,
                     mode: TriggerModeOpts = "sequence",
                     profile_index: int = 0,
@@ -377,7 +378,7 @@ class TxDevice:
             trigger_mode = TRIGGER_MODE_SINGLE
         else:
             raise ValueError("Invalid trigger mode")
-        
+
         trigger_json = {
             "TriggerFrequencyHz": 1/pulse_interval,
             "TriggerPulseCount": pulse_count,
@@ -389,7 +390,7 @@ class TxDevice:
             "ProfileIncrement": int(profile_increment)
         }
         return self.set_trigger_json(data=trigger_json)
-        
+
     def set_trigger_json(self, data=None) -> dict:
         """
         Set the trigger configuration on the TX device.
@@ -652,7 +653,7 @@ class TxDevice:
                 logger.info("Error enumerating TX devices.")
 
             self.tx_registers = TxDeviceRegisters(num_transmitters=n_transmitters)
-            logger.info("TX Device Count: %d", n_transmitters)            
+            logger.info("TX Device Count: %d", n_transmitters)
             return n_transmitters
 
         except Exception as e:
@@ -1027,7 +1028,7 @@ class TxDevice:
             logger.error(f"Unexpected error in write_block: {e}")
             raise
 
-    def set_sequence(self, 
+    def set_sequence(self,
                      sequence: Sequence,
                      mode: TriggerModeOpts = "sequence",
                      profile_index: int = 0,
@@ -1053,7 +1054,7 @@ class TxDevice:
         n = solution.num_foci()
         if n > 1:
             raise NotImplementedError("Multiple foci not supported yet")
-        
+
         for profile in range(n):
             profile_index = Tx7332PulseProfile(
                 profile=profile+1,
@@ -1072,7 +1073,7 @@ class TxDevice:
         sequence = solution.sequence
         self.set_sequence(sequence)
         # Write the sequence parameters to the master TX Module
-        
+
         self.apply_all_registers()
 
         for profile in range(n):
@@ -1585,7 +1586,7 @@ class Tx7332Registers:
         else:
             if profiles == "all":
                 delay_data = {addr:0x0 for addr in ADDRESSES_DELAY_DATA}
-                pulse_data = {addr:0x0 for addr in ADDRESSES_PATTERN_DATA}        
+                pulse_data = {addr:0x0 for addr in ADDRESSES_PATTERN_DATA}
             else:
                 delay_data = {}
                 pulse_data = {}

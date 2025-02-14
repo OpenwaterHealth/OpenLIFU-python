@@ -22,7 +22,6 @@ from openlifu.io.LIFUTXDevice import (
     Tx7332Registers,
     TxDeviceRegisters,
     print_regs,
-    swap_byte_order,
 )
 
 # %%

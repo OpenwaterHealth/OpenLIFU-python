@@ -44,7 +44,7 @@ print(f"Temperature: {temperature} °C")
 print("Enumerate TX7332 chips")
 num_tx_devices = interface.txdevice.enum_tx7332_devices()
 if num_tx_devices > 0:
-    print(f"Number of TX7332 devices found: {num_tx_devices}")    
+    print(f"Number of TX7332 devices found: {num_tx_devices}")
 else:
     raise("No TX7332 devices found.")
 

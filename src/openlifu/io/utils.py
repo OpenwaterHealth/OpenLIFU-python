@@ -49,11 +49,11 @@ def format_and_print_hex(data):
     Format the received data as hex and print it.
     """
     if data:
-        hex_output = ' '.join(['{:02X}'.format(byte) for byte in data])
+        hex_output = ' '.join([f'{byte:02X}' for byte in data])
         print("Received Data (Hex):", hex_output)
-    else:    
+    else:
         print("Received Data (Hex): EMPTY")
-        
+
 def list_vcp_with_vid_pid(target_vid, target_pid):
     ports = serial.tools.list_ports.comports()
     for port in ports:
@@ -66,5 +66,5 @@ def list_vcp_with_vid_pid(target_vid, target_pid):
 # Convert VID and PID to integers (hexadecimal to decimal)
 # vid = 1155  # Example VID for demonstration
 # pid = 22446  # Example PID for demonstration
-# 
+#
 # list_vcp_with_vid_pid(vid, pid)
