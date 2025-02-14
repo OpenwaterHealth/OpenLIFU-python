@@ -46,6 +46,8 @@ class HVController:
         self.is_hv_on = False
         self.is_12v_on = False
 
+        self.supply_voltage = None
+
     def is_connected(self):
         if self.uart:
             return self.uart.is_connected()

@@ -80,6 +80,7 @@ class LIFUUart:
             log.error(f"Failed to connect to {self.port}: {e}")
             self.running = False
             self.port = None
+            raise e
 
     def disconnect(self):
         """Close the serial port."""
@@ -193,6 +194,7 @@ class LIFUUart:
             self.serial.write(data)
         except Exception as e:
             log.error(f"Error during transmission: {e}")
+            raise e
 
     def read_packet(self, timeout=20) -> UartPacket:
         """
@@ -238,6 +240,7 @@ class LIFUUart:
                 reserved=0,
                 data=[]
             )
+            raise e
 
         return packet
 

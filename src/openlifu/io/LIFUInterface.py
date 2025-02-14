@@ -55,6 +55,7 @@ class LIFUInterface:
             await self.uart.monitor_usb_status(interval)
         except Exception as e:
             logger.error("Error starting monitoring: %s", e)
+            raise e
 
 
     def stop_monitoring(self) -> None:
@@ -63,6 +64,7 @@ class LIFUInterface:
             self.uart.stop_monitoring()
         except Exception as e:
             logger.error("Error stopping monitoring: %s", e)
+            raise e
 
     def is_device_connected(self) -> bool:
         """
@@ -123,6 +125,7 @@ class LIFUInterface:
             # Send the solution data to the device
         except Exception as e:
             logger.error("Error Starting sonication: %s", e)
+            raise e
 
     def get_status(self):
         """
@@ -145,6 +148,7 @@ class LIFUInterface:
             # Send the solution data to the device
         except Exception as e:
             logger.error("Error Stopping sonication: %s", e)
+            raise e
 
     def close(self):
         pass
