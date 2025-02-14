@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
 class HVController:
     def __init__(self, uart: LIFUUart = None):
         """
@@ -92,13 +93,15 @@ class HVController:
             if not self.uart.is_connected():
                 raise ValueError("Console Device not connected")
 
-            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_CMD_VERSION)
+            r = self.uart.send_packet(
+                id=None, packetType=OW_POWER, command=OW_CMD_VERSION
+            )
             self.uart.clear_buffer()
             # r.print_packet()
             if r.data_len == 3:
-                ver = f'v{r.data[0]}.{r.data[1]}.{r.data[2]}'
+                ver = f"v{r.data[0]}.{r.data[1]}.{r.data[2]}"
             else:
-                ver = 'v0.0.0'
+                ver = "v0.0.0"
             logger.info(ver)
             return ver
 
@@ -106,7 +109,7 @@ class HVController:
             logger.error("Error Toggling LED: %s", e)
             raise
 
-    def echo(self, echo_data = None) -> tuple[bytes, int]:
+    def echo(self, echo_data=None) -> tuple[bytes, int]:
         """
         Send an echo command to the device with data and receive the same data in response.
 
@@ -129,7 +132,9 @@ class HVController:
             if echo_data is not None and not isinstance(echo_data, (bytes, bytearray)):
                 raise TypeError("echo_data must be a byte array")
 
-            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_CMD_ECHO, data=echo_data)
+            r = self.uart.send_packet(
+                id=None, packetType=OW_POWER, command=OW_CMD_ECHO, data=echo_data
+            )
             self.uart.clear_buffer()
             # r.print_packet()
             if r.data_len > 0:
@@ -153,7 +158,9 @@ class HVController:
             if not self.uart.is_connected():
                 raise ValueError("Console Device not connected")
 
-            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_CMD_TOGGLE_LED)
+            r = self.uart.send_packet(
+                id=None, packetType=OW_POWER, command=OW_CMD_TOGGLE_LED
+            )
             self.uart.clear_buffer()
             # r.print_packet()
 
@@ -195,7 +202,9 @@ class HVController:
 
             logger.info("Turning off 12V.")
 
-            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_POWER_12V_OFF)
+            r = self.uart.send_packet(
+                id=None, packetType=OW_POWER, command=OW_POWER_12V_OFF
+            )
             self.uart.clear_buffer()
             # r.print_packet()
 
@@ -218,7 +227,9 @@ class HVController:
 
             logger.info("Turning on 12V.")
 
-            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_POWER_12V_ON)
+            r = self.uart.send_packet(
+                id=None, packetType=OW_POWER, command=OW_POWER_12V_ON
+            )
             self.uart.clear_buffer()
             # r.print_packet()
 
@@ -234,7 +245,6 @@ class HVController:
             logger.error("Error turning on 12V: %s", e)
             raise
 
-
     def turn_hv_on(self):
         """
         Turn on the high voltage.
@@ -245,7 +255,9 @@ class HVController:
 
             logger.info("Turning on high voltage.")
 
-            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_POWER_HV_ON)
+            r = self.uart.send_packet(
+                id=None, packetType=OW_POWER, command=OW_POWER_HV_ON
+            )
             self.uart.clear_buffer()
             # r.print_packet()
 
@@ -271,7 +283,9 @@ class HVController:
 
             logger.info("Turning off high voltage.")
 
-            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_POWER_HV_OFF)
+            r = self.uart.send_packet(
+                id=None, packetType=OW_POWER, command=OW_POWER_HV_OFF
+            )
             self.uart.clear_buffer()
             # r.print_packet()
 
@@ -288,49 +302,54 @@ class HVController:
             raise
 
     def set_voltage(self, voltage: float):
-            """
-            Set the output voltage.
+        """
+        Set the output voltage.
 
-            Args:
-                voltage (float): The desired output voltage.
+        Args:
+            voltage (float): The desired output voltage.
 
-            Raises:
-                ValueError: If the controller is not connected or voltage exceeds supply voltage.
-            """
-            if not self.uart.is_connected():
-                raise ValueError("High voltage controller not connected")
+        Raises:
+            ValueError: If the controller is not connected or voltage exceeds supply voltage.
+        """
+        if not self.uart.is_connected():
+            raise ValueError("High voltage controller not connected")
 
+        # Validate and process the DAC input
+        if voltage is None:
+            voltage = 0
+        elif not (5.0 <= voltage <= 100.0):
+            raise ValueError(
+                "Voltage input must be within the valid range 5 to 100 Volts)."
+            )
 
-            # Validate and process the DAC input
-            if voltage is None:
-                voltage = 0
-            elif not (5.0<= voltage <= 100.0):
-                raise ValueError("Voltage input must be within the valid range 5 to 100 Volts).")
-
-            try:
-                dac_input = int((voltage / 150) * 4095)
-                # logger.info("Setting DAC Value %d.", dac_input)
-                # Pack the 12-bit DAC input into two bytes
-                data = bytes([
+        try:
+            dac_input = int((voltage / 150) * 4095)
+            # logger.info("Setting DAC Value %d.", dac_input)
+            # Pack the 12-bit DAC input into two bytes
+            data = bytes(
+                [
                     (dac_input >> 8) & 0xFF,  # High byte (most significant bits)
-                    dac_input & 0xFF          # Low byte (least significant bits)
-                ])
+                    dac_input & 0xFF,  # Low byte (least significant bits)
+                ]
+            )
 
-                r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_POWER_SET_HV, data=data)
-                self.uart.clear_buffer()
-                # r.print_packet()
+            r = self.uart.send_packet(
+                id=None, packetType=OW_POWER, command=OW_POWER_SET_HV, data=data
+            )
+            self.uart.clear_buffer()
+            # r.print_packet()
 
-                if r.packet_type == OW_ERROR:
-                    logger.error("Error setting HV")
-                    return False
-                else:
-                    self.supply_voltage = voltage
-                    logger.info("Output voltage set to %.2fV successfully.", voltage)
-                    return True
+            if r.packet_type == OW_ERROR:
+                logger.error("Error setting HV")
+                return False
+            else:
+                self.supply_voltage = voltage
+                logger.info("Output voltage set to %.2fV successfully.", voltage)
+                return True
 
-            except Exception as e:
-                logger.error("Error setting output voltage: %s", e)
-                raise
+        except Exception as e:
+            logger.error("Error setting output voltage: %s", e)
+            raise
 
     def get_voltage(self) -> float:
         """
@@ -348,7 +367,9 @@ class HVController:
         try:
             logger.info("Getting current output voltage.")
 
-            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_POWER_GET_HV)
+            r = self.uart.send_packet(
+                id=None, packetType=OW_POWER, command=OW_POWER_GET_HV
+            )
             self.uart.clear_buffer()
             # r.print_packet()
 
@@ -385,7 +406,9 @@ class HVController:
             if not self.uart.is_connected():
                 raise ValueError("Console Device  not connected")
 
-            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_CMD_RESET)
+            r = self.uart.send_packet(
+                id=None, packetType=OW_POWER, command=OW_CMD_RESET
+            )
             self.uart.clear_buffer()
             # r.print_packet()
             if r.packet_type == OW_ERROR:
