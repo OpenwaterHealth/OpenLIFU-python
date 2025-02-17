@@ -107,7 +107,6 @@ class Session:
         Create a Session from a file
 
         :param filename: Name of the file to read
-        :param db: Database object
         :returns: Session object
         """
         with open(filename) as f:
@@ -119,7 +118,6 @@ class Session:
         Create a session from a dictionary
 
         :param d: Dictionary of session parameters
-        :param db: Database object
         :returns: Session object
         """
         if 'date_created' in d:
