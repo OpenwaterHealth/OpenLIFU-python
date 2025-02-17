@@ -79,3 +79,9 @@ for subject_id in db.get_subject_ids():
         run_ids = db.get_run_ids(subject_id, session_id)
         db.write_run_ids(subject_id, session_id, run_ids)
         # (Runs are read only at the moment so it's just the runs.json and no individual runs to standardize)
+
+db.write_user_ids(db.get_user_ids())
+for user_id in db.get_user_ids():
+    user = db.load_user(user_id)
+    assert user_id == user.id
+    db.write_user(user, on_conflict=OnConflictOpts.OVERWRITE)
