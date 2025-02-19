@@ -103,6 +103,7 @@ TRIGGER_MODE_SINGLE = 2
 DEFAULT_PULSE_WIDTH_US = 20000
 
 from openlifu.io.config import (
+    OW_CMD_DFU,
     OW_CMD_ECHO,
     OW_CMD_GET_TEMP,
     OW_CMD_HWID,
@@ -592,6 +593,34 @@ class TxDevice:
             # r.print_packet()
             if r.packet_type == OW_ERROR:
                 logger.error("Error resetting device")
+                return False
+            else:
+                return True
+
+        except Exception as e:
+            logger.error("Error Trying to reset TX Device: %s", e)
+            raise
+
+    def enter_dfu(self) -> bool:
+        """
+        Perform a soft reset to enter DFU mode on TX device.
+
+        Returns:
+            bool: True if the reset was successful, False otherwise.
+
+        Raises:
+            ValueError: If the UART is not connected.
+            Exception: If an error occurs while resetting the device.
+        """
+        try:
+            if not self.uart.is_connected():
+                raise ValueError("TX Device not connected")
+
+            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_DFU)
+            self.uart.clear_buffer()
+            # r.print_packet()
+            if r.packet_type == OW_ERROR:
+                logger.error("Error setting DFU mode for device")
                 return False
             else:
                 return True

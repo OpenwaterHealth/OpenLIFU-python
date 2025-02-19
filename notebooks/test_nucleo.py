@@ -55,3 +55,15 @@ elif user_input == 'n':
     print("Reset canceled.")
 else:
     print("Invalid input. Please enter 'y' or 'n'.")
+
+print("Update Device:")
+# Ask the user for confirmation
+user_input = input("Do you want to update the device? (y/n): ").strip().lower()
+
+if user_input == 'y':
+    if interface.txdevice.enter_dfu():
+        print("Entering DFU Mode.")
+elif user_input == 'n':
+    print("Update canceled.")
+else:
+    print("Invalid input. Please enter 'y' or 'n'.")
