@@ -649,3 +649,38 @@ def test_write_transducer(example_database:Database, example_transducer: Transdu
     example_transducer.registration_surface_filename = "bogus_transducer_model.obj"
     with pytest.raises(ValueError, match="file associated with transducer"):
         example_database.write_transducer(example_transducer, on_conflict=OnConflictOpts.OVERWRITE)
+
+@pytest.mark.parametrize("include_registration_surface", [True, False])
+@pytest.mark.parametrize("include_body_model", [True, False])
+def test_get_transducer_absolute_filepaths(example_database:Database, tmp_path:Path, include_registration_surface:bool, include_body_model:bool):
+    transducer = Transducer(id="transducer_for_test_get_transducer_absolute_filepaths")
+
+    registration_surface_path = None
+    transducer_body_path = None
+    if include_registration_surface:
+        registration_surface_path = Path(tmp_path/"test_db_files/example_registration_surface.obj")
+        registration_surface_path.parent.mkdir(parents=True, exist_ok=True)
+        registration_surface_path.touch()
+    if include_body_model:
+        transducer_body_path = Path(tmp_path/"test_db_files/example_transducer_body.obj")
+        transducer_body_path.parent.mkdir(parents=True, exist_ok=True)
+        transducer_body_path.touch()
+
+    example_database.write_transducer(
+        transducer=transducer,
+        registration_surface_model_filepath = registration_surface_path,
+        transducer_body_model_filepath = transducer_body_path,
+    )
+    absolute_file_paths = example_database.get_transducer_absolute_filepaths("transducer_for_test_get_transducer_absolute_filepaths")
+    if include_registration_surface:
+        reconstructed_path = Path(absolute_file_paths["registration_surface_abspath"])
+        assert reconstructed_path.exists()
+        assert reconstructed_path.name == registration_surface_path.name
+    else:
+        assert "registration_surface_abspath" not in absolute_file_paths
+    if include_body_model:
+        reconstructed_path = Path(absolute_file_paths["transducer_body_abspath"])
+        assert reconstructed_path.exists()
+        assert reconstructed_path.name == transducer_body_path.name
+    else:
+        assert "transducer_body_abspath" not in absolute_file_paths

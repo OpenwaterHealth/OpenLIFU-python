@@ -707,29 +707,33 @@ class Database:
         return photoscan
 
     def get_transducer_absolute_filepaths(self, transducer_id:str) -> dict:
-        """ Returns the absolute filepaths to the model data files i.e. transducer body and registration surface model files affiliated with the transducer, with ID `transducer_id`.
-        Unlike `load_transducer`, which specifies the relative paths to the model datafiles along with other transducer attributes, this function only returns the absolute filepaths to
-        the datafiles based on the Database directory.
+        """ Returns the absolute filepaths to the model data files i.e. transducer body and registration surface
+        model files affiliated with the transducer, with ID `transducer_id`. Unlike `load_transducer`, which
+        specifies the relative paths to the model datafiles along with other transducer attributes, this function
+        only returns the absolute filepaths to  the datafiles based on the Database directory.
+
         Args:
             transducer_id: Transducer ID
+
         Returns:
-            dict: A dictionary containing the absolute filepaths to the affiliated transducer data files with the following keys:
+            dict: A dictionary containing the absolute filepaths to the affiliated transducer data files with the following possible keys:
                 - "id" (str): transducer ID
                 - "name" (str): transducer name
-                - "registration_surface_abspath" (str): absolute path to the transducer registration surface (open-surface mesh used for transducer tracking registration)
-                - "transducer_body_abspath" (str): absolute path to the transducer body model (closed-surface mesh for visualizing the transducer)
+                - "registration_surface_abspath" (str): absolute path to the transducer registration surface (open-surface mesh
+                  used for transducer tracking registration). This key is only included if there *is* an affiliated registration surface.
+                - "transducer_body_abspath" (str): absolute path to the transducer body model (closed-surface mesh for visualizing the
+                  transducer). This key is only included if there *is* an affiliated body model.
         """
         transducer_metadata_filepath = self.get_transducer_filename(transducer_id)
         with open(transducer_metadata_filepath) as f:
             transducer = json.load(f)
-            if "registration_surface_filename" not in transducer and "transducer_body_filename" not in transducer:
-                raise ValueError(f"Data filepaths not found affiliated with transducer {transducer_id}")
-            transducer_filepaths_dict = {"id": transducer["id"],\
-                    "name": transducer["name"],
-                    }
-            if "registration_surface_filename" in transducer:
+            transducer_filepaths_dict = {
+                "id": transducer["id"],
+                "name": transducer["name"],
+            }
+            if "registration_surface_filename" in transducer and transducer["registration_surface_filename"] is not None:
                 transducer_filepaths_dict["registration_surface_abspath"] = Path(transducer_metadata_filepath).parent/transducer["registration_surface_filename"]
-            if "transducer_body_filename" in transducer:
+            if "transducer_body_filename" in transducer and transducer["transducer_body_filename"] is not None:
                 transducer_filepaths_dict["transducer_body_abspath"] = Path(transducer_metadata_filepath).parent/transducer["transducer_body_filename"]
             return transducer_filepaths_dict
 
