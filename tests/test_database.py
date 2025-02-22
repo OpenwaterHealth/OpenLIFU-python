@@ -360,7 +360,7 @@ def test_write_session_mismatched_id(example_database: Database, example_subject
         (["an_existing_target_id"], [0], pytest.raises(ValueError, match="provides no transforms")),
     ]
 )
-def test_write_session_with_invalid_fit_approval(
+def test_write_session_with_invalid_fit_results(
     example_database: Database,
     example_subject: Subject,
     target_ids: List[str],
@@ -383,6 +383,13 @@ def test_write_session_with_invalid_fit_approval(
     )
     with expectation:
         example_database.write_session(example_subject, session)
+
+def test_session_arrays_read_correctly(example_session:Session):
+    """Verify that session data that is supposed to be array type is actually array type after reading from json"""
+    assert isinstance(example_session.array_transform.matrix, np.ndarray)
+    for _, (_, array_transforms) in example_session.virtual_fit_results.items():
+        for array_transform in array_transforms:
+            assert isinstance(array_transform.matrix, np.ndarray)
 
 @pytest.mark.parametrize("compact_representation", [True, False])
 def test_serialize_deserialize_session(example_session : Session, compact_representation:bool):

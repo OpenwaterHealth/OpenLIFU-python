@@ -139,7 +139,7 @@ class Session:
             for target_id,(approval,transforms) in d['virtual_fit_results'].items():
                 d['virtual_fit_results'][target_id] = (
                     approval,
-                    [ArrayTransform(t_dict["matrix"], t_dict["units"]) for t_dict in transforms],
+                    [ArrayTransform(np.array(t_dict["matrix"]), t_dict["units"]) for t_dict in transforms],
                 )
         if isinstance(d['markers'], list):
             if len(d['markers'])>0 and isinstance(d['markers'][0], dict):
