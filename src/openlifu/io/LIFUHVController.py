@@ -3,23 +3,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from openlifu.io.config import (
-    OW_CMD_ECHO,
-    OW_CMD_HWID,
-    OW_CMD_PING,
-    OW_CMD_RESET,
-    OW_CMD_TOGGLE_LED,
-    OW_CMD_VERSION,
-    OW_ERROR,
-    OW_POWER,
-    OW_POWER_12V_OFF,
-    OW_POWER_12V_ON,
-    OW_POWER_GET_HV,
-    OW_POWER_HV_OFF,
-    OW_POWER_HV_ON,
-    OW_POWER_SET_HV,
-)
-
 if TYPE_CHECKING:
     from openlifu.io.LIFUUart import LIFUUart
 

@@ -6,21 +6,199 @@ import time
 import serial
 import serial.tools.list_ports
 
-from openlifu.io.config import (
-    OW_ACK,
-    OW_CMD_NOP,
-    OW_END_BYTE,
-    OW_ERROR,
-    OW_START_BYTE,
-)
 from openlifu.io.LIFUSignal import LIFUSignal
-from openlifu.io.uartpacket import UartPacket
-from openlifu.io.utils import util_crc16
+
+# Packet structure constants
+OW_START_BYTE = 0xAA
+OW_END_BYTE = 0xDD
+ID_COUNTER = 0  # Initializing the ID counter
+
+# Packet Types
+OW_ACK = 0xE0
+OW_NAK = 0xE1
+OW_CMD = 0xE2
+OW_RESP = 0xE3
+OW_DATA = 0xE4
+OW_ONE_WIRE = 0xE5
+OW_TX7332 = 0xE6
+OW_AFE_READ = 0xE7
+OW_AFE_SEND = 0xE8
+OW_I2C_PASSTHRU = 0xE9
+OW_CONTROLLER = 0xEA
+OW_POWER = 0xEB
+OW_ONEWIRE_RESP = 0xEC
+OW_ERROR = 0xEF
+
+OW_SUCCESS = 0x00
+OW_UNKNOWN_COMMAND = 0xFC
+OW_BAD_CRC = 0xFD
+OW_INVALID_PACKET = 0xFE
+OW_UNKNOWN_ERROR = 0xFF
+
+# Global Commands
+OW_CMD_PING = 0x00
+OW_CMD_PONG = 0x01
+OW_CMD_VERSION = 0x02
+OW_CMD_ECHO = 0x03
+OW_CMD_TOGGLE_LED = 0x04
+OW_CMD_HWID = 0x05
+OW_CMD_GET_TEMP = 0x06
+OW_CMD_TEST = 0x07
+OW_CMD_DFU = 0x0D
+OW_CMD_NOP = 0x0E
+OW_CMD_RESET = 0x0F
+
+# Controller Commands
+OW_CTRL_SET_SWTRIG = 0x13
+OW_CTRL_GET_SWTRIG = 0x14
+OW_CTRL_START_SWTRIG = 0x15
+OW_CTRL_STOP_SWTRIG = 0x16
+OW_CTRL_STATUS_SWTRIG = 0x17
+OW_CTRL_RESET = 0x1F
+
+# TX7332 Commands
+OW_TX7332_STATUS = 0x20
+OW_TX7332_ENUM = 0x21
+OW_TX7332_WREG = 0x22
+OW_TX7332_RREG = 0x23
+OW_TX7332_WBLOCK = 0x24
+OW_TX7332_VWREG = 0x25
+OW_TX7332_VWBLOCK = 0x26
+OW_TX7332_DEMO = 0x2D
+OW_TX7332_RESET = 0x2F
+
+# Power Commands
+OW_POWER_STATUS = 0x30
+OW_POWER_SET_HV = 0x31
+OW_POWER_GET_HV = 0x32
+OW_POWER_HV_ON = 0x33
+OW_POWER_HV_OFF = 0x34
+OW_POWER_12V_ON = 0x35
+OW_POWER_12V_OFF = 0x36
+
 
 # Set up logging
 log = logging.getLogger("UART")
 log.setLevel(logging.DEBUG)
 
+# CRC16-ccitt lookup table
+crc16_tab = [
+	0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
+	0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef,
+	0x1231, 0x0210, 0x3273, 0x2252, 0x52b5, 0x4294, 0x72f7, 0x62d6,
+	0x9339, 0x8318, 0xb37b, 0xa35a, 0xd3bd, 0xc39c, 0xf3ff, 0xe3de,
+	0x2462, 0x3443, 0x0420, 0x1401, 0x64e6, 0x74c7, 0x44a4, 0x5485,
+	0xa56a, 0xb54b, 0x8528, 0x9509, 0xe5ee, 0xf5cf, 0xc5ac, 0xd58d,
+	0x3653, 0x2672, 0x1611, 0x0630, 0x76d7, 0x66f6, 0x5695, 0x46b4,
+	0xb75b, 0xa77a, 0x9719, 0x8738, 0xf7df, 0xe7fe, 0xd79d, 0xc7bc,
+	0x48c4, 0x58e5, 0x6886, 0x78a7, 0x0840, 0x1861, 0x2802, 0x3823,
+	0xc9cc, 0xd9ed, 0xe98e, 0xf9af, 0x8948, 0x9969, 0xa90a, 0xb92b,
+	0x5af5, 0x4ad4, 0x7ab7, 0x6a96, 0x1a71, 0x0a50, 0x3a33, 0x2a12,
+	0xdbfd, 0xcbdc, 0xfbbf, 0xeb9e, 0x9b79, 0x8b58, 0xbb3b, 0xab1a,
+	0x6ca6, 0x7c87, 0x4ce4, 0x5cc5, 0x2c22, 0x3c03, 0x0c60, 0x1c41,
+	0xedae, 0xfd8f, 0xcdec, 0xddcd, 0xad2a, 0xbd0b, 0x8d68, 0x9d49,
+	0x7e97, 0x6eb6, 0x5ed5, 0x4ef4, 0x3e13, 0x2e32, 0x1e51, 0x0e70,
+	0xff9f, 0xefbe, 0xdfdd, 0xcffc, 0xbf1b, 0xaf3a, 0x9f59, 0x8f78,
+	0x9188, 0x81a9, 0xb1ca, 0xa1eb, 0xd10c, 0xc12d, 0xf14e, 0xe16f,
+	0x1080, 0x00a1, 0x30c2, 0x20e3, 0x5004, 0x4025, 0x7046, 0x6067,
+	0x83b9, 0x9398, 0xa3fb, 0xb3da, 0xc33d, 0xd31c, 0xe37f, 0xf35e,
+	0x02b1, 0x1290, 0x22f3, 0x32d2, 0x4235, 0x5214, 0x6277, 0x7256,
+	0xb5ea, 0xa5cb, 0x95a8, 0x8589, 0xf56e, 0xe54f, 0xd52c, 0xc50d,
+	0x34e2, 0x24c3, 0x14a0, 0x0481, 0x7466, 0x6447, 0x5424, 0x4405,
+	0xa7db, 0xb7fa, 0x8799, 0x97b8, 0xe75f, 0xf77e, 0xc71d, 0xd73c,
+	0x26d3, 0x36f2, 0x0691, 0x16b0, 0x6657, 0x7676, 0x4615, 0x5634,
+	0xd94c, 0xc96d, 0xf90e, 0xe92f, 0x99c8, 0x89e9, 0xb98a, 0xa9ab,
+	0x5844, 0x4865, 0x7806, 0x6827, 0x18c0, 0x08e1, 0x3882, 0x28a3,
+	0xcb7d, 0xdb5c, 0xeb3f, 0xfb1e, 0x8bf9, 0x9bd8, 0xabbb, 0xbb9a,
+	0x4a75, 0x5a54, 0x6a37, 0x7a16, 0x0af1, 0x1ad0, 0x2ab3, 0x3a92,
+	0xfd2e, 0xed0f, 0xdd6c, 0xcd4d, 0xbdaa, 0xad8b, 0x9de8, 0x8dc9,
+	0x7c26, 0x6c07, 0x5c64, 0x4c45, 0x3ca2, 0x2c83, 0x1ce0, 0x0cc1,
+	0xef1f, 0xff3e, 0xcf5d, 0xdf7c, 0xaf9b, 0xbfba, 0x8fd9, 0x9ff8,
+	0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0x0ed1, 0x1ef0,
+]
+
+def util_crc16(buf):
+    crc = 0xFFFF
+
+    for byte in buf:
+        crc = ((crc << 8) & 0xFFFF) ^ crc16_tab[((crc >> 8) ^ byte) & 0xFF]
+
+    return crc
+
+class UartPacket:
+    def __init__(self, id=None, packet_type=None, command=None, addr=None, reserved=None, data=None, buffer=None):
+        if buffer:
+            self.from_buffer(buffer)
+        else:
+            self.id = id
+            self.packet_type = packet_type
+            self.command = command
+            self.addr = addr
+            self.reserved = reserved
+            self.data = data
+            self.data_len = len(data)
+            self.crc = self.calculate_crc()
+
+    def calculate_crc(self) -> int:
+        crc_value = 0xFFFF
+        packet = bytearray()
+        packet.append(OW_START_BYTE)
+        packet.extend(self.id.to_bytes(2, 'big'))
+        packet.append(self.packet_type)
+        packet.append(self.command)
+        packet.append(self.addr)
+        packet.append(self.reserved)
+        packet.extend(self.data_len.to_bytes(2, 'big'))
+        if self.data_len > 0:
+            packet.extend(self.data)
+        crc_value = util_crc16(packet[1:])
+        return crc_value
+
+    def to_bytes(self) -> bytes:
+        buffer = bytearray()
+        buffer.append(OW_START_BYTE)
+        buffer.extend(self.id.to_bytes(2, 'big'))
+        buffer.append(self.packet_type)
+        buffer.append(self.command)
+        buffer.append(self.addr)
+        buffer.append(self.reserved)
+        buffer.extend(self.data_len.to_bytes(2, 'big'))
+        if self.data_len > 0:
+            buffer.extend(self.data)
+        crc_value = util_crc16(buffer[1:])
+        buffer.extend(crc_value.to_bytes(2, 'big'))
+        buffer.append(OW_END_BYTE)
+        return bytes(buffer)
+
+    def from_buffer(self, buffer: bytes):
+        if buffer[0] != OW_START_BYTE or buffer[-1] != OW_END_BYTE:
+            raise ValueError("Invalid buffer format")
+
+        self.id = int.from_bytes(buffer[1:3], 'big')
+        self.packet_type = buffer[3]
+        self.command = buffer[4]
+        self.addr = buffer[5]
+        self.reserved = buffer[6]
+        self.data_len = int.from_bytes(buffer[7:9], 'big')
+        self.data = bytearray(buffer[9:9+self.data_len])
+        crc_value = util_crc16(buffer[1:9+self.data_len])
+        self.crc = int.from_bytes(buffer[9+self.data_len:11+self.data_len], 'big')
+        if self.crc != crc_value:
+            raise ValueError("CRC mismatch")
+
+    def print_packet(self):
+        log.info("UartPacket:")
+        log.info(f"  Packet ID: {self.id}")
+        log.info(f"  Packet Type: {hex(self.packet_type)}")
+        log.info(f"  Command: {hex(self.command)}")
+        log.info(f"  Address: {hex(self.addr)}")
+        log.info(f"  Reserved: {hex(self.reserved)}")
+        log.info(f"  Data Length: {self.data_len}")
+        if self.data_len > 0:
+            log.info(f"  Data: {self.data.hex()}")
+        else:
+            log.info("  Data: None")
+        log.info(f"  CRC: {hex(self.crc)}")
 
 class LIFUUart:
     def __init__(self, vid, pid, baudrate=921600, timeout=10, align=0, demo_mode=False):

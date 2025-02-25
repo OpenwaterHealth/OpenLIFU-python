@@ -102,7 +102,7 @@ TRIGGER_MODE_CONTINUOUS = 1
 TRIGGER_MODE_SINGLE = 2
 DEFAULT_PULSE_WIDTH_US = 20000
 
-from openlifu.io.config import (
+from openlifu.io.LIFUUart import (
     OW_CMD_DFU,
     OW_CMD_ECHO,
     OW_CMD_GET_TEMP,
@@ -125,9 +125,8 @@ from openlifu.io.config import (
     OW_TX7332_VWBLOCK,
     OW_TX7332_VWREG,
     OW_TX7332_WBLOCK,
-    OW_TX7332_WREG,
+    LIFUUart,
 )
-from openlifu.io.LIFUUart import LIFUUart
 
 if TYPE_CHECKING:
     pass
