@@ -76,10 +76,11 @@ class LIFUUart:
                 self.read_thread = threading.Thread(target=self._read_data)
                 self.read_thread.daemon = True
                 self.read_thread.start()
-        except Exception as e:
-            log.error(f"Failed to connect to {self.port}: {e}")
+        except serial.SerialException as se:
+            log.error(f"Failed to connect to {self.port}: {se}")
             self.running = False
             self.port = None
+        except Exception as e:
             raise e
 
     def disconnect(self):
