@@ -11,9 +11,14 @@ import xarray as xa
 from openlifu.bf import Pulse, Sequence
 from openlifu.bf.focal_patterns import FocalPattern
 from openlifu.geo import Point
-from openlifu.plan.solution_analysis import SolutionAnalysis, SolutionAnalysisOptions, get_beamwidth, get_mask
+from openlifu.plan.solution_analysis import (
+    SolutionAnalysis,
+    SolutionAnalysisOptions,
+    get_beamwidth,
+    get_mask,
+)
 from openlifu.util.json import PYFUSEncoder
-from openlifu.util.units import getunitconversion, rescale_data_arr, rescale_coords
+from openlifu.util.units import getunitconversion, rescale_coords, rescale_data_arr
 from openlifu.xdc import Transducer
 
 
@@ -151,7 +156,7 @@ class Solution:
             #     units=options.distance_units,
             #     aspect_ratio=options.mainlobe_aspect_ratio
             # )
-            
+
             mainlobe_mask = get_mask(
                 pnp_MPa,
                 focus = focus,
@@ -292,7 +297,7 @@ class Solution:
         """
         if self.sequence.pulse_train_interval == 0:
             treatment_dutycycle = 1
-        else:    
+        else:
             treatment_dutycycle = (self.sequence.pulse_count * self.sequence.pulse_interval) / self.sequence.pulse_train_interval
 
         return treatment_dutycycle

@@ -66,7 +66,7 @@ def find_centroid(da: xa.DataArray, cutoff):
     ''' Finds the -3dDB centroid position of a DataArray'''
     da = da.where(da > cutoff, 0)
     dims = list(da.dims)
-    coords = np.meshgrid(*[da.coords[coord] for coord in dims], indexing='ij') 
+    coords = np.meshgrid(*[da.coords[coord] for coord in dims], indexing='ij')
     centroid = np.array([np.sum(da*coords[dims.index(dim)])/da.sum() for dim in da.dims])
     return centroid
 
@@ -84,7 +84,7 @@ def get_focus_matrix(focus, origin=[0,0,0]):
 
 def get_gridded_transformed_coords(da: xa.DataArray, matrix: np.ndarray, as_dataset=True):
     shape = tuple(da.sizes[d] for d in da.dims)
-    coords = np.meshgrid(*[da.coords[coord] for coord in da.dims], indexing='ij') 
+    coords = np.meshgrid(*[da.coords[coord] for coord in da.dims], indexing='ij')
     coords = np.concatenate([coord.reshape(-1,1) for coord in coords], axis=1)
     coords = np.concatenate([coords, np.ones((coords.shape[0],1))], axis=1)
     coords = np.dot(np.linalg.inv(matrix), coords.T).T
@@ -140,7 +140,7 @@ def interp_transformed_axis(da: xa.DataArray, focus, dim, origin=DEFAULT_ORIGIN,
     interp_da = da.interp(**interpolants)
     for d in da.dims:
         interp_da.assign_coords(dim=(f'offset_d{dim}', interpolants[d].to_numpy()))
-    return interp_da    
+    return interp_da
 
 def get_beam_bounds(da: xa.DataArray, focus, dim, cutoff, origin=DEFAULT_ORIGIN, min_offset=None, max_offset=None):
     interp_da = interp_transformed_axis(da, focus=focus, dim=dim, origin=origin, min_offset=min_offset, max_offset=max_offset)
