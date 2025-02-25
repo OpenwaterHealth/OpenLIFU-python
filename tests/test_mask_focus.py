@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 from xarray import DataArray, Dataset
 
-from openlifu.bf import mask_focus
 from openlifu.geo import Point
+from openlifu.plan.solution_analysis import mask_focus
 
 
 @pytest.fixture()
