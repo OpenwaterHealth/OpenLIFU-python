@@ -144,11 +144,12 @@ class TxDevice:
         self._tx_instances = []
         self.tx_registers = None
         self.uart = uart
-        self.uart.check_usb_status()
-        if self.uart.is_connected():
-            logger.info("TX Device connected.")
-        else:
-            logger.info("TX Device NOT Connected.")
+        if self.uart and not self.uart.asyncMode:
+            self.uart.check_usb_status()
+            if self.uart.is_connected():
+                logger.info("TX Device connected.")
+            else:
+                logger.info("TX Device NOT Connected.")
 
     def __parse_ti_cfg_file(self, file_path: str) -> list[tuple[str, int, int]]:
         """Parses the given configuration file and extracts all register groups, addresses, and values."""
@@ -189,16 +190,18 @@ class TxDevice:
                 raise ValueError("TX Device not connected")
 
             logger.info("Send Ping to Device.")
-            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_PING)
-            self.uart.clear_buffer()
-            logger.info("Received Ping from Device.")
-            # r.print_packet()
 
-            if r.packet_type == OW_ERROR:
-                logger.error("Error sending ping")
-                return False
-            else:
-                return True
+            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_PING)
+            if not self.uart.asyncMode:
+                self.uart.clear_buffer()
+                logger.info("Received Ping from Device.")
+                # r.print_packet()
+
+                if r.packet_type == OW_ERROR:
+                    logger.error("Error sending ping")
+                    return False
+                else:
+                    return True
 
         except Exception as e:
             logger.error("Error Sending Ping: %s", e)

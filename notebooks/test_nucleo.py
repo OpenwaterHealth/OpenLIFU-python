@@ -9,7 +9,7 @@ Test script to automate:
 3. Test Device functionality.
 """
 print("Starting LIFU Test Script...")
-interface = LIFUInterface(test_mode=False)
+interface = LIFUInterface(test_mode=False, run_async=False)
 tx_connected, hv_connected = interface.is_device_connected()
 if tx_connected and hv_connected:
     print("LIFU Device Fully connected.")
