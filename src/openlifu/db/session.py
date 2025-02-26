@@ -103,7 +103,7 @@ class Session:
     only. None of the other transforms in the list are considered to be approved.
     """
 
-    transducer_tracking_results: Optional[List[TransducerTrackingResult]] = field(default_factory=list)
+    transducer_tracking_results: List[TransducerTrackingResult] = field(default_factory=list)
     """List of any transducer tracking results"""
 
     def __post_init__(self):
@@ -150,10 +150,15 @@ class Session:
         if 'array_transform' in d:
             d['array_transform'] = ArrayTransform(np.array(d['array_transform']['matrix']), d['array_transform']['units'])
         if 'transducer_tracking_results' in d:
-            d['transducer_tracking_results'] = [TransducerTrackingResult(t['photoscan_id'],
-                                                                         ArrayTransform(np.array(t['transducer_to_photoscan_transform']['matrix']),t['transducer_to_photoscan_transform']['units']),
-                                                                         ArrayTransform(np.array(t['photoscan_to_volume_transform']['matrix']), t['photoscan_to_volume_transform']['units']),
-                                                                         t['transducer_tracking_approved']) for t in d['transducer_tracking_results']]
+            d['transducer_tracking_results'] = [
+                TransducerTrackingResult(
+                    t['photoscan_id'],
+                    ArrayTransform(np.array(t['transducer_to_photoscan_transform']['matrix']),t['transducer_to_photoscan_transform']['units']),
+                    ArrayTransform(np.array(t['photoscan_to_volume_transform']['matrix']), t['photoscan_to_volume_transform']['units']),
+                    t['transducer_tracking_approved']
+                    )
+                    for t in d['transducer_tracking_results']
+                    ]
         if isinstance(d['targets'], list):
             if len(d['targets'])>0 and isinstance(d['targets'][0], dict):
                 d['targets'] = [Point.from_dict(p) for p in d['targets']]
