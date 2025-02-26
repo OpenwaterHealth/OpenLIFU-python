@@ -41,8 +41,9 @@ print("Get Temperature")
 temperature = interface.txdevice.get_temperature()
 print(f"Temperature: {temperature} °C")
 
-print("Run Self OneWire Test")
-interface.txdevice.run_test()
+print("Get Ambient")
+temperature = interface.txdevice.get_ambient_temperature()
+print(f"Ambient Temperature: {temperature} °C")
 
 print("Reset Device:")
 # Ask the user for confirmation
