@@ -187,7 +187,8 @@ class TxDevice:
         """
         try:
             if not self.uart.is_connected():
-                raise ValueError("TX Device not connected")
+                logger.error("TX Device not connected")
+                return False
 
             logger.info("Send Ping to Device.")
 
@@ -220,7 +221,8 @@ class TxDevice:
         """
         try:
             if not self.uart.is_connected():
-                raise ValueError("TX Device not connected")
+                logger.error("TX Device not connected")
+                return 'v0.0.0'
 
             r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_VERSION)
             self.uart.clear_buffer()
@@ -233,8 +235,8 @@ class TxDevice:
             return ver
 
         except Exception as e:
-            logger.error("Error Toggling LED: %s", e)
-            raise
+            logger.error("Error retrieving version: %s", e)
+            return 'v0.0.0'
 
     def echo(self, echo_data = None) -> tuple[bytes, int]:
         """
@@ -253,7 +255,8 @@ class TxDevice:
         """
         try:
             if not self.uart.is_connected():
-                raise ValueError("TX Device not connected")
+                logger.error("TX Device not connected")
+                return [], 0
 
             # Check if echo_data is a byte array
             if echo_data is not None and not isinstance(echo_data, (bytes, bytearray)):
@@ -269,7 +272,7 @@ class TxDevice:
 
         except Exception as e:
             logger.error("Error Echo: %s", e)
-            raise
+            return [], 0
 
     def toggle_led(self) -> None:
         """
@@ -281,7 +284,8 @@ class TxDevice:
         """
         try:
             if not self.uart.is_connected():
-                raise ValueError("TX Device not connected")
+                logger.error("TX Device not connected")
+                return
 
             r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_TOGGLE_LED)
             self.uart.clear_buffer()
@@ -289,7 +293,6 @@ class TxDevice:
 
         except Exception as e:
             logger.error("Error Toggling LED: %s", e)
-            raise
 
     def get_hardware_id(self) -> str:
         """
@@ -304,7 +307,8 @@ class TxDevice:
         """
         try:
             if not self.uart.is_connected():
-                raise ValueError("TX Device not connected")
+                logger.error("TX Device not connected")
+                return None
 
             r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_HWID)
             self.uart.clear_buffer()
@@ -316,7 +320,7 @@ class TxDevice:
 
         except Exception as e:
             logger.error("Error Echo: %s", e)
-            raise
+            return None
 
     def get_temperature(self) -> float:
         """
@@ -331,7 +335,8 @@ class TxDevice:
         """
         try:
             if not self.uart.is_connected():
-                raise ValueError("TX Device not connected")
+                logger.error("TX Device not connected")
+                return 0
 
             # Send the GET_TEMP command
             r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_GET_TEMP)
@@ -350,7 +355,7 @@ class TxDevice:
 
         except Exception as e:
             logger.error("Error retrieving temperature: %s", e)
-            raise
+            return 0
 
     def get_ambient_temperature(self) -> float:
         """
@@ -365,7 +370,8 @@ class TxDevice:
         """
         try:
             if not self.uart.is_connected():
-                raise ValueError("TX Device not connected")
+                logger.error("TX Device not connected")
+                return 0
 
             # Send the GET_TEMP command
             r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_GET_AMBIENT)
@@ -380,11 +386,12 @@ class TxDevice:
                 truncated_temperature = round(temperature, 2)
                 return truncated_temperature
             else:
-                raise ValueError("Invalid data length received for ambient temperature")
+                logger.error("Invalid data length received for ambient temperature")
+                return 0
 
         except Exception as e:
             logger.error("Error retrieving ambient temperature: %s", e)
-            raise
+            return 0
 
     def set_trigger(self,
                     pulse_interval: float,
@@ -446,7 +453,8 @@ class TxDevice:
         try:
             # Ensure data is not None and is a valid dictionary
             if data is None:
-                raise ValueError("Data cannot be None.")
+                logger.error("Data cannot be None.")
+                return None
 
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
