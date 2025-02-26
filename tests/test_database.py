@@ -677,10 +677,10 @@ def test_get_transducer_absolute_filepaths(example_database:Database, tmp_path:P
         assert reconstructed_path.exists()
         assert reconstructed_path.name == registration_surface_path.name
     else:
-        assert "registration_surface_abspath" not in absolute_file_paths
+        assert absolute_file_paths["registration_surface_abspath"] is None
     if include_body_model:
         reconstructed_path = Path(absolute_file_paths["transducer_body_abspath"])
         assert reconstructed_path.exists()
         assert reconstructed_path.name == transducer_body_path.name
     else:
-        assert "transducer_body_abspath" not in absolute_file_paths
+        assert absolute_file_paths["transducer_body_abspath"] is None
