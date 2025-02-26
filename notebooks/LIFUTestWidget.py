@@ -2,33 +2,29 @@ import asyncio
 import logging
 import sys
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QBrush, QColor, QPainter
-from PyQt5.QtWidgets import QApplication, QLabel, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot
+from PyQt6.QtGui import QBrush, QColor, QPainter
+from PyQt6.QtWidgets import QApplication, QLabel, QPushButton, QVBoxLayout, QWidget
 from qasync import QEventLoop
 
 from openlifu.io.LIFUInterface import LIFUInterface
 
-# Configure logging to print debug messages
-logging.basicConfig(
-    level=logging.DEBUG,  # Set log level to DEBUG
-    format="%(asctime)s - %(levelname)s - %(message)s",  # Format output with timestamp
-)
-
-# Example debug log
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
-logger.debug("Debug logging is enabled!")  # This will now be printed
-running_task = None
 
 class LIFUTestWidget(QWidget):
+    signal_connected = pyqtSignal(str)
+    signal_disconnected = pyqtSignal()
+    signal_data_received = pyqtSignal(str)
+
     def __init__(self):
         super().__init__()
         self.interface = LIFUInterface(run_async=True)
-        self.treatment_running = False  # State to track treatment status
-        self.connected_status = False  # Connection status for the UI indicator
+        self.treatment_running = False
+        self.connected_status = False
 
         self.init_ui()
-        logger.debug("Connect Signals to UI")
         self.connect_signals()
 
     def init_ui(self):
@@ -38,7 +34,7 @@ class LIFUTestWidget(QWidget):
 
         # Status label
         self.status_label = QLabel("Status: Disconnected", self)
-        self.status_label.setAlignment(Qt.AlignCenter)
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Ping button
         self.send_ping_button = QPushButton("Send Ping", self)
@@ -59,14 +55,23 @@ class LIFUTestWidget(QWidget):
 
     def connect_signals(self):
         """Connect the signals from the LIFU interface to the UI."""
-        self.interface.txdevice.uart.signal_connect.connect(self.on_connected)
-        self.interface.txdevice.uart.signal_disconnect.connect(self.on_disconnected)
-        self.interface.txdevice.uart.signal_data_received.connect(self.on_data_received)
+        if hasattr(self.interface.txdevice, 'uart'):
+            self.interface.txdevice.uart.signal_connect.connect(self.signal_connected.emit)
+            self.interface.txdevice.uart.signal_disconnect.connect(self.signal_disconnected.emit)
+            self.interface.txdevice.uart.signal_data_received.connect(self.signal_data_received.emit)
+        else:
+            logger.warning("UART interface not found in LIFUInterface.")
+
+        # Connect signals to slots
+        self.signal_connected.connect(self.on_connected)
+        self.signal_disconnected.connect(self.on_disconnected)
+        self.signal_data_received.connect(self.on_data_received)
 
     async def start_monitoring(self):
         """Start monitoring for USB device connections."""
         await self.interface.start_monitoring()
 
+    @pyqtSlot(str)
     def on_connected(self, port):
         """Handle the connected signal."""
         self.status_label.setText(f"Status: Connected on {port}")
@@ -75,6 +80,7 @@ class LIFUTestWidget(QWidget):
         self.connected_status = True
         self.update()
 
+    @pyqtSlot()
     def on_disconnected(self):
         """Handle the disconnected signal."""
         self.status_label.setText("Status: Disconnected")
@@ -95,6 +101,7 @@ class LIFUTestWidget(QWidget):
             "Run Treatment (On)" if self.treatment_running else "Stop Treatment (Off)"
         )
 
+    @pyqtSlot(str)
     def on_data_received(self, data):
         """Handle the data received signal."""
         self.status_label.setText(f"Received: {data}")
@@ -102,7 +109,7 @@ class LIFUTestWidget(QWidget):
     def paintEvent(self, event):
         """Draw the connection status indicator."""
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         # Draw connection status dot
         dot_radius = 20
@@ -112,37 +119,26 @@ class LIFUTestWidget(QWidget):
         rect = self.rect()
         painter.drawEllipse(
             rect.center().x() - dot_radius // 2,
-            rect.top() + 20,  # Adjust y-position as needed
+            rect.top() + 20,
             dot_radius,
             dot_radius
         )
 
     def closeEvent(self, event):
         """Handle application closure."""
-        self.cleanup_tasks()
+        self.cleanup_task = asyncio.create_task(self.cleanup_tasks())  # Store task reference
         super().closeEvent(event)
 
-    def cleanup_tasks(self):
+    async def cleanup_tasks(self):
         """Stop monitoring and cancel running tasks."""
         self.interface.stop_monitoring()
 
-        # Cancel all asyncio tasks
-        loop = asyncio.get_event_loop()
-        tasks = asyncio.all_tasks(loop)
+        # Cancel all asyncio tasks safely
+        loop = asyncio.get_running_loop()
+        tasks = [t for t in asyncio.all_tasks(loop) if t is not asyncio.current_task()]
         for task in tasks:
             task.cancel()
-
-        # Optionally, gather and await tasks asynchronously
-        running_task = asyncio.create_task(self._await_tasks(tasks))
-        if running_task:
-            logger.debug("task started")
-
-    async def _await_tasks(self, tasks):
-        """Await the cancellation of tasks asynchronously."""
-        try:
-            await asyncio.gather(*tasks, return_exceptions=True)
-        except asyncio.CancelledError:
-            logger.debug("Cancelled")
+        await asyncio.gather(*tasks, return_exceptions=True)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

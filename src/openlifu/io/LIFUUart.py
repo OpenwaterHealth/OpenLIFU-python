@@ -366,7 +366,7 @@ class LIFUUart:
                         data = self.serial.read(self.serial.in_waiting)
                         self.read_buffer.extend(data)
                         log.info("Data received: %s", data)
-                        self.signal_data_received.emit(data)
+                        self.signal_data_received.emit("Success")
                 except serial.SerialException as e:
                     log.error(f"Serial read error: {e}")
                     self.running = False
