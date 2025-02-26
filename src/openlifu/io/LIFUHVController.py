@@ -18,11 +18,13 @@ class HVController:
             uart (LIFUUart): The LIFUUart instance for communication.
         """
         self.uart = uart
-        self.uart.check_usb_status()
-        if self.uart.is_connected():
-            logger.info("HV Console connected.")
-        else:
-            logger.info("HV Console NOT Connected.")
+
+        if self.uart and not self.uart.asyncMode:
+            self.uart.check_usb_status()
+            if self.uart.is_connected():
+                logger.info("HV Console connected.")
+            else:
+                logger.info("HV Console NOT Connected.")
 
         # Initialize the high voltage state (should get this from device)
         self.output_voltage = 0.0

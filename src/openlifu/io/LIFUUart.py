@@ -43,7 +43,7 @@ OW_CMD_ECHO = 0x03
 OW_CMD_TOGGLE_LED = 0x04
 OW_CMD_HWID = 0x05
 OW_CMD_GET_TEMP = 0x06
-OW_CMD_TEST = 0x07
+OW_CMD_GET_AMBIENT = 0x07
 OW_CMD_DFU = 0x0D
 OW_CMD_NOP = 0x0E
 OW_CMD_RESET = 0x0F
@@ -76,6 +76,10 @@ OW_POWER_HV_OFF = 0x34
 OW_POWER_12V_ON = 0x35
 OW_POWER_12V_OFF = 0x36
 
+logging.basicConfig(
+    level=logging.DEBUG,  # Set log level to DEBUG
+    format="%(asctime)s - %(levelname)s - %(message)s",  # Format output with timestamp
+)
 
 # Set up logging
 log = logging.getLogger("UART")
@@ -201,7 +205,7 @@ class UartPacket:
         log.info(f"  CRC: {hex(self.crc)}")
 
 class LIFUUart:
-    def __init__(self, vid, pid, baudrate=921600, timeout=10, align=0, demo_mode=False):
+    def __init__(self, vid, pid, baudrate=921600, timeout=10, align=0, demo_mode=False, async_mode=False):
         """
         Initialize the UART instance.
 
@@ -221,7 +225,7 @@ class LIFUUart:
         self.packet_count = 0
         self.serial = None
         self.running = False
-        self.asyncMode = False
+        self.asyncMode = async_mode
         self.monitoring_task = None
         self.demo_mode = demo_mode
         self.read_thread = None
@@ -233,6 +237,10 @@ class LIFUUart:
         self.signal_connect = LIFUSignal()
         self.signal_disconnect = LIFUSignal()
         self.signal_data_received = LIFUSignal()
+
+        if async_mode:
+            self.loop = asyncio.get_event_loop()
+
 
     def connect(self):
         """Open the serial port."""
@@ -251,8 +259,10 @@ class LIFUUart:
 
             if self.asyncMode:
                 # Start the reading thread
+                log.info("starting read thread.")
                 self.read_thread = threading.Thread(target=self._read_data)
                 self.read_thread.daemon = True
+                self.running = True
                 self.read_thread.start()
         except serial.SerialException as se:
             log.error(f"Failed to connect to {self.port}: {se}")
@@ -293,15 +303,19 @@ class LIFUUart:
         """Check if the USB device is connected or disconnected."""
         device = self.list_vcp_with_vid_pid()
         if device and not self.port:
+            log.debug("Try to connect to device")
             self.port = device
             self.connect()
+
         elif not device and self.port:
+            log.debug("disconnect from device")
+            self.running = False
             self.disconnect()
 
     async def monitor_usb_status(self, interval=1):
         """Periodically check for USB device connection."""
         if self.demo_mode:
-            log.info("Self-monitoring in demo mode.")
+            log.debug("Self-monitoring in demo mode.")
             self.connect()
             return
         while True:
@@ -311,9 +325,9 @@ class LIFUUart:
     def start_monitoring(self, interval=1):
         """Start the periodic USB device connection check."""
         if self.demo_mode:
-            log.info("Self-monitoring in demo mode.")
+            log.debug("Self-monitoring in demo mode.")
             return
-        if not self.monitoring_task:
+        if not self.monitoring_task and self.asyncMode:
             self.monitoring_task = asyncio.create_task(self.monitor_usb_status(interval))
 
     def stop_monitoring(self):
@@ -336,6 +350,7 @@ class LIFUUart:
 
     def _read_data(self, timeout=20):
         """Read data from the serial port in a separate thread."""
+        log.debug("Read Data")
         if self.demo_mode:
             while self.running:
                 if self.demo_responses:
@@ -344,16 +359,17 @@ class LIFUUart:
                     self.signal_data_received.emit(data)
                 threading.Event().wait(1000)  # Simulate delay
             return None
-        if self.running:
-            try:
-                if self.serial.in_waiting > 0:
-                    data = self.serial.read(self.serial.in_waiting)
-                    self.read_buffer.extend(data)
-                    log.info("Data received: %s", data)
-                    self.signal_data_received.emit(data)
-            except serial.SerialException as e:
-                log.error(f"Serial read error: {e}")
-                self.running = False
+        if self.asyncMode:
+            while self.running:
+                try:
+                    if self.serial.in_waiting > 0:
+                        data = self.serial.read(self.serial.in_waiting)
+                        self.read_buffer.extend(data)
+                        log.info("Data received: %s", data)
+                        self.signal_data_received.emit("Success")
+                except serial.SerialException as e:
+                    log.error(f"Serial read error: {e}")
+                    self.running = False
         else:
             return self.read_packet(timeout=timeout)
 
@@ -505,6 +521,13 @@ class LIFUUart:
     def clear_buffer(self):
         """Clear the read buffer."""
         self.read_buffer = []
+
+    def run_coroutine(self, coro):
+        """Runs a coroutine using the internal event loop."""
+        if not self.loop.is_running():
+            return self.loop.run_until_complete(coro)
+        else:
+            return asyncio.create_task(coro)
 
     def add_demo_response(self, response: bytes):
         """Add a predefined response for demo mode."""

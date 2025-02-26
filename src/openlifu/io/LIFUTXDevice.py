@@ -105,11 +105,11 @@ DEFAULT_PULSE_WIDTH_US = 20000
 from openlifu.io.LIFUUart import (
     OW_CMD_DFU,
     OW_CMD_ECHO,
+    OW_CMD_GET_AMBIENT,
     OW_CMD_GET_TEMP,
     OW_CMD_HWID,
     OW_CMD_PING,
     OW_CMD_RESET,
-    OW_CMD_TEST,
     OW_CMD_TOGGLE_LED,
     OW_CMD_VERSION,
     OW_CONTROLLER,
@@ -144,11 +144,12 @@ class TxDevice:
         self._tx_instances = []
         self.tx_registers = None
         self.uart = uart
-        self.uart.check_usb_status()
-        if self.uart.is_connected():
-            logger.info("TX Device connected.")
-        else:
-            logger.info("TX Device NOT Connected.")
+        if self.uart and not self.uart.asyncMode:
+            self.uart.check_usb_status()
+            if self.uart.is_connected():
+                logger.info("TX Device connected.")
+            else:
+                logger.info("TX Device NOT Connected.")
 
     def __parse_ti_cfg_file(self, file_path: str) -> list[tuple[str, int, int]]:
         """Parses the given configuration file and extracts all register groups, addresses, and values."""
@@ -189,16 +190,18 @@ class TxDevice:
                 raise ValueError("TX Device not connected")
 
             logger.info("Send Ping to Device.")
-            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_PING)
-            self.uart.clear_buffer()
-            logger.info("Received Ping from Device.")
-            # r.print_packet()
 
-            if r.packet_type == OW_ERROR:
-                logger.error("Error sending ping")
-                return False
-            else:
-                return True
+            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_PING)
+            if not self.uart.asyncMode:
+                self.uart.clear_buffer()
+                logger.info("Received Ping from Device.")
+                # r.print_packet()
+
+                if r.packet_type == OW_ERROR:
+                    logger.error("Error sending ping")
+                    return False
+                else:
+                    return True
 
         except Exception as e:
             logger.error("Error Sending Ping: %s", e)
@@ -339,12 +342,48 @@ class TxDevice:
             if r.data_len == 4:
                 # Unpack the float value from the received data (assuming little-endian)
                 temperature = struct.unpack('<f', r.data)[0]
-                return temperature
+                # Truncate the temperature to 2 decimal places
+                truncated_temperature = round(temperature, 2)
+                return truncated_temperature
             else:
                 raise ValueError("Invalid data length received for temperature")
 
         except Exception as e:
             logger.error("Error retrieving temperature: %s", e)
+            raise
+
+    def get_ambient_temperature(self) -> float:
+        """
+        Retrieve the ambient temperature reading from the TX device.
+
+        Returns:
+            float: Temperature value in Celsius.
+
+        Raises:
+            ValueError: If the UART is not connected.
+            Exception: If an error occurs or the received data length is invalid.
+        """
+        try:
+            if not self.uart.is_connected():
+                raise ValueError("TX Device not connected")
+
+            # Send the GET_TEMP command
+            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_GET_AMBIENT)
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            # Check if the data length matches a float (4 bytes)
+            if r.data_len == 4:
+                # Unpack the float value from the received data (assuming little-endian)
+                temperature = struct.unpack('<f', r.data)[0]
+                # Truncate the temperature to 2 decimal places
+                truncated_temperature = round(temperature, 2)
+                return truncated_temperature
+            else:
+                raise ValueError("Invalid data length received for ambient temperature")
+
+        except Exception as e:
+            logger.error("Error retrieving ambient temperature: %s", e)
             raise
 
     def set_trigger(self,
@@ -626,34 +665,6 @@ class TxDevice:
 
         except Exception as e:
             logger.error("Error Trying to reset TX Device: %s", e)
-            raise
-
-    def run_test(self) -> bool:
-        """
-        Perform a self test on the TX device.
-
-        Returns:
-            bool: True if the test was successful, False otherwise.
-
-        Raises:
-            ValueError: If the UART is not connected.
-            Exception: If an error occurs while test was performed on the device.
-        """
-        try:
-            if not self.uart.is_connected():
-                raise ValueError("TX Device not connected")
-
-            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_TEST)
-            self.uart.clear_buffer()
-            # r.print_packet()
-            if r.packet_type == OW_ERROR:
-                logger.error("Error running test on device")
-                return False
-            else:
-                return True
-
-        except Exception as e:
-            logger.error("Error running test on TX Devices: %s", e)
             raise
 
     def enum_tx7332_devices(self) -> int:

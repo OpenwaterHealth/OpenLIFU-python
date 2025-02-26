@@ -9,7 +9,7 @@ Test script to automate:
 3. Test Device functionality.
 """
 print("Starting LIFU Test Script...")
-interface = LIFUInterface(test_mode=False)
+interface = LIFUInterface(test_mode=False, run_async=False)
 tx_connected, hv_connected = interface.is_device_connected()
 if tx_connected and hv_connected:
     print("LIFU Device Fully connected.")
@@ -41,8 +41,9 @@ print("Get Temperature")
 temperature = interface.txdevice.get_temperature()
 print(f"Temperature: {temperature} °C")
 
-print("Run Self OneWire Test")
-interface.txdevice.run_test()
+print("Get Ambient")
+temperature = interface.txdevice.get_ambient_temperature()
+print(f"Ambient Temperature: {temperature} °C")
 
 print("Reset Device:")
 # Ask the user for confirmation
