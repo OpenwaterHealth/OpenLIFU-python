@@ -1195,59 +1195,76 @@ class TxDevice:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def set_sequence(self,
-                     sequence: Sequence,
-                     mode: TriggerModeOpts = "sequence",
-                     profile_index: int = 0,
-                     profile_increment: bool = True):
+    def set_solution(self,
+                        pulse: Dict,
+                        delays: np.ndarray,
+                        apodizations: np.ndarray,
+                        sequence: Dict,
+                        profile_index: int = 0,
+                        profile_increment: bool = True):
         """
-        Set the sequence parameters on the TX device.
+        Set the solution parameters on the TX device.
 
         Args:
-            sequence (Sequence): The sequence object to set.
+            pulse (Dict): The pulse parameters to set.
+            delays (list): The delays to set.
+            apodizations (list): The apodizations to set.
+            sequence (Dict): The sequence parameters to set.
+            profile_index (int): The pulse profile to use.
+            profile_increment (bool): Whether to increment the pulse profile.
         """
-        trigger_params = {
-            "pulse_interval": sequence.pulse_interval,
-            "pulse_count": sequence.pulse_count,
-            "pulse_train_interval": sequence.pulse_train_interval,
-            "pulse_train_count": sequence.pulse_train_count,
-            "mode": mode,
-            "profile_index": profile_index,
-            "profile_increment": profile_increment
-        }
-        return self.set_trigger(**trigger_params)
-
-    def set_solution(self, solution: Solution):
-        n = solution.num_foci()
+        delays = np.array(delays)
+        if delays.ndim == 1:
+            delays = delays.reshape(1, -1)
+        apodizations = np.array(apodizations)
+        if apodizations.ndim == 1:
+            apodizations = apodizations.reshape(1, -1)
+        n = delays.shape[0]
+        if n != apodizations.shape[0]:
+            raise ValueError("Delays and apodizations must have the same number of rows")
         if n > 1:
             raise NotImplementedError("Multiple foci not supported yet")
-
         for profile in range(n):
-            profile_index = Tx7332PulseProfile(
-                profile=profile+1,
-                frequency= solution.pulse.frequency,
-                cycles= solution.pulse.duration * solution.pulse.frequency,
-                duty_cycle=DEFAULT_PATTERN_DUTY_CYCLE * max(solution.apodizations[profile,:])
+            duty_cycle=DEFAULT_PATTERN_DUTY_CYCLE * max(apodizations[profile,:])                
+            pulse_profile = Tx7332PulseProfile(
+                profile=profile_index,
+                frequency=pulse["frequency"],
+                cycles=pulse["duration"] * pulse["frequency"],
+                duty_cycle=duty_cycle
             )
-            self.tx_registers.add_pulse_profile(profile_index)
+            self.tx_registers.add_pulse_profile(pulse_profile)
             delay_profile = Tx7332DelayProfile(
                 profile=profile+1,
-                delays=solution.delays[profile,:],
-                apodizations=solution.apodizations[profile, :]
+                delays=delays[profile,:],
+                apodizations=apodizations[profile, :]
             )
             self.tx_registers.add_delay_profile(delay_profile)
 
-        sequence = solution.sequence
-        self.set_sequence(sequence)
-        # Write the sequence parameters to the master TX Module
 
-        # Write All TX7332 Registers from the tx_registers to the 7332
+        # Set the pulse profile
+        pulse_profile = Tx7332PulseProfile(
+            profile=profile_index,
+            frequency=pulse["frequency"],
+            cycles=pulse["cycles"],
+            duty_cycle=pulse["duty_cycle"]
+        )
+        self.tx_registers.add_pulse_profile(pulse_profile)
+        self.set_trigger(
+            pulse_interval=sequence["pulse_interval"],
+            pulse_count=sequence["pulse_count"],
+            pulse_train_interval=sequence["pulse_train_interval"],
+            pulse_train_count=sequence["pulse_train_count"],
+            mode=sequence["mode"],
+            profile_index=profile_index,
+            profile_increment=profile_increment
+        )
         self.apply_all_registers()
 
         # Buffer the pulse and delay profiles in the microcontroller(s), so that they can be used to switch profiles on trigger detection
         delay_control_registers = {profile:self.tx_registers.get_delay_control_registers(profile) for profile in self.tx_registers.configured_delay_profiles()}
         pulse_control_registers = {profile:self.tx_registers.get_pulse_control_registers(profile) for profile in self.tx_registers.configured_pulse_profiles()}
-        # TODO: Add these to the firmware
+
+
 
     def apply_all_registers(self):
         """

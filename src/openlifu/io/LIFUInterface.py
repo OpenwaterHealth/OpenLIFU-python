@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Union, Dict
 
 from openlifu.io.LIFUHVController import HVController
 from openlifu.io.LIFUSignal import LIFUSignal
@@ -102,7 +103,7 @@ class LIFUInterface:
         hv_connected = self.hvcontroller.is_connected()
         return tx_connected, hv_connected
 
-    def set_solution(self, solution: Solution) -> bool:
+    def set_solution(self, solution: Union[Solution, Dict]) -> bool:
         """
         Load a solution to the device.
 
@@ -112,19 +113,30 @@ class LIFUInterface:
         try:
             if self._test_mode:
                 return True
+            
+            if isinstance(solution, Solution):
+                solution = solution.to_dict()
 
-            logger.info("Loading solution: %s", solution.name)
+            if "name" in solution:
+                solution_name = solution["name"]
+                solution_name = f'Solution "{solution_name}"'
+            else:
+                solution_name = "Solution"
+                
+            voltage = solution['pulse']['amplitude']
+
+            logger.info("Loading %s...", solution_name)
             # Convert solution data and send to the device
             self.txdevice.set_solution(solution)
-            self.hvcontroller.set_voltage(solution.pulse.amplitude)
-            logger.info("Solution '%s' loaded successfully.", solution.name)
+            self.hvcontroller.set_voltage(voltage)
+            logger.info("%s loaded successfully.", solution_name)
             return True
 
         except ValueError as v:
             logger.error("ValueError: %s", v)
             raise  # Re-raise the exception for the caller to handle
         except Exception as e:
-            logger.error("Error loading solution '%s': %s", solution.name, e)
+            logger.error("Error loading %s: %s", solution_name, e)
             raise
 
     def start_sonication(self) -> bool:
