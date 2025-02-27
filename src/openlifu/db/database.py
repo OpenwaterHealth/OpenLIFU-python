@@ -6,7 +6,7 @@ import os
 import shutil
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional, Union
 
 import h5py
 
@@ -20,7 +20,7 @@ from .subject import Subject
 from .user import User
 
 OnConflictOpts = Enum('OnConflictOpts', ['ERROR', 'OVERWRITE', 'SKIP'])
-
+PathLike = Union[str, os.PathLike]
 
 class Database:
     def __init__(self, path: Optional[str] = None):
@@ -268,7 +268,13 @@ class Database:
 
         self.logger.info(f"Added subject with ID {subject_id} to the database.")
 
-    def write_transducer(self, transducer, registration_surface_model_filepath: Optional[str] = None, transducer_body_model_filepath: Optional[str] = None, on_conflict: OnConflictOpts=OnConflictOpts.ERROR) -> None:
+    def write_transducer(
+            self,
+            transducer,
+            registration_surface_model_filepath: Optional[PathLike] = None,
+            transducer_body_model_filepath: Optional[PathLike] = None,
+            on_conflict: OnConflictOpts=OnConflictOpts.ERROR,
+    ) -> None:
         """ Writes a transducer object to database and copies the affiliated transducer data files to the database if provided. When a transducer that is already present in the database is being re-written,
         the associated model data files do not need to be provided if they have previously been added to the database.
         Args:
@@ -706,31 +712,45 @@ class Database:
             return photoscan, (model_data, texture_data)
         return photoscan
 
-    def get_transducer_absolute_filepaths(self, transducer_id:str) -> dict:
-        """ Returns the absolute filepaths to the model data files i.e. transducer body and registration surface model files affiliated with the transducer, with ID `transducer_id`.
-        Unlike `load_transducer`, which specifies the relative paths to the model datafiles along with other transducer attributes, this function only returns the absolute filepaths to
-        the datafiles based on the Database directory.
+    def get_transducer_absolute_filepaths(self, transducer_id:str) -> Dict[str,Optional[str]]:
+        """ Returns the absolute filepaths to the model data files i.e. transducer body and registration surface
+        model files affiliated with the transducer, with ID `transducer_id`. Unlike `load_transducer`, which
+        specifies the relative paths to the model datafiles along with other transducer attributes, this function
+        only returns the absolute filepaths to  the datafiles based on the Database directory.
+
         Args:
             transducer_id: Transducer ID
+
         Returns:
-            dict: A dictionary containing the absolute filepaths to the affiliated transducer data files with the following keys:
+            dict: A dictionary containing the absolute filepaths to the affiliated transducer data files with the following possible keys:
                 - "id" (str): transducer ID
                 - "name" (str): transducer name
-                - "registration_surface_abspath" (str): absolute path to the transducer registration surface (open-surface mesh used for transducer tracking registration)
-                - "transducer_body_abspath" (str): absolute path to the transducer body model (closed-surface mesh for visualizing the transducer)
+                - "registration_surface_abspath" (str or None): absolute path to the transducer registration surface (open-surface mesh
+                  used for transducer tracking registration). This key is only included if there *is* an affiliated registration surface.
+                  None if no registration surface is available.
+                - "transducer_body_abspath" (str or None): absolute path to the transducer body model (closed-surface mesh for visualizing the
+                  transducer). This key is only included if there *is* an affiliated body model.
+                  None if no transducer body is available.
         """
         transducer_metadata_filepath = self.get_transducer_filename(transducer_id)
         with open(transducer_metadata_filepath) as f:
             transducer = json.load(f)
-            if "registration_surface_filename" not in transducer and "transducer_body_filename" not in transducer:
-                raise ValueError(f"Data filepaths not found affiliated with transducer {transducer_id}")
-            transducer_filepaths_dict = {"id": transducer["id"],\
-                    "name": transducer["name"],
-                    }
-            if "registration_surface_filename" in transducer:
-                transducer_filepaths_dict["registration_surface_abspath"] = Path(transducer_metadata_filepath).parent/transducer["registration_surface_filename"]
-            if "transducer_body_filename" in transducer:
-                transducer_filepaths_dict["transducer_body_abspath"] = Path(transducer_metadata_filepath).parent/transducer["transducer_body_filename"]
+            transducer_filepaths_dict = {
+                "id": transducer["id"],
+                "name": transducer["name"],
+            }
+            if "registration_surface_filename" in transducer and transducer["registration_surface_filename"] is not None:
+                transducer_filepaths_dict["registration_surface_abspath"] = str(
+                    Path(transducer_metadata_filepath).parent/transducer["registration_surface_filename"]
+                )
+            else:
+                transducer_filepaths_dict["registration_surface_abspath"] = None
+            if "transducer_body_filename" in transducer and transducer["transducer_body_filename"] is not None:
+                transducer_filepaths_dict["transducer_body_abspath"] = str(
+                    Path(transducer_metadata_filepath).parent/transducer["transducer_body_filename"]
+                )
+            else:
+                transducer_filepaths_dict["transducer_body_abspath"] = None
             return transducer_filepaths_dict
 
     def load_standoff(self, transducer_id, standoff_id="standoff"):
