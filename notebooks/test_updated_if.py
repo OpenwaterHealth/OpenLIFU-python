@@ -41,6 +41,10 @@ print("Get Temperature")
 temperature = interface.txdevice.get_temperature()
 print(f"Temperature: {temperature} °C")
 
+print("Get Ambient")
+a_temp = interface.txdevice.get_ambient_temperature()
+print(f"Ambient Temperature: {a_temp} °C")
+
 print("Enumerate TX7332 chips")
 num_tx_devices = interface.txdevice.enum_tx7332_devices()
 if num_tx_devices > 0:
