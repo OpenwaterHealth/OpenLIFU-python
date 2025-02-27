@@ -1,12 +1,24 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
-from openlifu.io.LIFUUart import OW_CMD_TOGGLE_LED, OW_POWER
-
-if TYPE_CHECKING:
-    from openlifu.io.LIFUUart import LIFUUart
+from openlifu.io.LIFUConfig import (
+    OW_CMD_ECHO,
+    OW_CMD_HWID,
+    OW_CMD_PING,
+    OW_CMD_RESET,
+    OW_CMD_TOGGLE_LED,
+    OW_CMD_VERSION,
+    OW_ERROR,
+    OW_POWER,
+    OW_POWER_12V_OFF,
+    OW_POWER_12V_ON,
+    OW_POWER_GET_HV,
+    OW_POWER_HV_OFF,
+    OW_POWER_HV_ON,
+    OW_POWER_SET_HV,
+)
+from openlifu.io.LIFUUart import LIFUUart
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +60,9 @@ class HVController:
             Exception: If an error occurs during the ping process.
         """
         try:
+            if self.uart.demo_mode:
+                return True
+
             if not self.uart.is_connected():
                 raise ValueError("Console Device not connected")
 
@@ -83,6 +98,9 @@ class HVController:
             Exception: If an error occurs while fetching the version.
         """
         try:
+            if self.uart.demo_mode:
+                return 'v0.1.1'
+
             if not self.uart.is_connected():
                 raise ValueError("Console Device not connected")
 
@@ -122,6 +140,10 @@ class HVController:
             Exception: If an error occurs during the echo process.
         """
         try:
+            if self.uart.demo_mode:
+                data = b"Hello LIFU!"
+                return data, len(data)
+
             if not self.uart.is_connected():
                 raise ValueError("Console Device  not connected")
 
@@ -156,6 +178,9 @@ class HVController:
             Exception: If an error occurs while toggling the LED.
         """
         try:
+            if self.uart.demo_mode:
+                return True
+
             if not self.uart.is_connected():
                 raise ValueError("Console Device not connected")
 
@@ -185,6 +210,9 @@ class HVController:
             Exception: If an error occurs while retrieving the hardware ID.
         """
         try:
+            if self.uart.demo_mode:
+                return bytes.fromhex("deadbeefcafebabe5566778811223344")
+
             if not self.uart.is_connected():
                 raise ValueError("Console Device not connected")
 
@@ -206,6 +234,9 @@ class HVController:
 
     def turn_12v_off(self):
         try:
+            if self.uart.demo_mode:
+                return True
+
             if not self.uart.is_connected():
                 raise ValueError("Console not connected")
 
@@ -235,6 +266,9 @@ class HVController:
 
     def turn_12v_on(self):
         try:
+            if self.uart.demo_mode:
+                return True
+
             if not self.uart.is_connected():
                 raise ValueError("Console not connected")
 
@@ -267,6 +301,9 @@ class HVController:
         Turn on the high voltage.
         """
         try:
+            if self.uart.demo_mode:
+                return True
+
             if not self.uart.is_connected():
                 raise ValueError("Console not connected")
 
@@ -299,6 +336,9 @@ class HVController:
         Turn off the high voltage.
         """
         try:
+            if self.uart.demo_mode:
+                return True
+
             if not self.uart.is_connected():
                 raise ValueError("Console not connected")
 
@@ -336,6 +376,9 @@ class HVController:
         Raises:
             ValueError: If the controller is not connected or voltage exceeds supply voltage.
         """
+        if self.uart.demo_mode:
+            return True
+
         if not self.uart.is_connected():
             raise ValueError("High voltage controller not connected")
 
@@ -394,6 +437,9 @@ class HVController:
             raise ValueError("High voltage controller not connected")
 
         try:
+            if self.uart.demo_mode:
+                return 18.4
+
             logger.info("Getting current output voltage.")
 
             r = self.uart.send_packet(
@@ -436,6 +482,9 @@ class HVController:
             Exception: If an error occurs while resetting the device.
         """
         try:
+            if self.uart.demo_mode:
+                return True
+
             if not self.uart.is_connected():
                 raise ValueError("Console Device  not connected")
 

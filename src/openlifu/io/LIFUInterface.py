@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from openlifu.io.LIFUHVController import HVController
@@ -27,7 +28,6 @@ class LIFUInterface:
     txdevice: TxDevice = None
 
     def __init__(self, vid: int = 0x0483, tx_pid: int = 0x57AF, con_pid: int = 0x57A0, baudrate: int = 921600, timeout: int = 10, test_mode: bool = False, run_async: bool = False) -> None:
-
         """
         Initialize the LIFUInterface with given parameters and store them in the class.
 
@@ -48,44 +48,55 @@ class LIFUInterface:
         self.timeout = timeout
         self._test_mode = test_mode
         self._async_mode = run_async
+        self._tx_uart = None
+        self._hv_uart = None
 
+        # Create a TXDevice instance as part of the interface
         logger.debug("Initializing TX Module of LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", vid, tx_pid, baudrate, timeout)
+        self._tx_uart = LIFUUart(vid=vid, pid=tx_pid, baudrate=baudrate, timeout=timeout, desc="TX", demo_mode=test_mode, async_mode=run_async)
+        self.txdevice = TxDevice(uart=self._tx_uart)
 
-        self.txdevice = TxDevice(uart = LIFUUart(vid, tx_pid, baudrate, timeout, demo_mode=test_mode, async_mode = run_async))
+        # Create a LIFUHVController instance as part of the interface
+        logger.debug("Initializing Console of LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", vid, con_pid, baudrate, timeout)
+        self._hv_uart = LIFUUart(vid=vid, pid=con_pid, baudrate=baudrate, timeout=timeout, desc="HV", demo_mode=test_mode, async_mode=run_async)
+        self.hvcontroller = HVController(uart=self._hv_uart)
 
         # Connect signals to internal handlers
         if self._async_mode:
-            self.txdevice.uart.signal_connect.connect(self.signal_connect.emit)
-            self.txdevice.uart.signal_disconnect.connect(self.signal_disconnect.emit)
-            self.txdevice.uart.signal_data_received.connect(self.signal_data_received.emit)
-#
-        logger.debug("Initializing Console of LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", vid, con_pid, baudrate, timeout)
-        # Create a LIFUHVController instance as part of the interface
-        self.hvcontroller = HVController(uart = LIFUUart(vid, con_pid, baudrate, timeout, demo_mode=test_mode, async_mode = run_async))
+            self._tx_uart.signal_connect.connect(self.signal_connect.emit)
+            self._tx_uart.signal_disconnect.connect(self.signal_disconnect.emit)
+            self._tx_uart.signal_data_received.connect(self.signal_data_received.emit)
+            self._hv_uart.signal_connect.connect(self.signal_connect.emit)
+            self._hv_uart.signal_disconnect.connect(self.signal_disconnect.emit)
+            self._hv_uart.signal_data_received.connect(self.signal_data_received.emit)
 
     async def start_monitoring(self, interval: int = 1) -> None:
         """Start monitoring for USB device connections."""
         try:
-            await self.txdevice.uart.monitor_usb_status(interval)
+            await asyncio.gather(
+                self._tx_uart.monitor_usb_status(interval),
+                self._hv_uart.monitor_usb_status(interval)
+            )
+
         except Exception as e:
             logger.error("Error starting monitoring: %s", e)
             raise e
 
-
     def stop_monitoring(self) -> None:
         """Stop monitoring for USB device connections."""
         try:
-            self.txdevice.uart.stop_monitoring()
+            self._tx_uart.stop_monitoring()
+            self._hv_uart.stop_monitoring()
         except Exception as e:
             logger.error("Error stopping monitoring: %s", e)
             raise e
 
-    def is_device_connected(self) -> bool:
+    def is_device_connected(self) -> tuple:
         """
         Check if the device is currently connected.
 
         Returns:
-            bool: True if the device is connected, False otherwise.
+            tuple: (tx_connected, hv_connected)
         """
         tx_connected = self.txdevice.is_connected()
         hv_connected = self.hvcontroller.is_connected()
@@ -99,38 +110,41 @@ class LIFUInterface:
             solution (Solution): The solution to load.
         """
         try:
+            if self._test_mode:
+                return True
+
             logger.info("Loading solution: %s", solution.name)
             # Convert solution data and send to the device
             self.txdevice.set_solution(solution)
             self.hvcontroller.set_voltage(solution.pulse.amplitude)
             logger.info("Solution '%s' loaded successfully.", solution.name)
             return True
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
         except Exception as e:
             logger.error("Error loading solution '%s': %s", solution.name, e)
             raise
 
-    def get_solution(self) -> Solution:
-        """
-        Retrieve the currently loaded solution from the device.
-
-        Returns:
-            Solution: The currently loaded solution.
-
-        Raises:
-            ValueError: If no solution is loaded.
-        """
-        raise NotImplementedError("Parsing of register values on hardware is not implemented yet.")
-
-
-    def start_sonication(self):
+    def start_sonication(self) -> bool:
         """
         Start sonication.
 
         Sets the device to a running state and sends a start command if necessary.
         """
         try:
+            if self._test_mode:
+                return True
+
             logger.info("Start Sonication")
             # Send the solution data to the device
+            return self.txdevice.start_trigger()
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
             logger.error("Error Starting sonication: %s", e)
             raise e
@@ -142,18 +156,30 @@ class LIFUInterface:
         Returns:
             int: The device status.
         """
+        if self._test_mode:
+            return STATUS_READY
+
         status = STATUS_ERROR
         return status
 
-    def stop_sonication(self):
+    def stop_sonication(self) -> bool:
         """
         Stop sonication.
 
         Stops the current sonication process.
         """
         try:
+            if self._test_mode:
+                return True
+
             logger.info("Stop Sonication")
             # Send the solution data to the device
+            return self.txdevice.stop_trigger()
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
             logger.error("Error Stopping sonication: %s", e)
             raise e

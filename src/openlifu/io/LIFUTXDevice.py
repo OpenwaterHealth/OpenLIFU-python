@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Dict, List, Literal
 import numpy as np
 
 from openlifu.bf.sequence import Sequence
+from openlifu.io.LIFUUart import LIFUUart
 from openlifu.plan.solution import Solution
 from openlifu.util.units import getunitconversion
 
@@ -102,7 +103,7 @@ TRIGGER_MODE_CONTINUOUS = 1
 TRIGGER_MODE_SINGLE = 2
 DEFAULT_PULSE_WIDTH_US = 20000
 
-from openlifu.io.LIFUUart import (
+from openlifu.io.LIFUConfig import (
     OW_CMD_DFU,
     OW_CMD_ECHO,
     OW_CMD_GET_AMBIENT,
@@ -125,7 +126,6 @@ from openlifu.io.LIFUUart import (
     OW_TX7332_VWBLOCK,
     OW_TX7332_VWREG,
     OW_TX7332_WBLOCK,
-    LIFUUart,
 )
 
 if TYPE_CHECKING:
@@ -187,6 +187,9 @@ class TxDevice:
             Exception: If an error occurs during the ping process.
         """
         try:
+            if self.uart.demo_mode:
+                return True
+
             if not self.uart.is_connected():
                 logger.error("TX Device not connected")
                 return False
@@ -224,6 +227,9 @@ class TxDevice:
             Exception: If an error occurs while fetching the version.
         """
         try:
+            if self.uart.demo_mode:
+                return 'v0.1.1'
+
             if not self.uart.is_connected():
                 logger.error("TX Device not connected")
                 return 'v0.0.0'
@@ -261,9 +267,13 @@ class TxDevice:
             Exception: If an error occurs during the echo process.
         """
         try:
+            if self.uart.demo_mode:
+                data = b"Hello LIFU!"
+                return data, len(data)
+
             if not self.uart.is_connected():
                 logger.error("TX Device not connected")
-                return [], 0
+                return None, None
 
             # Check if echo_data is a byte array
             if echo_data is not None and not isinstance(echo_data, (bytes, bytearray)):
@@ -298,6 +308,9 @@ class TxDevice:
             Exception: If an error occurs while toggling the LED.
         """
         try:
+            if self.uart.demo_mode:
+                return True
+
             if not self.uart.is_connected():
                 logger.error("TX Device not connected")
                 return False
@@ -327,6 +340,9 @@ class TxDevice:
             Exception: If an error occurs while retrieving the hardware ID.
         """
         try:
+            if self.uart.demo_mode:
+                return bytes.fromhex("deadbeefcafebabe1122334455667788")
+
             if not self.uart.is_connected():
                 logger.error("TX Device not connected")
                 return None
@@ -358,6 +374,9 @@ class TxDevice:
             Exception: If an error occurs or the received data length is invalid.
         """
         try:
+            if self.uart.demo_mode:
+                return 32.4
+
             if not self.uart.is_connected():
                 logger.error("TX Device not connected")
                 return 0
@@ -396,6 +415,9 @@ class TxDevice:
             Exception: If an error occurs or the received data length is invalid.
         """
         try:
+            if self.uart.demo_mode:
+                return 28.9
+
             if not self.uart.is_connected():
                 logger.error("TX Device not connected")
                 return 0
@@ -482,6 +504,9 @@ class TxDevice:
             Exception: If an error occurs while setting the trigger.
         """
         try:
+            if self.uart.demo_mode:
+                return None
+
             # Ensure data is not None and is a valid dictionary
             if data is None:
                 logger.error("Data cannot be None.")
@@ -531,6 +556,9 @@ class TxDevice:
             Exception: If an error occurs while starting the trigger.
         """
         try:
+            if self.uart.demo_mode:
+                return None
+
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
 
@@ -595,6 +623,9 @@ class TxDevice:
             Exception: If an error occurs while starting the trigger.
         """
         try:
+            if self.uart.demo_mode:
+                return True
+
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
 
@@ -629,6 +660,9 @@ class TxDevice:
             Exception: If an error occurs during the operation.
         """
         try:
+            if self.uart.demo_mode:
+                return True
+
             # Check if the device is connected
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
@@ -673,6 +707,9 @@ class TxDevice:
             Exception: If an error occurs while resetting the device.
         """
         try:
+            if self.uart.demo_mode:
+                return True
+
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
 
@@ -704,6 +741,9 @@ class TxDevice:
             Exception: If an error occurs while resetting the device.
         """
         try:
+            if self.uart.demo_mode:
+                return True
+
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
 
@@ -735,6 +775,9 @@ class TxDevice:
             Exception: If an error occurs during enumeration.
         """
         try:
+            if self.uart.demo_mode:
+                return 2
+
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
 
@@ -768,6 +811,9 @@ class TxDevice:
             ValueError: If the UART is not connected.
         """
         try:
+            if self.uart.demo_mode:
+                return True
+
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
 
@@ -803,6 +849,9 @@ class TxDevice:
             Exception: If an unexpected error occurs during the operation.
         """
         try:
+            if self.uart.demo_mode:
+                return True
+
             # Check if the UART is connected
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
@@ -863,6 +912,9 @@ class TxDevice:
             Exception: If an unexpected error occurs during the operation.
         """
         try:
+            if self.uart.demo_mode:
+                return 45
+
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
 
@@ -931,6 +983,9 @@ class TxDevice:
             ValueError: If the device is not connected, the identifier is invalid, or parameters are out of range.
         """
         try:
+            if self.uart.demo_mode:
+                return True
+
             # Ensure the UART connection is active
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
@@ -1011,6 +1066,9 @@ class TxDevice:
             Exception: If an unexpected error occurs during the operation.
         """
         try:
+            if self.uart.demo_mode:
+                return True
+
             # Check if the UART is connected
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
@@ -1071,6 +1129,9 @@ class TxDevice:
             ValueError: If the device is not connected, the identifier is invalid, or parameters are out of range.
         """
         try:
+            if self.uart.demo_mode:
+                return True
+
             # Ensure the UART connection is active
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
