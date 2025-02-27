@@ -6,9 +6,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.2
+#       jupytext_version: 1.16.4
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: env
 #     language: python
 #     name: python3
 # ---
@@ -16,21 +16,19 @@
 # %%
 import numpy as np
 
-from openlifu.io.ustx import (
-    DelayProfile,
-    PulseProfile,
+from openlifu.io.LIFUTXDevice import (
+    Tx7332DelayProfile,
+    Tx7332PulseProfile,
     Tx7332Registers,
-    TxArray,
-    TxModule,
+    TxDeviceRegisters,
     print_regs,
-    swap_byte_order,
 )
 
 # %%
 tx = Tx7332Registers()
 delays = np.arange(32)*1e-6
 apodizations = np.ones(32)
-delay_profile_1 = DelayProfile(1, delays, apodizations)
+delay_profile_1 = Tx7332DelayProfile(1, delays, apodizations)
 tx.add_delay_profile(delay_profile_1)
 print('CONTROL')
 print_regs(tx.get_delay_control_registers())
@@ -40,7 +38,7 @@ print_regs(tx.get_delay_data_registers())
 # %%
 frequency = 150e3
 cycles = 3
-pulse_profile_1 = PulseProfile(1, frequency, cycles)
+pulse_profile_1 = Tx7332PulseProfile(1, frequency, cycles)
 print('CONTROL')
 tx.add_pulse_profile(pulse_profile_1)
 print_regs(tx.get_pulse_control_registers())
@@ -58,7 +56,7 @@ x = np.linspace(-0.5, 0.5, 32)*4e-2
 r = np.sqrt(x**2 + 5e-2**2)
 delays = (r.max()-r)/1500
 apodizations = [0,1]*16
-delay_profile_2 = DelayProfile(2, delays, apodizations)
+delay_profile_2 = Tx7332DelayProfile(2, delays, apodizations)
 tx.add_delay_profile(delay_profile_2)
 print(f'{len(tx._delay_profiles_list)} Delay Profiles')
 print(f'{len(tx._pulse_profiles_list)} Pulse Profiles')
@@ -82,10 +80,10 @@ for index in [1,2]:
 
 
 # %%
-txm = TxModule()
+txm = TxDeviceRegisters()
 delays = np.arange(64)*1e-6
 apodizations = np.ones(64)
-module_delay_profile_1 = DelayProfile(1, delays, apodizations)
+module_delay_profile_1 = Tx7332DelayProfile(1, delays, apodizations)
 txm.add_delay_profile(module_delay_profile_1)
 txm.add_pulse_profile(pulse_profile_1)
 for i, r in enumerate(txm.get_delay_control_registers()):
@@ -96,17 +94,17 @@ for i, r in enumerate(txm.get_delay_data_registers()):
     print_regs(r)
 
 # %%
-txm.get_delay_control_registers()
+module_delay_profile_1
 
 # %%
 x = np.linspace(-0.5, 0.5, 64)*4e-2
 r = np.sqrt(x**2 + 5e-2**2)
 delays = (r.max()-r)/1500
 apodizations = [0,1]*32
-module_delay_profile_2 = DelayProfile(2, delays, apodizations)
+module_delay_profile_2 = Tx7332DelayProfile(2, delays, apodizations)
 frequency = 100e3
 cycles = 200
-pulse_profile_2 = PulseProfile(2, frequency, cycles)
+pulse_profile_2 = Tx7332PulseProfile(2, frequency, cycles)
 txm.add_delay_profile(module_delay_profile_2, activate=True)
 txm.add_pulse_profile(pulse_profile_2, activate=True)
 for i, r in enumerate(txm.get_delay_control_registers()):
@@ -155,47 +153,4 @@ for k, rm in r.items():
         print(f"x{addr:03x}: {' | '.join([' '.join(rr[i]) for i in profiles])}")
 
 # %%
-txa = TxArray(i2c_addresses=[0x10, 0x11, 0x12, 0x13])
-delays = np.linspace(0, 64e-6, 64*4)
-apodizations = np.ones(64*4)
-array_delay_profile_1 = DelayProfile(1, delays, apodizations)
-txa.add_delay_profile(array_delay_profile_1)
-txa.add_pulse_profile(pulse_profile_1)
-txa.add_pulse_profile(pulse_profile_2)
-reg_dict = txa.get_delay_control_registers()
-print(reg_dict)
-print('')
-
-for addr, rm in reg_dict.items():
-    print(f'I2C: 0x{addr:02x}')
-    for i, r in enumerate(rm):
-        print(f'CONTROL {i}')
-        print_regs(r)
-    print('')
-
-
-# %%
-print_regs(txa.modules[16].transmitters[1].get_registers(pack=False))
-print('-')
-print_regs(txa.modules[16].transmitters[1].get_registers(pack=True))
-
-# %%
-print('ORIGINAL')
-print_regs(txa.modules[16].transmitters[1].get_delay_data_registers(pack=True))
-print('')
-print('BYTE_SWAP')
-print_regs(swap_byte_order(txa.modules[16].transmitters[1].get_delay_data_registers(pack=True)))
-
-
-# %%
-regs = txa.get_registers(pack=True)
-print(regs)
-for addr, rm in regs.items():
-    print(f'I2C: 0x{addr:02x}')
-    for i, r in enumerate(rm):
-        print(f'MODULE {i}')
-        print_regs(r)
-    print('')
-
-# %%
-{index:txa.get_pulse_control_registers(profile=index) for index in txa.configured_pulse_profiles()}
+txm.get_registers(pack=False, pack_single=False)

@@ -23,6 +23,7 @@ from openlifu.db import Database, User
 
 #from . import bf, db, io, plan, seg, sim, xdc, geo
 from openlifu.geo import Point
+from openlifu.io.LIFUInterface import LIFUInterface
 from openlifu.plan import Protocol, Solution
 from openlifu.seg import (
     AIR,
@@ -68,5 +69,6 @@ __all__ = [
     "SimSetup",
     "Database",
     "User",
+    "LIFUInterface",
     "__version__",
 ]

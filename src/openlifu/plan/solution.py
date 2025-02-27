@@ -343,6 +343,22 @@ class Solution:
 
         return ita
 
+    def to_dict(self, include_simulation_data: bool = False) -> dict:
+        """Serialize a Solution to a dictionary
+
+        Args:
+            include_simulation_data: if enabled then large simulation data arrays are included in the dict,
+                otherwise they are excluded.
+
+        Returns: A dictionary representing the complete Solution object.
+        """
+        solution_dict = asdict(self)
+
+        if not include_simulation_data:
+            solution_dict.pop('simulation_result')
+
+        return solution_dict
+
     def to_json(self, include_simulation_data: bool, compact: bool) -> str:
         """Serialize a Solution to a json string
 

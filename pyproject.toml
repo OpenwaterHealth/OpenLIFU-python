@@ -42,6 +42,8 @@ dependencies = [
   "nibabel",
   "sphinx",
   "ipykernel",
+  "pyserial",
+  "crcmod",
   "k-wave-python==0.3.4",
   "nvidia-ml-py",
   "OpenEXR",

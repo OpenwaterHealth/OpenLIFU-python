@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from openlifu.io.dict_conversion import DictMixin
+from openlifu.util.dict_conversion import DictMixin
 
 
 @dataclass
@@ -12,12 +12,12 @@ class Pulse(DictMixin):
     Class for representing a sinusoidal pulse
 
     :ivar frequency: Frequency of the pulse in Hz
-    :ivar amplitude: Amplitude of the pulse in Pa
+    :ivar amplitude: Amplitude of the pulse in volts
     :ivar duration: Duration of the pulse in s
     """
 
     frequency: float = 1.0 # Hz
-    amplitude: float = 1.0 # Pa
+    amplitude: float = 1.0 # V
     duration: float = 1.0 # s
 
     def calc_pulse(self, t: np.array):
