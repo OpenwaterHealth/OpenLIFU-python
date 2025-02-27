@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Union, Dict
+from typing import Dict, Union
 
 from openlifu.io.LIFUHVController import HVController
 from openlifu.io.LIFUSignal import LIFUSignal
@@ -103,7 +103,7 @@ class LIFUInterface:
         hv_connected = self.hvcontroller.is_connected()
         return tx_connected, hv_connected
 
-    def set_solution(self, 
+    def set_solution(self,
                      solution: Union[Solution, Dict],
                      profile_index:int=1,
                      profile_increment:bool=True) -> bool:
@@ -118,7 +118,7 @@ class LIFUInterface:
         try:
             #if self._test_mode:
             #    return True
-            
+
             if isinstance(solution, Solution):
                 solution = solution.to_dict()
 
@@ -127,7 +127,7 @@ class LIFUInterface:
                 solution_name = f'Solution "{solution_name}"'
             else:
                 solution_name = "Solution"
-                
+
             voltage = solution['pulse']['amplitude']
 
             logger.info("Loading %s...", solution_name)

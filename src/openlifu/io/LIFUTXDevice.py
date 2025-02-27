@@ -9,9 +9,7 @@ from typing import TYPE_CHECKING, Dict, List, Literal
 
 import numpy as np
 
-from openlifu.bf.sequence import Sequence
 from openlifu.io.LIFUUart import LIFUUart
-from openlifu.plan.solution import Solution
 from openlifu.util.units import getunitconversion
 
 NUM_TRANSMITTERS = 2
@@ -1229,7 +1227,7 @@ class TxDevice:
         if n > 1:
             raise NotImplementedError("Multiple foci not supported yet")
         for profile in range(n):
-            duty_cycle=DEFAULT_PATTERN_DUTY_CYCLE * max(apodizations[profile,:])                
+            duty_cycle=DEFAULT_PATTERN_DUTY_CYCLE * max(apodizations[profile,:])
             pulse_profile = Tx7332PulseProfile(
                 profile=profile+1,
                 frequency=pulse["frequency"],
@@ -1269,7 +1267,7 @@ class TxDevice:
         """
         if self.uart.demo_mode:
             return True
-        
+
         try:
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
