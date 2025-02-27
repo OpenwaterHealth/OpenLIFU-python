@@ -176,6 +176,7 @@ class TxDevice:
         """
         if self.uart:
             return self.uart.is_connected()
+        return False
 
     def ping(self) -> bool:
         """
@@ -203,10 +204,13 @@ class TxDevice:
                     return False
                 else:
                     return True
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
 
         except Exception as e:
-            logger.error("Error Sending Ping: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def get_version(self) -> str:
         """
@@ -233,10 +237,13 @@ class TxDevice:
                 ver = 'v0.0.0'
             logger.info(ver)
             return ver
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
 
         except Exception as e:
-            logger.error("Error retrieving version: %s", e)
-            return 'v0.0.0'
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def echo(self, echo_data = None) -> tuple[bytes, int]:
         """
@@ -270,11 +277,19 @@ class TxDevice:
             else:
                 return None, None
 
-        except Exception as e:
-            logger.error("Error Echo: %s", e)
-            return [], 0
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
 
-    def toggle_led(self) -> None:
+        except TypeError as t:
+            logger.error("TypeError: %s", t)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during echo process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+    def toggle_led(self) -> bool:
         """
         Toggle the LED on the TX device.
 
@@ -285,14 +300,19 @@ class TxDevice:
         try:
             if not self.uart.is_connected():
                 logger.error("TX Device not connected")
-                return
+            return False
 
             r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_TOGGLE_LED)
             self.uart.clear_buffer()
             # r.print_packet()
+            return True
+        except ValueError as v:
+            logger.error("Error invalid packet: %s", v)
+            return False
 
         except Exception as e:
             logger.error("Error Toggling LED: %s", e)
+            return False
 
     def get_hardware_id(self) -> str:
         """
@@ -317,10 +337,13 @@ class TxDevice:
                 return r.data.hex()
             else:
                 return None
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
 
         except Exception as e:
-            logger.error("Error Echo: %s", e)
-            return None
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def get_temperature(self) -> float:
         """
@@ -352,10 +375,13 @@ class TxDevice:
                 return truncated_temperature
             else:
                 raise ValueError("Invalid data length received for temperature")
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
 
         except Exception as e:
-            logger.error("Error retrieving temperature: %s", e)
-            return 0
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def get_ambient_temperature(self) -> float:
         """
@@ -388,9 +414,13 @@ class TxDevice:
             else:
                 logger.error("Invalid data length received for ambient temperature")
                 return 0
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
 
         except Exception as e:
-            logger.error("Error retrieving ambient temperature: %s", e)
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
             return 0
 
     def set_trigger(self,
@@ -401,7 +431,7 @@ class TxDevice:
                     pulse_train_count: int = 1,
                     mode: TriggerModeOpts = "sequence",
                     profile_index: int = 0,
-                    profile_increment: bool = True):
+                    profile_increment: bool = True) -> dict:
         """
         Set the trigger configuration on the TX device.
 
@@ -480,12 +510,15 @@ class TxDevice:
                     return None
             else:
                 return None
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
 
         except Exception as e:
-            logger.error("Error Enumerating TX Devices: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
-    def get_trigger_json(self) -> bool:
+    def get_trigger_json(self) -> dict:
         """
         Start the trigger on the TX device.
 
@@ -508,10 +541,13 @@ class TxDevice:
             except json.JSONDecodeError as e:
                 logger.error(f"Error decoding JSON: {e}")
             return data_object
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
 
         except Exception as e:
-            logger.error("Error Enumerating TX Devices: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def get_trigger(self):
         """
@@ -569,10 +605,13 @@ class TxDevice:
                 return False
             else:
                 return True
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
 
         except Exception as e:
-            logger.error("Error Enumerating TX Devices: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def stop_trigger(self) -> bool:
         """
@@ -613,11 +652,13 @@ class TxDevice:
                 return False
             else:
                 return True
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
 
         except Exception as e:
-            # Log any exceptions that occur and re-raise them
-            logger.error("Error stopping trigger: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def soft_reset(self) -> bool:
         """
@@ -642,10 +683,13 @@ class TxDevice:
                 return False
             else:
                 return True
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
 
         except Exception as e:
-            logger.error("Error Trying to reset TX Device: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def enter_dfu(self) -> bool:
         """
@@ -670,10 +714,13 @@ class TxDevice:
                 return False
             else:
                 return True
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
 
         except Exception as e:
-            logger.error("Error Trying to reset TX Device: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def enum_tx7332_devices(self) -> int:
         """
@@ -701,10 +748,13 @@ class TxDevice:
             self.tx_registers = TxDeviceRegisters(num_transmitters=n_transmitters)
             logger.info("TX Device Count: %d", n_transmitters)
             return n_transmitters
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
 
         except Exception as e:
-            logger.error("Error Enumerating TX Devices: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def demo_tx7332(self) -> bool:
         """
@@ -728,10 +778,13 @@ class TxDevice:
                 return False
 
             return True
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
 
         except Exception as e:
-            logger.error("Error Enumerating TX Devices: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def write_register(self, identifier:int, address: int, value: int) -> bool:
         """
@@ -786,12 +839,13 @@ class TxDevice:
             logger.info(f"Successfully wrote value 0x{value:08X} to register 0x{address:04X}")
             return True
 
-        except ValueError as ve:
-            logger.error(f"Validation error in write_register: {ve}")
-            raise
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
-            logger.error(f"Unexpected error in write_register: {e}")
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def read_register(self, address: int) -> int:
         """
@@ -853,12 +907,13 @@ class TxDevice:
                 logger.error(f"Unexpected data length: {r.data_len}")
                 return 0
 
-        except ValueError as ve:
-            logger.error(f"Validation error in read_register: {ve}")
-            raise
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
-            logger.error(f"Unexpected error in read_register: {e}")
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def write_block(self, identifier: int, start_address: int, reg_values: List[int]) -> bool:
         """
@@ -930,12 +985,14 @@ class TxDevice:
             logger.info("Block write successful")
             return True
 
-        except ValueError as ve:
-            logger.error(f"Validation error in write_block: {ve}")
-            raise
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
-            logger.error(f"Unexpected error in write_block: {e}")
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handleected error in write_block: {e}")
+            return False
 
     def write_register_verify(self, address: int, value: int) -> bool:
         """
@@ -990,12 +1047,13 @@ class TxDevice:
             logger.info(f"Successfully wrote value 0x{value:08X} to register 0x{address:04X}")
             return True
 
-        except ValueError as ve:
-            logger.error(f"Validation error in write_register: {ve}")
-            raise
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
-            logger.error(f"Unexpected error in write_register: {e}")
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def write_block_verify(self, start_address: int, reg_values: List[int]) -> bool:
         """
@@ -1067,12 +1125,13 @@ class TxDevice:
             logger.info("Block write successful")
             return True
 
-        except ValueError as ve:
-            logger.error(f"Validation error in write_block: {ve}")
-            raise
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
-            logger.error(f"Unexpected error in write_block: {e}")
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def set_sequence(self,
                      sequence: Sequence,
@@ -1145,9 +1204,10 @@ class TxDevice:
                         logger.error(f"Error applying TX CHIP ID: {i} registers")
                         return False
             return True
+
         except Exception as e:
-            logger.error("Error applying all registers: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def apply_ti_config_file(self, txchip_id:int, file_path:str) -> bool:
         """
@@ -1179,7 +1239,7 @@ class TxDevice:
 
         except Exception as e:
             logger.error("Error parsing and writing TI config to TX Device: %s", e)
-            raise
+            return False
 
     @property
     def print(self) -> None:
