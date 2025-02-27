@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from openlifu.io.LIFUUart import OW_CMD_TOGGLE_LED, OW_POWER
+
 if TYPE_CHECKING:
     from openlifu.io.LIFUUart import LIFUUart
 
@@ -61,9 +63,13 @@ class HVController:
             else:
                 return True
 
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
-            logger.error("Error Sending Ping: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def get_version(self) -> str:
         """
@@ -92,9 +98,13 @@ class HVController:
             logger.info(ver)
             return ver
 
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
-            logger.error("Error Toggling LED: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def echo(self, echo_data=None) -> tuple[bytes, int]:
         """
@@ -129,9 +139,13 @@ class HVController:
             else:
                 return None, None
 
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
-            logger.error("Error Echo: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def toggle_led(self) -> None:
         """
@@ -151,9 +165,13 @@ class HVController:
             self.uart.clear_buffer()
             # r.print_packet()
 
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
-            logger.error("Error Toggling LED: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def get_hardware_id(self) -> str:
         """
@@ -178,9 +196,13 @@ class HVController:
             else:
                 return None
 
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
-            logger.error("Error Echo: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def turn_12v_off(self):
         try:
@@ -203,9 +225,13 @@ class HVController:
                 logger.info("12V turned off successfully.")
                 return True
 
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
-            logger.error("Error turning off 12V: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def turn_12v_on(self):
         try:
@@ -228,9 +254,13 @@ class HVController:
                 logger.info("12V turned on successfully.")
                 return True
 
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
-            logger.error("Error turning on 12V: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def turn_hv_on(self):
         """
@@ -256,9 +286,13 @@ class HVController:
                 logger.info("HV Supply turned on successfully.")
                 return True
 
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
-            logger.error("Error turning on high voltage: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def turn_hv_off(self):
         """
@@ -284,9 +318,13 @@ class HVController:
                 logger.info("HV Supply turned off successfully.")
                 return True
 
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
-            logger.error("Error turning off high voltage: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def set_voltage(self, voltage: float):
         """
@@ -334,9 +372,13 @@ class HVController:
                 logger.info("Output voltage set to %.2fV successfully.", voltage)
                 return True
 
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
-            logger.error("Error setting output voltage: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def get_voltage(self) -> float:
         """
@@ -374,9 +416,13 @@ class HVController:
                 logger.error("Error getting output voltage from device")
                 return 0.0
 
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
-            logger.error("Error getting output voltage: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def soft_reset(self) -> bool:
         """
@@ -404,6 +450,10 @@ class HVController:
             else:
                 return True
 
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
         except Exception as e:
-            logger.error("Error Enumerating Console Devices: %s", e)
-            raise
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle

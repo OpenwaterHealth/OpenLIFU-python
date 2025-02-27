@@ -300,19 +300,20 @@ class TxDevice:
         try:
             if not self.uart.is_connected():
                 logger.error("TX Device not connected")
-            return False
+                return False
 
             r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_TOGGLE_LED)
             self.uart.clear_buffer()
             # r.print_packet()
             return True
+
         except ValueError as v:
-            logger.error("Error invalid packet: %s", v)
-            return False
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
 
         except Exception as e:
-            logger.error("Error Toggling LED: %s", e)
-            return False
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def get_hardware_id(self) -> str:
         """
@@ -1209,37 +1210,50 @@ class TxDevice:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def apply_ti_config_file(self, txchip_id:int, file_path:str) -> bool:
+    def write_ti_config_to_tx_device(self, file_path: str, txchip_id: int) -> bool:
         """
-        Reads a TI configuration file and writes the parsed registers to the device.
+        Parse a TI configuration file and write the register values to the TX device.
 
-        :param file_path: Path to the TI config file.
+        Args:
+            file_path (str): Path to the TI configuration file.
+            txchip_id (int): The ID of the TX chip to write the registers to.
+
+        Returns:
+            bool: True if all registers were written successfully, False otherwise.
         """
-
-
-        # Validate the identifier
-        if txchip_id < 0:
-            raise ValueError("TX Chip address NOT SET")
-        if txchip_id > 1:
-            raise ValueError("TX Chip address must be in the range 0-1")
-
         try:
+            # Check if UART is connected
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
 
+            # Parse the TI configuration file
             parsed_registers = self.__parse_ti_cfg_file(file_path)
+            if not parsed_registers:
+                logger.error("No registers parsed from the TI configuration file.")
+                return False
 
+            # Write each register to the TX device
             for group, addr, value in parsed_registers:
-                logger.info(f"{group:<20}0x{addr:02X}      0x{value:08X}")
+                logger.info(f"Writing to {group:<20} | Address: 0x{addr:02X} | Value: 0x{value:08X}")
                 if not self.write_register(identifier=txchip_id, address=addr, value=value):
-                    logger.error(f"Error writing TX CHIP ID: {txchip_id} register 0x{addr:02X} with value 0x{value:08X}")
+                    logger.error(
+                        f"Failed to write to TX CHIP ID: {txchip_id} | "
+                        f"Register: 0x{addr:02X} | Value: 0x{value:08X}"
+                    )
                     return False
 
+            logger.info("Successfully wrote all registers to the TX device.")
             return True
 
+        except FileNotFoundError as e:
+            logger.error(f"TI configuration file not found: {file_path}. Error: {e}")
+            raise
+        except ValueError as e:
+            logger.error(f"Invalid input or device state: {e}")
+            raise
         except Exception as e:
-            logger.error("Error parsing and writing TI config to TX Device: %s", e)
-            return False
+            logger.error(f"Unexpected error while writing TI config to TX Device: {e}")
+            raise
 
     @property
     def print(self) -> None:
