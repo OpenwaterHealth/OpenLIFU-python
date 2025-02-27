@@ -37,6 +37,7 @@ from openlifu.seg import (
 )
 from openlifu.sim import SimSetup
 from openlifu.xdc import Transducer
+from openlifu.io.LIFUInterface import LIFUInterface
 
 from ._version import version as __version__
 

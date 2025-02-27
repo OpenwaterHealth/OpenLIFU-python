@@ -103,16 +103,21 @@ class LIFUInterface:
         hv_connected = self.hvcontroller.is_connected()
         return tx_connected, hv_connected
 
-    def set_solution(self, solution: Union[Solution, Dict]) -> bool:
+    def set_solution(self, 
+                     solution: Union[Solution, Dict],
+                     profile_index:int=1,
+                     profile_increment:bool=True) -> bool:
         """
         Load a solution to the device.
 
         Args:
             solution (Solution): The solution to load.
+            profile_index (int): The profile index to load the solution to (defaults to 0)
+            profile_increment (bool): Increment the profile index
         """
         try:
-            if self._test_mode:
-                return True
+            #if self._test_mode:
+            #    return True
             
             if isinstance(solution, Solution):
                 solution = solution.to_dict()
@@ -127,7 +132,14 @@ class LIFUInterface:
 
             logger.info("Loading %s...", solution_name)
             # Convert solution data and send to the device
-            self.txdevice.set_solution(solution)
+            self.txdevice.set_solution(
+                    pulse = solution['pulse'],
+                    delays = solution['delays'],
+                    apodizations= solution['apodizations'],
+                    sequence= solution['sequence'],
+                    profile_index=profile_index,
+                    profile_increment=profile_increment
+                )
             self.hvcontroller.set_voltage(voltage)
             logger.info("%s loaded successfully.", solution_name)
             return True

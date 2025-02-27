@@ -763,7 +763,7 @@ class TxDevice:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def enum_tx7332_devices(self) -> int:
+    def enum_tx7332_devices(self, _num_transmitters=2) -> int:
         """
         Enumerate TX7332 devices connected to the TX device.
 
@@ -776,7 +776,9 @@ class TxDevice:
         """
         try:
             if self.uart.demo_mode:
-                return 2
+                n_transmitters = _num_transmitters
+                self.tx_registers = TxDeviceRegisters(num_transmitters=n_transmitters)
+                return n_transmitters
 
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
@@ -1200,7 +1202,8 @@ class TxDevice:
                         delays: np.ndarray,
                         apodizations: np.ndarray,
                         sequence: Dict,
-                        profile_index: int = 0,
+                        mode: TriggerModeOpts = "sequence",
+                        profile_index: int = 1,
                         profile_increment: bool = True):
         """
         Set the solution parameters on the TX device.
@@ -1210,6 +1213,7 @@ class TxDevice:
             delays (list): The delays to set.
             apodizations (list): The apodizations to set.
             sequence (Dict): The sequence parameters to set.
+            mode: The trigger mode to use.
             profile_index (int): The pulse profile to use.
             profile_increment (bool): Whether to increment the pulse profile.
         """
@@ -1227,9 +1231,9 @@ class TxDevice:
         for profile in range(n):
             duty_cycle=DEFAULT_PATTERN_DUTY_CYCLE * max(apodizations[profile,:])                
             pulse_profile = Tx7332PulseProfile(
-                profile=profile_index,
+                profile=profile+1,
                 frequency=pulse["frequency"],
-                cycles=pulse["duration"] * pulse["frequency"],
+                cycles=int(pulse["duration"] * pulse["frequency"]),
                 duty_cycle=duty_cycle
             )
             self.tx_registers.add_pulse_profile(pulse_profile)
@@ -1239,22 +1243,12 @@ class TxDevice:
                 apodizations=apodizations[profile, :]
             )
             self.tx_registers.add_delay_profile(delay_profile)
-
-
-        # Set the pulse profile
-        pulse_profile = Tx7332PulseProfile(
-            profile=profile_index,
-            frequency=pulse["frequency"],
-            cycles=pulse["cycles"],
-            duty_cycle=pulse["duty_cycle"]
-        )
-        self.tx_registers.add_pulse_profile(pulse_profile)
         self.set_trigger(
             pulse_interval=sequence["pulse_interval"],
             pulse_count=sequence["pulse_count"],
             pulse_train_interval=sequence["pulse_train_interval"],
             pulse_train_count=sequence["pulse_train_count"],
-            mode=sequence["mode"],
+            mode=mode,
             profile_index=profile_index,
             profile_increment=profile_increment
         )
@@ -1273,6 +1267,9 @@ class TxDevice:
         Raises:
             ValueError: If the device is not connected.
         """
+        if self.uart.demo_mode:
+            return True
+        
         try:
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
@@ -1675,7 +1672,7 @@ class Tx7332Registers:
         clk_div_n = pattern['clk_div_n']
         clk_div = 2**clk_div_n
         clk_n = self.bf_clk / clk_div
-        cycles = profile_index.cycles
+        cycles = int(profile_index.cycles)
         if cycles > (MAX_REPEAT+1):
             # Use elastic repeat
             pulse_duration_samples = cycles * self.bf_clk / profile_index.frequency
