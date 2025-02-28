@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 import xarray as xa
@@ -13,7 +14,7 @@ from openlifu.xdc import Transducer
 @dataclass
 class DelayMethod(ABC):
     @abstractmethod
-    def calc_delays(self, arr: Transducer, target: Point, params: xa.Dataset, transform:Optional[np.ndarray]=None):
+    def calc_delays(self, arr: Transducer, target: Point, params: xa.Dataset, transform:np.ndarray | None=None):
         pass
 
     def to_dict(self):

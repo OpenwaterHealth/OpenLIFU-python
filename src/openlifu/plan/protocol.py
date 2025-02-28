@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import math
@@ -6,7 +8,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import xarray as xa
@@ -70,7 +72,7 @@ class Protocol:
         self.logger = logging.getLogger(__name__)
 
     @staticmethod
-    def from_dict(d : Dict[str,Any]) -> "Protocol":
+    def from_dict(d : Dict[str,Any]) -> Protocol:
         d["pulse"] = bf.Pulse.from_dict(d.get("pulse", {}))
         d["sequence"] = bf.Sequence.from_dict(d.get("sequence", {}))
         d["focal_pattern"] = bf.FocalPattern.from_dict(d.get("focal_pattern", {}))
@@ -119,7 +121,7 @@ class Protocol:
         return delays, apod
 
     @staticmethod
-    def from_json(json_string : str) -> "Protocol":
+    def from_json(json_string : str) -> Protocol:
         """Load a Protocol from a json string"""
         return Protocol.from_dict(json.loads(json_string))
 
@@ -187,14 +189,14 @@ class Protocol:
         self,
         target: Point,
         transducer: Transducer,
-        volume: Optional[xa.DataArray] = None,
-        session: Optional[Session] = None,
+        volume: xa.DataArray | None = None,
+        session: Session | None = None,
         simulate: bool = True,
         scale: bool = True,
-        sim_options: Optional[sim.SimSetup] = None,
-        analysis_options: Optional[SolutionAnalysisOptions] = None,
+        sim_options: sim.SimSetup | None = None,
+        analysis_options: SolutionAnalysisOptions | None = None,
         on_pulse_mismatch: OnPulseMismatchAction = OnPulseMismatchAction.ERROR,
-        use_gpu: Optional[bool] = None,
+        use_gpu: bool | None = None,
     ) -> Tuple[Solution, xa.DataArray, SolutionAnalysis]:
         """Calculate the solution and aggregated k-wave simulation outputs.
 

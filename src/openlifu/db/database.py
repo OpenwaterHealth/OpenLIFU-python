@@ -1,3 +1,4 @@
+from __future__ import annotations
 
 import glob
 import json
@@ -6,7 +7,7 @@ import os
 import shutil
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Union
 
 import h5py
 
@@ -23,7 +24,7 @@ OnConflictOpts = Enum('OnConflictOpts', ['ERROR', 'OVERWRITE', 'SKIP'])
 PathLike = Union[str, os.PathLike]
 
 class Database:
-    def __init__(self, path: Optional[str] = None):
+    def __init__(self, path: str | None = None):
         if path is None:
             path = Database.get_default_path()
         self.path = os.path.normpath(path)
@@ -273,8 +274,8 @@ class Database:
     def write_transducer(
             self,
             transducer,
-            registration_surface_model_filepath: Optional[PathLike] = None,
-            transducer_body_model_filepath: Optional[PathLike] = None,
+            registration_surface_model_filepath: PathLike | None = None,
+            transducer_body_model_filepath: PathLike | None = None,
             on_conflict: OnConflictOpts=OnConflictOpts.ERROR,
     ) -> None:
         """ Writes a transducer object to database and copies the affiliated transducer data files to the database if provided. When a transducer that is already present in the database is being re-written,
@@ -395,7 +396,7 @@ class Database:
 
         self.logger.info(f"Added volume with ID {volume_id} for subject {subject_id} to the database.")
 
-    def write_photoscan(self, subject_id, session_id, photoscan: Photoscan, model_data_filepath: Optional[str] = None, texture_data_filepath: Optional[str] = None, mtl_data_filepath: Optional[str] = None, on_conflict=OnConflictOpts.ERROR):
+    def write_photoscan(self, subject_id, session_id, photoscan: Photoscan, model_data_filepath: str | None = None, texture_data_filepath: str | None = None, mtl_data_filepath: str | None = None, on_conflict=OnConflictOpts.ERROR):
         """ Writes a photoscan object to database and copies the associated model and texture data filepaths that are required for generating a photoscan into the database.
         .mtl files are not required for generating a photoscan but can be provided if present.
         When a photoscan that is already present in the database is being re-written,the associated model and texture files do not need to be provided """
@@ -714,7 +715,7 @@ class Database:
             return photoscan, (model_data, texture_data)
         return photoscan
 
-    def get_transducer_absolute_filepaths(self, transducer_id:str) -> Dict[str,Optional[str]]:
+    def get_transducer_absolute_filepaths(self, transducer_id:str) -> Dict[str,str | None]:
         """ Returns the absolute filepaths to the model data files i.e. transducer body and registration surface
         model files affiliated with the transducer, with ID `transducer_id`. Unlike `load_transducer`, which
         specifies the relative paths to the model datafiles along with other transducer attributes, this function
@@ -768,7 +769,7 @@ class Database:
         sys = UltrasoundSystem.from_file(sys_filename)
         return sys
 
-    def load_transducer(self, transducer_id) -> "Transducer":
+    def load_transducer(self, transducer_id) -> Transducer:
         """Given a transducer_id, reads the corresponding transducer file from database and returns a transducer object.
         Note: the transducer object includes the relative path to the affiliated transducer model data. `get_transducer_absolute_filepaths`, should
         be used to obtain the absolute data filepaths based on the Database directory path.
@@ -1077,7 +1078,7 @@ class Database:
         return Path(Database.get_default_user_dir()) / "Documents" / "db"
 
     @staticmethod
-    def initialize_empty_database(database_filepath : PathLike) -> "Database":
+    def initialize_empty_database(database_filepath : PathLike) -> Database:
         """
         Initializes an empty database at the given database_filepath
         """

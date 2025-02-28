@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .apod_methods import ApodizationMethod
 from .delay_methods import DelayMethod
 from .focal_patterns import FocalPattern, SinglePoint, Wheel

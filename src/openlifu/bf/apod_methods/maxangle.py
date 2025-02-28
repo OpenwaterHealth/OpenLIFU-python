@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 import xarray as xa
@@ -13,7 +14,7 @@ from openlifu.xdc import Transducer
 class MaxAngle(ApodizationMethod):
     max_angle: float = 30.0
     units: str = "deg"
-    def calc_apodization(self, arr: Transducer, target: Point, params: xa.Dataset, transform:Optional[np.ndarray]=None):
+    def calc_apodization(self, arr: Transducer, target: Point, params: xa.Dataset, transform:np.ndarray | None=None):
         target_pos = target.get_position(units="m")
         matrix = transform if transform is not None else np.eye(4)
         angles = np.array([el.angle_to_point(target_pos, units="m", matrix=matrix, return_as=self.units) for el in arr.elements])

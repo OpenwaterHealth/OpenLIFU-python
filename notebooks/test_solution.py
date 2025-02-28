@@ -11,6 +11,7 @@
 #     language: python
 #     name: python3
 # ---
+from __future__ import annotations
 
 # +
 import numpy as np

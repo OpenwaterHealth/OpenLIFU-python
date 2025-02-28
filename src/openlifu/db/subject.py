@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from openlifu.util.dict_conversion import DictMixin
 from openlifu.util.strings import sanitize
@@ -17,8 +18,8 @@ class Subject(DictMixin):
     ivar volumes: List of volume IDs
     ivar attrs: Dictionary of attributes
     """
-    id: Optional[str] = None
-    name: Optional[str] = None
+    id: str | None = None
+    name: str | None = None
     attrs: dict = field(default_factory=dict)
 
     def __post_init__(self):

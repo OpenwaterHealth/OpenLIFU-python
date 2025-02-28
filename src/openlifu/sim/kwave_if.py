@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import List, Optional
+from typing import List
 
 import kwave
 import kwave.data
@@ -67,8 +69,8 @@ def get_source(kgrid, karray, source_sig):
 
 def run_simulation(arr: xdc.Transducer,
                    params: xa.Dataset,
-                   delays: Optional[np.ndarray] = None,
-                   apod: Optional[np.ndarray] = None,
+                   delays: np.ndarray | None = None,
+                   apod: np.ndarray | None = None,
                    freq: float = 1e6,
                    cycles: float = 20,
                    amplitude: float = 1,

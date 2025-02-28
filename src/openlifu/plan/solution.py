@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import base64
 import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 import numpy as np
 import xarray as xa
@@ -40,10 +42,10 @@ class Solution:
     name: str = "Solution"
     """Name of this solution"""
 
-    protocol_id: Optional[str] = None  # this used to be called plan_id in the matlab code
+    protocol_id: str | None = None  # this used to be called plan_id in the matlab code
     """ID of the protocol that was used when generating this solution"""
 
-    transducer_id: Optional[str] = None
+    transducer_id: str | None = None
     """ID of the transducer that was used when generating this solution"""
 
     date_created: datetime = field(default_factory=datetime.now)
@@ -52,10 +54,10 @@ class Solution:
     description: str = ""
     """Description of this solution"""
 
-    delays: Optional[np.ndarray] = None
+    delays: np.ndarray | None = None
     """Vectors of time delays to steer the beam. Shape is (number of foci, number of transducer elements)."""
 
-    apodizations: Optional[np.ndarray] = None
+    apodizations: np.ndarray | None = None
     """Vectors of apodizations to steer the beam. Shape is (number of foci, number of transducer elements)."""
 
     pulse: Pulse = field(default_factory=Pulse)
@@ -74,7 +76,7 @@ class Solution:
     # I believe this was only needed in the matlab software because solutions were organized by target rather
     # than having their own unique solution ID. We do have unique solution IDs so it's possible we don't need
     # this target attribute at all here. Keeping it here for now just in case.
-    target: Optional[Point] = None
+    target: Point | None = None
     """The ultimate target of this sonication. This sonication solution is focused on one focal point
     in a pattern that is centered on this target."""
 
@@ -367,7 +369,7 @@ class Solution:
             return json.dumps(solution_dict, indent=4, cls=PYFUSEncoder)
 
     @staticmethod
-    def from_json(json_string : str, simulation_result: Optional[xa.Dataset]=None) -> "Solution":
+    def from_json(json_string : str, simulation_result: xa.Dataset | None=None) -> Solution:
         """Load a Solution from a json string.
 
         Args:
@@ -411,7 +413,7 @@ class Solution:
 
         return Solution(**solution_dict)
 
-    def to_files(self, json_filepath:Path, nc_filepath:Optional[Path]=None) -> None:
+    def to_files(self, json_filepath:Path, nc_filepath:Path | None=None) -> None:
         """Save the solution to json and netCDF files.
 
         json_filepath: where to save the json file with all data except the simulation results dataset
@@ -430,7 +432,7 @@ class Solution:
         self.simulation_result.to_netcdf(nc_filepath, engine='h5netcdf')
 
     @staticmethod
-    def from_files(json_filepath:Path, nc_filepath:Optional[Path]=None):
+    def from_files(json_filepath:Path, nc_filepath:Path | None=None):
         """Read solution from json and netCDF files.
 
         json_filepath: solution json file location, containing all data except the simulation results dataset

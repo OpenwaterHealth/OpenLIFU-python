@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from openlifu.io.LIFUInterface import LIFUInterface
 
 # set PYTHONPATH=%cd%\src;%PYTHONPATH%

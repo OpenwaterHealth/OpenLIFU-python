@@ -1,8 +1,9 @@
+from __future__ import annotations
 
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 import OpenEXR
@@ -19,13 +20,13 @@ class Photoscan:
     name: str = "Photoscan"
     """Photoscan name"""
 
-    model_filename: Optional[str] =  None
+    model_filename: str | None =  None
     """Relative path to model"""
 
-    texture_filename: Optional[str] = None
+    texture_filename: str | None = None
     """Relative path to texture image"""
 
-    mtl_filename: Optional[str] = None
+    mtl_filename: str | None = None
     """Relative path to materials file"""
 
     photoscan_approved: bool = False
@@ -33,7 +34,7 @@ class Photoscan:
     confirmation that the photoscan is good enough to be used."""
 
     @staticmethod
-    def from_json(json_string: str) -> "Photoscan":
+    def from_json(json_string: str) -> Photoscan:
         """Load a Photoscan from a json string"""
         return Photoscan.from_dict(json.loads(json_string))
 
@@ -52,7 +53,7 @@ class Photoscan:
             return json.dumps(self.to_dict(), indent=4, cls=PYFUSEncoder)
 
     @staticmethod
-    def from_dict(d:Dict) -> "Photoscan":
+    def from_dict(d:Dict) -> Photoscan:
         """
         Create a Photoscan from a dictionary
         param d: Dictionary of photoscan parameters.
@@ -69,7 +70,7 @@ class Photoscan:
         return d
 
     @staticmethod
-    def from_file(filename) -> "Photoscan":
+    def from_file(filename) -> Photoscan:
         """
         Load a Photoscan from a metadata file
         :param filename: Name of the file

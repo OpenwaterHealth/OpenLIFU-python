@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 from dataclasses import dataclass, field
@@ -26,7 +28,7 @@ class User:
         self.logger = logging.getLogger(__name__)
 
     @staticmethod
-    def from_dict(d : Dict[str,Any]) -> "User":
+    def from_dict(d : Dict[str,Any]) -> User:
         return User(**d)
 
     def to_dict(self):
@@ -45,7 +47,7 @@ class User:
         return User.from_dict(d)
 
     @staticmethod
-    def from_json(json_string : str) -> "User":
+    def from_json(json_string : str) -> User:
         """Load a User from a json string"""
         return User.from_dict(json.loads(json_string))
 

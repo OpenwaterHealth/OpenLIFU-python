@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class LIFUSignal:
     def __init__(self):
         # Initialize a list to store connected slots (callback functions)

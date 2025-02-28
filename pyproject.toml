@@ -158,7 +158,6 @@ ignore = [
   # Exceptions below are specific to this project.
   # They may be relaxed later in future code improvements.
 
-  "I002", # Missing required import: `from __future__ import annotations`
   "E402", # Module level import not at top of file
   "ARG002", # Unused method argument: `id`
   "RET504", # Unnecessary assignment to `dist` before `return` statement

@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import json
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 import xarray as xa
@@ -26,13 +28,13 @@ class SolutionAnalysis(DictMixin):
     global_pnp_MPa: list[float] = field(default_factory=list)
     global_isppa_Wcm2: list[float] = field(default_factory=list)
     p0_Pa: list[float] = field(default_factory=list)
-    TIC: Optional[float] = None
-    power_W: Optional[float] = None
-    MI: Optional[float] = None
-    global_ispta_mWcm2: Optional[float] = None
+    TIC: float | None = None
+    power_W: float | None = None
+    MI: float | None = None
+    global_ispta_mWcm2: float | None = None
 
     @staticmethod
-    def from_json(json_string : str) -> "SolutionAnalysis":
+    def from_json(json_string : str) -> SolutionAnalysis:
         """Load a SolutionAnalysis from a json string"""
         return SolutionAnalysis.from_dict(json.loads(json_string))
 
@@ -202,8 +204,8 @@ def interp_transformed_axis(
     focus,
     dim,
     origin=DEFAULT_ORIGIN,
-    min_offset:Optional[float]=None,
-    max_offset:Optional[float]=None,
+    min_offset:float | None=None,
+    max_offset:float | None=None,
 ) -> xa.DataArray:
     """Interpolate data along a focal coordinate system axis.
 
@@ -248,8 +250,8 @@ def get_beam_bounds(
     dim,
     cutoff:float,
     origin=DEFAULT_ORIGIN,
-    min_offset:Optional[float]=None,
-    max_offset:Optional[float]=None,
+    min_offset:float | None=None,
+    max_offset:float | None=None,
 ) -> Tuple[float, float]:
     """Determine how far along a focal coordinate system axis a DataArray's value stays above a certain cutoff.
 
@@ -294,10 +296,10 @@ def get_beamwidth(
     da: xa.DataArray,
     focus,
     dim,
-    cutoff:Optional[float]=None,
+    cutoff:float | None=None,
     origin=DEFAULT_ORIGIN,
-    min_offset:Optional[float]=None,
-    max_offset:Optional[float]=None
+    min_offset:float | None=None,
+    max_offset:float | None=None
 ) -> float:
     """Determine the FWHM (or differently thresholded width) of a DataArray along a focal coordinate system axis.
 

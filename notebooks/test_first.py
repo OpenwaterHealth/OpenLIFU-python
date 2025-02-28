@@ -21,6 +21,8 @@
 # Also, if you are using the original version, import `openlifu` takes _way_ longer (45s on my PC), presumably hanging on `import kwave`. For some reason, it wants to re-download the binaries every time, even though they are already present in the the installation directory. I've opened an issue on this: https://github.com/waltsims/k-wave-python/issues/366.
 
 # %%
+from __future__ import annotations
+
 import logging
 import sys
 

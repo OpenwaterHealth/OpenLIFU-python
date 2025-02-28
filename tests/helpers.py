@@ -1,4 +1,5 @@
 """Helper utilities for unit tests"""
+from __future__ import annotations
 
 from dataclasses import fields, is_dataclass
 
