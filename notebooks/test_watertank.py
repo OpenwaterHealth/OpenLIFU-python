@@ -55,10 +55,15 @@ interface.txdevice.ping()
 print("Set Trigger")
 json_trigger_data = {
     "TriggerFrequencyHz": 10,
-    "TriggerMode": 1,
     "TriggerPulseCount": 0,
-    "TriggerPulseWidthUsec": 20000
+    "TriggerPulseWidthUsec": 20000,
+    "TriggerPulseTrainInterval": 0,
+    "TriggerPulseTrainCount": 0,
+    "TriggerMode": 1,
+    "ProfileIndex": 0,
+    "ProfileIncrement": 0
 }
+
 trigger_setting = interface.txdevice.set_trigger_json(data=json_trigger_data)
 if trigger_setting:
     print(f"Trigger Setting: {trigger_setting}")
