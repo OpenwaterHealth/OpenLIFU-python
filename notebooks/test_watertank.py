@@ -1,3 +1,6 @@
+import threading
+import time
+
 import numpy as np
 
 from openlifu.bf.pulse import Pulse
@@ -15,6 +18,25 @@ Test script to automate:
 2. Test HVController: Turn HV on/off and check voltage.
 3. Test Device functionality.
 """
+
+log_interval = 1  # seconds; you can adjust this variable as needed
+stop_logging = False  # flag to signal the logging thread to stop
+
+def log_temperature():
+    # Create a file with the current timestamp in the name
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    filename = f"{timestamp}_temp.log"
+    with open(filename, "w") as logfile:
+        while not stop_logging:
+            temperature = interface.txdevice.get_temperature()
+            a_temp = interface.txdevice.get_ambient_temperature()
+            current_time = time.strftime("%Y-%m-%d %H:%M:%S")
+            log_line = f"{current_time}: Temperature: {temperature}, Ambient Temperature: {a_temp}\n"
+            logfile.write(log_line)
+            logfile.flush()  # Ensure the data is written immediately
+            time.sleep(log_interval)
+
+
 print("Starting LIFU Test Script...")
 interface = LIFUInterface(test_mode=False)
 tx_connected, hv_connected = interface.is_device_connected()
@@ -23,12 +45,12 @@ if tx_connected and hv_connected:
 else:
     print(f'LIFU Device NOT Fully Connected. TX: {tx_connected}, HV: {hv_connected}')
 
+# Ask the user if they want to log temperature
+log_choice = input("Do you want to log temperature before starting trigger? (y/n): ").strip().lower()
+log_temp = (log_choice == "y")
+
 print("Ping the device")
 interface.txdevice.ping()
-
-print("Get Temperature")
-temperature = interface.txdevice.get_temperature()
-print(f"Temperature: {temperature} °C")
 
 print("Enumerate TX7332 chips")
 num_tx_devices = interface.txdevice.enum_tx7332_devices()
@@ -88,13 +110,18 @@ if trigger_setting:
 else:
     print("Failed to get trigger setting.")
 
-print("Get Temperature")
-temperature = interface.txdevice.get_temperature()
-print(f"Temperature: {temperature} °C")
+# If logging is enabled, start the logging thread
+if log_temp:
+    t = threading.Thread(target=log_temperature)
+    t.start()
+else:
+    print("Get Temperature")
+    temperature = interface.txdevice.get_temperature()
+    print(f"Temperature: {temperature} °C")
 
-print("Get Ambient")
-a_temp = interface.txdevice.get_ambient_temperature()
-print(f"Ambient Temperature: {a_temp} °C")
+    print("Get Ambient")
+    a_temp = interface.txdevice.get_ambient_temperature()
+    print(f"Ambient Temperature: {a_temp} °C")
 
 print("Press enter to START trigger:")
 input()  # Wait for the user to press Enter
@@ -108,3 +135,8 @@ if interface.txdevice.start_trigger():
         print("Failed to stop trigger.")
 else:
     print("Failed to get trigger setting.")
+
+# Stop the temperature logging before starting the trigger
+if log_temp:
+    stop_logging = True
+    t.join()
