@@ -12,8 +12,12 @@
 #     name: python3
 # ---
 
+# +
 import numpy as np
+
 import openlifu
+
+# -
 
 pulse = openlifu.Pulse(frequency=500e3, amplitude=1, duration=2e-5)
 pt = openlifu.Point(position=(0,0,30), units="mm")
