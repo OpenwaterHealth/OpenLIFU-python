@@ -37,9 +37,9 @@ print("Get HW ID")
 hw_id = interface.txdevice.get_hardware_id()
 print(f"HWID: {hw_id}")
 
-print("Get Temperature")
+print("Get TX7332 Temp")
 temperature = interface.txdevice.get_temperature()
-print(f"Temperature: {temperature} °C")
+print(f"TX7332 Temperature: {temperature} °C")
 
 print("Get Ambient")
 a_temp = interface.txdevice.get_ambient_temperature()

@@ -295,7 +295,7 @@ class LIFUUart:
                     data = self.demo_responses.pop(0)
                     log.info("Demo mode: Simulated data received: %s", data)
                     self.signal_data_received.emit(self.descriptor, "Demo Response")
-                time.sleep(1)  # Simulate delay (1 second)
+                time.sleep(0.10)  # Simulate delay (0.1 second)
             return
 
         # In async mode, run the reading loop in a thread
