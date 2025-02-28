@@ -5,7 +5,7 @@ import logging
 import re
 import struct
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Dict, List, Literal, Optional
+from typing import TYPE_CHECKING, Dict, List, Literal
 
 import numpy as np
 
@@ -761,7 +761,7 @@ class TxDevice:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def enum_tx7332_devices(self, num_devices: Optional[int]=None) -> int:
+    def enum_tx7332_devices(self, num_devices: int | None = None) -> int:
         """
         Enumerate TX7332 devices connected to the TX device.
 
