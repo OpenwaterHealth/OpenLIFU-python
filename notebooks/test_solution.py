@@ -14,17 +14,21 @@
 
 import numpy as np
 
-import openlifu
+from openlifu.bf.pulse import Pulse
+from openlifu.bf.sequence import Sequence
+from openlifu.geo import Point
+from openlifu.io.LIFUInterface import LIFUInterface
+from openlifu.plan.solution import Solution
 
-pulse = openlifu.Pulse(frequency=500e3, amplitude=1, duration=2e-5)
-pt = openlifu.Point(position=(0,0,30), units="mm")
-sequence = openlifu.Sequence(
+pulse = Pulse(frequency=500e3, amplitude=1, duration=2e-5)
+pt = Point(position=(0,0,30), units="mm")
+sequence = Sequence(
     pulse_interval=0.1,
     pulse_count=10,
     pulse_train_interval=1,
     pulse_train_count=1
 )
-solution = openlifu.Solution(
+solution = Solution(
     id="solution",
     name="Solution",
     protocol_id="example_protocol",
@@ -36,12 +40,12 @@ solution = openlifu.Solution(
     target=pt,
     foci=[pt],
     approved=True
-    )
+)
 
 
 solution
 
-ifx = openlifu.LIFUInterface(test_mode=True)
+ifx = LIFUInterface(test_mode=True)
 ifx.txdevice.enum_tx7332_devices(_num_transmitters=2)
 
 ifx.set_solution(solution)
