@@ -1,11 +1,12 @@
 # ---
 # jupyter:
 #   jupytext:
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.2
+#       jupytext_version: 1.16.4
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -45,16 +46,22 @@ yaw_range = (-5,25) # in deg
 yaw_step = 2 # in deg
 radius_in_mm = 50
 steering_limits = [ # Should really be a List[TargetConstraints] which initializes to empty
-    TargetConstraints(dim="lat", units="mm", min=-100, max=100),
-    TargetConstraints(dim="ele", units="mm", min=-100, max=100),
-    TargetConstraints(dim="ax",  units="mm", min=0, max=300),
+    TargetConstraints(dim="lat", units="NONE", min=-100, max=100), # TODO: remove units from TargetConstraints since it doesn't apply them
+    TargetConstraints(dim="ele", units="NONE", min=-100, max=100), # (so the units would be the units of the transducer? I guess?)
+    TargetConstraints(dim="ax",  units="NONE", min=0, max=300),
 ]
 blocked_elems_threshold = 0.1
 volume_array = vol_array
-volume_affine_RAS = vol_affine # We assume this maps into RAS space! That's how nifti works.
+volume_affine_RAS = vol_affine # We assume this maps into RAS space! That's how nifti works. # TODO: are we implicitly assuming both transducer and volume are in mm?
 # scene_matrix # I don't see where this is even used.
 # scene_origin # I don't see where this is used either
 transducer = Transducer.from_file("db_dvc/transducers/curved2_100roc_10gap/curved2_100roc_10gap.json")
+
+# Note that these are in the units of the volume space!
+planefit_dyaw_extent = 20
+planefit_dyaw_step = 1
+planefit_dpitch_extent = 15
+planefit_dpitch_step = 1
 
 # Desired output from this will be:
 # A transducer transform (an ArrayTransform) that places the transducer into the MRI space in LPS coordinates
@@ -111,9 +118,27 @@ visualize_polydata(sphere_from_interpolator(skin_interpolator), highlight_points
 # We will iterate over all i and j as in the "visualize search grid" cell above, but in this cell we just demo on one grid point i=0,j=0
 theta_rad, phi_rad = theta_grid[0,0]*np.pi/180, phi_grid[0,0]*np.pi/180
 
+# visualize_polydata(sphere_from_interpolator(skin_interpolator), highlight_points=spherical_to_cartesian(skin_interpolator(theta_rad, phi_rad), theta_rad, phi_rad), camera_focus=(0,0,0))
+
+# To radians
+dtheta_extent = planefit_dyaw_extent*np.pi/180
+dtheta_step = planefit_dyaw_step*np.pi/180
+dphi_extent = planefit_dpitch_extent*np.pi/180
+dphi_step = planefit_dpitch_step*np.pi/180
+dtheta_sequence = np.arange(-dtheta_extent, dtheta_extent + dtheta_step, dtheta_step)
+dphi_sequence = np.arange(-dphi_extent, dphi_extent + dphi_step, dphi_step)
+dtheta_grid, dphi_grid = np.meshgrid(dtheta_sequence, dphi_sequence, indexing='ij')
+dtheta_grid, dphi_grid
+
+# NEXT: vectorize cartesian/spherical converter functions, then create a coordinate basis function (vectorized or not) and unit test it
+
 # The goal here is to get the "transducer pose" which means a 4x4 (or 3x4) matrix that would work as a "transducer transform", i.e.
 # maps the transducer into LPS volume space
-# TODO: FIX the below nonsense -- I need to read more carefully what they are doing.
-# To do this, we first build a fitting grid of points in the $\partial\theta,\partial\phi$ (coordinate basis) plane at the point.
-# (Wait, why. Why not just a theta and phi grid
-# Then we pass those points through the
+# To do this, we first build a fitting grid of points on the skin surface as follows:
+# - Work in the spherical coordinate basis at the location on the skin surface that this theta_rad, phi_rad correspond to
+# - Make an evenly spaced fitting grid in that coordinate system inside the theta and phi coordinate basis vectors
+# - Map those points in the tangent space into R^3 and apply the skin interpolator to project them down onto the skin surface
+# - (I think a better approach to getting those points is to apply the riemannian exponential map to a polar grid of vectors in the tangenet space
+# - Then we convert these points to the coordinate basis
+# Next, we fit a plane to the points
+# Then we put the transducer in that plane, while also taking into account z_offset and dzdy
