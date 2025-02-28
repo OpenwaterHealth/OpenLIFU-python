@@ -1075,3 +1075,21 @@ class Database:
         :returns: Default path for the database
         """
         return Path(Database.get_default_user_dir()) / "Documents" / "db"
+
+    @staticmethod
+    def initialize_empty_database(database_filepath : Path | str) -> None:
+        """
+        Initializes an empty database at the given database_filepath
+        """
+        database_filepath = Path(database_filepath)
+        subdirs = ["protocols", "users", "subjects", "transducers", "systems"]
+        for subdir in subdirs:
+            (database_filepath / subdir).mkdir(parents=True, exist_ok=True)
+
+        new_db = Database(str(database_filepath))
+
+        new_db.write_protocol_ids([])
+        new_db.write_user_ids([])
+        new_db.write_subject_ids([])
+        new_db.write_transducer_ids([])
+        #new_db.write_system_ids([])
