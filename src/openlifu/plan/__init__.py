@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .protocol import Protocol
 from .run import Run
 from .solution import Solution

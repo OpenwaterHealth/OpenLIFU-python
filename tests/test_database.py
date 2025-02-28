@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import logging
 import shutil
 from contextlib import nullcontext as does_not_raise
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 from unittest.mock import patch
 
 import numpy as np
@@ -682,7 +684,7 @@ def test_write_transducer(example_database:Database, example_transducer: Transdu
 
 @pytest.mark.parametrize("registration_surface_path", [None, "test_db_files/example_registration_surface.obj"])
 @pytest.mark.parametrize("transducer_body_path", [None, "test_db_files/example_transducer_body.obj"])
-def test_get_transducer_absolute_filepaths(example_database, tmp_path: Path, registration_surface_path: Optional[str], transducer_body_path: Optional[str]):
+def test_get_transducer_absolute_filepaths(example_database, tmp_path: Path, registration_surface_path: str | None, transducer_body_path: str | None):
     transducer = Transducer(id="transducer_for_test_get_transducer_absolute_filepaths")
 
     registration_surface = Path(tmp_path / registration_surface_path) if registration_surface_path else None

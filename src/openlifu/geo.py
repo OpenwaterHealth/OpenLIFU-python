@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import copy
 import json
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 import numpy as np
 import vtk
@@ -27,7 +29,7 @@ class Point:
     def copy(self):
         return copy.deepcopy(self)
 
-    def get_position(self, dim=None, units: Optional[str] =None):
+    def get_position(self, dim=None, units: str | None =None):
         units = self.units if units is None else units
         scl = getunitconversion(self.units, units)
         if dim is None:
@@ -85,8 +87,8 @@ class Point:
 
     def transform(self,
                   matrix: np.ndarray,
-                  units: Optional[str] = None,
-                  new_dims: Optional[Tuple[str, str, str]]=None):
+                  units: str | None = None,
+                  new_dims: Tuple[str, str, str] | None=None):
         if units is not None:
             self.rescale(units)
         self.position = np.dot(matrix, np.append(self.position, 1.0))[:3]
@@ -118,7 +120,7 @@ class Point:
         return Point(**point_data)
 
     @staticmethod
-    def from_json(json_string : str) -> "Point":
+    def from_json(json_string : str) -> Point:
         """Load a Point from a json string"""
         return Point.from_dict(json.loads(json_string))
 

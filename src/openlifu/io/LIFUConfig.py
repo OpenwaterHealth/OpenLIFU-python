@@ -1,5 +1,7 @@
 
 # Packet Types
+from __future__ import annotations
+
 OW_ACK = 0xE0
 OW_NAK = 0xE1
 OW_CMD = 0xE2

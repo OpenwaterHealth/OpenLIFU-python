@@ -11,8 +11,9 @@ foreground_mask_vtk_image = vtk_img_from_array_and_affine(foreground_mask_array,
 skin_mesh = create_closed_surface_from_labelmap(foreground_mask_vtk_image)
 skin_interpolator = spherical_interpolator_from_mesh(skin_mesh, origin)
 """
+from __future__ import annotations
 
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Tuple
 
 import numpy as np
 import skimage.filters
@@ -252,7 +253,7 @@ def spherical_to_cartesian(r: float, th:float, ph:float) -> Tuple[float, float, 
 def spherical_interpolator_from_mesh(
     surface_mesh: vtk.vtkPolyData,
     origin: Tuple[float, float, float] = (0.,0.,0.),
-    xyz_direction_columns: Optional[np.ndarray] = None,
+    xyz_direction_columns: np.ndarray | None = None,
     dist_tolerance: float = 0.0001
 ) -> Callable[[float, float], float]:
     """Create a spherical interpolator from a vtkPolyData.

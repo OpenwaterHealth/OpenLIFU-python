@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import copy
 from abc import abstractmethod
 from dataclasses import asdict, dataclass, field
-from typing import Optional
 
 import numpy as np
 import xarray as xa
@@ -44,11 +45,11 @@ class SegmentationMethod:
             class_constructor = module_dict[short_classname]
             return class_constructor(**d)
 
-    def _material_indices(self, materials: Optional[dict] = None):
+    def _material_indices(self, materials: dict | None = None):
         materials = self.materials if materials is None else materials
         return {material_id: i for i, material_id in enumerate(materials.keys())}
 
-    def _map_params(self, seg: xa.DataArray, materials: Optional[dict] = None):
+    def _map_params(self, seg: xa.DataArray, materials: dict | None = None):
         materials = self.materials if materials is None else materials
         material_dict = self._material_indices(materials=materials)
         params = xa.Dataset()
@@ -63,7 +64,7 @@ class SegmentationMethod:
         params.attrs['ref_material'] = ref_mat
         return params
 
-    def seg_params(self, volume: xa.DataArray, materials: Optional[dict] = None):
+    def seg_params(self, volume: xa.DataArray, materials: dict | None = None):
         materials = self.materials if materials is None else materials
         seg = self._segment(volume)
         params = self._map_params(seg, materials=materials)
