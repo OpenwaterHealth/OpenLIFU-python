@@ -12,8 +12,8 @@
 #     name: python3
 # ---
 
-import openlifu
 import numpy as np
+import openlifu
 
 pulse = openlifu.Pulse(frequency=500e3, amplitude=1, duration=2e-5)
 pt = openlifu.Point(position=(0,0,30), units="mm")
@@ -42,7 +42,7 @@ solution
 
 ifx = openlifu.LIFUInterface(test_mode=True)
 
-ifx.set_solution(solution)
+ifx.set_solution(solution.to_dict())
 
 txm = ifx.txdevice.tx_registers
 r = {'DELAY CONTROL': {}, 'DELAY DATA': {}, 'PULSE CONTROL': {}, 'PULSE DATA': {}}
