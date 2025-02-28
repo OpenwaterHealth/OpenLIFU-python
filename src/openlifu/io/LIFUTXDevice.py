@@ -12,7 +12,7 @@ import numpy as np
 from openlifu.io.LIFUUart import LIFUUart
 from openlifu.util.units import getunitconversion
 
-NUM_TRANSMITTERS = 2
+DEFAULT_NUM_TRANSMITTERS = 2
 ADDRESS_GLOBAL_MODE = 0x0
 ADDRESS_STANDBY = 0x1
 ADDRESS_DYNPWR_2 = 0x6
@@ -761,9 +761,15 @@ class TxDevice:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def enum_tx7332_devices(self, _num_transmitters=2) -> int:
+    def enum_tx7332_devices(self, num_devices: int | None = None) -> int:
         """
         Enumerate TX7332 devices connected to the TX device.
+
+        Args:
+            num_transmitters (int): The number of transmitters expected to be enumerated. If None, the number of
+                transmitters will be determined from the response. If provided and the number enumerated does not
+                match the expected number, an error will be raised. If the UART is in demo mode, this argument is
+                used to set the number of transmitters for the demo (or set to a default if omitted/None)
 
         Returns:
             n_transmitters: number of devices detected.
@@ -774,24 +780,23 @@ class TxDevice:
         """
         try:
             if self.uart.demo_mode:
-                n_transmitters = _num_transmitters
-                self.tx_registers = TxDeviceRegisters(num_transmitters=n_transmitters)
-                return n_transmitters
-
-            if not self.uart.is_connected():
-                raise ValueError("TX Device not connected")
-
-            r = self.uart.send_packet(id=None, packetType=OW_TX7332, command=OW_TX7332_ENUM)
-            self.uart.clear_buffer()
-            # r.print_packet()
-            if r.packet_type != OW_ERROR and r.reserved > 0:
-                n_transmitters = r.reserved
+                num_detected_devices = num_devices
             else:
-                logger.info("Error enumerating TX devices.")
+                if not self.uart.is_connected():
+                    raise ValueError("TX Device not connected")
 
-            self.tx_registers = TxDeviceRegisters(num_transmitters=n_transmitters)
-            logger.info("TX Device Count: %d", n_transmitters)
-            return n_transmitters
+                r = self.uart.send_packet(id=None, packetType=OW_TX7332, command=OW_TX7332_ENUM)
+                self.uart.clear_buffer()
+                # r.print_packet()
+                if r.packet_type != OW_ERROR and r.reserved > 0:
+                    num_detected_devices = r.reserved
+                else:
+                    logger.info("Error enumerating TX devices.")
+                if num_devices is not None and num_detected_devices != num_devices:
+                    raise ValueError(f"Expected {num_devices} devices, but detected {num_detected_devices} devices")
+            self.tx_registers = TxDeviceRegisters(num_transmitters=num_detected_devices)
+            logger.info("TX Device Count: %d", num_detected_devices)
+            return num_detected_devices
         except ValueError as v:
             logger.error("ValueError: %s", v)
             raise  # Re-raise the exception for the caller to handle
@@ -1222,6 +1227,10 @@ class TxDevice:
         if apodizations.ndim == 1:
             apodizations = apodizations.reshape(1, -1)
         n = delays.shape[0]
+        n_elements = delays.shape[1]
+        n_required_devices = int(n_elements / NUM_CHANNELS)
+        self.enum_tx7332_devices(num_devices=n_required_devices)
+
         if n != apodizations.shape[0]:
             raise ValueError("Delays and apodizations must have the same number of rows")
         if n > 1:
@@ -1787,7 +1796,7 @@ class TxDeviceRegisters:
     _profiles_list: List[Tx7332PulseProfile] = field(default_factory=list)
     active_delay_profile: int | None = None
     active_profile: int | None = None
-    num_transmitters: int = NUM_TRANSMITTERS
+    num_transmitters: int = DEFAULT_NUM_TRANSMITTERS
 
     def __post_init__(self):
         self.transmitters = tuple([Tx7332Registers(bf_clk=self.bf_clk) for _ in range(self.num_transmitters)])

@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import asyncio
 import logging
-from typing import Dict, Union
+from typing import Dict
 
 from openlifu.io.LIFUHVController import HVController
 from openlifu.io.LIFUSignal import LIFUSignal
@@ -104,7 +106,7 @@ class LIFUInterface:
         return tx_connected, hv_connected
 
     def set_solution(self,
-                     solution: Union[Solution, Dict],
+                     solution: Solution|Dict,
                      profile_index:int=1,
                      profile_increment:bool=True) -> bool:
         """
