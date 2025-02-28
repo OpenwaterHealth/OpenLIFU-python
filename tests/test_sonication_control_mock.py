@@ -32,7 +32,7 @@ def example_solution() -> Solution:
 def test_lifuinterface_mock(example_solution:Solution):
     """Test that LIFUInterface can be used in mock mode (i.e. test_mode=True)"""
     lifu_interface = LIFUInterface(test_mode=True)
-    lifu_interface.txdevice.enum_tx7332_devices(_num_transmitters=2)
+    lifu_interface.txdevice.enum_tx7332_devices(num_devices=2)
     lifu_interface.set_solution(example_solution)
     lifu_interface.start_sonication()
     status = lifu_interface.get_status()
