@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 from typing import Dict
@@ -104,7 +106,7 @@ class LIFUInterface:
         return tx_connected, hv_connected
 
     def set_solution(self,
-                     solution: "Solution | Dict",
+                     solution: Solution|Dict,
                      profile_index:int=1,
                      profile_increment:bool=True) -> bool:
         """
