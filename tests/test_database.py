@@ -3,7 +3,7 @@ import shutil
 from contextlib import nullcontext as does_not_raise
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 from unittest.mock import patch
 
 import numpy as np
