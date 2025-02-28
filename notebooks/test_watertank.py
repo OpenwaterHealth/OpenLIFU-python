@@ -88,6 +88,13 @@ if trigger_setting:
 else:
     print("Failed to get trigger setting.")
 
+print("Get Temperature")
+temperature = interface.txdevice.get_temperature()
+print(f"Temperature: {temperature} °C")
+
+print("Get Ambient")
+a_temp = interface.txdevice.get_ambient_temperature()
+print(f"Ambient Temperature: {a_temp} °C")
 
 print("Press enter to START trigger:")
 input()  # Wait for the user to press Enter
