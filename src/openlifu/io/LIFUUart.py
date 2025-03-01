@@ -1,12 +1,13 @@
 import asyncio
 import logging
+import queue
 import threading
 import time
 
 import serial
 import serial.tools.list_ports
 
-from openlifu.io.LIFUConfig import OW_ACK, OW_CMD_NOP
+from openlifu.io.LIFUConfig import OW_ACK, OW_CMD_NOP, OW_ERROR, OW_RESP
 from openlifu.io.LIFUSignal import LIFUSignal
 
 # Packet structure constants
@@ -182,6 +183,8 @@ class LIFUUart:
 
         if async_mode:
             self.loop = asyncio.get_event_loop()
+            self.response_queues = {}  # Dictionary to map packet IDs to response queues
+            self.response_lock = threading.Lock()  # Lock for thread-safe access to response_queues
 
     def connect(self):
         """Open the serial port."""
@@ -295,7 +298,7 @@ class LIFUUart:
                     data = self.demo_responses.pop(0)
                     log.info("Demo mode: Simulated data received: %s", data)
                     self.signal_data_received.emit(self.descriptor, "Demo Response")
-                time.sleep(1)  # Simulate delay (1 second)
+                time.sleep(10)  # Simulate delay (10 second)
             return
 
         # In async mode, run the reading loop in a thread
@@ -305,7 +308,24 @@ class LIFUUart:
                     data = self.serial.read(self.serial.in_waiting)
                     self.read_buffer.extend(data)
                     log.info("Data received on %s: %s", self.descriptor, data)
-                    self.signal_data_received.emit(self.descriptor, "Command Response")
+                    # Attempt to parse a complete packet from read_buffer.
+                    try:
+                        # Note: Depending on your protocol, you might need to check for start/end bytes
+                        # and possibly handle partial packets.
+                        packet = UartPacket(buffer=bytes(self.read_buffer))
+                        # Clear the buffer after a successful parse.
+                        self.read_buffer = []
+                        if self.asyncMode:
+                            with self.response_lock:
+                                # Check if a queue is waiting for this packet ID.
+                                if packet.id in self.response_queues:
+                                    self.response_queues[packet.id].put(packet)
+                                else:
+                                    log.warning("Received an unsolicited packet with ID %d", packet.id)
+                        else:
+                            self.signal_data_received.emit(self.descriptor, packet)
+                    except Exception as e:
+                        log.error("Error parsing packet: %s", e)
                 else:
                     time.sleep(0.05)  # Brief sleep to avoid a busy loop
             except serial.SerialException as e:
@@ -405,10 +425,29 @@ class LIFUUart:
 
             self._tx(packet)
 
-            if not self.running:
+            if not self.asyncMode:
                 return self.read_packet(timeout=timeout)
             else:
-                return None
+                response_queue = queue.Queue()
+                with self.response_lock:
+                    self.response_queues[id] = response_queue
+
+                try:
+                    # Wait for a response that matches the packet ID.
+                    response = response_queue.get(timeout=timeout)
+                    # Optionally, check that the response has the expected type and command.
+                    if response.packet_type == OW_RESP and response.command == command:
+                        return response
+                    else:
+                        log.error("Received unexpected response: %s", response)
+                        return response
+                except queue.Empty:
+                    log.error("Timeout waiting for response to packet ID %d", id)
+                    return None
+                finally:
+                    with self.response_lock:
+                        # Clean up the queue entry regardless of outcome.
+                        self.response_queues.pop(id, None)
 
         except ValueError as ve:
             log.error("Validation error in send_packet: %s", ve)
