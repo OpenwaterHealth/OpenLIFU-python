@@ -1077,7 +1077,7 @@ class Database:
         return Path(Database.get_default_user_dir()) / "Documents" / "db"
 
     @staticmethod
-    def initialize_empty_database(database_filepath : Path | str) -> None:
+    def initialize_empty_database(database_filepath : Path | str) -> "Database":
         """
         Initializes an empty database at the given database_filepath
         """
@@ -1092,4 +1092,4 @@ class Database:
         new_db.write_user_ids([])
         new_db.write_subject_ids([])
         new_db.write_transducer_ids([])
-        #new_db.write_system_ids([])
+        return new_db
