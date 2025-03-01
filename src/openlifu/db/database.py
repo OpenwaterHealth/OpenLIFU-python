@@ -1077,7 +1077,7 @@ class Database:
         return Path(Database.get_default_user_dir()) / "Documents" / "db"
 
     @staticmethod
-    def initialize_empty_database(database_filepath : Path | str) -> "Database":
+    def initialize_empty_database(database_filepath : PathLike) -> "Database":
         """
         Initializes an empty database at the given database_filepath
         """
