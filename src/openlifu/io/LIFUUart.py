@@ -324,8 +324,8 @@ class LIFUUart:
                                     log.warning("Received an unsolicited packet with ID %d", packet.id)
                         else:
                             self.signal_data_received.emit(self.descriptor, packet)
-                    except Exception as e:
-                        log.error("Error parsing packet: %s", e)
+                    except ValueError as ve:
+                        log.error("Error parsing packet: %s", ve)
                 else:
                     time.sleep(0.05)  # Brief sleep to avoid a busy loop
             except serial.SerialException as e:
