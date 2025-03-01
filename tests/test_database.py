@@ -44,6 +44,16 @@ def example_transducer(example_database : Database) -> Transducer:
         filename = Path(example_database.path)/"transducers/example_transducer/example_transducer.json",
         )
 
+def test_new_database(tmp_path:Path):
+    """Test that a new empty database can be created that more or less works"""
+    db1 = Database.initialize_empty_database(tmp_path/"db1")
+    db2 = Database.initialize_empty_database(str(tmp_path/"db2")) # make sure using string also works
+    assert len(db1.get_protocol_ids()) == 0
+    assert len(db1.get_user_ids()) == 0
+    assert len(db1.get_subject_ids()) == 0
+    assert len(db1.get_transducer_ids()) == 0
+
+
 def test_write_protocol(example_database: Database):
     protocol = Protocol(name="bleh", id="a_protocol_called_bleh")
 
