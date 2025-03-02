@@ -199,7 +199,7 @@ class Session:
                 approval,
                 [asdict(t) for t in transforms],
             )
-        
+
         d['transducer_tracking_results'] = [asdict(t) for t in d['transducer_tracking_results']]
 
         return d
