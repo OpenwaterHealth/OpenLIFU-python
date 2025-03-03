@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from enum import Enum
 from typing import Dict
 
 from openlifu.io.LIFUHVController import HVController
@@ -10,16 +11,18 @@ from openlifu.io.LIFUTXDevice import TxDevice
 from openlifu.io.LIFUUart import LIFUUart
 from openlifu.plan.solution import Solution
 
-STATUS_COMMS_ERROR = -1
-STATUS_SYS_OFF = 0
-STATUS_SYS_POWERUP = 1
-STATUS_SYS_ON = 2
-STATUS_PROGRAMMING = 3
-STATUS_READY = 4
-STATUS_NOT_READY = 5
-STATUS_RUNNING = 6
-STATUS_FINISHED = 7
-STATUS_ERROR = 8
+
+class LIFUInterfaceStatus(Enum):
+    STATUS_COMMS_ERROR = -1
+    STATUS_SYS_OFF = 0
+    STATUS_SYS_POWERUP = 1
+    STATUS_SYS_ON = 2
+    STATUS_PROGRAMMING = 3
+    STATUS_READY = 4
+    STATUS_NOT_READY = 5
+    STATUS_RUNNING = 6
+    STATUS_FINISHED = 7
+    STATUS_ERROR = 8
 
 logger = logging.getLogger(__name__)
 
@@ -183,9 +186,9 @@ class LIFUInterface:
             int: The device status.
         """
         if self._test_mode:
-            return STATUS_READY
+            return LIFUInterfaceStatus.STATUS_READY
 
-        status = STATUS_ERROR
+        status = LIFUInterfaceStatus.STATUS_ERROR
         return status
 
     def stop_sonication(self) -> bool:
