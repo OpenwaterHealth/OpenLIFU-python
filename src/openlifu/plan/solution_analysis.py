@@ -64,15 +64,28 @@ class SolutionAnalysisOptions(DictMixin):
     sidelobe_zmin: float = 1e-3
     distance_units: str = "m"
 
-def find_centroid(da: xa.DataArray, cutoff):
-    ''' Finds the -3dDB centroid position of a DataArray'''
+def find_centroid(da: xa.DataArray, cutoff:float) -> np.ndarray:
+    """Find the centroid of a thresholded region of a DataArray"""
     da = da.where(da > cutoff, 0)
     dims = list(da.dims)
     coords = np.meshgrid(*[da.coords[coord] for coord in dims], indexing='ij')
     centroid = np.array([np.sum(da*coords[dims.index(dim)])/da.sum() for dim in da.dims])
     return centroid
 
-def get_focus_matrix(focus, origin=[0,0,0]):
+def get_focus_matrix(focus, origin=[0,0,0]) -> np.ndarray:
+    """Get the coordinate transform from the focus to the transducer
+
+    The "focus coordinate system" here refers to a coordinate system whose z-axis is along
+    the ray from the transducer's "effective origin" (see `Transducer.get_effective_origin`)
+    to the focus center.
+
+    Args:
+        focus: A 3D point describing the focus coordinate system location in transducer coordinates
+        origin: A 3D point describing the transducer "effective origin" in transducer coordinates
+
+    Returns: A 4x4 affine transform matrix that describes the coordinate transformation from the focus
+        coordinate system to the transducer coordinates.
+    """
     focus = np.array(focus)
     origin = np.array(origin)
     zvec = (focus-origin)/np.linalg.norm(focus-origin)
@@ -85,6 +98,16 @@ def get_focus_matrix(focus, origin=[0,0,0]):
     return M
 
 def get_gridded_transformed_coords(da: xa.DataArray, matrix: np.ndarray, as_dataset=True):
+    """Transform the coords of a DataArray using a transform matrix.
+
+    Args:
+        da: DataArray whose coordinates will be used
+        matrix: a 4x4 coordinate transformation matrix, transforming from the desired coordinate system
+            to the coordinate system of `da`
+        as_dataset: Whether to return the transformed coords as a numpy array or an xarray Dataset
+
+    Returns the transformed coordinate grid as either a numpy array or an xarray Dataset.
+    """
     shape = tuple(da.sizes[d] for d in da.dims)
     coords = np.meshgrid(*[da.coords[coord] for coord in da.dims], indexing='ij')
     coords = np.concatenate([coord.reshape(-1,1) for coord in coords], axis=1)
@@ -96,12 +119,39 @@ def get_gridded_transformed_coords(da: xa.DataArray, matrix: np.ndarray, as_data
     return coords
 
 def get_offset_grid(da: xa.DataArray, focus, origin=DEFAULT_ORIGIN, as_dataset=True):
+    """Transform the coords of a DataArray that is in transducer coordinates to focus coordinates
+
+    See `get_focus_matrix` for the meaning of "focus coordinates"
+
+    Args:
+        da: DataArray whose coordinates will be used (presumably the transducer coordinates)
+        focus: A 3D point describing the focus coordinate system location in the coordinates of `da`
+        origin: A 3D point describing the transducer "effective origin" in transducer coordinates
+            (see `Transducer.get_effective_origin` for the meaning of this).
+        as_dataset: Whether to return the transformed coords as a numpy array or an xarray Dataset
+
+    Returns the transformed coordinate grid as either a numpy array or an xarray Dataset.
+    """
     M = get_focus_matrix(focus, origin=origin)
     #M = focus.get_matrix()
     coords = get_gridded_transformed_coords(da, M, as_dataset=as_dataset)
     return coords
 
 def calc_dist_from_focus(da: xa.DataArray, focus, origin=DEFAULT_ORIGIN, aspect_ratio=[1,1,1], as_dataarray=True):
+    """Compute a distance map from a focus point in transducer space, using a possibly distorted metric that respects
+    the symmetry of the focus shape (e.g. it could be cigar-shaped).
+
+    Args:
+        da: DataArray that will supply the coordnate grid (presumably transducer coordinates)
+        focus: A 3D point describing the focus coordinate system location in the coordinates of `da`
+        origin: A 3D point describing the transducer "effective origin" in transducer coordinates
+            (see `Transducer.get_effective_origin` for the meaning of this).
+        aspect_ratio: x,y,z scalings on the focus coordinate system to distort the space before computing distance
+            (see `get_focus_matrix` for the meaning of "focus coordinates").
+        as_dataset: Whether to return the distance map as a numpy array or an xarray Dataset
+
+    Returns the distance map as either a numpy array or an xarray Dataset.
+    """
     coords = get_offset_grid(da, focus, origin=origin, as_dataset=False)
     dist = np.sqrt(np.sum((coords/aspect_ratio)**2, axis=-1))
     if as_dataarray:
