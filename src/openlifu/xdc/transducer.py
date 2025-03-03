@@ -122,7 +122,15 @@ class Transducer:
         matrix = transform if transform is not None else np.eye(4)
         return [element.get_corners(units=units, matrix=matrix) for element in self.elements]
 
-    def get_effective_origin(self, apodizations, units=None):
+    def get_effective_origin(self, apodizations:np.ndarray, units:Optional[str]=None):
+        """Get the centroid of the effective active region of the transducer based on apodizations.
+
+        Args:
+            apodizations: vector of apodizations for the transducer elements
+            units: units in which to describe the centroid. If not provided then transducer native units are used.
+
+        Returns: a 3-element array describing the centroid in the transducer coordinate system
+        """
         units = self.units if units is None else units
         return (apodizations.reshape(-1,1) * self.get_positions(units=units)).sum(axis=0)/apodizations.sum()
 
