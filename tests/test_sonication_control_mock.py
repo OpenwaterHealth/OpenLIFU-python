@@ -3,7 +3,7 @@ import pytest
 
 from openlifu.bf import Pulse, Sequence
 from openlifu.geo import Point
-from openlifu.io.LIFUInterface import STATUS_READY, LIFUInterface
+from openlifu.io.LIFUInterface import LIFUInterface, LIFUInterfaceStatus
 from openlifu.plan.solution import Solution
 
 
@@ -36,5 +36,5 @@ def test_lifuinterface_mock(example_solution:Solution):
     lifu_interface.set_solution(example_solution)
     lifu_interface.start_sonication()
     status = lifu_interface.get_status()
-    assert status == STATUS_READY
+    assert status == LIFUInterfaceStatus.STATUS_READY
     lifu_interface.stop_sonication()

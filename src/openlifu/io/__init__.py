@@ -1,5 +1,6 @@
-from openlifu.io.LIFUInterface import LIFUInterface
+from openlifu.io.LIFUInterface import LIFUInterface, LIFUInterfaceStatus
 
 __all__ = [
     "LIFUInterface",
+    "LIFUInterfaceStatus",
 ]
