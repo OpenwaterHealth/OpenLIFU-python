@@ -46,7 +46,7 @@ def example_solution() -> Solution:
         delays=np.array([[0.0, 1.0, 2.0, 3.0]]),
         apodizations=np.array([[0.5, 0.75, 1.0, 0.85]]),
         pulse=Pulse(frequency=42),
-        sequence=Sequence(pulse_count=27),
+        sequence=Sequence(pulse_count=27, pulse_interval=2, pulse_train_interval=2*27+5),
         foci=[Point(id="test_focus_point")],
         target=Point(id="test_target_point"),
         simulation_result=xa.Dataset(
