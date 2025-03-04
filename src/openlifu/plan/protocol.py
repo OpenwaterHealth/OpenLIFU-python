@@ -252,7 +252,7 @@ class Protocol:
         simulation_result_aggregated: xa.Dataset = xa.Dataset()
         scaled_solution_analysis: SolutionAnalysis = SolutionAnalysis()
         foci: List[Point] = self.focal_pattern.get_targets(target)
-        simulation_cycles = np.max([np.round(self.pulse.duration * self.pulse.frequency), 20])
+        simulation_cycles = np.min([np.round(self.pulse.duration * self.pulse.frequency), 20])
 
         # updating solution sequence if pulse mismatch
         if (self.sequence.pulse_count % len(foci)) != 0:
@@ -273,7 +273,7 @@ class Protocol:
                     cycles = simulation_cycles,
                     dt=sim_options.dt,
                     t_end=sim_options.t_end,
-                    amplitude = 1,
+                    amplitude = self.pulse.amplitude,
                     gpu = use_gpu
                 )
             delays_to_stack.append(delays)
@@ -325,11 +325,11 @@ class Protocol:
             pnp_aggregated = solution.simulation_result['p_min'].max(dim="focal_point_index")
             ppp_aggregated = solution.simulation_result['p_max'].max(dim="focal_point_index")
             # TODO: Ensure this mean is weighted by the number of times each point is focused on, once openlifu supports hitting points different numbers of times
-            intensity_aggregated = solution.simulation_result['ita'].mean(dim="focal_point_index")
+            intensity_aggregated = solution.simulation_result['intensity'].mean(dim="focal_point_index")
             simulation_result_aggregated = deepcopy(solution.simulation_result)
             simulation_result_aggregated = simulation_result_aggregated.drop_dims("focal_point_index")
             simulation_result_aggregated['p_min'] = pnp_aggregated
             simulation_result_aggregated['p_max'] = ppp_aggregated
-            simulation_result_aggregated['ita'] = intensity_aggregated
+            simulation_result_aggregated['intensity'] = intensity_aggregated
 
         return solution, simulation_result_aggregated, scaled_solution_analysis

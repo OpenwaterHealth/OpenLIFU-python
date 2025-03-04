@@ -20,6 +20,18 @@ class Sequence(DictMixin):
     pulse_train_interval: float = 1.0 # s
     pulse_train_count: int = 1
 
+    def __post_init__(self):
+        if self.pulse_interval <= 0:
+            raise ValueError("Pulse interval must be positive")
+        if self.pulse_count <= 0:
+            raise ValueError("Pulse count must be positive")
+        if self.pulse_train_interval < 0:
+            raise ValueError("Pulse train interval must be non-negative")
+        elif (self.pulse_train_interval > 0) and (self.pulse_train_interval < (self.pulse_interval * self.pulse_count)):
+            raise ValueError("Pulse train interval must be greater than or equal to the total pulse interval")
+        if self.pulse_train_count <= 0:
+            raise ValueError("Pulse train count must be positive")
+
     def get_table(self) -> pd.DataFrame:
         """
         Get a table of the sequence parameters

@@ -8,13 +8,17 @@ from typing import List, Optional, Tuple
 import numpy as np
 import xarray as xa
 
-from openlifu.bf import Pulse, Sequence, mask_focus
+from openlifu.bf import Pulse, Sequence
 from openlifu.bf.focal_patterns import FocalPattern
-from openlifu.bf.mask_focus import MaskOp
 from openlifu.geo import Point
-from openlifu.plan.solution_analysis import SolutionAnalysis, SolutionAnalysisOptions
+from openlifu.plan.solution_analysis import (
+    SolutionAnalysis,
+    SolutionAnalysisOptions,
+    get_beamwidth,
+    get_mask,
+)
 from openlifu.util.json import PYFUSEncoder
-from openlifu.util.units import getunitconversion, rescale_data_arr
+from openlifu.util.units import getunitconversion, rescale_coords, rescale_data_arr
 from openlifu.xdc import Transducer
 
 
@@ -102,133 +106,112 @@ class Solution:
             # self.logger.error(f"Provided transducer id {transducer.id} does not match Solution transducer id: {self.transducer_id}")
             raise ValueError(f"Provided transducer id {transducer.id} does not match Solution transducer id: {self.transducer_id}")
 
-        # dt = 1 / (self.pulse.frequency * 20)
-        # t = self.pulse.calc_time(dt)
-        # input_signal = self.pulse.calc_pulse(t)
+        dt = 1 / (self.pulse.frequency * 20)
+        t = self.pulse.calc_time(dt)
+        input_signal = self.pulse.calc_pulse(t)
 
-        pnp = self.simulation_result.p_min
-        ppp = self.simulation_result.p_max
-        ita = self.simulation_result.ita
+        pnp_MPa_all = rescale_data_arr(rescale_coords(self.simulation_result['p_min'], options.distance_units),"MPa")
+        ipa_Wcm2_all = rescale_data_arr(rescale_coords(self.simulation_result['intensity'], options.distance_units), "W/cm^2")
 
         if options.sidelobe_radius is np.nan:
             options.sidelobe_radius = options.mainlobe_radius
 
-        pnp_MPa = rescale_data_arr(pnp, "MPa")
 
-        # standoff_Z = options.standoff_density * 1500
-        # c_tic = 40e-3  # W cm-1
-        # A_cm = transducer.get_area("cm")
-        # d_eq_cm = np.sqrt(4*A_cm / np.pi)
-        # ele_sizes_cm2 = np.array([elem.get_area("cm") for elem in transducer.elements])
+        standoff_Z = options.standoff_density * 1500
+        c_tic = 40e-3  # W cm-1
+        A_cm = transducer.get_area("cm")
+        d_eq_cm = np.sqrt(4*A_cm / np.pi)
+        ele_sizes_cm2 = np.array([elem.get_area("cm") for elem in transducer.elements])
 
         # xyz = np.stack(np.meshgrid(*coords, indexing="xy"), axis=-1)  #TODO: if fus.Axis is defined, coords.ndgrid(dim="ax")
         # z_mask = xyz[..., -1] >= options.sidelobe_zmin  #TODO: probably wrong here, should be z{1}>=options.sidelobe_zmin;
 
-        # intensity_Wcm2 = output.intensity.rescale_data("W/cm^2")
-        # pulsetrain_dutycycle = self.get_pulsetrain_dutycycle()
-        # treatment_dutycycle = self.get_treatment_dutycycle()
-        # ita_mWcm2 = self.get_ita(output, units="W/cm^2")
+        pulsetrain_dutycycle = self.get_pulsetrain_dutycycle()
+        treatment_dutycycle = self.get_treatment_dutycycle()
+        ita_mWcm2 = rescale_coords(self.get_ita(units="mW/cm^2"), options.distance_units)
 
-        # power_W = np.zeros(self.num_foci())
-        # TIC = np.zeros(self.num_foci())
+        power_W = np.zeros(self.num_foci())
+        TIC = np.zeros(self.num_foci())
         for focus_index in range(self.num_foci()):
-            foc = self.foci[focus_index]
-            # output_signal = []
-            # output_signal = np.zeros((transducer.numelements(), len(input_signal)))
-            # for i in range(transducer.numelements()):
-            #     apod_signal = input_signal * self.apodizations[focus_index, i]
-            #     output_signal[i] = transducer.elements[i].calc_output(apod_signal, dt)
+            pnp_MPa = pnp_MPa_all.isel(focal_point_index=focus_index)
+            ipa_Wcm2 = ipa_Wcm2_all.isel(focal_point_index=focus_index)
+            focus = self.foci[focus_index].get_position(units=options.distance_units)
+            apodization = self.apodizations[focus_index]
+            origin = transducer.get_effective_origin(apodizations=apodization, units=options.distance_units)
 
-            # p0_Pa = np.max(output_signal)
+            output_signal = []
+            output_signal = np.zeros((transducer.numelements(), len(input_signal)))
+            for i in range(transducer.numelements()):
+                apod_signal = input_signal * self.apodizations[focus_index, i]
+                output_signal[i] = transducer.elements[i].calc_output(apod_signal, dt)
+
+            p0_Pa = np.max(output_signal, axis=1)
 
             # get focus region masks (for mainlobe, sidelobe and beamwidth)
-            mainlobe_mask = mask_focus(
-                self.simulation_result,
-                foc,
-                options.mainlobe_radius,
-                mask_op=MaskOp.LESS_EQUAL,
-                units=options.distance_units,
+            # mainlobe_mask = mask_focus(
+            #     self.simulation_result,
+            #     foc,
+            #     options.mainlobe_radius,
+            #     mask_op=MaskOp.LESS_EQUAL,
+            #     units=options.distance_units,
+            #     aspect_ratio=options.mainlobe_aspect_ratio
+            # )
+
+            mainlobe_mask = get_mask(
+                pnp_MPa,
+                focus = focus,
+                origin = origin,
+                distance = options.mainlobe_radius,
+                operator = '<',
+                aspect_ratio = options.mainlobe_aspect_ratio
+            )
+
+            sidelobe_mask = get_mask(
+                pnp_MPa,
+                focus = focus,
+                origin = origin,
+                distance = options.sidelobe_radius,
+                operator = '>',
                 aspect_ratio=options.mainlobe_aspect_ratio
             )
-            # mask_options['operation'] = ">="
-            # mask_options['zmin'] = options.sidelobe_zmin
-            # sidelobe_mask = mask_focus(
-            #     coords=coords,
-            #     coords_units="m",  #TODO: currently hard-coded because sol.simulation_result.coords does not store units
-            #     focus=foc,
-            #     distance=options.sidelobe_radius,
-            #     options=mask_options)
-            # mask_options['operation'] = "<="
-            # beamwidth_mask = mask_focus(
-            #     coords=coords,
-            #     coords_units="m",  #TODO: currently hard-coded because sol.simulation_result.coords does not store units
-            #     focus=foc,
-            #     distance=options.beamwidth_radius,
-            #     options=mask_options)
+            z_mask = pnp_MPa.coords['ax'] > options.sidelobe_zmin
+            sidelobe_mask = sidelobe_mask.where(z_mask, False)
 
-            pk = np.max(pnp_MPa.data[focus_index] * mainlobe_mask).item()  #TODO: pnp_MPa supposed to be a list for each focus: pnp_MPa(focus_index)
+            pk = float(pnp_MPa.where(mainlobe_mask).max())
             solution_analysis.mainlobe_pnp_MPa += [pk]
 
-        #     thresh_m3dB = pk*10**(-3 / 20)
-        #     thresh_m6dB = pk*10**(-6 / 20)
-        #     beamwidth_options = {
-        #         'dims': (0, 1),
-        #         'mask': beamwidth_mask,
-        #         'units': "mm"
-        #     }
-        #     bw3xy = get_beamwidth(
-        #         pnp_MPa,  #TODO: pnp_MPa supposed to be a list for each focus: pnp_MPa(focus_index)
-        #         coords_units="m",
-        #         focus=foc,
-        #         cutoff=thresh_m3dB,
-        #         options=beamwidth_options
-        #     )
-        #     beamwidth_options['dims'] = (2)
-        #     bw3z = get_beamwidth(
-        #         pnp_MPa,  #TODO: pnp_MPa supposed to be a list for each focus: pnp_MPa(focus_index)
-        #         coords_units="m",
-        #         focus=foc,
-        #         cutoff=thresh_m3dB,
-        #         options=beamwidth_options
-        #     )
-        #     beamwidth_options['dims'] = (0, 1)
-        #     bw6xy = get_beamwidth(
-        #         pnp_MPa,  #TODO: pnp_MPa supposed to be a list for each focus: pnp_MPa(focus_index)
-        #         coords_units="m",
-        #         focus=foc,
-        #         cutoff=thresh_m6dB,
-        #         options=beamwidth_options
-        #     )
-        #     beamwidth_options['dims'] = (2)
-        #     bw6z = get_beamwidth(
-        #         pnp_MPa,  #TODO: pnp_MPa supposed to be a list for each focus: pnp_MPa(focus_index)
-        #         coords_units="m",
-        #         focus=foc,
-        #         cutoff=thresh_m6dB,
-        #         options=beamwidth_options
-        #     )
-        #     solution_analysis.mainlobe_isppa_Wcm2 += [np.max(intensity_Wcm2.data * mainlobe_mask)]
-        #     solution_analysis.mainlobe_ispta_mWcm2 += [np.max(ita_mWcm2.data * mainlobe_mask)]
-        #     solution_analysis.beamwidth_lat_3dB_mm += [bw3xy.beamwidth]
-        #     solution_analysis.beamwidth_ax_3dB_mm += [bw3z.beamwidth]
-        #     solution_analysis.beamwidth_lat_6dB_mm += [bw6xy.beamwidth]
-        #     solution_analysis.beamwidth_ax_6dB_mm += [bw6z.beamwidth]
+            for dim, scale in zip(pnp_MPa.dims, options.mainlobe_aspect_ratio):
+                for threshdB in [3, 6]:
+                    attr_name = f'beamwidth_{dim}_{threshdB}dB_mm'
+                    bw0 = getattr(solution_analysis, attr_name)
+                    cutoff = pk*10**(-threshdB / 20)
+                    bw = get_beamwidth(
+                        pnp_MPa,
+                        focus=focus,
+                        dim=dim,
+                        cutoff=cutoff,
+                        origin=origin,
+                        min_offset=-scale*options.beamwidth_radius,
+                        max_offset=scale*options.beamwidth_radius)
+                    bw = getunitconversion(options.distance_units, "mm") * bw
+                    bw = [*bw0, bw]
+                    setattr(solution_analysis, attr_name, bw)
 
-        #     solution_analysis.sidelobe_pnp_MPa += [np.max(pnp_MPa.data * sidelobe_mask)]
-        #     solution_analysis.sidelobe_isppa_Wcm2 += [np.max(intensity_Wcm2.data * sidelobe_mask)]
-        #     solution_analysis.global_pnp_MPa += [np.max(pnp_MPa.data * z_mask)]
-        #     solution_analysis.global_isppa_Wcm2 += [np.max(intensity_Wcm2.data * z_mask)]
-        #     i0_Wcm2 = (p0_Pa**2 / (2*standoff_Z)) * 1e-4
-        #     i0ta_Wcm2 = i0_Wcm2*pulsetrain_dutycycle*treatment_dutycycle
-        #     power_W[focus_index] = np.mean(np.sum(i0ta_Wcm2*ele_sizes_cm2*self.apodizations[focus_index, :]))
-        #     TIC[focus_index] = c_tic*power_W[focus_index]/d_eq_cm
-        #     solution_analysis.p0_Pa += [np.max(p0_Pa)]
-        # solution_analysis.TIC = np.mean(TIC)
-        # solution_analysis.power_W = np.mean(power_W)
-        # solution_analysis.MI = solution_analysis.mainlobe_pnp_MPa/np.sqrt(self.pulse.frequency*1e-6)
-        # ita_mWcm2 = self.get_ita(output)
-        # solution_analysis.global_ispta_mWcm2 = np.max(ita_mWcm2.data*z_mask)
-
+            solution_analysis.mainlobe_isppa_Wcm2 += [float(ipa_Wcm2.where(mainlobe_mask).max())]
+            solution_analysis.mainlobe_ispta_mWcm2 += [float(ita_mWcm2.where(mainlobe_mask).max())]
+            solution_analysis.sidelobe_pnp_MPa += [float(pnp_MPa.where(sidelobe_mask).max())]
+            solution_analysis.sidelobe_isppa_Wcm2 += [float(ipa_Wcm2.where(sidelobe_mask).max())]
+            solution_analysis.global_pnp_MPa += [float(pnp_MPa.where(z_mask).max())]
+            solution_analysis.global_isppa_Wcm2 += [float(ipa_Wcm2.where(z_mask).max())]
+            i0_Wcm2 = (p0_Pa**2 / (2*standoff_Z)) * 1e-4
+            i0ta_Wcm2 = i0_Wcm2 * pulsetrain_dutycycle * treatment_dutycycle
+            power_W[focus_index] = np.mean(np.sum(i0ta_Wcm2 * ele_sizes_cm2 * self.apodizations[focus_index, :]))
+            TIC[focus_index] = power_W[focus_index] / (d_eq_cm * c_tic)
+            solution_analysis.p0_Pa += [np.max(p0_Pa)]
+        solution_analysis.TIC = np.mean(TIC)
+        solution_analysis.power_W = np.mean(power_W)
+        solution_analysis.MI = solution_analysis.mainlobe_pnp_MPa/np.sqrt(self.pulse.frequency*1e-6)
+        solution_analysis.global_ispta_mWcm2 = float((ita_mWcm2*z_mask).max())
         return solution_analysis
 
     def compute_scaling_factors(
@@ -286,7 +269,7 @@ class Solution:
             scaling = v1/v0*apod_factors[i]
             self.simulation_result['p_min'][i].data *= scaling
             self.simulation_result['p_max'][i].data *= scaling
-            self.simulation_result['ita'][i].data *= scaling**2
+            self.simulation_result['intensity'][i].data *= scaling**2
             self.apodizations[i] = self.apodizations[i]*apod_factors[i]
         self.pulse.amplitude = v1
 
@@ -312,13 +295,14 @@ class Solution:
         Returns:
             A float.
         """
-        treatment_dutycycle = min(
-            1, (self.sequence.pulse_count * self.sequence.pulse_interval) / self.sequence.pulse_train_interval
-        )
+        if self.sequence.pulse_train_interval == 0:
+            treatment_dutycycle = 1
+        else:
+            treatment_dutycycle = (self.sequence.pulse_count * self.sequence.pulse_interval) / self.sequence.pulse_train_interval
 
         return treatment_dutycycle
 
-    def get_ita(self, output: dict, units: str = "mW/cm^2") -> xa.DataArray:
+    def get_ita(self, units: str = "mW/cm^2") -> xa.DataArray:
         """
         Calculate the intensity-time-area product for a treatment solution.
 
@@ -328,20 +312,20 @@ class Solution:
                 Target units. Default "mW/cm^2".
 
         Returns:
-            A Solution instance with the calculated ita value.
+            A Solution instance with the calculated intensity value.
         """
-        intensity_scaled = output.intensity.rescale_data(units)
+        intensity_scaled = rescale_data_arr(self.simulation_result['intensity'], units)
         pulsetrain_dutycycle = self.get_pulsetrain_dutycycle()
         treatment_dutycycle = self.get_treatment_dutycycle()
         pulse_seq = (np.arange(self.sequence.pulse_count) - 1) % self.num_foci() + 1
         counts = np.zeros((1, 1, 1, self.num_foci()))
         for i in range(self.num_foci()):
             counts[0, 0, 0, i] = np.sum(pulse_seq == (i+1))
-        ita = intensity_scaled.copy(deep=True)
-        isppa_avg = np.sum(np.expand_dims(ita.data, axis=-1) * counts, axis=-1) / np.sum(counts)
-        ita.data = isppa_avg * pulsetrain_dutycycle * treatment_dutycycle
+        intensity = intensity_scaled.copy(deep=True)
+        isppa_avg = np.sum(np.expand_dims(intensity.data, axis=-1) * counts, axis=-1) / np.sum(counts)
+        intensity.data = isppa_avg * pulsetrain_dutycycle * treatment_dutycycle
 
-        return ita
+        return intensity
 
     def to_dict(self, include_simulation_data: bool = False) -> dict:
         """Serialize a Solution to a dictionary

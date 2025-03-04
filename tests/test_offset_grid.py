@@ -2,19 +2,8 @@ import numpy as np
 import pytest
 from xarray import DataArray, Dataset
 
-from openlifu.bf import offset_grid
-from openlifu.geo import Point
+from openlifu.plan.solution_analysis import get_offset_grid
 
-
-@pytest.fixture()
-def example_focus() -> DataArray:
-    return Point(
-        id="test_focus_point",
-        radius=1.,
-        position=np.array([0.0, 0.0, 1.0]),
-        dims=("x", "y", "z"),
-        units="mm"
-    )
 
 @pytest.fixture()
 def example_xarr() -> DataArray:
@@ -34,7 +23,7 @@ def example_xarr() -> DataArray:
             }
         )
 
-def test_offset_grid(example_xarr: Dataset, example_focus: Point):
+def test_offset_grid(example_xarr: Dataset):
     """Test that the distance grid from the focus point is correct."""
     expected = np.array([
         [[[ 0. ,  0. , -1. ],
@@ -62,6 +51,6 @@ def test_offset_grid(example_xarr: Dataset, example_focus: Point):
         [[ 1. ,  1. , -1. ],
          [ 1. ,  1. , -0.5],
          [ 1. ,  1. ,  0. ]]]])
-    offset = offset_grid(example_xarr, example_focus)
+    offset = get_offset_grid(example_xarr, [0.0, 0.0, 1.0], as_dataset=False)
 
     np.testing.assert_almost_equal(offset, expected)

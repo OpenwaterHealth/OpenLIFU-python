@@ -48,3 +48,17 @@ def test_convert_transform():
         [0,0,0,1],
     ], dtype=float)
     assert np.allclose(transform,expected_transform)
+
+def test_get_effective_origin():
+    transducer = Transducer.gen_matrix_array(nx=3, ny=2, units='cm')
+    effective_origin_with_all_active = transducer.get_effective_origin(apodizations = np.ones(transducer.numelements()))
+    assert np.allclose(effective_origin_with_all_active, np.zeros(3))
+
+    rng = np.random.default_rng()
+    element_index_to_turn_on = rng.integers(transducer.numelements())
+    apodizations_with_just_one_element = np.zeros(transducer.numelements())
+    apodizations_with_just_one_element[element_index_to_turn_on] = 0.5 # It is allowed to be a number between 0 and 1
+    assert np.allclose(
+        transducer.get_effective_origin(apodizations = apodizations_with_just_one_element, units = "um"),
+        transducer.get_positions(units="um")[element_index_to_turn_on],
+    )
