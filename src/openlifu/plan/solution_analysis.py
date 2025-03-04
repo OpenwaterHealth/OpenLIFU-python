@@ -242,7 +242,15 @@ def interp_transformed_axis(
         interp_da.assign_coords(dim=(f'offset_d{dim}', interpolants[d].to_numpy()))
     return interp_da
 
-def get_beam_bounds(da: xa.DataArray, focus, dim, cutoff, origin=DEFAULT_ORIGIN, min_offset=None, max_offset=None):
+def get_beam_bounds(
+    da: xa.DataArray,
+    focus,
+    dim,
+    cutoff:float,
+    origin=DEFAULT_ORIGIN,
+    min_offset:Optional[float]=None,
+    max_offset:Optional[float]=None,
+) -> Tuple[float, float]:
     interp_da = interp_transformed_axis(da, focus=focus, dim=dim, origin=origin, min_offset=min_offset, max_offset=max_offset)
     offset = interp_da.coords[f'offset_d{dim}']
     da_negoff = interp_da.where(offset <= 0, drop=True)
@@ -257,11 +265,11 @@ def get_beam_bounds(da: xa.DataArray, focus, dim, cutoff, origin=DEFAULT_ORIGIN,
         posoff = float(da_posoff.coords[f'offset_d{dim}'][0])
     else:
         posoff = np.nan
-    return [negoff, posoff]
+    return negoff, posoff
 
 def get_beamwidth(da: xa.DataArray, focus, dim, cutoff=None, origin=DEFAULT_ORIGIN, min_offset=None, max_offset=None):
     if cutoff is None:
         cutoff = float(da.max())/2
-    bounds = get_beam_bounds(da, focus=focus, dim=dim, cutoff=float(cutoff), origin=origin, min_offset=min_offset, max_offset=max_offset)
-    bw = bounds[1] - bounds[0]
+    negoff, posoff = get_beam_bounds(da, focus=focus, dim=dim, cutoff=float(cutoff), origin=origin, min_offset=min_offset, max_offset=max_offset)
+    bw = posoff - negoff
     return bw
