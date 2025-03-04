@@ -197,10 +197,6 @@ def get_mask(
         raise ValueError("Operator must be '<', '>', '<=', or '>='.")
     return mask
 
-def mask_focus(da: xa.DataArray, focus, distance, origin=DEFAULT_ORIGIN, aspect_ratio=[1,1,1], operator='<'):
-    mask = get_mask(da, focus, distance, origin=origin, aspect_ratio=aspect_ratio, operator=operator)
-    return da.where(mask)
-
 def interp_transformed_axis(da: xa.DataArray, focus, dim, origin=DEFAULT_ORIGIN, min_offset=None, max_offset=None):
     matrix = get_focus_matrix(focus, origin=origin)
     coords = get_gridded_transformed_coords(da, matrix, as_dataset=True)
