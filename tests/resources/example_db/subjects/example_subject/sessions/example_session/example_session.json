@@ -64,7 +64,8 @@
         ],
         "units": "mm"
       },
-      "transducer_tracking_approved": false
+      "transducer_to_photoscan_tracking_approved": false,
+      "photoscan_to_volume_tracking_approved": false
     }
   ]
 }
