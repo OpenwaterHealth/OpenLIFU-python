@@ -148,9 +148,9 @@ def calc_dist_from_focus(da: xa.DataArray, focus, origin=DEFAULT_ORIGIN, aspect_
             (see `Transducer.get_effective_origin` for the meaning of this).
         aspect_ratio: x,y,z scalings on the focus coordinate system to distort the space before computing distance
             (see `get_focus_matrix` for the meaning of "focus coordinates").
-        as_dataset: Whether to return the distance map as a numpy array or an xarray Dataset
+        as_dataarray: Whether to return the distance map as a numpy array or an xarray DataArray
 
-    Returns the distance map as either a numpy array or an xarray Dataset.
+    Returns the distance map as either a numpy array or an xarray DataArray.
     """
     coords = get_offset_grid(da, focus, origin=origin, as_dataset=False)
     dist = np.sqrt(np.sum((coords/aspect_ratio)**2, axis=-1))
@@ -158,7 +158,32 @@ def calc_dist_from_focus(da: xa.DataArray, focus, origin=DEFAULT_ORIGIN, aspect_
         dist = xa.DataArray(dist, coords=da.coords, dims=da.dims)
     return dist
 
-def get_mask(da: xa.DataArray, focus, distance, origin=DEFAULT_ORIGIN, aspect_ratio=[1,1,1], operator='<'):
+def get_mask(
+    da: xa.DataArray,
+    focus,
+    distance:float,
+    origin=DEFAULT_ORIGIN,
+    aspect_ratio=[1,1,1],
+    operator='<',
+) -> xa.DataArray:
+    """Compute a boolean mask of the focus region in transducer space.
+
+    The focus region is an ellipsoid centered at the focus point.
+
+    Args:
+        da: DataArray that will supply the coordnate grid (presumably transducer coordinates)
+        focus: A 3D point describing the focus coordinate system location in the coordinates of `da`
+        distance: How far from the `focus` to include points in the mask. See `calc_dist_from_focus`
+            for the distorted metric under which a ball of points becomes an ellispoid in euclidean space.
+        origin: A 3D point describing the transducer "effective origin" in transducer coordinates
+            (see `Transducer.get_effective_origin` for the meaning of this).
+        aspect_ratio: x,y,z scalings on the focus coordinate system to distort the space before computing distances
+            (see `get_focus_matrix` for the meaning of "focus coordinates").
+        operator: a string representation of an inequality operator that represents the desired masking operation.
+            The default '<' for example includes points strictly *inside* the focal ellipsoid.
+
+    Returns: the focal mask as an xarray DataArray
+    """
     dist = calc_dist_from_focus(da, focus, origin=origin, aspect_ratio=aspect_ratio)
     if operator == '<':
         mask = dist < distance
@@ -169,7 +194,7 @@ def get_mask(da: xa.DataArray, focus, distance, origin=DEFAULT_ORIGIN, aspect_ra
     elif operator == '>=':
         mask = dist >= distance
     else:
-        raise ValueError("Operator must be 'lt' or 'gt'")
+        raise ValueError("Operator must be '<', '>', '<=', or '>='.")
     return mask
 
 def mask_focus(da: xa.DataArray, focus, distance, origin=DEFAULT_ORIGIN, aspect_ratio=[1,1,1], operator='<'):
