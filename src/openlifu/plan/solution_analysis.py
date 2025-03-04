@@ -205,17 +205,17 @@ def interp_transformed_axis(
     min_offset:Optional[float]=None,
     max_offset:Optional[float]=None,
 ) -> xa.DataArray:
-    """Interpolate data along the focal axis.
+    """Interpolate data along a focal coordinate system axis.
 
-    Here the *focal axis* is the ray from the transducer's "effective origin" (see `Transducer.get_effective_origin`)
-    to the focus center.
+    See `get_focus_matrix` for the meaning of "focal coordinate system."
 
     Args:
-        da: DataArray that will supply the coordnate grid (presumably transducer coordinates)
+        da: DataArray whose values will be sampled (presumably defined on transducer coordinates).
         focus: A 3D point describing the focus location in the coordinates of `da`
         dim: The name of the dimension of `da` whose corresponding focal coordinate system axis should be sampled along.
-            See `get_focus_matrix` for the meaning of "focal coordinate system." For example, the "axial" dimension of
-            a transducer corresponds to the focal axis in the focal coordinate system.
+            For example, the "axial" dimension of a transducer corresponds to the focal axis (z-axis) in the focal coordinate
+            system, that is, the ray from the transducer's "effective origin" (see `Transducer.get_effective_origin`)
+            to the focus center.
         origin: A 3D point describing the "effective origin" in the coordinates of `da`
             (see `Transducer.get_effective_origin` for the meaning of this).
         min_offset: How far along the negative focal `dim` direction to sample. By default samples as far as the coordinate
@@ -251,6 +251,29 @@ def get_beam_bounds(
     min_offset:Optional[float]=None,
     max_offset:Optional[float]=None,
 ) -> Tuple[float, float]:
+    """Determine how far along a focal coordinate system axis a DataArray's value stays above a certain cutoff.
+
+    See `get_focus_matrix` for the meaning of "focal coordinate system."
+
+    Args:
+        da: DataArray whose values will be considered (presumably defined on transducer coordinates).
+        focus: A 3D point describing the focus location in the coordinates of `da`
+        dim: The name of the dimension of `da` whose corresponding focal coordinate system axis should be sampled along.
+            For example, the "axial" dimension of a transducer corresponds to the focal axis (z-axis) in the focal coordinate
+            system, that is, the ray from the transducer's "effective origin" (see `Transducer.get_effective_origin`)
+            to the focus center.
+        cutoff: The threshold against which `da` values are compared.
+        origin: A 3D point describing the "effective origin" in the coordinates of `da`
+            (see `Transducer.get_effective_origin` for the meaning of this).
+        min_offset: How far along the negative focal `dim` direction to sample. By default samples as far as the coordinate
+            grid allows.
+        max_offset: How far along the positive focal `dim` direction to sample. By default samples as far as the coordinate
+            grid allows.
+
+    Returns:
+        negoff: Distance from the `focus` along the negative focal `dim` direction until `da` first goes below `cutoff`.
+        posoff: Distance from the `focus` along the positive focal `dim` direction until `da` first goes below `cutoff`.
+    """
     interp_da = interp_transformed_axis(da, focus=focus, dim=dim, origin=origin, min_offset=min_offset, max_offset=max_offset)
     offset = interp_da.coords[f'offset_d{dim}']
     da_negoff = interp_da.where(offset <= 0, drop=True)
@@ -267,7 +290,39 @@ def get_beam_bounds(
         posoff = np.nan
     return negoff, posoff
 
-def get_beamwidth(da: xa.DataArray, focus, dim, cutoff=None, origin=DEFAULT_ORIGIN, min_offset=None, max_offset=None):
+def get_beamwidth(
+    da: xa.DataArray,
+    focus,
+    dim,
+    cutoff:Optional[float]=None,
+    origin=DEFAULT_ORIGIN,
+    min_offset:Optional[float]=None,
+    max_offset:Optional[float]=None
+) -> float:
+    """Determine the FWHM (or differently thresholded width) of a DataArray along a focal coordinate system axis.
+
+    See `get_focus_matrix` for the meaning of "focal coordinate system."
+
+    Args:
+        da: DataArray whose values will be considered (presumably defined on transducer coordinates).
+        focus: A 3D point describing the focus location in the coordinates of `da`
+        dim: The name of the dimension of `da` whose corresponding focal coordinate system axis should be sampled along.
+            For example, the "axial" dimension of a transducer corresponds to the focal axis (z-axis) in the focal coordinate
+            system, that is, the ray from the transducer's "effective origin" (see `Transducer.get_effective_origin`)
+            to the focus center.
+        cutoff: The threshold against which `da` values are compared. If not provided then the half-max is used, making
+            this an "FWHM" function.
+        origin: A 3D point describing the "effective origin" in the coordinates of `da`
+            (see `Transducer.get_effective_origin` for the meaning of this).
+        min_offset: How far along the negative focal `dim` direction to sample. By default samples as far as the coordinate
+            grid allows.
+        max_offset: How far along the positive focal `dim` direction to sample. By default samples as far as the coordinate
+            grid allows.
+
+    Returns: The "beam width" along the focal `dim` direction, by measuring from the from closest-to-focus point along the
+        *negative* focal `dim` axis for which `da` goes below `cutoff` up to the closest-to-focus point along the
+        *positive* focal `dim` axis for which `da` goes below `cutoff`.
+    """
     if cutoff is None:
         cutoff = float(da.max())/2
     negoff, posoff = get_beam_bounds(da, focus=focus, dim=dim, cutoff=float(cutoff), origin=origin, min_offset=min_offset, max_offset=max_offset)
