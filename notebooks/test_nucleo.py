@@ -45,6 +45,53 @@ print("Get Ambient")
 temperature = interface.txdevice.get_ambient_temperature()
 print(f"Ambient Temperature: {temperature} °C")
 
+print("Get Trigger")
+current_trigger_setting = interface.txdevice.get_trigger_json()
+if current_trigger_setting:
+    print(f"Current Trigger Setting: {current_trigger_setting}")
+else:
+    print("Failed to get current trigger setting.")
+
+print("Starting Trigger with current setting...")
+if interface.txdevice.start_trigger():
+    print("Trigger Running Press enter to STOP:")
+    input()  # Wait for the user to press Enter
+    if interface.txdevice.stop_trigger():
+        print("Trigger stopped successfully.")
+    else:
+        print("Failed to stop trigger.")
+else:
+    print("Failed to get trigger setting.")
+
+print("Set Trigger")
+json_trigger_data = {
+    "TriggerFrequencyHz": 25,
+    "TriggerPulseCount": 0,
+    "TriggerPulseWidthUsec": 20000,
+    "TriggerPulseTrainInterval": 0,
+    "TriggerPulseTrainCount": 0,
+    "TriggerMode": 1,
+    "ProfileIndex": 0,
+    "ProfileIncrement": 0
+}
+
+trigger_setting = interface.txdevice.set_trigger_json(data=json_trigger_data)
+if trigger_setting:
+    print(f"Trigger Setting: {trigger_setting}")
+else:
+    print("Failed to set trigger setting.")
+
+print("Starting Trigger with updated setting...")
+if interface.txdevice.start_trigger():
+    print("Trigger Running Press enter to STOP:")
+    input()  # Wait for the user to press Enter
+    if interface.txdevice.stop_trigger():
+        print("Trigger stopped successfully.")
+    else:
+        print("Failed to stop trigger.")
+else:
+    print("Failed to get trigger setting.")
+
 print("Reset Device:")
 # Ask the user for confirmation
 user_input = input("Do you want to reset the device? (y/n): ").strip().lower()
