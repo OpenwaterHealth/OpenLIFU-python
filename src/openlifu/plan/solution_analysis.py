@@ -2,15 +2,41 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Tuple
+from typing import List, Literal, Tuple
 
 import numpy as np
+import pandas as pd
 import xarray as xa
 
 from openlifu.util.dict_conversion import DictMixin
 
 DEFAULT_ORIGIN = np.zeros(3)
 
+PARAM_FORMATS = {
+    "mainlobe_pnp_MPa": ["max", "0.3f", "MPa", "Mainlobe Peak Negative Pressure"],
+    "mainlobe_isppa_Wcm2": ["max", "0.3f", "W/cm^2", "Mainlobe I_SPPA"],
+    "mainlobe_ispta_mWcm2": ["mean", "0.3f", "mW/cm^2", "Mainlobe I_SPTA"],
+    "beamwidth_lat_3dB_mm": ["mean", "0.3f", "mm", "3dB Lateral Beamwidth"],
+    "beamwidth_ele_3dB_mm": ["mean", "0.3f", "mm", "3dB Elevational Beamwidth"],
+    "beamwidth_ax_3dB_mm": ["mean", "0.3f", "mm", "3dB Axial Beamwidth"],
+    "beamwidth_lat_6dB_mm": ["mean", "0.3f", "mm", "6dB Lateral Beamwidth"],
+    "beamwidth_ele_6dB_mm": ["mean", "0.3f", "mm", "6dB Elevational Beamwidth"],
+    "beamwidth_ax_6dB_mm": ["mean", "0.3f", "mm", "6dB Axial Beamwidth"],
+    "sidelobe_pnp_MPa": ["max", "0.3f", "MPa", "Sidelobe Peak Negative Pressure"],
+    "sidelobe_isppa_Wcm2": ["max", "0.3f", "W/cm^2", "Sidelobe I_SPPA"],
+    "global_pnp_MPa": ["max", "0.3f", "MPa", "Global Peak Negative Pressure"],
+    "global_isppa_Wcm2": ["max", "0.3f", "W/cm^2", "Global I_SPPA"],
+    "global_ispta_mWcm2": [None, "0.3f", "mW/cm^2", "Global I_SPTA"],
+    "p0_MPa": ["max", "0.3f", "MPa", "Emitted Pressure"],
+    "power_W": [None, "0.3f", "W", "Emitted Power"],
+    "TIC": [None, "0.3f", "", "TIC"],
+    "MI": ["max", "0.3f", "", "MI"]}
+
+STATUSES = {
+    "ok": "✅",
+    "warning": "⚠️",
+    "error": "❌"
+}
 
 @dataclass
 class SolutionAnalysis(DictMixin):
@@ -27,11 +53,41 @@ class SolutionAnalysis(DictMixin):
     sidelobe_isppa_Wcm2: list[float] = field(default_factory=list)
     global_pnp_MPa: list[float] = field(default_factory=list)
     global_isppa_Wcm2: list[float] = field(default_factory=list)
-    p0_Pa: list[float] = field(default_factory=list)
+    p0_MPa: list[float] = field(default_factory=list)
     TIC: float | None = None
     power_W: float | None = None
     MI: float | None = None
     global_ispta_mWcm2: float | None = None
+
+    def to_table(self, param_constaints:List["ParameterConstraint"]=[]) -> pd.DataFrame:
+        records = []
+        constraints = {c.param: c for c in param_constaints}
+        for param, fmt in PARAM_FORMATS.items():
+            if fmt[0] is None:
+                pval = self.__dict__[param]
+            elif fmt[0] == "max":
+                pval = max(self.__dict__[param])
+            elif fmt[0] == "mean":
+                pval = np.mean(self.__dict__[param])
+            if pval is not None:
+                record = {"id": param,
+                          "Param": fmt[3],
+                          "Value" : "",
+                          "Units" : fmt[2],
+                          "Status": "",
+                          "_value" : pval,
+                          "_warning": False,
+                          "_error": False}
+                if np.isnan(pval):
+                    record["Value"] = "NaN"
+                else:
+                    record["Value"] = f"{pval:{fmt[1]}}"
+                    if param in constraints:
+                        record['_warning'] = constraints[param].is_warning(pval)
+                        record['_error'] = constraints[param].is_error(pval)
+                        record["Status"] = STATUSES[constraints[param].get_status(pval)]
+                records.append(record)
+        return pd.DataFrame.from_records(records)
 
     @staticmethod
     def from_json(json_string : str) -> SolutionAnalysis:
@@ -50,6 +106,45 @@ class SolutionAnalysis(DictMixin):
             return json.dumps(self.to_dict(), separators=(',', ':'))
         else:
             return json.dumps(self.to_dict(), indent=4)
+
+@dataclass
+class ParameterConstraint(DictMixin):
+    param: str
+    operator: Literal['<','<=','>','>=']
+    warning_value: float|None = None
+    error_value: float|None = None
+
+    def is_warning(self, value:float) -> bool:
+        if self.warning_value is not None:
+            if self.operator == '<':
+                return value >= self.warning_value
+            elif self.operator == '<=':
+                return value > self.warning_value
+            elif self.operator == '>':
+                return value <= self.warning_value
+            elif self.operator == '>=':
+                return value < self.warning_value
+        return False
+
+    def is_error(self, value:float) -> bool:
+        if self.error_value is not None:
+            if self.operator == '<':
+                return value >= self.error_value
+            elif self.operator == '<=':
+                return value > self.error_value
+            elif self.operator == '>':
+                return value <= self.error_value
+            elif self.operator == '>=':
+                return value < self.error_value
+        return False
+
+    def get_status(self, value:float) -> str:
+        if self.is_error(value):
+            return "error"
+        elif self.is_warning(value):
+            return "warning"
+        else:
+            return "ok"
 
 
 @dataclass
