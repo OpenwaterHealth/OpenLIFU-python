@@ -75,12 +75,12 @@ def find_centroid(da: xa.DataArray, cutoff:float) -> np.ndarray:
 def get_focus_matrix(focus, origin=[0,0,0]) -> np.ndarray:
     """Get the coordinate transform from the focus to the transducer
 
-    The "focus coordinate system" here refers to a coordinate system whose z-axis is along
+    The "focal coordinate system" here refers to a coordinate system whose z-axis is along
     the ray from the transducer's "effective origin" (see `Transducer.get_effective_origin`)
     to the focus center.
 
     Args:
-        focus: A 3D point describing the focus coordinate system location in transducer coordinates
+        focus: A 3D point describing the focal coordinate system location in transducer coordinates
         origin: A 3D point describing the transducer "effective origin" in transducer coordinates
 
     Returns: A 4x4 affine transform matrix that describes the coordinate transformation from the focus
@@ -125,8 +125,8 @@ def get_offset_grid(da: xa.DataArray, focus, origin=DEFAULT_ORIGIN, as_dataset=T
 
     Args:
         da: DataArray whose coordinates will be used (presumably the transducer coordinates)
-        focus: A 3D point describing the focus coordinate system location in the coordinates of `da`
-        origin: A 3D point describing the transducer "effective origin" in transducer coordinates
+        focus: A 3D point describing the focus location in the coordinates of `da`
+        origin: A 3D point describing the "effective origin" in the coordinates of `da`
             (see `Transducer.get_effective_origin` for the meaning of this).
         as_dataset: Whether to return the transformed coords as a numpy array or an xarray Dataset
 
@@ -143,10 +143,10 @@ def calc_dist_from_focus(da: xa.DataArray, focus, origin=DEFAULT_ORIGIN, aspect_
 
     Args:
         da: DataArray that will supply the coordnate grid (presumably transducer coordinates)
-        focus: A 3D point describing the focus coordinate system location in the coordinates of `da`
-        origin: A 3D point describing the transducer "effective origin" in transducer coordinates
+        focus: A 3D point describing the focus location in the coordinates of `da`
+        origin: A 3D point describing the "effective origin" in the coordinates of `da`
             (see `Transducer.get_effective_origin` for the meaning of this).
-        aspect_ratio: x,y,z scalings on the focus coordinate system to distort the space before computing distance
+        aspect_ratio: x,y,z scalings on the focal coordinate system to distort the space before computing distance
             (see `get_focus_matrix` for the meaning of "focus coordinates").
         as_dataarray: Whether to return the distance map as a numpy array or an xarray DataArray
 
@@ -172,12 +172,12 @@ def get_mask(
 
     Args:
         da: DataArray that will supply the coordnate grid (presumably transducer coordinates)
-        focus: A 3D point describing the focus coordinate system location in the coordinates of `da`
+        focus: A 3D point describing the focus location in the coordinates of `da`
         distance: How far from the `focus` to include points in the mask. See `calc_dist_from_focus`
             for the distorted metric under which a ball of points becomes an ellispoid in euclidean space.
-        origin: A 3D point describing the transducer "effective origin" in transducer coordinates
+        origin: A 3D point describing the "effective origin" in the coordinates of `da`
             (see `Transducer.get_effective_origin` for the meaning of this).
-        aspect_ratio: x,y,z scalings on the focus coordinate system to distort the space before computing distances
+        aspect_ratio: x,y,z scalings on the focal coordinate system to distort the space before computing distances
             (see `get_focus_matrix` for the meaning of "focus coordinates").
         operator: a string representation of an inequality operator that represents the desired masking operation.
             The default '<' for example includes points strictly *inside* the focal ellipsoid.
@@ -197,7 +197,34 @@ def get_mask(
         raise ValueError("Operator must be '<', '>', '<=', or '>='.")
     return mask
 
-def interp_transformed_axis(da: xa.DataArray, focus, dim, origin=DEFAULT_ORIGIN, min_offset=None, max_offset=None):
+def interp_transformed_axis(
+    da: xa.DataArray,
+    focus,
+    dim,
+    origin=DEFAULT_ORIGIN,
+    min_offset:Optional[float]=None,
+    max_offset:Optional[float]=None,
+) -> xa.DataArray:
+    """Interpolate data along the focal axis.
+
+    Here the *focal axis* is the ray from the transducer's "effective origin" (see `Transducer.get_effective_origin`)
+    to the focus center.
+
+    Args:
+        da: DataArray that will supply the coordnate grid (presumably transducer coordinates)
+        focus: A 3D point describing the focus location in the coordinates of `da`
+        dim: The name of the dimension of `da` whose corresponding focal coordinate system axis should be sampled along.
+            See `get_focus_matrix` for the meaning of "focal coordinate system." For example, the "axial" dimension of
+            a transducer corresponds to the focal axis in the focal coordinate system.
+        origin: A 3D point describing the "effective origin" in the coordinates of `da`
+            (see `Transducer.get_effective_origin` for the meaning of this).
+        min_offset: How far along the negative focal `dim` direction to sample. By default samples as far as the coordinate
+            grid allows.
+        max_offset: How far along the positive focal `dim` direction to sample. By default samples as far as the coordinate
+            grid allows.
+
+    Returns: a 1D DataArray of interpolated values from `da`.
+    """
     matrix = get_focus_matrix(focus, origin=origin)
     coords = get_gridded_transformed_coords(da, matrix, as_dataset=True)
     if min_offset is None:
