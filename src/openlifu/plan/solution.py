@@ -211,7 +211,7 @@ class Solution:
             i0ta_Wcm2 = i0_Wcm2 * pulsetrain_dutycycle * treatment_dutycycle
             power_W[focus_index] = np.mean(np.sum(i0ta_Wcm2 * ele_sizes_cm2 * self.apodizations[focus_index, :]))
             TIC[focus_index] = power_W[focus_index] / (d_eq_cm * c_tic)
-            solution_analysis.p0_Pa += [np.max(p0_Pa)]
+            solution_analysis.p0_MPa += [1e-6*np.max(p0_Pa)]
         solution_analysis.TIC = np.mean(TIC)
         solution_analysis.power_W = np.mean(power_W)
         solution_analysis.MI = (solution_analysis.mainlobe_pnp_MPa/np.sqrt(self.pulse.frequency*1e-6)).item()
