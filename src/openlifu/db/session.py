@@ -5,7 +5,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple
 
 import numpy as np
 
@@ -44,9 +44,13 @@ class TransducerTrackingResult:
     photoscan_to_volume_transform: ArrayTransform
     """Transform output by the transducer tracking algorithm to register the photoscan model the volume's skin segmentation"""
 
-    transducer_tracking_approved: Optional[bool] = False
-    """Approval state of transducer tracking result. `True` means the user has provided some kind of
-    confirmation that the transducer transforms in this result agrees with reality."""
+    transducer_to_photoscan_tracking_approved: bool = False
+    """Approval state of transducer to photoscan tracking result. `True` means the user has provided some kind of
+    confirmation that the transform result agrees with reality."""
+
+    photoscan_to_volume_tracking_approved: bool = False
+    """Approval state of photoscan to volume tracking result. `True` means the user has provided some kind of
+    confirmation that the transform result agrees with reality."""
 
 @dataclass
 class Session:
@@ -155,7 +159,8 @@ class Session:
                     t['photoscan_id'],
                     ArrayTransform(np.array(t['transducer_to_photoscan_transform']['matrix']),t['transducer_to_photoscan_transform']['units']),
                     ArrayTransform(np.array(t['photoscan_to_volume_transform']['matrix']), t['photoscan_to_volume_transform']['units']),
-                    t['transducer_tracking_approved']
+                    t['transducer_to_photoscan_tracking_approved'],
+                    t['photoscan_to_volume_tracking_approved']
                     )
                     for t in d['transducer_tracking_results']
                     ]
