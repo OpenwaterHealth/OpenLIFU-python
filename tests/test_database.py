@@ -423,6 +423,10 @@ def test_session_arrays_read_correctly(example_session:Session):
         for array_transform in array_transforms:
             assert isinstance(array_transform.matrix, np.ndarray)
 
+    for tt_result in example_session.transducer_tracking_results:
+        assert isinstance(tt_result.transducer_to_photoscan_transform.matrix, np.ndarray)
+        assert isinstance(tt_result.photoscan_to_volume_transform.matrix, np.ndarray)
+
 @pytest.mark.parametrize("compact_representation", [True, False])
 def test_serialize_deserialize_session(example_session : Session, compact_representation:bool):
     reconstructed_session = example_session.from_json(example_session.to_json(compact_representation))
