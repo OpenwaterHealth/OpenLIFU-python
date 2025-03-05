@@ -4,6 +4,45 @@ import vtk
 from openlifu.seg.skinseg import cartesian_to_spherical
 
 
+def create_plane_actor(center, normal, plane_size=5.0, resolution=5, color=(1.0,0.5,0.5)):
+    """
+    Create a VTK actor of a plane:
+      - The plane is centered at 'center'.
+      - Its normal is aligned with 'normal'.
+      - 'plane_size' controls how large the drawn plane is (square).
+      - 'resolution' controls how many subdivisions in each direction.
+      - color is the color of the plane
+    """
+    # vtkPlaneSource by default creates a plane in the XY-plane (normal=+Z).
+    # We'll override that to orient it along 'normal' and center it at 'center'.
+
+    plane_source = vtk.vtkPlaneSource()
+    # We define the corners of the plane in its local coordinate space
+    # (before orientation via SetNormal):
+    half = plane_size / 2.0
+    plane_source.SetOrigin(-half, -half, 0)       # bottom-left corner
+    plane_source.SetPoint1( half, -half, 0)       # bottom-right corner
+    plane_source.SetPoint2(-half,  half, 0)       # top-left corner
+
+    # Increase resolution for a smoother mesh (wireframe or shading)
+    plane_source.SetXResolution(resolution)
+    plane_source.SetYResolution(resolution)
+
+    # Explicitly set the plane’s center and normal
+    plane_source.SetCenter(center)
+    plane_source.SetNormal(normal)  # VTK automatically orients it to this normal
+
+    # Create a mapper and actor
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputConnection(plane_source.GetOutputPort())
+
+    plane_actor = vtk.vtkActor()
+    plane_actor.SetMapper(mapper)
+
+    plane_actor.GetProperty().SetColor(*color)
+
+    return plane_actor
+
 def visualize_3d_volume(vtk_image):
     """
     Visualizes a vtkImageData object as a 3D volume with interactive controls.
@@ -61,7 +100,7 @@ def visualize_3d_volume(vtk_image):
     render_window.Render()
     interactor.Start()
 
-def visualize_polydata(polydata, title="PolyData Visualization", highlight_points=None, camera_start=None, camera_focus=None):
+def visualize_polydata(polydata, title="PolyData Visualization", highlight_points=None, camera_start=None, camera_focus=None, additional_actors=None):
     """
     Visualizes a vtkPolyData object using VTK with enhanced interaction.
     Optionally, highlights a specified point with a yellow sphere.
@@ -70,6 +109,7 @@ def visualize_polydata(polydata, title="PolyData Visualization", highlight_point
         polydata (vtkPolyData): The mesh data to visualize. Could give a list of meshes if you want multiple.
         title (str): The title of the render window.
         highlight_point (tuple): A tuple of (x, y, z) coordinates to highlight with a yellow sphere.
+        additional_actors: optional list of additional actors
     """
     if not isinstance(polydata, list):
         polydata = [polydata]
@@ -117,6 +157,10 @@ def visualize_polydata(polydata, title="PolyData Visualization", highlight_point
             sphere_actor.GetProperty().SetColor(1.0, 1.0, 0.0)  # Yellow sphere
 
             renderer.AddActor(sphere_actor)
+
+    if additional_actors is not None:
+        for actor in additional_actors:
+            renderer.AddActor(actor)
 
     # Create a render window
     render_window = vtk.vtkRenderWindow()

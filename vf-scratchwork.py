@@ -211,7 +211,7 @@ in_bounds = np.zeros(shape=search_grid_shape, dtype=bool)
 steering_dists = np.zeros(shape=search_grid_shape, dtype=float)
 
 # %%
-# Visualize search grid
+# Visualize entire virtual fitting search grid
 pts = []
 for i in range(num_thetas):
     for j in range(num_phis):
@@ -223,6 +223,10 @@ visualize_polydata(sphere_from_interpolator(skin_interpolator), highlight_points
 # We will iterate over all i and j as in the "visualize search grid" cell above, but in this cell we just demo on one grid point i=0,j=0
 theta_rad, phi_rad = theta_grid[0,0]*np.pi/180, phi_grid[0,0]*np.pi/180
 
+# Cartesian coordinate location of the point at which we are fitting a plane
+point = np.array(spherical_to_cartesian(skin_interpolator(theta_rad, phi_rad), theta_rad, phi_rad))
+
+# The point at which we are now fitting a plane
 # visualize_polydata(sphere_from_interpolator(skin_interpolator), highlight_points=spherical_to_cartesian(skin_interpolator(theta_rad, phi_rad), theta_rad, phi_rad), camera_focus=(0,0,0))
 
 # To radians
@@ -231,14 +235,49 @@ dtheta_step = planefit_dyaw_step*np.pi/180
 dphi_extent = planefit_dpitch_extent*np.pi/180
 dphi_step = planefit_dpitch_step*np.pi/180
 
-# Build plane fitting grid in the spherical coordinate basis theta-phi plane
-dtheta_sequence = np.arange(-dtheta_extent, dtheta_extent + dtheta_step, dtheta_step)
-dphi_sequence = np.arange(-dphi_extent, dphi_extent + dphi_step, dphi_step)
+# Build plane fitting grid in the spherical coordinate basis theta-phi plane, which we will later project back onto the skin surface
+dtheta_sequence = np.arange(-planefit_dyaw_extent, planefit_dyaw_extent + planefit_dyaw_step, planefit_dyaw_step)
+dphi_sequence = np.arange(-planefit_dpitch_extent, planefit_dpitch_extent + planefit_dpitch_step, planefit_dpitch_step)
 dtheta_grid, dphi_grid = np.meshgrid(dtheta_sequence, dphi_sequence, indexing='ij')
 
-spherical_to_cartesian(skin_interpolator(theta_rad, phi_rad), theta_rad, phi_rad)
+r_hat, theta_hat, phi_hat = spherical_coordinate_basis(theta_rad,phi_rad)
+planefit_points_unprojected_cartesian = (
+    point.reshape(1,1,3)
+    + dtheta_grid[...,np.newaxis] * theta_hat.reshape(1,1,3) # shape (num dthetas, num dphis, 3)
+    + dphi_grid[...,np.newaxis] * phi_hat.reshape(1,1,3) # shape (num dthetas, num dphis, 3)
+) # shape (num dthetas, num dphis, 3)
 
-# NEXT: vectorize cartesian/spherical converter functions, then create a coordinate basis function (vectorized or not) and unit test it
+# visualize unprojected plane fitting points alongside sphere of radius `point`'s r-coordinate
+# visualize_polydata(sphere_from_interpolator(lambda x,y : np.sqrt(np.sum(point**2))), highlight_points=list(planefit_points_unprojected_cartesian.reshape(-1,3)), camera_focus=(0,0,0))
+
+# visualize unprojected plane fitting points alongside the actual skin surface
+# visualize_polydata(sphere_from_interpolator(skin_interpolator), highlight_points=list(planefit_points_unprojected_cartesian.reshape(-1,3)), camera_focus=(0,0,0))
+
+planefit_points_unprojected_spherical = cartesian_to_spherical_vectorized(
+    planefit_points_unprojected_cartesian
+) # shape (num dthetas, num dphis, 3)
+skin_projected_r_values = skin_interpolator(planefit_points_unprojected_spherical[...,1:]) # shape (num dthetas, num dphis) # TODO adjust docstrings to demand a *vectorizable* spherical interpolator
+planefit_points_cartesian = spherical_to_cartesian_vectorized( # Could instead renormalize planefit_points_unprojected_cartesian, not sure if it would give a speedup versus this
+    np.stack([
+        skin_projected_r_values, # New r values after projection to skin
+        planefit_points_unprojected_spherical[...,1], # Same old theta values
+        planefit_points_unprojected_spherical[...,2], # Same old phi values
+    ], axis=-1)
+)
+
+# visualize the plane fitting points now projected onto the skin surface
+# visualize_polydata(sphere_from_interpolator(skin_interpolator), highlight_points=list(planefit_points_cartesian.reshape(-1,3)), camera_focus=(0,0,0))
+
+# Fit the best plane to these points among the planes that pass through `point`. Here we find the normal vector to the plane.
+plane_normal = np.linalg.svd(
+    planefit_points_cartesian.reshape(-1,3)-point.reshape(1,3),
+    full_matrices=False, # we don't need the left-singular vectors anyway, so this speeds things up
+).Vh[-1] # The right-singular vector corresponding to the smallest singular value
+
+# visualize the fitted plane
+visualize_polydata(sphere_from_interpolator(skin_interpolator), highlight_points=list(planefit_points_cartesian.reshape(-1,3)), camera_focus=point, additional_actors=[create_plane_actor(point, plane_normal, plane_size=50)])
+
+
 
 # The goal here is to get the "transducer pose" which means a 4x4 (or 3x4) matrix that would work as a "transducer transform", i.e.
 # maps the transducer into LPS volume space
