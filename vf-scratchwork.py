@@ -163,10 +163,13 @@ volume_affine_RAS = vol_affine # We assume this maps into RAS space! That's how 
 transducer = Transducer.from_file("db_dvc/transducers/curved2_100roc_10gap/curved2_100roc_10gap.json")
 
 # Note that these are in the units of the volume space! I think.
-planefit_dyaw_extent = 20
-planefit_dyaw_step = 1
+planefit_dyaw_extent = 20 # we go out as far as +/- extent, so the search space is twice this size
+planefit_dyaw_step = 5
 planefit_dpitch_extent = 15
 planefit_dpitch_step = 1
+
+z_offset = 13.55 # in units of the volume space I think.
+dzdy = 0.15 # slope of the transducer away from the skin surface (how much the bottom of the transducer should be raised away from the skin surface per unit length along the elevational direction of the transducer
 
 # Desired output from this will be:
 # A transducer transform (an ArrayTransform) that places the transducer into the MRI space in LPS coordinates
@@ -195,6 +198,7 @@ skin_interpolator = spherical_interpolator_from_mesh(
 #
 # - The input volume is now just given as a numpy array with an affine, not an xarray thing. This is more like how a user would actually have a volume after reading it from disk.
 # - (internal change) yaw and pitch are internally converted to spherical coordinates $\theta$ and $\phi$ to make it easier to work in that coordinate system. Also $\theta$ and $\phi$ were swapped from the minor previously existing usage, to match the physics convention. The relation is that pitch is $\phi$ and yaw is $90-\theta$. The $90-\theta$ is there to allow us to use a more standard version of spherical coordinates (where previously we had a confusing swap of sines with cosines from the standard approach).
+# - Many operations are now vectorized rather than relying on a python loop. There is still a python loop over the virtual fit search grid points, but there is no inner python loop over the plane-fitting points.
 
 # %%
 # Construct search grid
@@ -217,7 +221,7 @@ for i in range(num_thetas):
     for j in range(num_phis):
         theta_rad, phi_rad = theta_grid[i,j]*np.pi/180, phi_grid[i,j]*np.pi/180
         pts.append(spherical_to_cartesian(skin_interpolator(theta_rad, phi_rad), theta_rad, phi_rad))
-visualize_polydata(sphere_from_interpolator(skin_interpolator), highlight_points=pts, camera_focus=(0,0,0))
+# visualize_polydata(sphere_from_interpolator(skin_interpolator), highlight_points=pts, camera_focus=(0,0,0))
 
 # %%
 # We will iterate over all i and j as in the "visualize search grid" cell above, but in this cell we just demo on one grid point i=0,j=0
@@ -228,12 +232,6 @@ point = np.array(spherical_to_cartesian(skin_interpolator(theta_rad, phi_rad), t
 
 # The point at which we are now fitting a plane
 # visualize_polydata(sphere_from_interpolator(skin_interpolator), highlight_points=spherical_to_cartesian(skin_interpolator(theta_rad, phi_rad), theta_rad, phi_rad), camera_focus=(0,0,0))
-
-# To radians
-dtheta_extent = planefit_dyaw_extent*np.pi/180
-dtheta_step = planefit_dyaw_step*np.pi/180
-dphi_extent = planefit_dpitch_extent*np.pi/180
-dphi_step = planefit_dpitch_step*np.pi/180
 
 # Build plane fitting grid in the spherical coordinate basis theta-phi plane, which we will later project back onto the skin surface
 dtheta_sequence = np.arange(-planefit_dyaw_extent, planefit_dyaw_extent + planefit_dyaw_step, planefit_dyaw_step)
@@ -275,19 +273,17 @@ plane_normal = np.linalg.svd(
 ).Vh[-1] # The right-singular vector corresponding to the smallest singular value
 
 # visualize the fitted plane
-visualize_polydata(sphere_from_interpolator(skin_interpolator), highlight_points=list(planefit_points_cartesian.reshape(-1,3)), camera_focus=point, additional_actors=[create_plane_actor(point, plane_normal, plane_size=50)])
+# visualize_polydata(sphere_from_interpolator(skin_interpolator), highlight_points=list(planefit_points_cartesian.reshape(-1,3)), camera_focus=point, additional_actors=[create_plane_actor(point, plane_normal, plane_size=30)])
 
-
-
-# The goal here is to get the "transducer pose" which means a 4x4 (or 3x4) matrix that would work as a "transducer transform", i.e.
-# maps the transducer into LPS volume space
-# To do this, we first build a fitting grid of points on the skin surface as follows:
-# - Work in the spherical coordinate basis at the location on the skin surface that this theta_rad, phi_rad correspond to
-# - Make an evenly spaced fitting grid in that coordinate system inside the theta and phi coordinate basis vectors
-# - Map those points in the tangent space into R^3 and apply the skin interpolator to project them down onto the skin surface
-# - (I think a better approach to getting those points is to apply the riemannian exponential map to a polar grid of vectors in the tangenet space
-# - Then we convert these points to the coordinate basis
-# Next, we fit a plane to the points
-# Then we put the transducer in that plane, while also taking into account z_offset and dzdy
+# Now that we have fit a plane for the transducer to go onto, we tilt the normal based on dzdy and we offset the plane center based on z_offset
+# We end up with a new tilted `plane_normal` and `plane_center` that is `point` with a little offset.
+# Then we place the transducer so that
+# (1) the transducer axial (z) axis is parallel to plane_normal and points towards the origin rather than away from it (dot product with `point` is negative)
+# (2) the transducer elevational (y) axis is pretty much along phi-hat but must be orthogonal to plane_normal. we can start with phi-hat and subtract its component along plane_normal and normalize.
+# (3) the transducer lateral (x) coordinate is simply y cross z.
+# This all can be put together to give a 4x4 transducer transform matrix that places the transducer into this ASL space in the units of the volume and with the target as the origin.
+# We can multiply it by a fixed matrix that we have that makes it into an LPS space transform with the original origin of the volume array, the units still being the units of the volume array, then we can return it.
+# Yeah, so this will be a function here, that goes from theta_rad, phi_rad and w/e other parameters to give you the transducer transform matrix in the volume's units.
+# Then we build out the loop to build up a collection of transducer poses using this function, and we proceed to port over what is in the virtual fit algorithm by loic and tong.
 
 # %%

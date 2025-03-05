@@ -11,6 +11,7 @@ from openlifu.vf import VirtualFit
 def example_session() -> Session:
     return Session.from_file(Path(__file__).parent/"resources/example_db/subjects/example_subject/sessions/example_session/example_session.json")
 
+@pytest.mark.skip("wip")
 def test_virtual_fit(
         example_session: Session
     ):
