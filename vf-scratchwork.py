@@ -141,6 +141,49 @@ def test_spherical_coordinate_basis():
 
 test_spherical_coordinate_basis()
 
+
+# %%
+def create_standoff_transform(z_offset:float, dzdy:float) -> np.ndarray:
+    """Create a standoff transform based on a z_offset and a dzdy value.
+    
+    A "standoff transform" applies a displacement in transducer space that moves a transducer to where it would
+    be situated with the standoff in place. The idea is that if you start with a transform that places a transducer
+    directly against skin, then pre-composing that transform by a "standoff transform" serves to nudge the transducer
+    such that there is space for the standoff to be between it and the skin.
+
+    This function assumes that the standoff is laterally symmetric, has some thickness, and can raise the bottom of
+    the transducer a bit more than the top. The `z_offset` is the thickness in the middle of the standoff,
+    while the `dzdy` is the elevational slope.
+
+    Args:
+        z_offset: Thickness in the middle of the standoff
+        dzdy: Slope of the standoff, as axial displacement per unit elevational displacement. A positive number
+            here means that the bottom of the transducer is raised a little bit more than the top.
+
+    Returns a 4x4 matrix representing a rigid transform in whatever units z_offset was provided in.
+    """
+    angle = np.arctan(dzdy)
+    return np.array([
+        [1,0,0,0],
+        [0,np.cos(angle),-np.sin(angle),0],
+        [0,np.sin(angle),np.cos(angle),-z_offset],
+        [0,0,0,1],
+    ], dtype=float)
+
+def test_create_standoff_transform():
+    z_offset = 3.2
+    dzdy = 0.15
+    t = create_standoff_transform(z_offset, dzdy)
+    assert np.allclose(t[:3,:3] @ t[:3,:3].T, np.eye(3)) # it's an orthonormal transform
+    assert np.allclose(np.linalg.det(t[:3,:3]), 1.0) # orientation preserving
+    assert np.allclose(t @ np.array([0,0,0,1]), np.array([0,0,-z_offset,1.])) # translates the origin correctly
+    new_x_axis = (t @ np.array([1,0,0,1]) - t @ np.array([0,0,0,1]))[:3]
+    new_y_axis = (t @ np.array([0,1,0,1]) - t @ np.array([0,0,0,1]))[:3]
+    assert np.allclose(new_x_axis, np.array([1.,0,0]))
+    assert new_y_axis[2] > 0 # the y axis was rotated upward, so that the top of the transducer gets closer to the skin
+
+test_create_standoff_transform()
+
 # %%
 # VF Algorithm Inputs
 
@@ -156,7 +199,7 @@ steering_limits = [ # Should really be a List[TargetConstraints] which initializ
     TargetConstraints(dim="ax",  units="NONE", min=0, max=300),
 ]
 blocked_elems_threshold = 0.1
-volume_array = vol_array
+volume_array = vol_array # TODO: My feeling is that the units of the volume array (or rather of the RAS space that it is mapped to via volume_affine_RAS) need to be provided since everything ends up in those units.
 volume_affine_RAS = vol_affine # We assume this maps into RAS space! That's how nifti works. # TODO: are we implicitly assuming both transducer and volume are in same units? are we assuming it's mm anywhere?
 # scene_matrix # I don't see where this is even used.
 # scene_origin # I don't see where this is used either
@@ -168,8 +211,10 @@ planefit_dyaw_step = 5
 planefit_dpitch_extent = 15
 planefit_dpitch_step = 1
 
-z_offset = 13.55 # in units of the volume space I think.
-dzdy = 0.15 # slope of the transducer away from the skin surface (how much the bottom of the transducer should be raised away from the skin surface per unit length along the elevational direction of the transducer
+standoff_transform = create_standoff_transform(
+    z_offset = 13.55, # units of the *transducer*!
+    dzdy = 0.15
+) # therefore this transform is units of the *transducer*
 
 # Desired output from this will be:
 # A transducer transform (an ArrayTransform) that places the transducer into the MRI space in LPS coordinates
@@ -275,15 +320,18 @@ plane_normal = np.linalg.svd(
 # visualize the fitted plane
 # visualize_polydata(sphere_from_interpolator(skin_interpolator), highlight_points=list(planefit_points_cartesian.reshape(-1,3)), camera_focus=point, additional_actors=[create_plane_actor(point, plane_normal, plane_size=30)])
 
-# Now that we have fit a plane for the transducer to go onto, we tilt the normal based on dzdy and we offset the plane center based on z_offset
-# We end up with a new tilted `plane_normal` and `plane_center` that is `point` with a little offset.
-# Then we place the transducer so that
+# NEXT: Define standoff_transform based on z_offset and dzdy way up in the inputs, and make the standoff_transform be the actual input.
+# An add an issue, or add to the existing issue on steering limits, that standoff_transform should be a transducer attribute.
+
+# Now that we have fit a plane for the transducer to go onto, we place the transducer so that
 # (1) the transducer axial (z) axis is parallel to plane_normal and points towards the origin rather than away from it (dot product with `point` is negative)
 # (2) the transducer elevational (y) axis is pretty much along phi-hat but must be orthogonal to plane_normal. we can start with phi-hat and subtract its component along plane_normal and normalize.
 # (3) the transducer lateral (x) coordinate is simply y cross z.
 # This all can be put together to give a 4x4 transducer transform matrix that places the transducer into this ASL space in the units of the volume and with the target as the origin.
 # We can multiply it by a fixed matrix that we have that makes it into an LPS space transform with the original origin of the volume array, the units still being the units of the volume array, then we can return it.
+# And finally we can precompose the matrix with the fixed standoff_transform
 # Yeah, so this will be a function here, that goes from theta_rad, phi_rad and w/e other parameters to give you the transducer transform matrix in the volume's units.
 # Then we build out the loop to build up a collection of transducer poses using this function, and we proceed to port over what is in the virtual fit algorithm by loic and tong.
+
 
 # %%
