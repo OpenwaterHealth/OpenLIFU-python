@@ -23,6 +23,8 @@ from scipy.interpolate import LinearNDInterpolator
 from scipy.ndimage import distance_transform_edt
 from vtk.util.numpy_support import numpy_to_vtk
 
+from openlifu.geo import cartesian_to_spherical
+
 
 def take_largest_connected_component(mask: np.ndarray) -> np.ndarray:
     """Given a boolean image array (or any integer numpy array), return a mask of the largest connected component."""
@@ -222,33 +224,6 @@ def create_closed_surface_from_labelmap(
     surface_mesh = normals.GetOutput()
 
     return surface_mesh
-
-def cartesian_to_spherical(x:float,y:float,z:float) -> Tuple[float, float, float]:
-    """Convert cartesian coordinates to spherical coordinates
-
-    Args: x, y, z are cartesian coordinates
-    Returns: r, theta, phi, where
-        r is the radial spherical coordinate, a nonnegative float.
-        theta is the polar spherical coordinate, aka the angle off the z-axis, aka the non-azimuthal spherical angle.
-            theta is in the range [0,pi].
-        phi is the azimuthal spherical coordinate, in the range [-pi,pi]
-
-    Angles are in radians.
-    """
-    return (np.sqrt(x**2+y**2+z**2), np.arctan2(np.sqrt(x**2+y**2),z), np.arctan2(y,x))
-
-def spherical_to_cartesian(r: float, th:float, ph:float) -> Tuple[float, float, float]:
-    """Convert spherical coordinates to cartesian coordinates
-
-    Args:
-        r: the radial spherical coordinate
-        th: the polar spherical coordinate theta, aka the angle off the z-axis, aka the non-azimuthal spherical angle
-        ph: the azimuthal spherical coordinate phi
-    Returns the cartesian coordinates x,y,z
-
-    Angles are in radians.
-    """
-    return (r*np.sin(th)*np.cos(ph), r*np.sin(th)*np.sin(ph), r*np.cos(th))
 
 def spherical_interpolator_from_mesh(
     surface_mesh: vtk.vtkPolyData,

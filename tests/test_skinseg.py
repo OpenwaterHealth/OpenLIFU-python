@@ -13,7 +13,6 @@ from openlifu.seg.skinseg import (
     compute_foreground_mask,
     create_closed_surface_from_labelmap,
     spherical_interpolator_from_mesh,
-    spherical_to_cartesian,
     take_largest_connected_component,
     vtk_img_from_array_and_affine,
 )
@@ -88,36 +87,6 @@ def test_create_closed_surface_from_labelmap():
         point_position = np.array(points.GetPoint(i))
         point_distance_from_sphere_center = np.linalg.norm(point_position - sphere_center, ord=2)
         assert np.abs(point_distance_from_sphere_center - sphere_radius) < 1.
-
-def test_spherical_coordinate_range():
-    """Verify that spherical coordinate output is in the prescribed value ranges"""
-    rng = np.random.default_rng(848)
-    # try all 8 octants of 3D space
-    for sign_x in [-1,1]:
-        for sign_y in [-1,1]:
-            for sign_z in [-1,1]:
-                cartesian_coords = np.array([sign_x, sign_y, sign_z]) * rng.random(size=3)
-                r, th, ph = cartesian_to_spherical(*cartesian_coords)
-                assert r>=0
-                assert 0 <= th <= np.pi
-                assert -np.pi <= ph <= np.pi
-
-def test_spherical_coordinate_conversion_inverse():
-    """Verify that the spherical coordinate conversion forward and backward functions are inverses of one another"""
-    rng = np.random.default_rng(241)
-    # try all 8 octants of 3D space
-    for sign_x in [-1,1]:
-        for sign_y in [-1,1]:
-            for sign_z in [-1,1]:
-                cartesian_coords = np.array([sign_x, sign_y, sign_z]) * rng.random(size=3)
-                np.testing.assert_almost_equal(
-                    spherical_to_cartesian(*cartesian_to_spherical(*cartesian_coords)),
-                    cartesian_coords
-                )
-                np.testing.assert_almost_equal(
-                    cartesian_to_spherical(*spherical_to_cartesian(*cartesian_to_spherical(*cartesian_coords))),
-                    cartesian_to_spherical(*cartesian_coords)
-                )
 
 def test_spherical_interpolator_from_mesh():
     """Check using a torus that the spherical interpolator behaves reasonably"""
