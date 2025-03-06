@@ -275,27 +275,29 @@ steering_maxs = np.array([sl[1] for sl in steering_limits], dtype=float) # shape
 theta_sequence = np.arange(90 - yaw_range[-1], 90 - yaw_range[0], yaw_step)
 phi_sequence = np.arange(pitch_range[0], pitch_range[-1], pitch_step)
 theta_grid, phi_grid = np.meshgrid(theta_sequence, phi_sequence, indexing="ij") # each has shape (number of thetas, number of phis)
-search_grid_shape = theta_grid.shape
-num_thetas, num_phis = search_grid_shape
+num_thetas, num_phis = theta_grid.shape
+num_search_points = num_thetas*num_phis
 
 # %%
-transducer_poses = np.empty(search_grid_shape+(4,4), dtype=float)
-in_bounds = np.zeros(shape=search_grid_shape, dtype=bool)
-steering_dists = np.zeros(shape=search_grid_shape, dtype=float)
+thetas = theta_grid.reshape(num_search_points)
+phis = phi_grid.reshape(num_search_points)
+
+transducer_poses = np.empty((num_search_points,4,4), dtype=float)
+in_bounds = np.zeros(shape=num_search_points, dtype=bool)
+steering_dists = np.zeros(shape=num_search_points, dtype=float)
 
 # %%
 # Visualize entire virtual fitting search grid
 pts = []
-for i in range(num_thetas):
-    for j in range(num_phis):
-        theta_rad, phi_rad = theta_grid[i,j]*np.pi/180, phi_grid[i,j]*np.pi/180
-        pts.append(spherical_to_cartesian(skin_interpolator(theta_rad, phi_rad), theta_rad, phi_rad))
+for i in range(num_search_points):
+    theta_rad, phi_rad = thetas[i]*np.pi/180, phis[i]*np.pi/180
+    pts.append(spherical_to_cartesian(skin_interpolator(theta_rad, phi_rad), theta_rad, phi_rad))
 # visualize_polydata(sphere_from_interpolator(skin_interpolator), highlight_points=pts, camera_focus=(0,0,0))
 
 # %%
-# We will iterate over all i and j as in the "visualize search grid" cell above, but in this cell we just demo on one grid point i=0,j=0
-i,j = 0,16
-theta_rad, phi_rad = theta_grid[i,j]*np.pi/180, phi_grid[i,j]*np.pi/180
+# We will iterate over all i as in the "visualize search grid" cell above, but in this cell we just demo on one grid point
+i = 17
+theta_rad, phi_rad = thetas[i]*np.pi/180, phis[i]*np.pi/180
 
 # Cartesian coordinate location of the point at which we are fitting a plane
 point = np.array(spherical_to_cartesian(skin_interpolator(theta_rad, phi_rad), theta_rad, phi_rad))
@@ -404,84 +406,83 @@ print(target_in_bounds)
 # %%
 # Here is now the actual loop in the VF algorithm that repeats the stuff we saw one iteration of above
 
-for i in range(num_thetas):
-    for j in range(num_phis):
-        theta_rad, phi_rad = theta_grid[i,j]*np.pi/180, phi_grid[i,j]*np.pi/180
-        
-        # Cartesian coordinate location of the point at which we are fitting a plane
-        point = np.array(spherical_to_cartesian(skin_interpolator(theta_rad, phi_rad), theta_rad, phi_rad))
-                
-        # Build plane fitting grid in the spherical coordinate basis theta-phi plane, which we will later project back onto the skin surface
-        dtheta_sequence = np.arange(-planefit_dyaw_extent, planefit_dyaw_extent + planefit_dyaw_step, planefit_dyaw_step)
-        dphi_sequence = np.arange(-planefit_dpitch_extent, planefit_dpitch_extent + planefit_dpitch_step, planefit_dpitch_step)
-        dtheta_grid, dphi_grid = np.meshgrid(dtheta_sequence, dphi_sequence, indexing='ij')
-        
-        r_hat, theta_hat, phi_hat = spherical_coordinate_basis(theta_rad,phi_rad)
-        planefit_points_unprojected_cartesian = (
-            point.reshape(1,1,3)
-            + dtheta_grid[...,np.newaxis] * theta_hat.reshape(1,1,3) # shape (num dthetas, num dphis, 3)
-            + dphi_grid[...,np.newaxis] * phi_hat.reshape(1,1,3) # shape (num dthetas, num dphis, 3)
-        ) # shape (num dthetas, num dphis, 3)
-        
-        planefit_points_unprojected_spherical = cartesian_to_spherical_vectorized(
-            planefit_points_unprojected_cartesian
-        ) # shape (num dthetas, num dphis, 3)
-        skin_projected_r_values = skin_interpolator(planefit_points_unprojected_spherical[...,1:]) # shape (num dthetas, num dphis) # TODO adjust docstrings to demand a *vectorizable* spherical interpolator
-        planefit_points_cartesian = spherical_to_cartesian_vectorized( # Could instead renormalize planefit_points_unprojected_cartesian, not sure if it would give a speedup versus this
-            np.stack([
-                skin_projected_r_values, # New r values after projection to skin
-                planefit_points_unprojected_spherical[...,1], # Same old theta values
-                planefit_points_unprojected_spherical[...,2], # Same old phi values
-            ], axis=-1)
-        )
-        
-        # Fit the best plane to these points among the planes that pass through `point`. Here we find the normal vector to the plane.
-        plane_normal = np.linalg.svd(
-            planefit_points_cartesian.reshape(-1,3)-point.reshape(1,3),
-            full_matrices=False, # we don't need the left-singular vectors anyway, so this speeds things up
-        ).Vh[-1] # The right-singular vector corresponding to the smallest singular value
-        
-        
-        # Transducer axial axis: Parallel to plane_normal, but points towards rather than away from the origin.
-        transducer_z = - np.sign(np.dot(plane_normal,point)) * plane_normal / np.linalg.norm(plane_normal)
-        
-        # Transducer elevational axis: Phi-hat, but then with its component along transducer_z eliminated. This orients the transducer "up" if this were forehead, for example.
-        transducer_y = phi_hat - np.dot(phi_hat, transducer_z) * transducer_z
-        transducer_y = transducer_y / np.linalg.norm(transducer_y)
-        
-        # Transducer lateral axis, here simply the only remaining choice to keep it a left handed coordinate system
-        # (ASL is left-handed, so the transducer axes must be left-handed to make for an orientation-preserving transducer transform)
-        transducer_x = np.cross(transducer_z, transducer_y)
-        
-        transducer_transform = np.array(
-            [
-                [*transducer_x, 0],
-                [*transducer_y, 0],
-                [*transducer_z, 0],
-                [*point, 1],
-            ],
-            dtype=float
-        ).transpose()
+for i in range(num_search_points):
+    theta_rad, phi_rad = thetas[i]*np.pi/180, phis[i]*np.pi/180
+    
+    # Cartesian coordinate location of the point at which we are fitting a plane
+    point = np.array(spherical_to_cartesian(skin_interpolator(theta_rad, phi_rad), theta_rad, phi_rad))
+            
+    # Build plane fitting grid in the spherical coordinate basis theta-phi plane, which we will later project back onto the skin surface
+    dtheta_sequence = np.arange(-planefit_dyaw_extent, planefit_dyaw_extent + planefit_dyaw_step, planefit_dyaw_step)
+    dphi_sequence = np.arange(-planefit_dpitch_extent, planefit_dpitch_extent + planefit_dpitch_step, planefit_dpitch_step)
+    dtheta_grid, dphi_grid = np.meshgrid(dtheta_sequence, dphi_sequence, indexing='ij')
+    
+    r_hat, theta_hat, phi_hat = spherical_coordinate_basis(theta_rad,phi_rad)
+    planefit_points_unprojected_cartesian = (
+        point.reshape(1,1,3)
+        + dtheta_grid[...,np.newaxis] * theta_hat.reshape(1,1,3) # shape (num dthetas, num dphis, 3)
+        + dphi_grid[...,np.newaxis] * phi_hat.reshape(1,1,3) # shape (num dthetas, num dphis, 3)
+    ) # shape (num dthetas, num dphis, 3)
+    
+    planefit_points_unprojected_spherical = cartesian_to_spherical_vectorized(
+        planefit_points_unprojected_cartesian
+    ) # shape (num dthetas, num dphis, 3)
+    skin_projected_r_values = skin_interpolator(planefit_points_unprojected_spherical[...,1:]) # shape (num dthetas, num dphis) # TODO adjust docstrings to demand a *vectorizable* spherical interpolator
+    planefit_points_cartesian = spherical_to_cartesian_vectorized( # Could instead renormalize planefit_points_unprojected_cartesian, not sure if it would give a speedup versus this
+        np.stack([
+            skin_projected_r_values, # New r values after projection to skin
+            planefit_points_unprojected_spherical[...,1], # Same old theta values
+            planefit_points_unprojected_spherical[...,2], # Same old phi values
+        ], axis=-1)
+    )
+    
+    # Fit the best plane to these points among the planes that pass through `point`. Here we find the normal vector to the plane.
+    plane_normal = np.linalg.svd(
+        planefit_points_cartesian.reshape(-1,3)-point.reshape(1,3),
+        full_matrices=False, # we don't need the left-singular vectors anyway, so this speeds things up
+    ).Vh[-1] # The right-singular vector corresponding to the smallest singular value
+    
+    
+    # Transducer axial axis: Parallel to plane_normal, but points towards rather than away from the origin.
+    transducer_z = - np.sign(np.dot(plane_normal,point)) * plane_normal / np.linalg.norm(plane_normal)
+    
+    # Transducer elevational axis: Phi-hat, but then with its component along transducer_z eliminated. This orients the transducer "up" if this were forehead, for example.
+    transducer_y = phi_hat - np.dot(phi_hat, transducer_z) * transducer_z
+    transducer_y = transducer_y / np.linalg.norm(transducer_y)
+    
+    # Transducer lateral axis, here simply the only remaining choice to keep it a left handed coordinate system
+    # (ASL is left-handed, so the transducer axes must be left-handed to make for an orientation-preserving transducer transform)
+    transducer_x = np.cross(transducer_z, transducer_y)
+    
+    transducer_transform = np.array(
+        [
+            [*transducer_x, 0],
+            [*transducer_y, 0],
+            [*transducer_z, 0],
+            [*point, 1],
+        ],
+        dtype=float
+    ).transpose()
 
-        # The transform moves the transducer into the ASL skin interpolator space.
-        # We want a transform that moves the transducer into LPS space, and we also want to apply the standoff tranform
-        transducer_transform = interpolator2lps @ transducer_transform @ standoff_transform
+    # The transform moves the transducer into the ASL skin interpolator space.
+    # We want a transform that moves the transducer into LPS space, and we also want to apply the standoff tranform
+    transducer_transform = interpolator2lps @ transducer_transform @ standoff_transform
 
-        # Target in transducer coordinates (lat, ele, ax)
-        target_XYZ = (np.linalg.inv(transducer_transform) @ ras_lps_swap @ np.array([*target_RAS,1.0]))[:3]
-        
-        # Target in "steering space", where the origin is the center of the steering zone.
-        target_steering_space = target_XYZ - np.array([0.,0.,transducer_steering_center_distance])
-        
-        steering_distance:float = np.linalg.norm(target_steering_space)
+    # Target in transducer coordinates (lat, ele, ax)
+    target_XYZ = (np.linalg.inv(transducer_transform) @ ras_lps_swap @ np.array([*target_RAS,1.0]))[:3]
+    
+    # Target in "steering space", where the origin is the center of the steering zone.
+    target_steering_space = target_XYZ - np.array([0.,0.,transducer_steering_center_distance])
+    
+    steering_distance:float = np.linalg.norm(target_steering_space)
 
-        # Check whether the target is in the steering range
-        target_in_bounds:bool = np.all((steering_mins < target_steering_space) & (target_steering_space < steering_maxs))
+    # Check whether the target is in the steering range
+    target_in_bounds:bool = np.all((steering_mins < target_steering_space) & (target_steering_space < steering_maxs))
 
-        # Finally, fill out the arrays we have been building in this loop
-        transducer_poses[i,j] = transducer_transform
-        steering_dists[i,j] = steering_distance
-        in_bounds[i,j] = target_in_bounds
+    # Finally, fill out the arrays we have been building in this loop
+    transducer_poses[i] = transducer_transform
+    steering_dists[i] = steering_distance
+    in_bounds[i] = target_in_bounds
 
 # %%
 # Visualize all the transducer poses over the whole search grid
@@ -489,19 +490,35 @@ pts = []
 transducer_actors = []
 steering_dist_list = []
 in_bounds_binary_list = []
-for i in range(num_thetas):
-    for j in range(num_phis):
-        theta_rad, phi_rad = theta_grid[i,j]*np.pi/180, phi_grid[i,j]*np.pi/180
-        pts.append((interpolator2ras @ np.array([*spherical_to_cartesian(skin_interpolator(theta_rad, phi_rad), theta_rad, phi_rad),1.]))[:3])
-        transducer_actors.append(create_transducer_cube_actor(ras_lps_swap @ transducer_poses[i,j]))
-        steering_dist_list.append(steering_dists[i,j])
-        in_bounds_binary_list.append(1 if  in_bounds[i,j] else 0)
+for i in range(num_search_points):
+    theta_rad, phi_rad = thetas[i]*np.pi/180, phis[i]*np.pi/180
+    pts.append((interpolator2ras @ np.array([*spherical_to_cartesian(skin_interpolator(theta_rad, phi_rad), theta_rad, phi_rad),1.]))[:3])
+    transducer_actors.append(create_transducer_cube_actor(ras_lps_swap @ transducer_poses[i]))
+    steering_dist_list.append(steering_dists[i])
+    in_bounds_binary_list.append(1 if  in_bounds[i] else 0)
 
 # visualize steering distance where larger distance makes the pointe more blue
-# visualize_polydata(skin_mesh, highlight_points=pts, highlight_point_vals=steering_dist_list, camera_focus=(0,0,0), additional_actors=transducer_actors, animation_interval_ms=100)
+# visualize_polydata(skin_mesh, highlight_points=pts, highlight_point_vals=steering_dist_list, camera_focus=target_RAS, additional_actors=transducer_actors, animation_interval_ms=100)
 
 # visualize the in-bounds points in blue
-# visualize_polydata(skin_mesh, highlight_points=pts, highlight_point_vals=in_bounds_binary_list, camera_focus=(0,0,0), additional_actors=transducer_actors, animation_interval_ms=100)
+visualize_polydata(skin_mesh, highlight_points=pts, highlight_point_vals=in_bounds_binary_list, camera_focus=target_RAS, additional_actors=transducer_actors, animation_interval_ms=100)
 
 # %%
-transducer_poses
+# Filter for in-bounds transforms only, then sort them from smallest steering distance to largest
+sorted_transforms = list(map(
+    lambda x : x[0],
+    sorted(zip(transducer_poses[in_bounds],steering_dists[in_bounds]), key = lambda x : x[1])
+))
+
+# %%
+# Visualize the final result, from best to worst
+transducer_actors = []
+pts = [target_RAS]
+vals = [0.]
+for transform in sorted_transforms:
+    transducer_actors.append(create_transducer_cube_actor(ras_lps_swap @ transform))
+    steering_center_point = (ras_lps_swap @ transform @ np.array([0,0,transducer_steering_center_distance,1]))[:3]
+    pts.append(steering_center_point)
+    vals.append(1)
+
+visualize_polydata(skin_mesh, highlight_points=pts, highlight_point_vals=vals, camera_focus=target_RAS, additional_actors=transducer_actors, animation_interval_ms=2000)
