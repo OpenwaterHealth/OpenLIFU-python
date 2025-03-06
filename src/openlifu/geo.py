@@ -11,6 +11,7 @@ import vtk
 from openlifu.util.units import getunitconversion
 
 
+# === Tools to work with points ===
 @dataclass
 class Point:
     position: np.ndarray = field(default_factory=lambda: np.array([0.0, 0.0, 0.0])) # mm
@@ -136,3 +137,81 @@ class Point:
             return json.dumps(self.to_dict(), separators=(',', ':'))
         else:
             return json.dumps(self.to_dict(), indent=4)
+
+
+# === Tools to work with spherical coordinate systems ===
+
+def cartesian_to_spherical(x:float,y:float,z:float) -> Tuple[float, float, float]:
+    """Convert cartesian coordinates to spherical coordinates
+
+    Args: x, y, z are cartesian coordinates
+    Returns: r, theta, phi, where
+        r is the radial spherical coordinate, a nonnegative float.
+        theta is the polar spherical coordinate, aka the angle off the z-axis, aka the non-azimuthal spherical angle.
+            theta is in the range [0,pi].
+        phi is the azimuthal spherical coordinate, in the range [-pi,pi]
+
+    Angles are in radians.
+    """
+    return (np.sqrt(x**2+y**2+z**2), np.arctan2(np.sqrt(x**2+y**2),z), np.arctan2(y,x))
+
+def spherical_to_cartesian(r: float, th:float, ph:float) -> Tuple[float, float, float]:
+    """Convert spherical coordinates to cartesian coordinates
+
+    Args:
+        r: the radial spherical coordinate
+        th: the polar spherical coordinate theta, aka the angle off the z-axis, aka the non-azimuthal spherical angle
+        ph: the azimuthal spherical coordinate phi
+    Returns the cartesian coordinates x,y,z
+
+    Angles are in radians.
+    """
+    return (r*np.sin(th)*np.cos(ph), r*np.sin(th)*np.sin(ph), r*np.cos(th))
+
+def cartesian_to_spherical_vectorized(p:np.ndarray) -> np.ndarray:
+    """Convert cartesian coordinates to spherical coordinates
+
+    Args:
+        p: an array of shape  (...,3), where the last axis describes point cartesian coordinates x,y,z.
+    Returns: An array of shape (...,3), where the last axis describes point spherical coordinates r, theta, phi, where
+        r is the radial spherical coordinate, a nonnegative float.
+        theta is the polar spherical coordinate, aka the angle off the z-axis, aka the non-azimuthal spherical angle.
+            theta is in the range [0,pi].
+        phi is the azimuthal spherical coordinate, in the range [-pi,pi]
+
+    Angles are in radians.
+    """
+    return np.stack([
+        np.sqrt((p**2).sum(axis=-1)),
+        np.arctan2(np.sqrt((p[...,0:2]**2).sum(axis=-1)),p[...,2]),
+        np.arctan2(p[...,1],p[...,0]),
+    ], axis=-1)
+
+def spherical_to_cartesian_vectorized(p:np.ndarray) -> np.ndarray:
+    """Convert spherical coordinates to cartesian coordinates
+
+    Args:
+        p: an array of shape  (...,3), where the last axis describes point spherical coordinates r, theta, phi, where:
+            r is the radial spherical coordinate
+            theta is the polar spherical coordinate, aka the angle off the z-axis, aka the non-azimuthal spherical angle
+            phi is the azimuthal spherical coordinate
+    Returns the cartesian coordinates x,y,z
+
+    Angles are in radians.
+    """
+    return np.stack([
+        p[...,0]*np.sin(p[...,1])*np.cos(p[...,2]),
+        p[...,0]*np.sin(p[...,1])*np.sin(p[...,2]),
+        p[...,0]*np.cos(p[...,1]),
+    ], axis=-1)
+
+def spherical_coordinate_basis(th:float, phi:float) -> np.ndarray:
+    """Return normalized spherical coordinate basis at a location with spherical polar and azimuthal coordinates (th, phi).
+    The coordinate basis is returned as an array `basis` of shape (3,3), where the rows are the basis vectors,
+    in the order r, theta, phi. So `basis[0], basis[1], basis[2]` are the vectors $\\hat{r}$, $\\hat{\\theta}$, $\\hat{\\phi}$.
+    Angles are assumed to be provided in radians."""
+    return np.array([
+        [np.sin(th)*np.cos(phi), np.sin(th)*np.sin(phi), np.cos(th)],
+        [np.cos(th)*np.cos(phi), np.cos(th)*np.sin(phi), -np.sin(th)],
+        [-np.sin(phi), np.cos(phi), 0],
+    ])
