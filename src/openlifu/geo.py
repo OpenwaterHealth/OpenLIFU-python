@@ -215,3 +215,32 @@ def spherical_coordinate_basis(th:float, phi:float) -> np.ndarray:
         [np.cos(th)*np.cos(phi), np.cos(th)*np.sin(phi), -np.sin(th)],
         [-np.sin(phi), np.cos(phi), 0],
     ])
+
+# === General coordinate transformation utiltiies ===
+
+def create_standoff_transform(z_offset:float, dzdy:float) -> np.ndarray:
+    """Create a standoff transform based on a z_offset and a dzdy value.
+
+    A "standoff transform" applies a displacement in transducer space that moves a transducer to where it would
+    be situated with the standoff in place. The idea is that if you start with a transform that places a transducer
+    directly against skin, then pre-composing that transform by a "standoff transform" serves to nudge the transducer
+    such that there is space for the standoff to be between it and the skin.
+
+    This function assumes that the standoff is laterally symmetric, has some thickness, and can raise the bottom of
+    the transducer a bit more than the top. The `z_offset` is the thickness in the middle of the standoff,
+    while the `dzdy` is the elevational slope.
+
+    Args:
+        z_offset: Thickness in the middle of the standoff
+        dzdy: Slope of the standoff, as axial displacement per unit elevational displacement. A positive number
+            here means that the bottom of the transducer is raised a little bit more than the top.
+
+    Returns a 4x4 matrix representing a rigid transform in whatever units z_offset was provided in.
+    """
+    angle = np.arctan(dzdy)
+    return np.array([
+        [1,0,0,0],
+        [0,np.cos(angle),-np.sin(angle),0],
+        [0,np.sin(angle),np.cos(angle),-z_offset],
+        [0,0,0,1],
+    ], dtype=float)

@@ -6,6 +6,7 @@ from openlifu.geo import (
     Point,
     cartesian_to_spherical,
     cartesian_to_spherical_vectorized,
+    create_standoff_transform,
     spherical_coordinate_basis,
     spherical_to_cartesian,
     spherical_to_cartesian_vectorized,
@@ -87,3 +88,15 @@ def test_spherical_coordinate_basis():
     assert np.allclose(np.diff(r_hat / point), 0) # verify that r_hat is a scalar multiple of the cartesian coords
     assert cartesian_to_spherical_vectorized(point + 0.01*phi_hat)[2] > phi # verify phi_hat points along increasing phi
     assert cartesian_to_spherical_vectorized(point + 0.01*theta_hat)[1] > th # verify theta_hat points along increasing theta
+
+def test_create_standoff_transform():
+    z_offset = 3.2
+    dzdy = 0.15
+    t = create_standoff_transform(z_offset, dzdy)
+    assert np.allclose(t[:3,:3] @ t[:3,:3].T, np.eye(3)) # it's an orthonormal transform
+    assert np.allclose(np.linalg.det(t[:3,:3]), 1.0) # orientation preserving
+    assert np.allclose(t @ np.array([0,0,0,1]), np.array([0,0,-z_offset,1.])) # translates the origin correctly
+    new_x_axis = (t @ np.array([1,0,0,1]) - t @ np.array([0,0,0,1]))[:3]
+    new_y_axis = (t @ np.array([0,1,0,1]) - t @ np.array([0,0,0,1]))[:3]
+    assert np.allclose(new_x_axis, np.array([1.,0,0]))
+    assert new_y_axis[2] > 0 # the y axis was rotated upward, so that the top of the transducer gets closer to the skin
