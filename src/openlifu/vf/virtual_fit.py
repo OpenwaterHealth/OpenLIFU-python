@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 import scipy.interpolate
@@ -68,8 +70,8 @@ class VirtualFit:
             self,
             volume: xa.Dataset,
             quantile: float = 0.05,
-            scene_origin: Optional[Tuple[float, float, float]] = None,
-            scene_matrix: Optional[np.ndarray] = None):
+            scene_origin: Tuple[float, float, float] | None = None,
+            scene_matrix: np.ndarray | None = None):
         """
         Extract skin surface from MRI volume in LPS coordinates
 
@@ -131,8 +133,8 @@ class VirtualFit:
     def get_transducer_pose(
             self,
             sph_coords: Tuple[float, float],
-            skin_origin: Optional[Tuple[float, float, float]] = None,
-            skin_interpolator:  Optional[scipy.interpolate.LinearNDInterpolator] = None,
+            skin_origin: Tuple[float, float, float] | None = None,
+            skin_interpolator:  scipy.interpolate.LinearNDInterpolator | None = None,
             z_offset: float = 13.55,
             dzdy: float = 0.15,
             search_x: float = 20,
@@ -249,8 +251,8 @@ class VirtualFit:
             self,
             target: Point,
             transducer_pose: np.ndarray,
-            radius_in_mm: Optional[float] = None,
-            steering_limits: Optional[Tuple[TargetConstraints, TargetConstraints, TargetConstraints]] = None):
+            radius_in_mm: float | None = None,
+            steering_limits: Tuple[TargetConstraints, TargetConstraints, TargetConstraints] | None = None):
         """
         Analyzes the pose of a transducer relative to a specific target point.
         Determines whether or not the target is within the transducer's steering limits and
@@ -298,13 +300,13 @@ class VirtualFit:
     def run(
             self,
             target: Point,
-            pitch_range: Optional[Tuple[int, int]] = None,
-            pitch_step: Optional[int] = None,
-            yaw_range: Optional[Tuple[int, int]] = None,
-            yaw_step: Optional[int] = None,
-            radius_in_mm: Optional[float] = None,
-            steering_limits: Optional[Tuple[TargetConstraints]] = None,
-            blocked_elems_threshold: Optional[float] = None
+            pitch_range: Tuple[int, int] | None = None,
+            pitch_step: int | None = None,
+            yaw_range: Tuple[int, int] | None = None,
+            yaw_step: int | None = None,
+            radius_in_mm: float | None = None,
+            steering_limits: Tuple[TargetConstraints] | None = None,
+            blocked_elems_threshold: float | None = None
         ) -> ArrayTransform:
         """
         VirtualFit main process.
