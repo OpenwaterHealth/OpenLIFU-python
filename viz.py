@@ -43,6 +43,37 @@ def create_plane_actor(center, normal, plane_size=5.0, resolution=5, color=(1.0,
 
     return plane_actor
 
+def create_transducer_cube_actor(transform:np.ndarray=None):
+    if transform is None:
+        transform = np.eye(4)
+    cs = vtk.vtkCubeSource()
+    axial_size = 17
+    elevational_size = 35
+    lateral_size = 50
+    cs.SetXLength(lateral_size)
+    cs.SetYLength(elevational_size)
+    cs.SetZLength(axial_size)
+    cs.SetCenter((0,0,-axial_size/2)) # place cube below the x-y-plane to serve as a depiction of the transducer body
+
+    matrix_vtk = vtk.vtkMatrix4x4()
+    for i in range(4):
+        for j in range(4):
+            matrix_vtk.SetElement(i, j, transform[i, j])
+
+    transform = vtk.vtkTransform()
+    transform.SetMatrix(matrix_vtk)
+    transform_filter = vtk.vtkTransformPolyDataFilter()
+    transform_filter.SetTransform(transform)
+    transform_filter.SetInputConnection(cs.GetOutputPort())
+
+    cm = vtk.vtkPolyDataMapper()
+    cm.SetInputConnection(transform_filter.GetOutputPort())
+    ca = vtk.vtkActor()
+    ca.GetProperty().SetColor((0.2,0.6,0.6))
+    ca.SetMapper(cm)
+    return ca 
+
+
 def visualize_3d_volume(vtk_image):
     """
     Visualizes a vtkImageData object as a 3D volume with interactive controls.
@@ -100,51 +131,73 @@ def visualize_3d_volume(vtk_image):
     render_window.Render()
     interactor.Start()
 
-def visualize_polydata(polydata, title="PolyData Visualization", highlight_points=None, camera_start=None, camera_focus=None, additional_actors=None):
+def visualize_polydata(polydata, title="PolyData Visualization",
+                       highlight_points=None,
+                       highlight_point_vals=None,
+                       camera_start=None,
+                       camera_focus=None,
+                       additional_actors=None,
+                       animation_interval_ms=None):
     """
     Visualizes a vtkPolyData object using VTK with enhanced interaction.
     Optionally, highlights a specified point with a yellow sphere.
+    If additional_actors are provided, toggles through them one-by-one
+    on a timer, hiding all but the current actor.
 
     Parameters:
-        polydata (vtkPolyData): The mesh data to visualize. Could give a list of meshes if you want multiple.
+        polydata (vtkPolyData or list): The mesh data to visualize.
         title (str): The title of the render window.
-        highlight_point (tuple): A tuple of (x, y, z) coordinates to highlight with a yellow sphere.
-        additional_actors: optional list of additional actors
+        highlight_points (tuple or list of tuples): Points to highlight with spheres.
+        highlight_point_vals: optionally a list of floats of the same length as hgihlight poitns to color the points yellow to blue
+        camera_start (tuple): Starting camera position (x, y, z).
+        camera_focus (tuple): Camera focal point (x, y, z).
+        additional_actors (list): Actors to be possibly animated/toggled in sequence.
+        animation_interval_ms (int): Interval in milliseconds for stepping through actors.
+            (If None then all actors are shown at once with no animation)
     """
+
     if not isinstance(polydata, list):
         polydata = [polydata]
 
-    # Create mappers for the polydatas
+    # Create mappers and actors for each polydata
     mappers = [vtk.vtkPolyDataMapper() for _ in polydata]
-    for mapper,pd in zip(mappers,polydata):
+    for mapper, pd in zip(mappers, polydata):
         mapper.SetInputData(pd)
 
-    # Create an actor for the polydata
-    actors = [vtk.vtkActor() for _ in mappers]
-    for i,(actor,mapper) in enumerate(zip(actors, mappers)):
+    actors = []
+    for i, mapper in enumerate(mappers):
+        actor = vtk.vtkActor()
         actor.SetMapper(mapper)
+        # Optionally tweak how the main mesh is shown
+        actor.GetProperty().SetColor(0.8, 0.8, (i + 1) / len(mappers))
+        actor.GetProperty().SetEdgeVisibility(0)
+        actor.GetProperty().SetEdgeColor(0, 0, 0)
+        actors.append(actor)
 
-        # Optional: Add properties to the actor for better visualization
-        actor.GetProperty().SetColor(0.8, 0.8, (i+1)/len(actors))
-        actor.GetProperty().SetEdgeVisibility(0)     # Turn on to show mesh edges
-        actor.GetProperty().SetEdgeColor(0, 0, 0)    # Black edges
-
-    # Create a renderer
+    # Create a renderer and add the main actors
     renderer = vtk.vtkRenderer()
     for actor in actors:
         renderer.AddActor(actor)
-    renderer.SetBackground(0.1, 0.1, 0.1)  # Dark gray background
 
-    # Automatically adjust the camera to fit the polydata
+    renderer.SetBackground(0.1, 0.1, 0.1)  # Dark gray
+
+    # Reset camera so that it frames the main polydata
     renderer.ResetCamera()
-
-    # If a highlight point is provided, create and add a yellow sphere
-    if highlight_points is not None:
-        if not isinstance(highlight_points,list):
+    
+    # If highlight_points given, add a colored sphere for each
+    if highlight_points is not None:        
+        if not isinstance(highlight_points, list):
             highlight_points = [highlight_points]
-        for highlight_point in highlight_points:
+
+        if highlight_point_vals is None:
+            highlight_point_vals = [1.] * len(highlight_points)
+        if len(highlight_point_vals) != len(highlight_points): raise ValueError()
+        vmin = min(highlight_point_vals)
+        vmax = max(highlight_point_vals)
+
+        for point,val in zip(highlight_points,highlight_point_vals):
             sphere_source = vtk.vtkSphereSource()
-            sphere_source.SetCenter(*highlight_point)
+            sphere_source.SetCenter(*point)
             sphere_source.SetRadius(0.5)
             sphere_source.SetThetaResolution(5)
             sphere_source.SetPhiResolution(5)
@@ -154,37 +207,36 @@ def visualize_polydata(polydata, title="PolyData Visualization", highlight_point
 
             sphere_actor = vtk.vtkActor()
             sphere_actor.SetMapper(sphere_mapper)
-            sphere_actor.GetProperty().SetColor(1.0, 1.0, 0.0)  # Yellow sphere
+
+            t = (val - vmin) / (vmax - vmin) if vmax > vmin else 0. # color interpolation parameter 0 to 1
+            color = (1-t)*np.array([1.0,1.0,0.0]) + t*np.array([0.0,0.0,1.0]) # yellow to blue
+            sphere_actor.GetProperty().SetColor(*color)
 
             renderer.AddActor(sphere_actor)
 
-    if additional_actors is not None:
-        for actor in additional_actors:
-            renderer.AddActor(actor)
-
-    # Create a render window
+    # Create a render window and interactor
     render_window = vtk.vtkRenderWindow()
     render_window.AddRenderer(renderer)
     render_window.SetWindowName(title)
     render_window.SetSize(800, 600)
 
-    # Create an interactor and set an improved interaction style
     interactor = vtk.vtkRenderWindowInteractor()
     interactor.SetRenderWindow(render_window)
 
-    # Use the trackball camera style for intuitive interaction
+    # Use a trackball style
     interactor_style = vtk.vtkInteractorStyleTrackballCamera()
     interactor.SetInteractorStyle(interactor_style)
 
-    # Optional: Add an orientation axes widget
+    # Orientation axes in a corner
     axes = vtk.vtkAxesActor()
     axes_widget = vtk.vtkOrientationMarkerWidget()
     axes_widget.SetOrientationMarker(axes)
     axes_widget.SetInteractor(interactor)
-    axes_widget.SetViewport(0.0, 0.0, 0.2, 0.2)  # Small axes in the bottom-left corner
+    axes_widget.SetViewport(0.0, 0.0, 0.2, 0.2)
     axes_widget.SetEnabled(1)
     axes_widget.InteractiveOn()
 
+    # Optionally define camera position/focus
     camera = renderer.GetActiveCamera()
     if camera_start is not None:
         camera.SetPosition(*camera_start)
@@ -193,9 +245,39 @@ def visualize_polydata(polydata, title="PolyData Visualization", highlight_point
         camera.SetFocalPoint(*camera_focus)
         camera.SetViewUp(0, 1, 0)
 
-    # Start the rendering and interaction loop
+    if animation_interval_ms is not None:
+        # If you have additional actors that should be animated
+        # we'll keep them all in the scene but manage their visibility.
+        if additional_actors is not None and len(additional_actors) > 0:
+            # Add them all to the renderer but hide them
+            for a in additional_actors:
+                a.SetVisibility(False)
+                renderer.AddActor(a)
+
+            # Show the first actor initially
+            additional_actors[0].SetVisibility(True)
+            current_index = 0
+
+            def timer_callback(obj, event):
+                nonlocal current_index
+                # Hide current
+                additional_actors[current_index].SetVisibility(False)
+                # Move to next
+                current_index = (current_index + 1) % len(additional_actors)
+                # Show next
+                additional_actors[current_index].SetVisibility(True)
+                render_window.Render()
+
+            interactor.AddObserver("TimerEvent", timer_callback)
+            interactor.CreateRepeatingTimer(animation_interval_ms)
+    else:
+        if additional_actors is not None:
+            for actor in additional_actors:
+                renderer.AddActor(actor)
+
+    # Render and start interaction
     render_window.Render()
-    interactor.Initialize()  # Ensure interactor is properly initialized
+    interactor.Initialize()
     interactor.Start()
 
 
