@@ -19,12 +19,27 @@ import numpy as np
 import skimage.filters
 import skimage.measure
 import vtk
+from packaging.version import parse
 from scipy.interpolate import LinearNDInterpolator
 from scipy.ndimage import distance_transform_edt
 from vtk.util.numpy_support import numpy_to_vtk
 
 from openlifu.geo import cartesian_to_spherical
 
+
+def apply_affine_to_polydata(affine:np.ndarray, polydata:vtk.vtkPolyData) -> vtk.vtkPolyData:
+    """Apply an affine transform to a vtkPolyData."""
+    affine_vtkmat = vtk.vtkMatrix4x4()
+    for i in range(4):
+        for j in range(4):
+            affine_vtkmat.SetElement(i, j, affine[i, j])
+    affine_vtktransform = vtk.vtkTransform()
+    affine_vtktransform.SetMatrix(affine_vtkmat)
+    transform_filter = vtk.vtkTransformPolyDataFilter()
+    transform_filter.SetTransform(affine_vtktransform)
+    transform_filter.SetInputData(polydata)
+    transform_filter.Update()
+    return transform_filter.GetOutput()
 
 def take_largest_connected_component(mask: np.ndarray) -> np.ndarray:
     """Given a boolean image array (or any integer numpy array), return a mask of the largest connected component."""
@@ -145,6 +160,23 @@ def vtk_img_from_array_and_affine(vol_array:np.ndarray, affine:np.ndarray) -> vt
 
     return vtk_img
 
+def affine_from_vtk_image_data(vtk_img:vtk.vtkImageData) -> np.ndarray:
+    """Get a 4x4 affine matrix out of a vtkImageData, a partial reverse to `vtk_img_from_array_and_affine`"""
+    origin = np.array(vtk_img.GetOrigin())
+    spacing = np.array(vtk_img.GetSpacing())
+
+    direction_vtk = vtk_img.GetDirectionMatrix()
+    direction = np.eye(3)
+    for i in range(3):
+        for j in range(3):
+            direction[i, j] = direction_vtk.GetElement(i, j)
+
+    affine = np.eye(4, dtype=float)
+    affine[:3, :3] = direction @ np.diag(spacing)
+    affine[:3, 3] = origin
+
+    return affine
+
 def create_closed_surface_from_labelmap(
     binary_labelmap:vtk.vtkImageData,
     decimation_factor:float=0.,
@@ -163,6 +195,17 @@ def create_closed_surface_from_labelmap(
     The algorithm here is based on the labelmap-to-closed-surface algorithm in 3D Slicer:
     https://github.com/Slicer/Slicer/blob/677932127c73a6c78654d4afd9458a655a4eef63/Libs/vtkSegmentationCore/vtkBinaryLabelmapToClosedSurfaceConversionRule.cxx#L246-L476
     """
+
+    affine = None # Only needed if vtk version is less than 9.3.0
+    if parse(vtk.__version__) < parse("9.3.0"):
+        # In these older versions of vtk, the labelmap would not work.
+        affine = affine_from_vtk_image_data(binary_labelmap)
+        binary_labelmap.SetOrigin([0,0,0])
+        binary_labelmap.SetSpacing([1,1,1])
+        direction_matrix_vtk = vtk.vtkMatrix3x3()
+        direction_matrix_vtk.Identity()
+        binary_labelmap.SetDirectionMatrix(direction_matrix_vtk)
+
 
     # step 1: pad by 1 pixel all around with 0s, to ensure that the surface is still closed
     # even if the labelmap runs up against the image boundary.
@@ -222,6 +265,14 @@ def create_closed_surface_from_labelmap(
     normals.SplittingOff()
     normals.Update()
     surface_mesh = normals.GetOutput()
+
+    if parse(vtk.__version__) < parse("9.3.0"):
+        # In these older versions of vtk, the labelmap internal affine transform is not used correctly,
+        # so we manually apply the transform after the fact
+        surface_mesh = apply_affine_to_polydata(
+            affine,
+            surface_mesh,
+        )
 
     return surface_mesh
 

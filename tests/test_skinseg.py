@@ -9,6 +9,8 @@ from scipy.linalg import expm
 from scipy.stats import skew
 
 from openlifu.seg.skinseg import (
+    affine_from_vtk_image_data,
+    apply_affine_to_polydata,
     cartesian_to_spherical,
     compute_foreground_mask,
     create_closed_surface_from_labelmap,
@@ -36,20 +38,6 @@ def add_ball(
     )
 
     volume[dist_sq <= radius**2] = value
-
-def apply_affine_to_polydata(affine:np.ndarray, polydata:vtk.vtkPolyData) -> vtk.vtkPolyData:
-    """Apply an affine transform to a vtkPolyData"""
-    affine_vtkmat = vtk.vtkMatrix4x4()
-    for i in range(4):
-        for j in range(4):
-            affine_vtkmat.SetElement(i, j, affine[i, j])
-    affine_vtktransform = vtk.vtkTransform()
-    affine_vtktransform.SetMatrix(affine_vtkmat)
-    transform_filter = vtk.vtkTransformPolyDataFilter()
-    transform_filter.SetTransform(affine_vtktransform)
-    transform_filter.SetInputData(polydata)
-    transform_filter.Update()
-    return transform_filter.GetOutput()
 
 def test_take_largest_connected_component():
     vol_array = np.zeros((20,20,20))
@@ -83,6 +71,16 @@ def test_vtk_img_from_array_and_affine():
     point_id = vtk_img.FindPoint([x,y,z])
 
     assert vtk_img.GetPointData().GetScalars().GetTuple1(point_id) == pytest.approx(vol_array[i,j,k])
+
+def test_affine_from_vtk_image_data():
+    rng = np.random.default_rng(716)
+    vol_array = rng.random((5,4,3))
+    affine = np.eye(4)
+    affine[:3,:3] = expm((lambda A: (A - A.T)/2)(rng.normal(size=(3,3)))) # generate a random orthogonal matrix
+    affine[:3,3] = rng.random(3) # generate a random origin
+    vtk_img = vtk_img_from_array_and_affine(vol_array, affine)
+    affine_reconstructed = affine_from_vtk_image_data(vtk_img)
+    assert np.allclose(affine, affine_reconstructed)
 
 def test_create_closed_surface_from_labelmap():
     # create a ball of radius 7 for a labelmap
