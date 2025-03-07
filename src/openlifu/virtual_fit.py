@@ -157,11 +157,17 @@ def virtual_fit( # pylint: disable=E1121
 
 
         # Transducer axial axis: Parallel to plane_normal, but points towards rather than away from the origin.
-        transducer_z = - np.sign(np.dot(plane_normal,point)) * plane_normal / np.linalg.norm(plane_normal)
+        plane_normal_norm = np.linalg.norm(plane_normal)
+        if plane_normal_norm < 1e-10:
+            continue # Bad geometry at this location, so it's not a virtual fit candidate
+        transducer_z = - np.sign(np.dot(plane_normal,point)) * plane_normal / plane_normal_norm
 
         # Transducer elevational axis: Phi-hat, but then with its component along transducer_z eliminated. This orients the transducer "up" if this were forehead, for example.
         transducer_y = phi_hat - np.dot(phi_hat, transducer_z) * transducer_z
-        transducer_y = transducer_y / np.linalg.norm(transducer_y)
+        transducer_y_norm = np.linalg.norm(transducer_y)
+        if transducer_y_norm < 1e-10:
+            continue # Bad geometry at this location, so it's not a virtual fit candidate
+        transducer_y = transducer_y / transducer_y_norm
 
         # Transducer lateral axis, here simply the only remaining choice to keep it a left handed coordinate system
         # (ASL is left-handed, so the transducer axes must be left-handed to make for an orientation-preserving transducer transform)
