@@ -88,7 +88,9 @@
     "t_end": 0,
     "options": {}
   },
-  "param_constraints": [],
+  "param_constraints": {
+    "MI": { "operator": "<", "error_value": 1.9 }
+  },
   "target_constraints": [],
   "analysis_options": {
     "standoff_sound_speed": 1500.0,

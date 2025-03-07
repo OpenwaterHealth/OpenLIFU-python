@@ -1,3 +1,4 @@
+from .param_constraint import ParameterConstraint
 from .protocol import Protocol
 from .run import Run
 from .solution import Solution
@@ -10,5 +11,6 @@ __all__ = [
     "Run",
     "SolutionAnalysis",
     "SolutionAnalysisOptions",
-    "TargetConstraints"
+    "TargetConstraints",
+    "ParameterConstraint"
 ]
