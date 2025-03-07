@@ -16,6 +16,7 @@ import xarray as xa
 from openlifu import bf, geo, seg, sim, xdc
 from openlifu.db.session import Session
 from openlifu.geo import Point
+from openlifu.plan.param_constraint import ParameterConstraint
 from openlifu.plan.solution import Solution
 from openlifu.plan.solution_analysis import SolutionAnalysis, SolutionAnalysisOptions
 from openlifu.plan.target_constraints import TargetConstraints
@@ -86,7 +87,7 @@ class Protocol:
         if "materials" in d:
             seg_method_dict["materials"] = seg.Material.from_dict(d.pop("materials"))
         d["seg_method"] = seg.SegmentationMethod.from_dict(seg_method_dict)
-        d['param_constraints'] = d.get("param_constraints", {})
+        d['param_constraints'] = {key: ParameterConstraint.from_dict(val) for key, val in d.get("param_constraints", {}).items()}
         if "target_constraints" in d:
             d['target_constraints'] = [TargetConstraints.from_dict(d_tc) for d_tc in d.get("target_constraints", {})]
         if "virtual_fit_options" in d:
@@ -326,7 +327,7 @@ class Protocol:
                 raise ValueError(f"Cannot scale solution {solution.id} if simulation is not enabled!")
             self.logger.info(f"Scaling solution {solution.id}...")
             #TODO can analysis be an attribute of solution ?
-            scaled_solution_analysis = solution.scale(transducer, self.focal_pattern, analysis_options=analysis_options)
+            solution.scale(transducer, self.focal_pattern, analysis_options=analysis_options)
 
         if simulate:
             # Finally the resulting pressure is max-aggregated and intensity is mean-aggregated, over all focus points .
@@ -339,5 +340,9 @@ class Protocol:
             simulation_result_aggregated['p_min'] = pnp_aggregated
             simulation_result_aggregated['p_max'] = ppp_aggregated
             simulation_result_aggregated['intensity'] = intensity_aggregated
+            solution_analysis = solution.analyze(transducer=transducer, options=analysis_options, param_constraints=self.param_constraints)
+        else:
+            simulation_result_aggregated = None
+            solution_analysis = None
 
-        return solution, simulation_result_aggregated, scaled_solution_analysis
+        return solution, simulation_result_aggregated, solution_analysis

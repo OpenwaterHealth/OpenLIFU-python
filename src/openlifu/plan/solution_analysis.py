@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import List, Literal, Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 import pandas as pd
 import xarray as xa
 
+from openlifu.plan.param_constraint import PARAM_STATUS_SYMBOLS, ParameterConstraint
 from openlifu.util.dict_conversion import DictMixin
 
 DEFAULT_ORIGIN = np.zeros(3)
@@ -32,12 +33,6 @@ PARAM_FORMATS = {
     "TIC": [None, "0.3f", "", "TIC"],
     "MI": ["max", "0.3f", "", "MI"]}
 
-STATUSES = {
-    "ok": "✅",
-    "warning": "⚠️",
-    "error": "❌"
-}
-
 @dataclass
 class SolutionAnalysis(DictMixin):
     mainlobe_pnp_MPa: list[float] = field(default_factory=list)
@@ -58,10 +53,15 @@ class SolutionAnalysis(DictMixin):
     power_W: float | None = None
     MI: float | None = None
     global_ispta_mWcm2: float | None = None
+    param_constraints: Dict[str, ParameterConstraint] = field(default_factory=dict)
 
-    def to_table(self, param_constaints:List["ParameterConstraint"]=[]) -> pd.DataFrame:
+    def to_table(self, constraints:Dict[str,"ParameterConstraint"]|None=None) -> pd.DataFrame:
         records = []
-        constraints = {c.param: c for c in param_constaints}
+        if constraints is None:
+            constraints = self.param_constraints
+        for p in constraints:
+            if p not in PARAM_FORMATS:
+                raise ValueError(f"Unknown parameter constraint for '{p}'. Must be one of: {list(PARAM_FORMATS.keys())}")
         for param, fmt in PARAM_FORMATS.items():
             if fmt[0] is None:
                 pval = self.__dict__[param]
@@ -85,7 +85,7 @@ class SolutionAnalysis(DictMixin):
                     if param in constraints:
                         record['_warning'] = constraints[param].is_warning(pval)
                         record['_error'] = constraints[param].is_error(pval)
-                        record["Status"] = STATUSES[constraints[param].get_status(pval)]
+                        record["Status"] = PARAM_STATUS_SYMBOLS[constraints[param].get_status(pval)]
                 records.append(record)
         return pd.DataFrame.from_records(records)
 
@@ -108,46 +108,6 @@ class SolutionAnalysis(DictMixin):
             return json.dumps(self.to_dict(), indent=4)
 
 @dataclass
-class ParameterConstraint(DictMixin):
-    param: str
-    operator: Literal['<','<=','>','>=']
-    warning_value: float|None = None
-    error_value: float|None = None
-
-    def is_warning(self, value:float) -> bool:
-        if self.warning_value is not None:
-            if self.operator == '<':
-                return value >= self.warning_value
-            elif self.operator == '<=':
-                return value > self.warning_value
-            elif self.operator == '>':
-                return value <= self.warning_value
-            elif self.operator == '>=':
-                return value < self.warning_value
-        return False
-
-    def is_error(self, value:float) -> bool:
-        if self.error_value is not None:
-            if self.operator == '<':
-                return value >= self.error_value
-            elif self.operator == '<=':
-                return value > self.error_value
-            elif self.operator == '>':
-                return value <= self.error_value
-            elif self.operator == '>=':
-                return value < self.error_value
-        return False
-
-    def get_status(self, value:float) -> str:
-        if self.is_error(value):
-            return "error"
-        elif self.is_warning(value):
-            return "warning"
-        else:
-            return "ok"
-
-
-@dataclass
 class SolutionAnalysisOptions(DictMixin):
     standoff_sound_speed: float = 1500.0
     standoff_density: float = 1000.0
@@ -160,6 +120,7 @@ class SolutionAnalysisOptions(DictMixin):
     sidelobe_radius: float = 3e-3
     sidelobe_zmin: float = 1e-3
     distance_units: str = "m"
+    param_constraints: Dict[str, ParameterConstraint] = field(default_factory=dict)
 
 def find_centroid(da: xa.DataArray, cutoff:float) -> np.ndarray:
     """Find the centroid of a thresholded region of a DataArray"""
