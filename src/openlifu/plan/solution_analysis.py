@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Annotated, List, Literal, Tuple
+from typing import Annotated, List, Literal, Dict, Tuple
 
 import numpy as np
 import pandas as pd
@@ -32,12 +32,6 @@ PARAM_FORMATS = {
     "power_W": [None, "0.3f", "W", "Emitted Power"],
     "TIC": [None, "0.3f", "", "TIC"],
     "MI": ["max", "0.3f", "", "MI"]}
-
-STATUSES = {
-    "ok": "✅",
-    "warning": "⚠️",
-    "error": "❌"
-}
 
 @dataclass
 class SolutionAnalysis(DictMixin):
@@ -80,8 +74,8 @@ class SolutionAnalysis(DictMixin):
     global_isppa_Wcm2: Annotated[list[float], OpenLIFUFieldData("Global ISPPA", "Maximum spatial peak pulse average intensity in the entire field, in W/cm²")] = field(default_factory=list)
     """Maximum spatial peak pulse average intensity in the entire field, in W/cm²"""
 
-    p0_Pa: Annotated[list[float], OpenLIFUFieldData("Emitted pressure (Pa)", "Initial pressure values in the field, in Pa")] = field(default_factory=list)
-    """Initial pressure values in the field (Pa)"""
+    p0_MPa: Annotated[list[float], OpenLIFUFieldData("Emitted pressure (MPa)", "Initial pressure values in the field, in MPa")] = field(default_factory=list)
+    """Initial pressure values in the field (MPa)"""
 
     TIC: Annotated[float | None, OpenLIFUFieldData("Thermal index (TIC)", "Thermal index in cranium (TIC)")] = None
     """Thermal index in cranium (TIC)"""
@@ -95,9 +89,16 @@ class SolutionAnalysis(DictMixin):
     global_ispta_mWcm2: Annotated[float | None, OpenLIFUFieldData("Global ISPTA (mW/cm²)", "Global Intensity at Spatial-Peak, Time-Average (I_SPTA) (mW/cm²)")] = None
     """Global Intensity at Spatial-Peak, Time-Average (I_SPTA) (mW/cm²)"""
 
-    def to_table(self, param_constaints:List["ParameterConstraint"]=[]) -> pd.DataFrame:
+    param_constraints: Annotated[Dict[str, ParameterConstraint], OpenLIFUFieldData("Parameter constraints", None)] = field(default_factory=dict)
+    """TODO: Add description"""
+
+    def to_table(self, constraints:Dict[str,"ParameterConstraint"]|None=None) -> pd.DataFrame:
         records = []
-        constraints = {c.param: c for c in param_constaints}
+        if constraints is None:
+            constraints = self.param_constraints
+        for p in constraints:
+            if p not in PARAM_FORMATS:
+                raise ValueError(f"Unknown parameter constraint for '{p}'. Must be one of: {list(PARAM_FORMATS.keys())}")
         for param, fmt in PARAM_FORMATS.items():
             if fmt[0] is None:
                 pval = self.__dict__[param]
@@ -121,7 +122,7 @@ class SolutionAnalysis(DictMixin):
                     if param in constraints:
                         record['_warning'] = constraints[param].is_warning(pval)
                         record['_error'] = constraints[param].is_error(pval)
-                        record["Status"] = STATUSES[constraints[param].get_status(pval)]
+                        record["Status"] = PARAM_STATUS_SYMBOLS[constraints[param].get_status(pval)]
                 records.append(record)
         return pd.DataFrame.from_records(records)
 
@@ -142,46 +143,6 @@ class SolutionAnalysis(DictMixin):
             return json.dumps(self.to_dict(), separators=(',', ':'))
         else:
             return json.dumps(self.to_dict(), indent=4)
-
-@dataclass
-class ParameterConstraint(DictMixin):
-    param: str
-    operator: Literal['<','<=','>','>=']
-    warning_value: float|None = None
-    error_value: float|None = None
-
-    def is_warning(self, value:float) -> bool:
-        if self.warning_value is not None:
-            if self.operator == '<':
-                return value >= self.warning_value
-            elif self.operator == '<=':
-                return value > self.warning_value
-            elif self.operator == '>':
-                return value <= self.warning_value
-            elif self.operator == '>=':
-                return value < self.warning_value
-        return False
-
-    def is_error(self, value:float) -> bool:
-        if self.error_value is not None:
-            if self.operator == '<':
-                return value >= self.error_value
-            elif self.operator == '<=':
-                return value > self.error_value
-            elif self.operator == '>':
-                return value <= self.error_value
-            elif self.operator == '>=':
-                return value < self.error_value
-        return False
-
-    def get_status(self, value:float) -> str:
-        if self.is_error(value):
-            return "error"
-        elif self.is_warning(value):
-            return "warning"
-        else:
-            return "ok"
-
 
 @dataclass
 class SolutionAnalysisOptions(DictMixin):
@@ -214,6 +175,9 @@ class SolutionAnalysisOptions(DictMixin):
 
     distance_units: Annotated[str, OpenLIFUFieldData("Distance units", "The units used for distance measurements")] = "m"
     """The units used for distance measurements"""
+
+    param_constraints: Annotated[Dict[str, ParameterConstraint], OpenLIFUFieldData("Parameter constraints", None)] = field(default_factory=dict)
+    """TODO: Add description"""
 
 def find_centroid(da: xa.DataArray, cutoff:float) -> np.ndarray:
     """Find the centroid of a thresholded region of a DataArray"""
