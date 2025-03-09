@@ -16,7 +16,7 @@ from vtk import vtkImageData, vtkPolyData
 from openlifu import Point, Solution
 from openlifu.db import Session, Subject, User
 from openlifu.db.database import Database, OnConflictOpts
-from openlifu.db.session import ArrayTransform
+from openlifu.db.session import ArrayTransform, TransducerTrackingResult
 from openlifu.photoscan import Photoscan
 from openlifu.plan import Protocol, Run
 from openlifu.xdc import Transducer
@@ -55,6 +55,11 @@ def test_new_database(tmp_path:Path):
     assert len(db1.get_subject_ids()) == 0
     assert len(db1.get_transducer_ids()) == 0
 
+@pytest.fixture()
+def example_transducer_tracking_result() -> TransducerTrackingResult:
+    return TransducerTrackingResult(photoscan_id="example_photoscan",
+                                    transducer_to_photoscan_transform = ArrayTransform(np.eye(4),"mm"),
+                                    photoscan_to_volume_transform = ArrayTransform(np.eye(4),"mm"))
 
 def test_write_protocol(example_database: Database):
     protocol = Protocol(name="bleh", id="a_protocol_called_bleh")
@@ -304,6 +309,21 @@ def test_write_session_associated_object_structure_created(example_database: Dat
     assert example_database.get_solutions_filename(example_subject.id, session.id).is_file()
     assert example_database.get_runs_filename(example_subject.id, session.id).is_file()
 
+def test_write_session_with_invalid_photoscan_id(example_database: Database, example_subject: Subject, example_transducer_tracking_result):
+    """ Test that when you write a session with a transducer tracking result associated with an
+      invalid photoscan, an error is raised."""
+    session = Session(name="bleh", id='a_session',subject_id=example_subject.id)
+    session.transducer_tracking_results = [example_transducer_tracking_result]
+    example_transducer_tracking_result.photoscan_id = "bogus_photoscan"
+    with pytest.raises(ValueError, match="been associated with this session"):
+        example_database.write_session(example_subject, session)
+
+def test_write_session_with_transducer_tracking_results(example_database: Database, example_subject: Subject, example_transducer_tracking_result):
+    """ Test that when there is a transducer tracking result class associated with a session, the session
+    is correctly written to file."""
+    session = Session(name="bleh", id='example_session',subject_id=example_subject.id)
+    session.transducer_tracking_results = [example_transducer_tracking_result]
+    example_database.write_session(example_subject, session, on_conflict = OnConflictOpts.OVERWRITE)
 
 def test_write_run(example_database: Database, tmp_path:Path):
     subject_id = "example_subject"
@@ -402,6 +422,10 @@ def test_session_arrays_read_correctly(example_session:Session):
     for _, (_, array_transforms) in example_session.virtual_fit_results.items():
         for array_transform in array_transforms:
             assert isinstance(array_transform.matrix, np.ndarray)
+
+    for tt_result in example_session.transducer_tracking_results:
+        assert isinstance(tt_result.transducer_to_photoscan_transform.matrix, np.ndarray)
+        assert isinstance(tt_result.photoscan_to_volume_transform.matrix, np.ndarray)
 
 @pytest.mark.parametrize("compact_representation", [True, False])
 def test_serialize_deserialize_session(example_session : Session, compact_representation:bool):
