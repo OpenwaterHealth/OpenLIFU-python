@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+import numpy as np
+
+from openlifu.bf.pulse import Pulse
+from openlifu.bf.sequence import Sequence
+from openlifu.geo import Point
 from openlifu.io.LIFUInterface import LIFUInterface
+from openlifu.plan.solution import Solution
 
 # set PYTHONPATH=%cd%\src;%PYTHONPATH%
 # python notebooks/test_updated_if.py
@@ -54,6 +60,47 @@ if num_tx_devices > 0:
 else:
     raise Exception("No TX7332 devices found.")
 
+# set focus
+xInput = 0
+yInput = 0
+zInput = 50
+
+frequency = 400e3
+voltage = 12.0
+duration = 2e-5
+
+pulse = Pulse(frequency=frequency, amplitude=voltage, duration=duration)
+pt = Point(position=(xInput,yInput,zInput), units="mm")
+sequence = Sequence(
+    pulse_interval=0.1,
+    pulse_count=10,
+    pulse_train_interval=1,
+    pulse_train_count=1
+)
+
+# Calculate delays and apodizations to perform beam forming
+
+solution = Solution(
+    delays = np.zeros((1,64)),
+    apodizations = np.ones((1,64)),
+    pulse = pulse,
+    sequence = sequence
+)
+
+sol_dict = solution.to_dict()
+profile_index = 1
+profile_increment = True
+print("Set Solution")
+interface.txdevice.set_solution(
+    pulse = sol_dict['pulse'],
+    delays = sol_dict['delays'],
+    apodizations= sol_dict['apodizations'],
+    sequence= sol_dict['sequence'],
+    mode = "continuous",
+    profile_index=profile_index,
+    profile_increment=profile_increment
+)
+
 print("Get Trigger")
 trigger_setting = interface.txdevice.get_trigger_json()
 if trigger_setting:
@@ -99,7 +146,7 @@ if interface.txdevice.start_trigger():
     else:
         print("Failed to stop trigger.")
 else:
-    print("Failed to get trigger setting.")
+    print("Failed to start trigger.")
 
 print("Reset Device:")
 # Ask the user for confirmation

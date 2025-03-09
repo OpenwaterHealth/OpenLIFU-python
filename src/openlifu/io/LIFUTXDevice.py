@@ -124,6 +124,7 @@ from openlifu.io.LIFUConfig import (
     OW_TX7332_VWBLOCK,
     OW_TX7332_VWREG,
     OW_TX7332_WBLOCK,
+    OW_TX7332_WREG,
 )
 
 if TYPE_CHECKING:
@@ -805,7 +806,7 @@ class TxDevice:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def demo_tx7332(self) -> bool:
+    def demo_tx7332(self, identifier:int) -> bool:
         """
         Sets all TX7332 chip registers with a test waveform.
 
@@ -822,7 +823,7 @@ class TxDevice:
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
 
-            r = self.uart.send_packet(id=None, packetType=OW_TX7332, command=OW_TX7332_DEMO)
+            r = self.uart.send_packet(id=None, addr=identifier, packetType=OW_TX7332, command=OW_TX7332_DEMO)
             self.uart.clear_buffer()
             # r.print_packet()
             if r.packet_type == OW_ERROR:
@@ -864,8 +865,6 @@ class TxDevice:
             # Validate the identifier
             if identifier < 0:
                 raise ValueError("TX Chip address NOT SET")
-            if identifier > 1:
-                raise ValueError("TX Chip address must be in the range 0-1")
 
             # Pack the address and value into the required format
             try:
