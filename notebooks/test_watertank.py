@@ -54,24 +54,6 @@ log_temp = (log_choice == "y")
 print("Ping the device")
 interface.txdevice.ping()
 
-print("Set Trigger")
-json_trigger_data = {
-    "TriggerFrequencyHz": 10,
-    "TriggerPulseCount": 0,
-    "TriggerPulseWidthUsec": 20000,
-    "TriggerPulseTrainInterval": 0,
-    "TriggerPulseTrainCount": 0,
-    "TriggerMode": 1,
-    "ProfileIndex": 0,
-    "ProfileIncrement": 0
-}
-
-trigger_setting = interface.txdevice.set_trigger_json(data=json_trigger_data)
-if trigger_setting:
-    print(f"Trigger Setting: {trigger_setting}")
-else:
-    print("Failed to set trigger setting.")
-
 print("Enumerate TX7332 chips")
 num_tx_devices = interface.txdevice.enum_tx7332_devices()
 if num_tx_devices > 0:
@@ -97,18 +79,13 @@ sequence = Sequence(
     pulse_train_count=1
 )
 
+# Calculate delays and apodizations to perform beam forming
+
 solution = Solution(
-    id="solution",
-    name="Solution",
-    protocol_id="example_protocol",
-    transducer_id="example_transducer",
     delays = np.zeros((1,64)),
     apodizations = np.ones((1,64)),
     pulse = pulse,
-    sequence = sequence,
-    target=pt,
-    foci=[pt],
-    approved=True
+    sequence = sequence
 )
 
 sol_dict = solution.to_dict()
@@ -119,6 +96,7 @@ interface.txdevice.set_solution(
     delays = sol_dict['delays'],
     apodizations= sol_dict['apodizations'],
     sequence= sol_dict['sequence'],
+    mode = "continuous",
     profile_index=profile_index,
     profile_increment=profile_increment
 )
