@@ -107,6 +107,10 @@ def test_create_closed_surface_from_labelmap():
         point_distance_from_sphere_center = np.linalg.norm(point_position - sphere_center, ord=2)
         assert np.abs(point_distance_from_sphere_center - sphere_radius) < 1.
 
+    # verify that there are no scalars on the point data since these are undesirable in slicer, and the function
+    # isn't supposed to add a colormap or anything like that
+    assert surface.GetPointData().GetScalars() is None
+
 def test_spherical_interpolator_from_mesh():
     """Check using a torus that the spherical interpolator behaves reasonably"""
     parametric_torus = vtk.vtkParametricTorus()
