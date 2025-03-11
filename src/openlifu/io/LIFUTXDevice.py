@@ -926,9 +926,6 @@ class TxDevice:
             if self.identifier < 0:
                 raise ValueError("TX Chip address NOT SET")
 
-            if self.identifier > 1:
-                raise ValueError("TX Chip address must be in the range 0-1")
-
             # Pack the address into the required format
             try:
                 data = struct.pack('<H', address)
@@ -997,8 +994,6 @@ class TxDevice:
             # Validate the identifier
             if identifier < 0:
                 raise ValueError("TX Chip address NOT SET")
-            if identifier > 1:
-                raise ValueError("TX Chip address must be in the range 0-1")
 
             # Validate the reg_values list
             if not reg_values or not isinstance(reg_values, list):
@@ -1080,8 +1075,6 @@ class TxDevice:
             # Validate the identifier
             if self.identifier < 0:
                 raise ValueError("TX Chip address NOT SET")
-            if self.identifier > 1:
-                raise ValueError("TX Chip address must be in the range 0-1")
 
             # Pack the address and value into the required format
             try:
@@ -1143,8 +1136,6 @@ class TxDevice:
             # Validate the identifier
             if self.identifier < 0:
                 raise ValueError("TX Chip address NOT SET")
-            if self.identifier > 1:
-                raise ValueError("TX Chip address must be in the range 0-1")
 
             # Validate the reg_values list
             if not reg_values or not isinstance(reg_values, list):
