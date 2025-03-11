@@ -274,6 +274,8 @@ def create_closed_surface_from_labelmap(
             surface_mesh,
         )
 
+    # Some scalars can get tacked on by the above processing for some reason, so remove those in case they are present
+    surface_mesh.GetPointData().SetScalars(None)
     return surface_mesh
 
 def spherical_interpolator_from_mesh(
