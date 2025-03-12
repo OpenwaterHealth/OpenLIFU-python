@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Tuple
+from typing import List, Tuple
 
 import numpy as np
 import xarray as xa
@@ -14,20 +14,20 @@ DEFAULT_ORIGIN = np.zeros(3)
 
 @dataclass
 class SolutionAnalysis(DictMixin):
-    mainlobe_pnp_MPa: list[float] = field(default_factory=list)
-    mainlobe_isppa_Wcm2: list[float] = field(default_factory=list)
-    mainlobe_ispta_mWcm2: list[float] = field(default_factory=list)
-    beamwidth_lat_3dB_mm: list[float] = field(default_factory=list)
-    beamwidth_ele_3dB_mm: list[float] = field(default_factory=list)
-    beamwidth_ax_3dB_mm: list[float] = field(default_factory=list)
-    beamwidth_lat_6dB_mm: list[float] = field(default_factory=list)
-    beamwidth_ele_6dB_mm: list[float] = field(default_factory=list)
-    beamwidth_ax_6dB_mm: list[float] = field(default_factory=list)
-    sidelobe_pnp_MPa: list[float] = field(default_factory=list)
-    sidelobe_isppa_Wcm2: list[float] = field(default_factory=list)
-    global_pnp_MPa: list[float] = field(default_factory=list)
-    global_isppa_Wcm2: list[float] = field(default_factory=list)
-    p0_Pa: list[float] = field(default_factory=list)
+    mainlobe_pnp_MPa: List[float] = field(default_factory=list)
+    mainlobe_isppa_Wcm2: List[float] = field(default_factory=list)
+    mainlobe_ispta_mWcm2: List[float] = field(default_factory=list)
+    beamwidth_lat_3dB_mm: List[float] = field(default_factory=list)
+    beamwidth_ele_3dB_mm: List[float] = field(default_factory=list)
+    beamwidth_ax_3dB_mm: List[float] = field(default_factory=list)
+    beamwidth_lat_6dB_mm: List[float] = field(default_factory=list)
+    beamwidth_ele_6dB_mm: List[float] = field(default_factory=list)
+    beamwidth_ax_6dB_mm: List[float] = field(default_factory=list)
+    sidelobe_pnp_MPa: List[float] = field(default_factory=list)
+    sidelobe_isppa_Wcm2: List[float] = field(default_factory=list)
+    global_pnp_MPa: List[float] = field(default_factory=list)
+    global_isppa_Wcm2: List[float] = field(default_factory=list)
+    p0_Pa: List[float] = field(default_factory=list)
     TIC: float | None = None
     power_W: float | None = None
     MI: float | None = None
