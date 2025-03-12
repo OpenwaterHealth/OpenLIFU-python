@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import fields
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -55,17 +56,17 @@ def example_solution() -> Solution:
             {
                 'p_min': xa.DataArray(
                     data=rng.random((1, 3, 2, 3)),
-                    dims=["focal_point_index", "x", "y", "z"],
+                    dims=["focal_point_index", "lat", "ele", "ax"],
                     attrs={'units': "Pa"}
                 ),
                 'p_max': xa.DataArray(
                     data=rng.random((1, 3, 2, 3)),
-                    dims=["focal_point_index", "x", "y", "z"],
+                    dims=["focal_point_index", "lat", "ele", "ax"],
                     attrs={'units': "Pa"}
                 ),
                 'intensity': xa.DataArray(
                     data=rng.random((1, 3, 2, 3)),
-                    dims=["focal_point_index", "x", "y", "z"],
+                    dims=["focal_point_index", "lat", "ele", "ax"],
                     attrs={'units': "W/cm^2"}
                 )
             },
@@ -135,6 +136,17 @@ def test_json_serialize_deserialize_solution_analysis(compact_representation: bo
     analysis_json = analysis.to_json(compact=compact_representation)
     analysis_reconstructed = SolutionAnalysis.from_json(analysis_json)
     assert dataclasses_are_equal(analysis_reconstructed, analysis)
+
+def test_solution_analyze_data_types(example_solution:Solution, example_transducer:Transducer):
+    """Test that solution analysis field are all floats or lists of floats as expected"""
+    analysis = example_solution.analyze(example_transducer)
+    for f in fields(analysis):
+        value = getattr(analysis, f.name)
+        if not isinstance(value, float):
+            assert isinstance(value, list)
+            if len(value) > 0:
+                assert isinstance(value[0], float)
+
 
 def test_solution_created_date():
     """Test that created date is recent when a solution is created."""
