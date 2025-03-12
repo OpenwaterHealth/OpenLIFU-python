@@ -10,6 +10,7 @@ from openlifu.bf.sequence import Sequence
 from openlifu.geo import Point
 from openlifu.io.LIFUInterface import LIFUInterface
 from openlifu.plan.solution import Solution
+from openlifu.xdc import Transducer
 
 # set PYTHONPATH=%cd%\src;%PYTHONPATH%
 # python notebooks/test_watertank.py
@@ -66,12 +67,35 @@ xInput = 0
 yInput = 0
 zInput = 50
 
-frequency = 400e3
+frequency = 405e3
 voltage = 12.0
 duration = 2e-5
 
 pulse = Pulse(frequency=frequency, amplitude=voltage, duration=duration)
 pt = Point(position=(xInput,yInput,zInput), units="mm")
+
+#arr = Transducer.from_file(r"C:\Users\Neuromod2\Documents\OpenLIFU-python\OpenLIFU_2x.json")
+# arr = Transducer.from_file(R"..\M4_flex.json")
+arr = Transducer.from_file(R"E:\CURRENT-WORK\openwater\OpenLIFU-python\notebooks\pinmap.json")
+
+focus = pt.get_position(units="mm")
+#arr.elements = np.array(arr.elements)[np.argsort([el.pin for el in arr.elements])].tolist()
+distances = np.sqrt(np.sum((focus - arr.get_positions(units="mm"))**2, 1))
+tof = distances*1e-3 / 1500
+delays = tof.max() - tof
+apodizations = np.ones(arr.numelements())
+
+
+
+    # tURN only single element ON
+#active_element = 25
+
+#delays = delays*0.0
+#apodizations = np.zeros(arr.numelements())
+#apodizations[active_element-1] = 1
+print('apodizations', apodizations)
+print('Delays', delays)
+
 sequence = Sequence(
     pulse_interval=0.1,
     pulse_count=10,
@@ -79,11 +103,9 @@ sequence = Sequence(
     pulse_train_count=1
 )
 
-# Calculate delays and apodizations to perform beam forming
-
 solution = Solution(
-    delays = np.zeros((1,64)),
-    apodizations = np.ones((1,64)),
+    delays = delays,
+    apodizations = apodizations,
     pulse = pulse,
     sequence = sequence
 )
@@ -96,7 +118,7 @@ interface.txdevice.set_solution(
     delays = sol_dict['delays'],
     apodizations= sol_dict['apodizations'],
     sequence= sol_dict['sequence'],
-    mode = "continuous",
+    mode="continuous",
     profile_index=profile_index,
     profile_increment=profile_increment
 )
@@ -128,6 +150,7 @@ if interface.txdevice.start_trigger():
     print("Trigger Running Press enter to STOP:")
     input()  # Wait for the user to press Enter
     if interface.txdevice.stop_trigger():
+        stop_logging = True
         print("Trigger stopped successfully.")
     else:
         print("Failed to stop trigger.")
@@ -136,5 +159,4 @@ else:
 
 # Stop the temperature logging before starting the trigger
 if log_temp:
-    stop_logging = True
     t.join()
