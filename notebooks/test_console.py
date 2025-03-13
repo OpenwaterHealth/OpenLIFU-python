@@ -73,6 +73,14 @@ print("Get Top Fan Speed")
 tpfan_speed = interface.hvcontroller.get_fan_speed(fan_id=1)
 print(f"Bottom Fan Speed: {tpfan_speed}")
 
+print("Set RGB LED")
+rgb_led = interface.hvcontroller.set_rgb_led(rgb_state=2)
+print(f"RGB STATE: {rgb_led}")
+
+print("Get RGB LED")
+rgb_led_state = interface.hvcontroller.get_rgb_led()
+print(f"RGB STATE: {rgb_led_state}")
+
 print("Test 12V...")
 if interface.hvcontroller.turn_12v_on():
     print("12V ON Press enter to TURN OFF:")
