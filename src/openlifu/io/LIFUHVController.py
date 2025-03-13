@@ -803,7 +803,6 @@ class HVController:
 
             r = self.uart.send_packet(
                 id=None,
-                addr=0,  # Assuming no address is needed for RGB control
                 packetType=OW_POWER,
                 command=OW_POWER_GET_RGB
             )
