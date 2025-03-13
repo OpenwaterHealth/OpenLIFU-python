@@ -33,7 +33,7 @@ class LIFUInterface:
     hvcontroller: HVController = None
     txdevice: TxDevice = None
 
-    def __init__(self, vid: int = 0x0483, tx_pid: int = 0x57AF, con_pid: int = 0x57A0, baudrate: int = 921600, timeout: int = 10, test_mode: bool = False, run_async: bool = False) -> None:
+    def __init__(self, vid: int = 0x0483, tx_pid: int = 0x57AF, con_pid: int = 0x57A0, baudrate: int = 921600, timeout: int = 10, TX_test_mode: bool = False, HV_test_mode: bool = False, run_async: bool = False) -> None:
         """
         Initialize the LIFUInterface with given parameters and store them in the class.
 
@@ -52,19 +52,19 @@ class LIFUInterface:
         self.con_pid = con_pid
         self.baudrate = baudrate
         self.timeout = timeout
-        self._test_mode = test_mode
+        self._test_mode = TX_test_mode
         self._async_mode = run_async
         self._tx_uart = None
         self._hv_uart = None
 
         # Create a TXDevice instance as part of the interface
         logger.debug("Initializing TX Module of LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", vid, tx_pid, baudrate, timeout)
-        self._tx_uart = LIFUUart(vid=vid, pid=tx_pid, baudrate=baudrate, timeout=timeout, desc="TX", demo_mode=test_mode, async_mode=run_async)
+        self._tx_uart = LIFUUart(vid=vid, pid=tx_pid, baudrate=baudrate, timeout=timeout, desc="TX", demo_mode=TX_test_mode, async_mode=run_async)
         self.txdevice = TxDevice(uart=self._tx_uart)
 
         # Create a LIFUHVController instance as part of the interface
         logger.debug("Initializing Console of LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", vid, con_pid, baudrate, timeout)
-        self._hv_uart = LIFUUart(vid=vid, pid=con_pid, baudrate=baudrate, timeout=timeout, desc="HV", demo_mode=test_mode, async_mode=run_async)
+        self._hv_uart = LIFUUart(vid=vid, pid=con_pid, baudrate=baudrate, timeout=timeout, desc="HV", demo_mode=HV_test_mode, async_mode=run_async)
         self.hvcontroller = HVController(uart=self._hv_uart)
 
         # Connect signals to internal handlers
