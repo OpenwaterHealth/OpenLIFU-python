@@ -316,6 +316,7 @@ class LIFUUart:
                         # and possibly handle partial packets.
                         packet = UartPacket(buffer=bytes(self.read_buffer))
                         # Clear the buffer after a successful parse.
+
                         self.read_buffer = []
                         if self.asyncMode:
                             with self.response_lock:
@@ -326,12 +327,13 @@ class LIFUUart:
                                     log.warning("Received an unsolicited packet with ID %d", packet.id)
                         else:
                             self.signal_data_received.emit(self.descriptor, packet)
+
                     except ValueError as ve:
                         log.error("Error parsing packet: %s", ve)
                 else:
                     time.sleep(0.05)  # Brief sleep to avoid a busy loop
             except serial.SerialException as e:
-                log.error("Serial read error on %s: %s", self.descriptor, e)
+                log.error("Serial _read_data error on %s: %s", self.descriptor, e)
                 self.running = False
 
     def _tx(self, data: bytes):
