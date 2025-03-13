@@ -14,14 +14,18 @@ from openlifu.io.LIFUConfig import (
     OW_POWER,
     OW_POWER_12V_OFF,
     OW_POWER_12V_ON,
+    OW_POWER_GET_12VON,
     OW_POWER_GET_FAN,
     OW_POWER_GET_HV,
+    OW_POWER_GET_HVON,
+    OW_POWER_GET_RGB,
     OW_POWER_GET_TEMP1,
     OW_POWER_GET_TEMP2,
     OW_POWER_HV_OFF,
     OW_POWER_HV_ON,
     OW_POWER_SET_FAN,
     OW_POWER_SET_HV,
+    OW_POWER_SET_RGB,
 )
 from openlifu.io.LIFUUart import LIFUUart
 
@@ -375,6 +379,41 @@ class HVController:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
+    def get_12v_status(self):
+        try:
+            if self.uart.demo_mode:
+                return True
+
+            if not self.uart.is_connected():
+                raise ValueError("Console not connected")
+
+            logger.info("Get 12V voltage status.")
+
+            r = self.uart.send_packet(
+                id=None, packetType=OW_POWER, command=OW_POWER_GET_12VON
+            )
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error retrieving 12V status")
+                return False
+            else:
+                if r.reserved == 1:
+                    self.is_12v_on = True
+                else:
+                    self.is_12v_on = False
+
+                return self.is_12v_on
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
     def turn_hv_on(self):
         """
         Turn on the high voltage.
@@ -436,6 +475,41 @@ class HVController:
                 self.is_hv_on = False
                 logger.info("HV Supply turned off successfully.")
                 return True
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+    def get_hv_status(self):
+        try:
+            if self.uart.demo_mode:
+                return True
+
+            if not self.uart.is_connected():
+                raise ValueError("Console not connected")
+
+            logger.info("Get high voltage status.")
+
+            r = self.uart.send_packet(
+                id=None, packetType=OW_POWER, command=OW_POWER_GET_HVON
+            )
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error retrievinging HV Status")
+                return False
+            else:
+                if r.reserved == 1:
+                    self.is_hv_on = True
+                else:
+                    self.is_hv_on = False
+
+                return self.is_hv_on
 
         except ValueError as v:
             logger.error("ValueError: %s", v)
@@ -549,7 +623,6 @@ class HVController:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-
     def set_fan_speed(self, fan_id: int = 0, fan_speed: int = 50) -> int:
         """
         Get the current output fan percentage.
@@ -575,7 +648,7 @@ class HVController:
 
         try:
             if self.uart.demo_mode:
-                return 40.0
+                return 40
 
             logger.info("Getting current output voltage.")
 
@@ -650,6 +723,100 @@ class HVController:
             else:
                 logger.error("Error getting output voltage from device")
                 return -1
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+    def set_rgb_led(self, rgb_state: int) -> int:
+        """
+        Set the RGB LED state.
+
+        Args:
+            rgb_state (int): The desired RGB state (0 = OFF, 1 = RED, 2 = BLUE, 3 = GREEN).
+
+        Returns:
+            int: The current RGB state after setting.
+
+        Raises:
+            ValueError: If the controller is not connected or the RGB state is invalid.
+        """
+        if not self.uart.is_connected():
+            raise ValueError("High voltage controller not connected")
+
+        if rgb_state not in [0, 1, 2, 3]:
+            raise ValueError("Invalid RGB state. Must be 0 (OFF), 1 (RED), 2 (BLUE), or 3 (GREEN)")
+
+        try:
+            if self.uart.demo_mode:
+                return rgb_state
+
+            logger.info("Setting RGB LED state.")
+
+            # Send the RGB state as the reserved byte in the packet
+            r = self.uart.send_packet(
+                id=None,
+                reserved=rgb_state & 0xFF,  # Send the RGB state as a single byte
+                packetType=OW_POWER,
+                command=OW_POWER_SET_RGB
+            )
+
+            self.uart.clear_buffer()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error setting RGB LED state")
+                return -1
+
+            logger.info(f'Set RGB LED state to {rgb_state}')
+            return rgb_state
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+    def get_rgb_led(self) -> int:
+        """
+        Get the current RGB LED state.
+
+        Returns:
+            int: The current RGB state (0 = OFF, 1 = RED, 2 = BLUE, 3 = GREEN).
+
+        Raises:
+            ValueError: If the controller is not connected.
+        """
+        if not self.uart.is_connected():
+            raise ValueError("High voltage controller not connected")
+
+        try:
+            if self.uart.demo_mode:
+                return 1  # Default to RED in demo mode
+
+            logger.info("Getting current RGB LED state.")
+
+            r = self.uart.send_packet(
+                id=None,
+                addr=0,  # Assuming no address is needed for RGB control
+                packetType=OW_POWER,
+                command=OW_POWER_GET_RGB
+            )
+
+            self.uart.clear_buffer()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error getting RGB LED state")
+                return -1
+
+            rgb_state = r.reserved
+            logger.info(f'Current RGB LED state is {rgb_state}')
+            return rgb_state
 
         except ValueError as v:
             logger.error("ValueError: %s", v)
