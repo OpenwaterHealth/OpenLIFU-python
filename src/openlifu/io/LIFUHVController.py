@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import struct
 
 from openlifu.io.LIFUConfig import (
     OW_CMD_ECHO,
@@ -14,6 +15,8 @@ from openlifu.io.LIFUConfig import (
     OW_POWER_12V_OFF,
     OW_POWER_12V_ON,
     OW_POWER_GET_HV,
+    OW_POWER_GET_TEMP1,
+    OW_POWER_GET_TEMP2,
     OW_POWER_HV_OFF,
     OW_POWER_HV_ON,
     OW_POWER_SET_HV,
@@ -230,6 +233,80 @@ class HVController:
 
         except Exception as e:
             logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+    def get_temperature1(self) -> float:
+        """
+        Retrieve the temperature reading from the TX device.
+
+        Returns:
+            float: Temperature value in Celsius.
+
+        Raises:
+            ValueError: If the UART is not connected.
+            Exception: If an error occurs or the received data length is invalid.
+        """
+        try:
+            if self.uart.demo_mode:
+                return 32.4
+
+            if not self.uart.is_connected():
+                logger.error("TX Device not connected")
+                return 0
+
+            # Send the GET_TEMP command
+            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_POWER_GET_TEMP1)
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            # Check if the data length matches a float (4 bytes)
+            if r.data_len == 4:
+                # Unpack the float value from the received data (assuming little-endian)
+                temperature = struct.unpack('<f', r.data)[0]
+                # Truncate the temperature to 2 decimal places
+                truncated_temperature = round(temperature, 2)
+                return truncated_temperature
+            else:
+                raise ValueError("Invalid data length received for temperature")
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+    def get_temperature2(self) -> float:
+        """
+        Retrieve the temperature reading from the TX device.
+
+        Returns:
+            float: Temperature value in Celsius.
+
+        Raises:
+            ValueError: If the UART is not connected.
+            Exception: If an error occurs or the received data length is invalid.
+        """
+        try:
+            if self.uart.demo_mode:
+                return 32.4
+
+            if not self.uart.is_connected():
+                logger.error("TX Device not connected")
+                return 0
+
+            # Send the GET_TEMP command
+            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_POWER_GET_TEMP2)
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            # Check if the data length matches a float (4 bytes)
+            if r.data_len == 4:
+                # Unpack the float value from the received data (assuming little-endian)
+                temperature = struct.unpack('<f', r.data)[0]
+                # Truncate the temperature to 2 decimal places
+                truncated_temperature = round(temperature, 2)
+                return truncated_temperature
+            else:
+                raise ValueError("Invalid data length received for temperature")
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
             raise  # Re-raise the exception for the caller to handle
 
     def turn_12v_off(self):
