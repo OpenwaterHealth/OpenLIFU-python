@@ -57,6 +57,22 @@ print("Get Temperature2")
 temp2 = interface.hvcontroller.get_temperature2()
 print(f"Temperature2: {temp2}")
 
+print("Set Bottom Fan Speed to 20%")
+btfan_speed = interface.hvcontroller.set_fan_speed(fan_id=0, fan_speed=20)
+print(f"Bottom Fan Speed: {btfan_speed}")
+
+print("Set Top Fan Speed to 40%")
+tpfan_speed = interface.hvcontroller.set_fan_speed(fan_id=1, fan_speed=40)
+print(f"Bottom Fan Speed: {tpfan_speed}")
+
+print("Get Bottom Fan Speed")
+btfan_speed = interface.hvcontroller.get_fan_speed(fan_id=0)
+print(f"Bottom Fan Speed: {btfan_speed}")
+
+print("Get Top Fan Speed")
+tpfan_speed = interface.hvcontroller.get_fan_speed(fan_id=1)
+print(f"Bottom Fan Speed: {tpfan_speed}")
+
 print("Test 12V...")
 if interface.hvcontroller.turn_12v_on():
     print("12V ON Press enter to TURN OFF:")

@@ -14,11 +14,13 @@ from openlifu.io.LIFUConfig import (
     OW_POWER,
     OW_POWER_12V_OFF,
     OW_POWER_12V_ON,
+    OW_POWER_GET_FAN,
     OW_POWER_GET_HV,
     OW_POWER_GET_TEMP1,
     OW_POWER_GET_TEMP2,
     OW_POWER_HV_OFF,
     OW_POWER_HV_ON,
+    OW_POWER_SET_FAN,
     OW_POWER_SET_HV,
 )
 from openlifu.io.LIFUUart import LIFUUart
@@ -538,6 +540,116 @@ class HVController:
             else:
                 logger.error("Error getting output voltage from device")
                 return 0.0
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+
+    def set_fan_speed(self, fan_id: int = 0, fan_speed: int = 50) -> int:
+        """
+        Get the current output fan percentage.
+
+        Args:
+            fan_id (int): The desired fan to set (default is 0). bottom fans (0), and top fans (1).
+            fan_speed (int): The desired fan speed (default is 50).
+
+        Returns:
+            int: The current output fan percentage.
+
+        Raises:
+            ValueError: If the controller is not connected.
+        """
+        if not self.uart.is_connected():
+            raise ValueError("High voltage controller not connected")
+
+        if fan_id not in [0, 1]:
+            raise ValueError("Invalid fan ID. Must be 0 or 1")
+
+        if fan_speed not in range(101):
+            raise ValueError("Invalid fan speed. Must be 0 to 100")
+
+        try:
+            if self.uart.demo_mode:
+                return 40.0
+
+            logger.info("Getting current output voltage.")
+
+            data = bytes(
+                [
+                    fan_speed & 0xFF,  # Low byte (least significant bits)
+                ]
+            )
+
+            r = self.uart.send_packet(
+                id=None, addr=fan_id, packetType=OW_POWER, command=OW_POWER_SET_FAN, data=data
+            )
+
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error setting Fan Speed")
+                return -1
+
+            logger.info(f'Set fan speed to {fan_speed}')
+            return fan_speed
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+    def get_fan_speed(self, fan_id: int = 0) -> int:
+        """
+        Get the current output fan percentage.
+
+        Args:
+            fan_id (int): The desired fan to read (default is 0). bottom fans (0), and top fans (1).
+
+        Returns:
+            int: The current output fan percentage.
+
+        Raises:
+            ValueError: If the controller is not connected.
+        """
+        if not self.uart.is_connected():
+            raise ValueError("High voltage controller not connected")
+
+        if fan_id not in [0, 1]:
+            raise ValueError("Invalid fan ID. Must be 0 or 1")
+
+        try:
+            if self.uart.demo_mode:
+                return 40.0
+
+            logger.info("Getting current output voltage.")
+
+            r = self.uart.send_packet(
+                id=None, addr=fan_id, packetType=OW_POWER, command=OW_POWER_GET_FAN
+            )
+
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error setting HV")
+                return 0.0
+
+            elif r.data_len == 1:
+                fan_value = r.data[0]
+                logger.info(f'Output fan speed is {fan_value}')
+                return fan_value
+            else:
+                logger.error("Error getting output voltage from device")
+                return -1
 
         except ValueError as v:
             logger.error("ValueError: %s", v)
