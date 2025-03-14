@@ -45,7 +45,7 @@ solution = openlifu.Solution(
 
 solution
 
-ifx = openlifu.LIFUInterface(test_mode=True)
+ifx = openlifu.LIFUInterface()
 
 ifx.set_solution(solution.to_dict())
 
