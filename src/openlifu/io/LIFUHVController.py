@@ -178,7 +178,7 @@ class HVController:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def toggle_led(self) -> None:
+    def toggle_led(self) -> bool:
         """
         Toggle the LED on the Console device.
 
@@ -198,7 +198,10 @@ class HVController:
             )
             self.uart.clear_buffer()
             # r.print_packet()
+            if r.packet_type == OW_ERROR:
+                return False
 
+            return True
         except ValueError as v:
             logger.error("ValueError: %s", v)
             raise  # Re-raise the exception for the caller to handle
@@ -519,7 +522,7 @@ class HVController:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def set_voltage(self, voltage: float):
+    def set_voltage(self, voltage: float) -> bool:
         """
         Set the output voltage.
 

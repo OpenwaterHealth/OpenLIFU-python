@@ -196,16 +196,13 @@ class TxDevice:
             logger.info("Send Ping to Device.")
 
             r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_PING)
-            if not self.uart.asyncMode:
-                self.uart.clear_buffer()
-                logger.info("Received Ping from Device.")
-                # r.print_packet()
+            self.uart.clear_buffer()
 
-                if r.packet_type == OW_ERROR:
-                    logger.error("Error sending ping")
-                    return False
-                else:
-                    return True
+            if r.packet_type == OW_ERROR:
+                logger.error("Error sending ping")
+                return False
+            else:
+                return True
         except ValueError as v:
             logger.error("ValueError: %s", v)
             raise  # Re-raise the exception for the caller to handle
