@@ -10,6 +10,7 @@ from openlifu.bf.sequence import Sequence
 from openlifu.geo import Point
 from openlifu.io.LIFUInterface import LIFUInterface
 from openlifu.plan.solution import Solution
+from openlifu.xdc import Transducer
 
 # set PYTHONPATH=%cd%\src;%PYTHONPATH%
 # python notebooks/test_watertank.py
@@ -40,7 +41,7 @@ def log_temperature():
 
 
 print("Starting LIFU Test Script...")
-interface = LIFUInterface(test_mode=False)
+interface = LIFUInterface()
 tx_connected, hv_connected = interface.is_device_connected()
 if tx_connected and hv_connected:
     print("LIFU Device Fully connected.")
@@ -54,24 +55,6 @@ log_temp = (log_choice == "y")
 print("Ping the device")
 interface.txdevice.ping()
 
-print("Set Trigger")
-json_trigger_data = {
-    "TriggerFrequencyHz": 10,
-    "TriggerPulseCount": 0,
-    "TriggerPulseWidthUsec": 20000,
-    "TriggerPulseTrainInterval": 0,
-    "TriggerPulseTrainCount": 0,
-    "TriggerMode": 1,
-    "ProfileIndex": 0,
-    "ProfileIncrement": 0
-}
-
-trigger_setting = interface.txdevice.set_trigger_json(data=json_trigger_data)
-if trigger_setting:
-    print(f"Trigger Setting: {trigger_setting}")
-else:
-    print("Failed to set trigger setting.")
-
 print("Enumerate TX7332 chips")
 num_tx_devices = interface.txdevice.enum_tx7332_devices()
 if num_tx_devices > 0:
@@ -84,12 +67,35 @@ xInput = 0
 yInput = 0
 zInput = 50
 
-frequency = 400e3
+frequency = 405e3
 voltage = 12.0
 duration = 2e-5
 
 pulse = Pulse(frequency=frequency, amplitude=voltage, duration=duration)
 pt = Point(position=(xInput,yInput,zInput), units="mm")
+
+#arr = Transducer.from_file(r"C:\Users\Neuromod2\Documents\OpenLIFU-python\OpenLIFU_2x.json")
+# arr = Transducer.from_file(R"..\M4_flex.json")
+arr = Transducer.from_file(R"E:\CURRENT-WORK\openwater\OpenLIFU-python\notebooks\pinmap.json")
+
+focus = pt.get_position(units="mm")
+#arr.elements = np.array(arr.elements)[np.argsort([el.pin for el in arr.elements])].tolist()
+distances = np.sqrt(np.sum((focus - arr.get_positions(units="mm"))**2, 1))
+tof = distances*1e-3 / 1500
+delays = tof.max() - tof
+apodizations = np.ones(arr.numelements())
+
+
+
+    # tURN only single element ON
+#active_element = 25
+
+#delays = delays*0.0
+#apodizations = np.zeros(arr.numelements())
+#apodizations[active_element-1] = 1
+print('apodizations', apodizations)
+print('Delays', delays)
+
 sequence = Sequence(
     pulse_interval=0.1,
     pulse_count=10,
@@ -98,17 +104,10 @@ sequence = Sequence(
 )
 
 solution = Solution(
-    id="solution",
-    name="Solution",
-    protocol_id="example_protocol",
-    transducer_id="example_transducer",
-    delays = np.zeros((1,64)),
-    apodizations = np.ones((1,64)),
+    delays = delays,
+    apodizations = apodizations,
     pulse = pulse,
-    sequence = sequence,
-    target=pt,
-    foci=[pt],
-    approved=True
+    sequence = sequence
 )
 
 sol_dict = solution.to_dict()
@@ -119,6 +118,7 @@ interface.txdevice.set_solution(
     delays = sol_dict['delays'],
     apodizations= sol_dict['apodizations'],
     sequence= sol_dict['sequence'],
+    mode="continuous",
     profile_index=profile_index,
     profile_increment=profile_increment
 )
@@ -150,6 +150,7 @@ if interface.txdevice.start_trigger():
     print("Trigger Running Press enter to STOP:")
     input()  # Wait for the user to press Enter
     if interface.txdevice.stop_trigger():
+        stop_logging = True
         print("Trigger stopped successfully.")
     else:
         print("Failed to stop trigger.")
@@ -158,5 +159,4 @@ else:
 
 # Stop the temperature logging before starting the trigger
 if log_temp:
-    stop_logging = True
     t.join()

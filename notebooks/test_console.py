@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import sys
+
+import base58
+
 from openlifu.io.LIFUInterface import LIFUInterface
 
 # set PYTHONPATH=%cd%\src;%PYTHONPATH%
-# python notebooks/test_updated_if.py
+# python notebooks/test_console.py
 """
 Test script to automate:
 1. Connect to the device.
@@ -11,13 +15,16 @@ Test script to automate:
 3. Test Device functionality.
 """
 print("Starting LIFU Test Script...")
-interface = LIFUInterface()
+interface = LIFUInterface(TX_test_mode=False)
 tx_connected, hv_connected = interface.is_device_connected()
 if tx_connected and hv_connected:
     print("LIFU Device Fully connected.")
 else:
     print(f'LIFU Device NOT Fully Connected. TX: {tx_connected}, HV: {hv_connected}')
 
+if not hv_connected:
+       print("HV Controller not connected.")
+       sys.exit()
 
 print("Ping the device")
 interface.hvcontroller.ping()
@@ -38,7 +45,41 @@ else:
 
 print("Get HW ID")
 hw_id = interface.hvcontroller.get_hardware_id()
-print(f"HWID: {hw_id}")
+print(f"HW ID: {hw_id}")
+encoded_id = base58.b58encode(bytes.fromhex(hw_id)).decode()
+print(f"OW-LIFU-CON-{encoded_id}")
+
+print("Get Temperature1")
+temp1 = interface.hvcontroller.get_temperature1()
+print(f"Temperature1: {temp1}")
+
+print("Get Temperature2")
+temp2 = interface.hvcontroller.get_temperature2()
+print(f"Temperature2: {temp2}")
+
+print("Set Bottom Fan Speed to 20%")
+btfan_speed = interface.hvcontroller.set_fan_speed(fan_id=0, fan_speed=20)
+print(f"Bottom Fan Speed: {btfan_speed}")
+
+print("Set Top Fan Speed to 40%")
+tpfan_speed = interface.hvcontroller.set_fan_speed(fan_id=1, fan_speed=40)
+print(f"Bottom Fan Speed: {tpfan_speed}")
+
+print("Get Bottom Fan Speed")
+btfan_speed = interface.hvcontroller.get_fan_speed(fan_id=0)
+print(f"Bottom Fan Speed: {btfan_speed}")
+
+print("Get Top Fan Speed")
+tpfan_speed = interface.hvcontroller.get_fan_speed(fan_id=1)
+print(f"Bottom Fan Speed: {tpfan_speed}")
+
+print("Set RGB LED")
+rgb_led = interface.hvcontroller.set_rgb_led(rgb_state=2)
+print(f"RGB STATE: {rgb_led}")
+
+print("Get RGB LED")
+rgb_led_state = interface.hvcontroller.get_rgb_led()
+print(f"RGB STATE: {rgb_led_state}")
 
 print("Test 12V...")
 if interface.hvcontroller.turn_12v_on():

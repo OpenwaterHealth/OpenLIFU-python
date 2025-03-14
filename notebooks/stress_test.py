@@ -86,7 +86,7 @@ def run_test(interface, iterations):
 
 if __name__ == "__main__":
     print("Starting LIFU Test Script...")
-    interface = LIFUInterface(test_mode=False)
+    interface = LIFUInterface()
 
     # Number of iterations to run
     test_iterations = 1000  # Change this to the desired number of iterations
