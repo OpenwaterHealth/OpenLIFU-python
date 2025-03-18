@@ -92,7 +92,7 @@ class SolutionAnalysis(DictMixin):
     param_constraints: Annotated[Dict[str, ParameterConstraint], OpenLIFUFieldData("Parameter constraints", None)] = field(default_factory=dict)
     """TODO: Add description"""
 
-    def to_table(self, constraints:Dict[str,"ParameterConstraint"]|None=None) -> pd.DataFrame:
+    def to_table(self, constraints:Dict[str,ParameterConstraint]|None=None) -> pd.DataFrame:
         records = []
         if constraints is None:
             constraints = self.param_constraints
