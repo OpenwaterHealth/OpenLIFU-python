@@ -11,6 +11,7 @@
 #     language: python
 #     name: python3
 # ---
+from __future__ import annotations
 
 # +
 import numpy as np
@@ -44,7 +45,7 @@ solution = openlifu.Solution(
 
 solution
 
-ifx = openlifu.LIFUInterface(test_mode=True)
+ifx = openlifu.LIFUInterface()
 
 ifx.set_solution(solution.to_dict())
 

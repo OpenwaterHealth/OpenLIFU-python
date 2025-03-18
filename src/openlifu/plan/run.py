@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from openlifu.util.json import PYFUSEncoder
 
@@ -12,22 +14,22 @@ class Run:
     Class representing a run
     """
 
-    id: Optional[str] = None
+    id: str | None = None
     """id: ID of the run"""
 
-    name: Optional[str] = None
+    name: str | None = None
     """name: Name of the run"""
 
-    success_flag: Optional[bool] = None
+    success_flag: bool | None = None
     """success_flag: True when run was successful, False otherwise"""
 
-    note: Optional[str] = None
+    note: str | None = None
     """note: large text containing notes about the run"""
 
-    session_id: Optional[str] = None
+    session_id: str | None = None
     """session_id: session id"""
 
-    solution_id: Optional[str] = None
+    solution_id: str | None = None
     """solution_id: solution id"""
 
     @staticmethod
@@ -43,12 +45,12 @@ class Run:
         return Run.from_dict(d)
 
     @staticmethod
-    def from_json(json_string : str) -> "Run":
+    def from_json(json_string : str) -> Run:
         """Load a Run from a json string"""
         return Run.from_dict(json.loads(json_string))
 
     @staticmethod
-    def from_dict(d : Dict[str, Any]) -> "Run":
+    def from_dict(d : Dict[str, Any]) -> Run:
         return Run(**d)
 
     def to_dict(self):

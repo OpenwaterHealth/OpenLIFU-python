@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from helpers import dataclasses_are_equal
 
 from openlifu import Sequence

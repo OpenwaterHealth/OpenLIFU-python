@@ -13,6 +13,7 @@ A couple of known issues to watch out for:
 - The netCDF simulation output files (.nc files) are modified for some reason each time they are written out. It's probably a similar
   thing going on with some kind of timestamp being embedded in the file.
 """
+from __future__ import annotations
 
 import pathlib
 import shutil

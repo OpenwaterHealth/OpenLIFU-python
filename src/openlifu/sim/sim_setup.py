@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 import xarray as xa
@@ -56,7 +58,7 @@ class SimSetup(DictMixin):
             logging.warning(f"z_extent {self.z_extent} does not evenly divide by spacing ({self.spacing}). Rounding to {z_extent}.")
         self.z_extent = z_extent
 
-    def get_coords(self, dims=None, units: Optional[str] = None):
+    def get_coords(self, dims=None, units: str | None = None):
         dims = self.dims if dims is None else dims
         units = self.units if units is None else units
         sizes = self.get_size(dims)
@@ -67,21 +69,21 @@ class SimSetup(DictMixin):
             coords[dim].attrs['long_name'] = self.names[i]
         return coords
 
-    def get_corners(self, id: str = "corners", units: Optional[str] = None):
+    def get_corners(self, id: str = "corners", units: str | None = None):
         units = self.units if units is None else units
         scl = getunitconversion(self.units, units)
         xyz = np.array(np.meshgrid(self.x_extent, self.y_extent, self.z_extent, indexing='ij'))
         corners = xyz.reshape(3,-1)
         return corners*scl
 
-    def get_extent(self, dims: Optional[str]=None, units: Optional[str] = None):
+    def get_extent(self, dims: str | None=None, units: str | None = None):
         dims = self.dims if dims is None else dims
         units = self.units if units is None else units
         scl = getunitconversion(self.units, units)
         extents = [self.x_extent, self.y_extent, self.z_extent]
         return np.array([extents[self.dims.index(dim)] for dim in dims])*scl
 
-    def get_max_cycle_offset(self, arr:Transducer, frequency: Optional[float] = None, delays: Optional[np.ndarray]=None, zmin: float =10e-3):
+    def get_max_cycle_offset(self, arr:Transducer, frequency: float | None = None, delays: np.ndarray | None=None, zmin: float =10e-3):
         frequency = arr.frequency if frequency is None else frequency
         delays = np.zeros(arr.numelements()) if delays is None else delays
         coords = self.get_coords(units="m")
@@ -93,26 +95,26 @@ class SimSetup(DictMixin):
         max_cycle_offset = dtof.max()*frequency
         return max_cycle_offset
 
-    def get_max_distance(self, arr: Transducer, units: Optional[str] = None):
+    def get_max_distance(self, arr: Transducer, units: str | None = None):
         units = self.units if units is None else units
         corners = self.get_corners(units=units)
         distances = np.array([[el.distance_to_point(corner, units=units) for corner in corners.T] for el in arr.elements])
         max_distance = np.max(distances)
         return max_distance
 
-    def get_size(self, dims: Optional[str]=None):
+    def get_size(self, dims: str | None=None):
         dims = self.dims if dims is None else dims
         n = [int((np.round(np.diff(ext)/self.spacing)).item())+1 for ext in [self.x_extent, self.y_extent, self.z_extent]]
         return np.array([n[self.dims.index(dim)] for dim in dims]).squeeze()
 
-    def get_spacing(self, units: Optional[str] = None):
+    def get_spacing(self, units: str | None = None):
         units = self.units if units is None else units
         return getunitconversion(self.units, units)*self.spacing
 
     def setup_sim_scene(
             self,
             seg_method: SegmentationMethod,
-            volume: Optional[xa.DataArray] = None
+            volume: xa.DataArray | None = None
         ) -> Tuple[xa.DataArray, Transducer, Point]:
         """ Prepare a simulation scene composed of a simulation grid
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Tuple
 
 import numpy as np
@@ -7,11 +9,12 @@ from scipy.linalg import expm
 from scipy.stats import skew
 
 from openlifu.seg.skinseg import (
+    affine_from_vtk_image_data,
+    apply_affine_to_polydata,
     cartesian_to_spherical,
     compute_foreground_mask,
     create_closed_surface_from_labelmap,
     spherical_interpolator_from_mesh,
-    spherical_to_cartesian,
     take_largest_connected_component,
     vtk_img_from_array_and_affine,
 )
@@ -69,16 +72,33 @@ def test_vtk_img_from_array_and_affine():
 
     assert vtk_img.GetPointData().GetScalars().GetTuple1(point_id) == pytest.approx(vol_array[i,j,k])
 
+def test_affine_from_vtk_image_data():
+    rng = np.random.default_rng(716)
+    vol_array = rng.random((5,4,3))
+    affine = np.eye(4)
+    affine[:3,:3] = expm((lambda A: (A - A.T)/2)(rng.normal(size=(3,3)))) # generate a random orthogonal matrix
+    affine[:3,3] = rng.random(3) # generate a random origin
+    vtk_img = vtk_img_from_array_and_affine(vol_array, affine)
+    affine_reconstructed = affine_from_vtk_image_data(vtk_img)
+    assert np.allclose(affine, affine_reconstructed)
+
 def test_create_closed_surface_from_labelmap():
     # create a ball of radius 7 for a labelmap
     labelmap = np.zeros((20,20,20))
     sphere_radius = 7
     sphere_center = np.array([10,10,10])
     add_ball(labelmap, tuple(sphere_center), sphere_radius)
-    labelmap_vtk = vtk_img_from_array_and_affine(labelmap, affine = np.eye(4))
+    rng = np.random.default_rng(6548)
+    affine = np.eye(4)
+    affine[:3,:3] = expm((lambda A: (A - A.T)/2)(rng.normal(size=(3,3)))) # generate a random orthogonal matrix
+    affine[:3,3] = rng.random(3) # generate a random origin
+    labelmap_vtk = vtk_img_from_array_and_affine(labelmap, affine = affine)
 
     # run the algorithm to be tested
     surface = create_closed_surface_from_labelmap(labelmap_vtk, decimation_factor=0.1)
+
+    # the mesh is in "physical space" mapped to by `affine`, transform it back to the ijk space of the original `labelmap`
+    surface = apply_affine_to_polydata(np.linalg.inv(affine), surface)
 
     # verify that the points on the generated mesh are not too far off being at distance 7 from the ball center
     points = surface.GetPoints()
@@ -87,35 +107,9 @@ def test_create_closed_surface_from_labelmap():
         point_distance_from_sphere_center = np.linalg.norm(point_position - sphere_center, ord=2)
         assert np.abs(point_distance_from_sphere_center - sphere_radius) < 1.
 
-def test_spherical_coordinate_range():
-    """Verify that spherical coordinate output is in the prescribed value ranges"""
-    rng = np.random.default_rng(848)
-    # try all 8 octants of 3D space
-    for sign_x in [-1,1]:
-        for sign_y in [-1,1]:
-            for sign_z in [-1,1]:
-                cartesian_coords = np.array([sign_x, sign_y, sign_z]) * rng.random(size=3)
-                r, th, ph = cartesian_to_spherical(*cartesian_coords)
-                assert r>=0
-                assert 0 <= th <= np.pi
-                assert -np.pi <= ph <= np.pi
-
-def test_spherical_coordinate_conversion_inverse():
-    """Verify that the spherical coordinate conversion forward and backward functions are inverses of one another"""
-    rng = np.random.default_rng(241)
-    # try all 8 octants of 3D space
-    for sign_x in [-1,1]:
-        for sign_y in [-1,1]:
-            for sign_z in [-1,1]:
-                cartesian_coords = np.array([sign_x, sign_y, sign_z]) * rng.random(size=3)
-                np.testing.assert_almost_equal(
-                    spherical_to_cartesian(*cartesian_to_spherical(*cartesian_coords)),
-                    cartesian_coords
-                )
-                np.testing.assert_almost_equal(
-                    cartesian_to_spherical(*spherical_to_cartesian(*cartesian_to_spherical(*cartesian_coords))),
-                    cartesian_to_spherical(*cartesian_coords)
-                )
+    # verify that there are no scalars on the point data since these are undesirable in slicer, and the function
+    # isn't supposed to add a colormap or anything like that
+    assert surface.GetPointData().GetScalars() is None
 
 def test_spherical_interpolator_from_mesh():
     """Check using a torus that the spherical interpolator behaves reasonably"""

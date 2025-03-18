@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import copy
 import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 
@@ -27,19 +29,43 @@ class ArrayTransform:
     first represent the points in these units.)"""
 
 @dataclass
+class TransducerTrackingResult:
+    """
+    Class representing the results of running the transducer tracking
+    algorithm.
+    """
+
+    photoscan_id: str
+    """ID of the photoscan object used for transducer tracking"""
+
+    transducer_to_photoscan_transform: ArrayTransform
+    """Transform output by transducer tracking algorithm to register the transducer surface to the photoscan model"""
+
+    photoscan_to_volume_transform: ArrayTransform
+    """Transform output by the transducer tracking algorithm to register the photoscan model the volume's skin segmentation"""
+
+    transducer_to_photoscan_tracking_approved: bool = False
+    """Approval state of transducer to photoscan tracking result. `True` means the user has provided some kind of
+    confirmation that the transform result agrees with reality."""
+
+    photoscan_to_volume_tracking_approved: bool = False
+    """Approval state of photoscan to volume tracking result. `True` means the user has provided some kind of
+    confirmation that the transform result agrees with reality."""
+
+@dataclass
 class Session:
     """
     Class representing an openlifu session, which consists essentially of a patient scan, a protocol
     to use, potential targets for sonication, and a transducer situated in the patient space.
     """
 
-    id: Optional[str] = None
+    id: str | None = None
     """ID of this session"""
 
-    subject_id: Optional[str] = None
+    subject_id: str | None = None
     """ID of the parent subject of this session"""
 
-    name: Optional[str] = None
+    name: str | None = None
     """Session name"""
 
     date_created: datetime = field(default_factory=datetime.now)
@@ -48,13 +74,13 @@ class Session:
     date_modified: datetime = field(default_factory=datetime.now)
     """Date of modification of the session"""
 
-    protocol_id: Optional[str] = None
+    protocol_id: str | None = None
     """ID of the protocol used for this session"""
 
-    volume_id: Optional[str] = None
+    volume_id: str | None = None
     """ID of the subject volume associated with this session"""
 
-    transducer_id: Optional[str] = None
+    transducer_id: str | None = None
     """ID of the transducer associated with this session"""
 
     array_transform: ArrayTransform = field(default_factory=lambda : ArrayTransform(np.eye(4),"mm"))
@@ -81,9 +107,8 @@ class Session:
     only. None of the other transforms in the list are considered to be approved.
     """
 
-    transducer_tracking_approved: Optional[bool] = False
-    """Approval state of transducer tracking. `True` means the user has provided some kind of
-    confirmation that the transducer transform in this session agrees with reality."""
+    transducer_tracking_results: List[TransducerTrackingResult] = field(default_factory=list)
+    """List of any transducer tracking results"""
 
     def __post_init__(self):
         if self.id is None and self.name is None:
@@ -128,6 +153,17 @@ class Session:
             raise ValueError("Sessions no longer recognize a volume attribute -- it is now volume_id.")
         if 'array_transform' in d:
             d['array_transform'] = ArrayTransform(np.array(d['array_transform']['matrix']), d['array_transform']['units'])
+        if 'transducer_tracking_results' in d:
+            d['transducer_tracking_results'] = [
+                TransducerTrackingResult(
+                    t['photoscan_id'],
+                    ArrayTransform(np.array(t['transducer_to_photoscan_transform']['matrix']),t['transducer_to_photoscan_transform']['units']),
+                    ArrayTransform(np.array(t['photoscan_to_volume_transform']['matrix']), t['photoscan_to_volume_transform']['units']),
+                    t['transducer_to_photoscan_tracking_approved'],
+                    t['photoscan_to_volume_tracking_approved']
+                    )
+                    for t in d['transducer_tracking_results']
+                    ]
         if isinstance(d['targets'], list):
             if len(d['targets'])>0 and isinstance(d['targets'][0], dict):
                 d['targets'] = [Point.from_dict(p) for p in d['targets']]
@@ -163,17 +199,18 @@ class Session:
         d['markers'] = [p.to_dict() for p in d['markers']]
 
         d['array_transform'] = asdict(d['array_transform'])
-
         for target_id,(approval,transforms) in d['virtual_fit_results'].items():
             d['virtual_fit_results'][target_id] = (
                 approval,
                 [asdict(t) for t in transforms],
             )
 
+        d['transducer_tracking_results'] = [asdict(t) for t in d['transducer_tracking_results']]
+
         return d
 
     @staticmethod
-    def from_json(json_string : str) -> "Session":
+    def from_json(json_string : str) -> Session:
         """Load a Session from a json string"""
         return Session.from_dict(json.loads(json_string))
 
@@ -201,7 +238,7 @@ class Session:
         with open(filename, 'w') as file:
             file.write(self.to_json(compact=False))
 
-    def update_modified_time(self, time: Optional[datetime] = None):
+    def update_modified_time(self, time: datetime | None = None):
         if time is None:
             time = datetime.now()
         self.date_modified = time

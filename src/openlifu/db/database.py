@@ -1,3 +1,4 @@
+from __future__ import annotations
 
 import glob
 import json
@@ -6,7 +7,7 @@ import os
 import shutil
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Union
 
 import h5py
 
@@ -23,7 +24,7 @@ OnConflictOpts = Enum('OnConflictOpts', ['ERROR', 'OVERWRITE', 'SKIP'])
 PathLike = Union[str, os.PathLike]
 
 class Database:
-    def __init__(self, path: Optional[str] = None):
+    def __init__(self, path: str | None = None):
         if path is None:
             path = Database.get_default_path()
         self.path = os.path.normpath(path)
@@ -165,6 +166,15 @@ class Database:
                     f"The virtual_fit_results of session {session.id} provides no transforms for target {target_id}."
                 )
 
+        # Validate the transducer tracking result's photoscan_id
+        if session.transducer_tracking_results:
+            for result in session.transducer_tracking_results:
+                if result.photoscan_id not in self.get_photoscan_ids(subject.id, session.id):
+                    raise ValueError(
+                f"Photoscan id {result.photoscan_id} provided in the transducer_tracking_results has not "
+                "been associated with this session."
+            )
+
         # Check if the session already exists in the database
         session_ids = self.get_session_ids(subject.id)
 
@@ -189,6 +199,8 @@ class Database:
             self.write_solution_ids(session, [])
         if not self.get_runs_filename(subject.id, session_id).exists():
             self.write_run_ids(session.subject_id, session.id, [])
+        if not self.get_photocollections_filename(subject.id, session_id).exists():
+            self.write_reference_numbers(session.subject_id, session.id, [])
         if not self.get_photoscans_filename(subject.id, session_id).exists():
             self.write_photoscan_ids(session.subject_id, session.id, [])
 
@@ -273,8 +285,8 @@ class Database:
     def write_transducer(
             self,
             transducer,
-            registration_surface_model_filepath: Optional[PathLike] = None,
-            transducer_body_model_filepath: Optional[PathLike] = None,
+            registration_surface_model_filepath: PathLike | None = None,
+            transducer_body_model_filepath: PathLike | None = None,
             on_conflict: OnConflictOpts=OnConflictOpts.ERROR,
     ) -> None:
         """ Writes a transducer object to database and copies the affiliated transducer data files to the database if provided. When a transducer that is already present in the database is being re-written,
@@ -395,7 +407,43 @@ class Database:
 
         self.logger.info(f"Added volume with ID {volume_id} for subject {subject_id} to the database.")
 
-    def write_photoscan(self, subject_id, session_id, photoscan: Photoscan, model_data_filepath: Optional[str] = None, texture_data_filepath: Optional[str] = None, mtl_data_filepath: Optional[str] = None, on_conflict=OnConflictOpts.ERROR):
+    def write_photocollection(self, subject_id, session_id, reference_number: str, photo_paths: List[PathLike], on_conflict=OnConflictOpts.ERROR):
+        """ Writes a photocollection to database and copies the associated
+        photos into the database, specified by the subject, session, and
+        reference_number of the photocollection."""
+
+        photocollection_dir = Path(self.get_session_dir(subject_id, session_id)) / 'photocollections' / reference_number
+
+        reference_numbers = self.get_photocollection_reference_numbers(subject_id, session_id)
+        if reference_number in reference_numbers:
+            if on_conflict == OnConflictOpts.ERROR:
+                raise ValueError(f"Photocollection with reference number {reference_number} already exists for session {session_id}.")
+            elif on_conflict == OnConflictOpts.OVERWRITE:
+                self.logger.info(f"Overwriting photocollection with reference number {reference_number} for session {session_id}.")
+                if photocollection_dir.exists():
+                    shutil.rmtree(photocollection_dir)
+            elif on_conflict == OnConflictOpts.SKIP:
+                self.logger.info(f"Skipping photocollection with reference number {reference_number} for session {session_id} as it already exists.")
+                return
+            else:
+                raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
+
+        photocollection_dir.mkdir(exist_ok=True)
+
+        # Copy each photo into the photocollection directory
+        for photo_path in photo_paths:
+            photo_path = Path(photo_path)
+            if not photo_path.exists():
+                raise FileNotFoundError(f"Photo file does not exist: {photo_path}")
+            shutil.copy(photo_path, photocollection_dir)
+
+        if reference_number not in reference_numbers:
+            reference_numbers.append(reference_number)
+            self.write_reference_numbers(subject_id,session_id, reference_numbers)
+
+        self.logger.info(f"Added photocollection with reference number {reference_number} for session {session_id} to the database.")
+
+    def write_photoscan(self, subject_id, session_id, photoscan: Photoscan, model_data_filepath: str | None = None, texture_data_filepath: str | None = None, mtl_data_filepath: str | None = None, on_conflict=OnConflictOpts.ERROR):
         """ Writes a photoscan object to database and copies the associated model and texture data filepaths that are required for generating a photoscan into the database.
         .mtl files are not required for generating a photoscan but can be provided if present.
         When a photoscan that is already present in the database is being re-written,the associated model and texture files do not need to be provided """
@@ -599,6 +647,16 @@ class Database:
 
         return json.loads(solutions_filename.read_text())["solution_ids"]
 
+    def get_photocollection_reference_numbers(self, subject_id: str, session_id: str) -> List[str]:
+        """Get a list of reference numbers of the photocollections associated with the given session"""
+        photocollection_filename = self.get_photocollections_filename(subject_id, session_id)
+
+        if not (photocollection_filename.exists() and photocollection_filename.is_file()):
+            self.logger.warning("Photocollection file not found for subject %s, session %s.", subject_id, session_id)
+            return []
+
+        return json.loads(photocollection_filename.read_text())["reference_numbers"]
+
     def get_photoscan_ids(self, subject_id: str, session_id: str) -> List[str]:
         """Get a list of IDs of the photoscans associated with the given session"""
         photoscan_filename = self.get_photoscans_filename(subject_id, session_id)
@@ -684,6 +742,31 @@ class Database:
                     "name": volume["name"],\
                     "data_abspath": Path(volume_metadata_filepath).parent/volume["data_filename"]}
 
+    def get_photocollection_absolute_filepaths(self, subject_id: str, session_id: str, reference_number: str) -> List[Path]:
+        """
+        get the absolute filepaths of all photos in a specific photocollection.
+
+        Args:
+            subject_id (str): The subject ID.
+            session_id (str): The session ID.
+            reference_number (str): The reference number of the photocollection.
+
+        Returns:
+            List[Path]: List of absolute file paths to the photos in the photocollection.
+        """
+        photocollection_dir = (
+            Path(self.get_session_dir(subject_id, session_id)) / 'photocollections' / reference_number
+        )
+
+        if not photocollection_dir.exists() or not photocollection_dir.is_dir():
+            self.logger.warning(
+                f"Photocollection directory not found for subject {subject_id}, "
+                f"session {session_id}, photocollection {reference_number}."
+            )
+            return []
+
+        return sorted(photocollection_dir.glob("*"))
+
     def get_photoscan_absolute_filepaths_info(self, subject_id, session_id, photoscan_id):
         """Returns the photoscan information with absolute paths to any data"""
         photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan_id)
@@ -714,7 +797,7 @@ class Database:
             return photoscan, (model_data, texture_data)
         return photoscan
 
-    def get_transducer_absolute_filepaths(self, transducer_id:str) -> Dict[str,Optional[str]]:
+    def get_transducer_absolute_filepaths(self, transducer_id:str) -> Dict[str,str | None]:
         """ Returns the absolute filepaths to the model data files i.e. transducer body and registration surface
         model files affiliated with the transducer, with ID `transducer_id`. Unlike `load_transducer`, which
         specifies the relative paths to the model datafiles along with other transducer attributes, this function
@@ -768,7 +851,7 @@ class Database:
         sys = UltrasoundSystem.from_file(sys_filename)
         return sys
 
-    def load_transducer(self, transducer_id) -> "Transducer":
+    def load_transducer(self, transducer_id) -> Transducer:
         """Given a transducer_id, reads the corresponding transducer file from database and returns a transducer object.
         Note: the transducer object includes the relative path to the affiliated transducer model data. `get_transducer_absolute_filepaths`, should
         be used to obtain the absolute data filepaths based on the Database directory path.
@@ -948,6 +1031,11 @@ class Database:
         session_dir = self.get_session_dir(subject_id, session_id)
         return Path(session_dir) / 'solutions' / 'solutions.json'
 
+    def get_photocollections_filename(self, subject_id, session_id) -> Path:
+        """Get the path to the overall photocollections json file for the requested session"""
+        session_dir = self.get_session_dir(subject_id, session_id)
+        return Path(session_dir) / 'photocollections' / 'photocollections.json'
+
     def get_photoscans_filename(self, subject_id, session_id) -> Path:
         """Get the path to the overall photoscans json file for the requested session"""
         session_dir = self.get_session_dir(subject_id, session_id)
@@ -1044,6 +1132,13 @@ class Database:
         with open(transducers_filename, 'w') as f:
             json.dump(transducers_data, f)
 
+    def write_reference_numbers(self, subject_id, session_id, reference_numbers: List[str]):
+        photocollection_data = {'reference_numbers': reference_numbers}
+        photocollection_filename = self.get_photocollections_filename(subject_id, session_id)
+        photocollection_filename.parent.mkdir(exist_ok = True) # Make a photocollection directory in case it does not exist
+        with open(photocollection_filename, 'w') as f:
+            json.dump(photocollection_data,f)
+
     def write_photoscan_ids(self, subject_id, session_id, photoscan_ids: List[str]):
         photoscan_data = {'photoscan_ids': photoscan_ids}
         photoscan_filename = self.get_photoscans_filename(subject_id, session_id)
@@ -1077,7 +1172,7 @@ class Database:
         return Path(Database.get_default_user_dir()) / "Documents" / "db"
 
     @staticmethod
-    def initialize_empty_database(database_filepath : PathLike) -> "Database":
+    def initialize_empty_database(database_filepath : PathLike) -> Database:
         """
         Initializes an empty database at the given database_filepath
         """

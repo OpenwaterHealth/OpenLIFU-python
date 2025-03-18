@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 import xarray as xa
@@ -12,7 +13,7 @@ from openlifu.xdc import Transducer
 @dataclass
 class Direct(DelayMethod):
     c0: float = 1480.0
-    def calc_delays(self, arr: Transducer, target: Point, params: Optional[xa.Dataset]=None, transform:Optional[np.ndarray]=None):
+    def calc_delays(self, arr: Transducer, target: Point, params: xa.Dataset | None=None, transform:np.ndarray | None=None):
         if params is None:
             c = self.c0
         else:

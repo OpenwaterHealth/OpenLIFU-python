@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .apodmethod import ApodizationMethod
 from .maxangle import MaxAngle
 from .piecewiselinear import PiecewiseLinear

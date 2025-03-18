@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import random
 
 from openlifu.io.LIFUInterface import LIFUInterface
@@ -58,11 +60,17 @@ def run_test(interface, iterations):
 
             json_trigger_data = {
                 "TriggerFrequencyHz": trigger_frequency,
-                "TriggerMode": 1,
                 "TriggerPulseCount": 0,
-                "TriggerPulseWidthUsec": trigger_pulse_width
+                "TriggerPulseWidthUsec": trigger_pulse_width,
+                "TriggerPulseTrainInterval": 0,
+                "TriggerPulseTrainCount": 0,
+                "TriggerMode": 1,
+                "ProfileIndex": 0,
+                "ProfileIncrement": 0
             }
-            trigger_setting = interface.txdevice.set_trigger(data=json_trigger_data)
+            trigger_setting = interface.txdevice.set_trigger_json(data=json_trigger_data)
+
+            trigger_setting = interface.txdevice.get_trigger_json()
             if trigger_setting:
                 print(f"Trigger Setting Applied: Frequency = {trigger_frequency} Hz, Pulse Width = {trigger_pulse_width // 1000} ms")
                 if trigger_setting["TriggerFrequencyHz"] != trigger_frequency or trigger_setting["TriggerPulseWidthUsec"] != trigger_pulse_width:
@@ -78,7 +86,7 @@ def run_test(interface, iterations):
 
 if __name__ == "__main__":
     print("Starting LIFU Test Script...")
-    interface = LIFUInterface(test_mode=False)
+    interface = LIFUInterface()
 
     # Number of iterations to run
     test_iterations = 1000  # Change this to the desired number of iterations

@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import logging
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pytest
@@ -97,7 +98,7 @@ def test_calc_solution_use_gpu(
     mocker:MockerFixture,
     example_protocol:Protocol,
     example_transducer:Transducer,
-    use_gpu:Optional[bool],
+    use_gpu:bool | None,
     gpu_is_available:bool,
 ):
     """Test that the correct value of use_gpu is passed to the simulation runner"""

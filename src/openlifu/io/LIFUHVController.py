@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import struct
 
 from openlifu.io.LIFUConfig import (
     OW_CMD_ECHO,
@@ -13,10 +14,18 @@ from openlifu.io.LIFUConfig import (
     OW_POWER,
     OW_POWER_12V_OFF,
     OW_POWER_12V_ON,
+    OW_POWER_GET_12VON,
+    OW_POWER_GET_FAN,
     OW_POWER_GET_HV,
+    OW_POWER_GET_HVON,
+    OW_POWER_GET_RGB,
+    OW_POWER_GET_TEMP1,
+    OW_POWER_GET_TEMP2,
     OW_POWER_HV_OFF,
     OW_POWER_HV_ON,
+    OW_POWER_SET_FAN,
     OW_POWER_SET_HV,
+    OW_POWER_SET_RGB,
 )
 from openlifu.io.LIFUUart import LIFUUart
 
@@ -169,7 +178,7 @@ class HVController:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def toggle_led(self) -> None:
+    def toggle_led(self) -> bool:
         """
         Toggle the LED on the Console device.
 
@@ -189,7 +198,10 @@ class HVController:
             )
             self.uart.clear_buffer()
             # r.print_packet()
+            if r.packet_type == OW_ERROR:
+                return False
 
+            return True
         except ValueError as v:
             logger.error("ValueError: %s", v)
             raise  # Re-raise the exception for the caller to handle
@@ -230,6 +242,80 @@ class HVController:
 
         except Exception as e:
             logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+    def get_temperature1(self) -> float:
+        """
+        Retrieve the temperature reading from the TX device.
+
+        Returns:
+            float: Temperature value in Celsius.
+
+        Raises:
+            ValueError: If the UART is not connected.
+            Exception: If an error occurs or the received data length is invalid.
+        """
+        try:
+            if self.uart.demo_mode:
+                return 32.4
+
+            if not self.uart.is_connected():
+                logger.error("TX Device not connected")
+                return 0
+
+            # Send the GET_TEMP command
+            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_POWER_GET_TEMP1)
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            # Check if the data length matches a float (4 bytes)
+            if r.data_len == 4:
+                # Unpack the float value from the received data (assuming little-endian)
+                temperature = struct.unpack('<f', r.data)[0]
+                # Truncate the temperature to 2 decimal places
+                truncated_temperature = round(temperature, 2)
+                return truncated_temperature
+            else:
+                raise ValueError("Invalid data length received for temperature")
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+    def get_temperature2(self) -> float:
+        """
+        Retrieve the temperature reading from the TX device.
+
+        Returns:
+            float: Temperature value in Celsius.
+
+        Raises:
+            ValueError: If the UART is not connected.
+            Exception: If an error occurs or the received data length is invalid.
+        """
+        try:
+            if self.uart.demo_mode:
+                return 32.4
+
+            if not self.uart.is_connected():
+                logger.error("TX Device not connected")
+                return 0
+
+            # Send the GET_TEMP command
+            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_POWER_GET_TEMP2)
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            # Check if the data length matches a float (4 bytes)
+            if r.data_len == 4:
+                # Unpack the float value from the received data (assuming little-endian)
+                temperature = struct.unpack('<f', r.data)[0]
+                # Truncate the temperature to 2 decimal places
+                truncated_temperature = round(temperature, 2)
+                return truncated_temperature
+            else:
+                raise ValueError("Invalid data length received for temperature")
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
             raise  # Re-raise the exception for the caller to handle
 
     def turn_12v_off(self):
@@ -287,6 +373,41 @@ class HVController:
                 self.is_12v_on = True
                 logger.info("12V turned on successfully.")
                 return True
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+    def get_12v_status(self):
+        try:
+            if self.uart.demo_mode:
+                return True
+
+            if not self.uart.is_connected():
+                raise ValueError("Console not connected")
+
+            logger.info("Get 12V voltage status.")
+
+            r = self.uart.send_packet(
+                id=None, packetType=OW_POWER, command=OW_POWER_GET_12VON
+            )
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error retrieving 12V status")
+                return False
+            else:
+                if r.reserved == 1:
+                    self.is_12v_on = True
+                else:
+                    self.is_12v_on = False
+
+                return self.is_12v_on
 
         except ValueError as v:
             logger.error("ValueError: %s", v)
@@ -366,7 +487,42 @@ class HVController:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def set_voltage(self, voltage: float):
+    def get_hv_status(self):
+        try:
+            if self.uart.demo_mode:
+                return True
+
+            if not self.uart.is_connected():
+                raise ValueError("Console not connected")
+
+            logger.info("Get high voltage status.")
+
+            r = self.uart.send_packet(
+                id=None, packetType=OW_POWER, command=OW_POWER_GET_HVON
+            )
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error retrievinging HV Status")
+                return False
+            else:
+                if r.reserved == 1:
+                    self.is_hv_on = True
+                else:
+                    self.is_hv_on = False
+
+                return self.is_hv_on
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+    def set_voltage(self, voltage: float) -> bool:
         """
         Set the output voltage.
 
@@ -461,6 +617,208 @@ class HVController:
             else:
                 logger.error("Error getting output voltage from device")
                 return 0.0
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+    def set_fan_speed(self, fan_id: int = 0, fan_speed: int = 50) -> int:
+        """
+        Get the current output fan percentage.
+
+        Args:
+            fan_id (int): The desired fan to set (default is 0). bottom fans (0), and top fans (1).
+            fan_speed (int): The desired fan speed (default is 50).
+
+        Returns:
+            int: The current output fan percentage.
+
+        Raises:
+            ValueError: If the controller is not connected.
+        """
+        if not self.uart.is_connected():
+            raise ValueError("High voltage controller not connected")
+
+        if fan_id not in [0, 1]:
+            raise ValueError("Invalid fan ID. Must be 0 or 1")
+
+        if fan_speed not in range(101):
+            raise ValueError("Invalid fan speed. Must be 0 to 100")
+
+        try:
+            if self.uart.demo_mode:
+                return 40
+
+            logger.info("Getting current output voltage.")
+
+            data = bytes(
+                [
+                    fan_speed & 0xFF,  # Low byte (least significant bits)
+                ]
+            )
+
+            r = self.uart.send_packet(
+                id=None, addr=fan_id, packetType=OW_POWER, command=OW_POWER_SET_FAN, data=data
+            )
+
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error setting Fan Speed")
+                return -1
+
+            logger.info(f'Set fan speed to {fan_speed}')
+            return fan_speed
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+    def get_fan_speed(self, fan_id: int = 0) -> int:
+        """
+        Get the current output fan percentage.
+
+        Args:
+            fan_id (int): The desired fan to read (default is 0). bottom fans (0), and top fans (1).
+
+        Returns:
+            int: The current output fan percentage.
+
+        Raises:
+            ValueError: If the controller is not connected.
+        """
+        if not self.uart.is_connected():
+            raise ValueError("High voltage controller not connected")
+
+        if fan_id not in [0, 1]:
+            raise ValueError("Invalid fan ID. Must be 0 or 1")
+
+        try:
+            if self.uart.demo_mode:
+                return 40.0
+
+            logger.info("Getting current output voltage.")
+
+            r = self.uart.send_packet(
+                id=None, addr=fan_id, packetType=OW_POWER, command=OW_POWER_GET_FAN
+            )
+
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error setting HV")
+                return 0.0
+
+            elif r.data_len == 1:
+                fan_value = r.data[0]
+                logger.info(f'Output fan speed is {fan_value}')
+                return fan_value
+            else:
+                logger.error("Error getting output voltage from device")
+                return -1
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+    def set_rgb_led(self, rgb_state: int) -> int:
+        """
+        Set the RGB LED state.
+
+        Args:
+            rgb_state (int): The desired RGB state (0 = OFF, 1 = RED, 2 = BLUE, 3 = GREEN).
+
+        Returns:
+            int: The current RGB state after setting.
+
+        Raises:
+            ValueError: If the controller is not connected or the RGB state is invalid.
+        """
+        if not self.uart.is_connected():
+            raise ValueError("High voltage controller not connected")
+
+        if rgb_state not in [0, 1, 2, 3]:
+            raise ValueError("Invalid RGB state. Must be 0 (OFF), 1 (RED), 2 (BLUE), or 3 (GREEN)")
+
+        try:
+            if self.uart.demo_mode:
+                return rgb_state
+
+            logger.info("Setting RGB LED state.")
+
+            # Send the RGB state as the reserved byte in the packet
+            r = self.uart.send_packet(
+                id=None,
+                reserved=rgb_state & 0xFF,  # Send the RGB state as a single byte
+                packetType=OW_POWER,
+                command=OW_POWER_SET_RGB
+            )
+
+            self.uart.clear_buffer()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error setting RGB LED state")
+                return -1
+
+            logger.info(f'Set RGB LED state to {rgb_state}')
+            return rgb_state
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+    def get_rgb_led(self) -> int:
+        """
+        Get the current RGB LED state.
+
+        Returns:
+            int: The current RGB state (0 = OFF, 1 = RED, 2 = BLUE, 3 = GREEN).
+
+        Raises:
+            ValueError: If the controller is not connected.
+        """
+        if not self.uart.is_connected():
+            raise ValueError("High voltage controller not connected")
+
+        try:
+            if self.uart.demo_mode:
+                return 1  # Default to RED in demo mode
+
+            logger.info("Getting current RGB LED state.")
+
+            r = self.uart.send_packet(
+                id=None,
+                packetType=OW_POWER,
+                command=OW_POWER_GET_RGB
+            )
+
+            self.uart.clear_buffer()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error getting RGB LED state")
+                return -1
+
+            rgb_state = r.reserved
+            logger.info(f'Current RGB LED state is {rgb_state}')
+            return rgb_state
 
         except ValueError as v:
             logger.error("ValueError: %s", v)

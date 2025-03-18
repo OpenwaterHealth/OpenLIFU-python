@@ -1,9 +1,10 @@
+from __future__ import annotations
 
 import copy
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import vtk
@@ -21,9 +22,9 @@ class Transducer:
     frequency: float = 400.6e3
     units: str = "m"
     attrs: Dict[str, Any] = field(default_factory= dict)
-    registration_surface_filename: Optional[str] = None
+    registration_surface_filename: str | None = None
     """Relative path to an open surface of the transducer to be used for registration"""
-    transducer_body_filename: Optional[str] = None
+    transducer_body_filename: str | None = None
     """Relative path to the closed surface mesh for visualizing the transducer body"""
 
     def __post_init__(self):
@@ -49,8 +50,8 @@ class Transducer:
         return copy.deepcopy(self)
 
     def draw(self,
-             transform:Optional[np.ndarray]=None,
-             units:Optional[str]=None,
+             transform:np.ndarray | None=None,
+             units:str | None=None,
              facecolor=[0,1,1,0.5]):
         units = self.units if units is None else units
         actor = self.get_actor(units=units, transform=transform, facecolor=facecolor)
@@ -63,7 +64,7 @@ class Transducer:
         renderWindow.Render()
         renderWindowInteractor.Start()
 
-    def get_actor(self, transform:Optional[np.ndarray]=None, units:Optional[str]=None, facecolor=[0,1,1,0.5]):
+    def get_actor(self, transform:np.ndarray | None=None, units:str | None=None, facecolor=[0,1,1,0.5]):
         units = self.units if units is None else units
         polydata = self.get_polydata(units=units, transform=transform, facecolor=facecolor)
         mapper = vtk.vtkPolyDataMapper()
@@ -73,7 +74,7 @@ class Transducer:
         actor.GetProperty().SetInterpolationToFlat()
         return actor
 
-    def get_polydata(self, transform:Optional[np.ndarray]=None, units:Optional[str]=None, facecolor=None):
+    def get_polydata(self, transform:np.ndarray | None=None, units:str | None=None, facecolor=None):
         """Get a vtk polydata of the transducer. Optionally provide a transform, and units in which to interpret
         that transform. If a transform is provided with no units specified, it is assumed that the units
         are the same as those of the transducer itself. Optionally provide an RGBA color to set."""
@@ -117,12 +118,12 @@ class Transducer:
         widths, lengths = zip(*[element.get_size(units=units) for element in self.elements])
         return sum(w * l for w, l in zip(widths, lengths))
 
-    def get_corners(self, transform:Optional[np.ndarray]=None, units:Optional[str]=None):
+    def get_corners(self, transform:np.ndarray | None=None, units:str | None=None):
         units = self.units if units is None else units
         matrix = transform if transform is not None else np.eye(4)
         return [element.get_corners(units=units, matrix=matrix) for element in self.elements]
 
-    def get_effective_origin(self, apodizations:np.ndarray, units:Optional[str]=None):
+    def get_effective_origin(self, apodizations:np.ndarray, units:str | None=None):
         """Get the centroid of the effective active region of the transducer based on apodizations.
 
         Args:
@@ -134,7 +135,7 @@ class Transducer:
         units = self.units if units is None else units
         return (apodizations.reshape(-1,1) * self.get_positions(units=units)).sum(axis=0)/apodizations.sum()
 
-    def get_positions(self, transform:Optional[np.ndarray]=None, units:Optional[str]=None):
+    def get_positions(self, transform:np.ndarray | None=None, units:str | None=None):
         units = self.units if units is None else units
         matrix = transform if transform is not None else np.eye(4)
         positions = [element.get_position(units=units, matrix=matrix) for element in self.elements]
@@ -155,7 +156,7 @@ class Transducer:
         return matrix
 
     @staticmethod
-    def merge(list_of_transducers:"List[Transducer]") -> "Transducer":
+    def merge(list_of_transducers:List[Transducer]) -> Transducer:
         merged_array = list_of_transducers[0].copy()
         for arr in list_of_transducers[1:]:
             xform_array = arr.copy()
@@ -199,7 +200,7 @@ class Transducer:
         return Transducer(**d, **kwargs)
 
     @staticmethod
-    def from_json(json_string : str) -> "Transducer":
+    def from_json(json_string : str) -> Transducer:
         """Load a Transducer from a json string"""
         return Transducer.from_dict(json.loads(json_string))
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 from openlifu.bf.focal_patterns import FocalPattern

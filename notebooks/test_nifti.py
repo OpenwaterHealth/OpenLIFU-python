@@ -14,6 +14,8 @@
 # ---
 
 # %%
+from __future__ import annotations
+
 modified_kwave_path = R'C:\Users\pjh7\git\k-wave-python'
 slicer_exe = R"C:\Users\pjh7\AppData\Local\NA-MIC\Slicer 5.2.2\Slicer.exe"
 import sys

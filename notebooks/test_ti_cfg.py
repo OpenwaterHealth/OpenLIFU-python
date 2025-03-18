@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from openlifu.io.LIFUInterface import LIFUInterface
 
 # set PYTHONPATH=%cd%\src;%PYTHONPATH%
@@ -9,7 +11,7 @@ Test script to automate:
 3. Test Device functionality.
 """
 print("Starting LIFU Test Script...")
-interface = LIFUInterface(test_mode=False)
+interface = LIFUInterface()
 tx_connected, hv_connected = interface.is_device_connected()
 if tx_connected and hv_connected:
     print("LIFU Device Fully connected.")
@@ -44,9 +46,13 @@ else:
 print("Set Trigger")
 json_trigger_data = {
     "TriggerFrequencyHz": 25,
-    "TriggerMode": 1,
     "TriggerPulseCount": 0,
-    "TriggerPulseWidthUsec": 20000
+    "TriggerPulseWidthUsec": 20000,
+    "TriggerPulseTrainInterval": 0,
+    "TriggerPulseTrainCount": 0,
+    "TriggerMode": 1,
+    "ProfileIndex": 0,
+    "ProfileIncrement": 0
 }
 trigger_setting = interface.txdevice.set_trigger_json(data=json_trigger_data)
 if trigger_setting:
