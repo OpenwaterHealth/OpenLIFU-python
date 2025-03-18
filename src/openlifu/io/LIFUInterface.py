@@ -213,33 +213,37 @@ class LIFUInterface:
             logger.error("Error Stopping sonication: %s", e)
             raise e
 
-    def toggle_test_mode(self, enabled : bool) -> None:
+    def set_test_mode(self, hv_test_enabled : bool, tx_test_enabled : bool) -> None:
         """
         Toggle test mode and reinitialize interface components.
 
         Args:
             enabled (bool): If True, enables test mode; otherwise, disables it.
         """
-        self._test_mode = enabled
-
-        # Create a TXDevice instance as part of the interface
-        logger.debug("Re-initializing TX Module of LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", self.vid, self.tx_pid, self.baudrate, self.timeout)
-        self._tx_uart = LIFUUart(vid=self.vid, pid=self.tx_pid, baudrate=self.baudrate, timeout=self.timeout, desc="TX", demo_mode=self._test_mode, async_mode=self._async_mode)
-        self.txdevice = TxDevice(uart=self._tx_uart)
+        self._test_mode = tx_test_enabled
 
         # Create a LIFUHVController instance as part of the interface
-        logger.debug("Re-initializing Console of LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", self.vid, self.con_pid, self.baudrate, self.timeout)
-        self._hv_uart = LIFUUart(vid=self.vid, pid=self.con_pid, baudrate=self.baudrate, timeout=self.timeout, desc="HV", demo_mode=self._test_mode, async_mode=self._async_mode)
-        self.hvcontroller = HVController(uart=self._hv_uart)
+        logger.debug(f"Setting HVController Testmode to {hv_test_enabled}")
+        if hv_test_enabled and self._hv_uart:
+            self._hv_uart.set_demo_mode(hv_test_enabled)
 
-        # Connect signals to internal handlers
-        if self._async_mode:
-            self._tx_uart.signal_connect.connect(self.signal_connect.emit)
-            self._tx_uart.signal_disconnect.connect(self.signal_disconnect.emit)
-            self._tx_uart.signal_data_received.connect(self.signal_data_received.emit)
-            self._hv_uart.signal_connect.connect(self.signal_connect.emit)
-            self._hv_uart.signal_disconnect.connect(self.signal_disconnect.emit)
-            self._hv_uart.signal_data_received.connect(self.signal_data_received.emit)
+        # Create a TXDevice instance as part of the interface
+        logger.debug(f"Setting TXDevice Testmode to {tx_test_enabled}")
+        if tx_test_enabled and self._tx_uart:
+            self._tx_uart.set_demo_mode(tx_test_enabled)
+
+    def get_test_mode(self) -> tuple[bool, bool]:
+        """
+        Get the current state of the test mode settings.
+
+        Returns:
+            tuple: A tuple containing two boolean values:
+                - hv_test_enabled (bool): True if HV test mode is enabled, False otherwise.
+                - tx_test_enabled (bool): True if TX test mode is enabled, False otherwise.
+        """
+        hv_test_enabled = self._hv_uart.get_demo_mode() if self._hv_uart else False
+        tx_test_enabled = self._tx_uart.get_demo_mode() if self._tx_uart else False
+        return hv_test_enabled, tx_test_enabled
 
     def close(self):
         pass
