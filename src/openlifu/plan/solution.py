@@ -5,7 +5,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import xarray as xa
@@ -97,7 +97,7 @@ class Solution:
     def analyze(self,
                 transducer: Transducer,
                 options: SolutionAnalysisOptions = SolutionAnalysisOptions(),
-                param_constraints: Dict[str,"ParameterConstraint"]|None=None) -> SolutionAnalysis:
+                param_constraints: Dict[str,ParameterConstraint]|None=None) -> SolutionAnalysis:
         """Analyzes the treatment solution.
 
         Args:
