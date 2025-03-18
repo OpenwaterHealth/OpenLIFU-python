@@ -3,8 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Annotated, Literal, Tuple
 
-from more_itertools import is_sorted
-
 from openlifu.util.dict_conversion import DictMixin
 from openlifu.util.annotations import OpenLIFUFieldData
 
@@ -30,11 +28,11 @@ class ParameterConstraint(DictMixin):
             raise ValueError("At least one of warning_value or error_value must be set")
         if self.operator in ['within','inside','outside','outside_inclusive']:
             if self.warning_value is not None:
-                if not isinstance(self.warning_value, tuple) or len(self.warning_value) != 2 or not is_sorted(self.warning_value):
+                if not isinstance(self.warning_value, tuple) or len(self.warning_value) != 2 or (self.warning_value[0] >= self.warning_value[1]):
                     raise ValueError("Warning value must be a sorted tuple of two numbers")
 
             if self.error_value is not None:
-                if not isinstance(self.error_value, tuple) or len(self.error_value) != 2 or not is_sorted(self.error_value):
+                if not isinstance(self.error_value, tuple) or len(self.error_value) != 2 or not (self.error_value[0] >= self.error_value[1]):
                     raise ValueError("Error value must be a sorted tuple of two numbers")
         elif self.operator in ['<','<=','>','>=']:
             if self.warning_value is not None and not isinstance(self.warning_value, (int, float)):
