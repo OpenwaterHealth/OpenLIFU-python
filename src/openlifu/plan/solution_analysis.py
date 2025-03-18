@@ -55,7 +55,7 @@ class SolutionAnalysis(DictMixin):
     global_ispta_mWcm2: float | None = None
     param_constraints: Dict[str, ParameterConstraint] = field(default_factory=dict)
 
-    def to_table(self, constraints:Dict[str,"ParameterConstraint"]|None=None) -> pd.DataFrame:
+    def to_table(self, constraints:Dict[str,ParameterConstraint]|None=None) -> pd.DataFrame:
         records = []
         if constraints is None:
             constraints = self.param_constraints

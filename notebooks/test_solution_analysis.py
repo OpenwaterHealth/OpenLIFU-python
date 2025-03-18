@@ -11,8 +11,7 @@
 #     language: python
 #     name: python3
 # ---
-
-
+from __future__ import annotations
 
 from openlifu.bf import Pulse, Sequence, apod_methods, focal_patterns
 from openlifu.geo import Point
