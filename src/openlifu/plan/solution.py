@@ -99,7 +99,7 @@ class Solution:
     def analyze(self,
                 transducer: Transducer,
                 options: SolutionAnalysisOptions = SolutionAnalysisOptions(),
-                param_constraints: Dict[str,ParameterConstraint] = field(default_factory=dict)) -> SolutionAnalysis:
+                param_constraints: Dict[str,ParameterConstraint] = {}) -> SolutionAnalysis:
         """Analyzes the treatment solution.
 
         Args:
