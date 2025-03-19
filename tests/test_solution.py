@@ -76,7 +76,7 @@ def example_solution() -> Solution:
                 'z': xa.DataArray(dims=["z"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
                 'focal_point_index': [0]
             }
-        ),
+        )
     )
 
 
