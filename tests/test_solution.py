@@ -142,10 +142,12 @@ def test_solution_analyze_data_types(example_solution:Solution, example_transduc
     analysis = example_solution.analyze(example_transducer)
     for f in fields(analysis):
         value = getattr(analysis, f.name)
-        if not isinstance(value, float):
-            assert isinstance(value, list)
-            if len(value) > 0:
-                assert isinstance(value[0], float)
+        if f.name == "param_constraints":
+            assert isinstance(value, dict)
+        elif not isinstance(value, float):
+                assert isinstance(value, list)
+                if len(value) > 0:
+                    assert isinstance(value[0], float)
 
 
 def test_solution_created_date():
