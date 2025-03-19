@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Tuple
@@ -207,3 +210,48 @@ def convert_between_ras_and_lps(mesh : vtk.vtkPointSet) -> vtk.vtkPointSet:
     transformFilter.Update()
 
     return transformFilter.GetOutput()
+
+def run_reconstruction(images: list[Path],
+                       pipeline: Path = Path(__file__).resolve().parent / "meshroom_pipelines" / "default_pipeline.mg") -> Photoscan:
+    """Run Meshroom with the given images and pipeline.
+    Args:
+        images (list[Path]): List of image file paths.
+        pipeline (Path): Path to the Meshroom pipeline file.
+    Returns:
+        photoscan: The Photoscan of the reconstructed images.
+    """
+
+    if shutil.which("meshroom_batch") is None:
+        raise FileNotFoundError("Error: 'meshroom_batch' is not found in system PATH. Ensure it is installed and accessible.")
+
+    if not Path.exists(pipeline):
+        raise FileNotFoundError(f"Error: The pipeline file '{pipeline}' does not exist.")
+
+    temp_dir = Path(tempfile.mkdtemp())
+
+    images_dir = temp_dir / "images"
+    images_dir.mkdir(parents=True, exist_ok=True)
+
+    for image in images:
+        shutil.copy(image, images_dir / image.name)
+
+    output_dir = temp_dir / "output"
+    cache_dir = temp_dir / "cache"
+
+    command = [
+        "meshroom_batch",
+        "--pipeline", str(pipeline),
+        "--output", str(output_dir),
+        "--input", str(images_dir),
+        "--cache", str(cache_dir)
+    ]
+
+    subprocess.run(command, check=True)
+
+    photoscan_dict = {"model_filename": str(output_dir / "texturedMesh.obj"),
+     "texture_filename": str(output_dir / "texture_1001.png"),
+     "mtl_filename": str(output_dir / "texturedMesh.mtl")}
+
+    photoscan = Photoscan.from_dict(photoscan_dict)
+
+    return photoscan
