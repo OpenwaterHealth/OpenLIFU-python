@@ -103,9 +103,7 @@ class VirtualFitOptions(DictMixin):
         return VirtualFitOptions(**parameter_dict)
 
 
-# (Currently we disable pylint E1121 because it is a temporary issue
-# which should be resolved by #165 and #166)
-def virtual_fit( # pylint: disable=E1121
+def virtual_fit(
     volume_array : np.ndarray,
     volume_affine_RAS : np.ndarray,
     units: str,
@@ -195,7 +193,7 @@ def virtual_fit( # pylint: disable=E1121
 
         r_hat, theta_hat, phi_hat = spherical_coordinate_basis(theta_rad,phi_rad)
         planefit_points_unprojected_cartesian = (
-            point.reshape(1,1,3)
+            point.reshape((1,1,3))
             + dtheta_grid[...,np.newaxis] * theta_hat.reshape(1,1,3) # shape (num dthetas, num dphis, 3)
             + dphi_grid[...,np.newaxis] * phi_hat.reshape(1,1,3) # shape (num dthetas, num dphis, 3)
         ) # shape (num dthetas, num dphis, 3)
