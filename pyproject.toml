@@ -247,3 +247,6 @@ messages_control.disable = [
   "cyclic-import",
   "unreachable", # This is to allow marking of TODO items with a NotImplementedError
 ]
+
+[tool.setuptools.package-data]
+openlifu = ["meshroom_pipelines/*.mg"]
