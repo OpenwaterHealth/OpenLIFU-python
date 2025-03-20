@@ -22,8 +22,9 @@ from openlifu.xdc import Transducer
 # +
 f0 = 400e3
 pulse = Pulse(frequency=f0, duration=10/f0, amplitude=1)
-sequence = Sequence(pulse_interval=0.1, pulse_count=10, pulse_train_interval=0, pulse_train_count=1)
+sequence = Sequence(pulse_interval=0.1, pulse_count=9, pulse_train_interval=0, pulse_train_count=1)
 focal_pattern = focal_patterns.SinglePoint(target_pressure=1.2e6)
+focal_pattern = focal_patterns.Wheel(center=False, spoke_radius=5, num_spokes=3, target_pressure=1.2e6)
 apod_method = apod_methods.MaxAngle(30)
 sim_setup = SimSetup(x_extent=[-30,30], y_extent=[-30,30], z_extent=[-4,70])
 protocol = Protocol(
@@ -44,10 +45,14 @@ solution, sim_res, scaled_analysis = protocol.calc_solution(
     scale=True)
 # -
 
+solution.analyze(transducer=trans).to_dict()
+
 from openlifu.plan.param_constraint import ParameterConstraint
 
 pc = {"MI":ParameterConstraint('<', 1.8, 1.85), "TIC":ParameterConstraint('<', 2.0), 'global_isppa_Wcm2':ParameterConstraint('within', error_value=(49, 190))}
 scaled_analysis.to_table(constraints=pc).set_index('Param')[['Value', 'Units', 'Status']]
+
+solution
 
 protocol = Protocol.from_file('../tests/resources/example_db/protocols/example_protocol/example_protocol.json')
 solution, sim_res, analysis = protocol.calc_solution(
