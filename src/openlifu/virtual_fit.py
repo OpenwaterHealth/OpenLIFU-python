@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import List, Sequence, Tuple
+from typing import Any, Dict, List, Sequence, Tuple
 
 import numpy as np
 
@@ -94,6 +94,14 @@ class VirtualFitOptions(DictMixin):
             planefit_dpitch_extent = conversion_factor * self.planefit_dpitch_extent,
             planefit_dpitch_step = conversion_factor * self.planefit_dpitch_step,
         )
+
+    @staticmethod
+    def from_dict(parameter_dict:Dict[str,Any]) -> VirtualFitOptions: # Override DictMixin here
+        parameter_dict["pitch_range"] = tuple(parameter_dict["pitch_range"])
+        parameter_dict["yaw_range"] = tuple(parameter_dict["yaw_range"])
+        parameter_dict["steering_limits"] = tuple(map(tuple,parameter_dict["steering_limits"]))
+        return VirtualFitOptions(**parameter_dict)
+
 
 # (Currently we disable pylint E1121 because it is a temporary issue
 # which should be resolved by #165 and #166)

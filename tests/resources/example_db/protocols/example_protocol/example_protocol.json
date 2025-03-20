@@ -90,6 +90,23 @@
   },
   "param_constraints": [],
   "target_constraints": [],
+  "virtual_fit_options": {
+    "units": "mm",
+    "transducer_steering_center_distance": 50.0,
+    "steering_limits": [
+      [-49, 47.5],
+      [-51.2, 53],
+      [-55, 58]
+    ],
+    "pitch_range": [-1, 120],
+    "pitch_step": 3,
+    "yaw_range": [-60, 66],
+    "yaw_step": 2,
+    "planefit_dyaw_extent": 14,
+    "planefit_dyaw_step": 2,
+    "planefit_dpitch_extent": 16,
+    "planefit_dpitch_step": 7
+  },
   "analysis_options": {
     "standoff_sound_speed": 1500.0,
     "standoff_density": 1000.0,
