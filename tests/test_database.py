@@ -13,10 +13,11 @@ import pytest
 from helpers import dataclasses_are_equal
 from vtk import vtkImageData, vtkPolyData
 
-from openlifu import Point, Solution
+from openlifu import Solution
 from openlifu.db import Session, Subject, User
 from openlifu.db.database import Database, OnConflictOpts
-from openlifu.db.session import ArrayTransform, TransducerTrackingResult
+from openlifu.db.session import TransducerTrackingResult
+from openlifu.geo import ArrayTransform, Point
 from openlifu.photoscan import Photoscan
 from openlifu.plan import Protocol, Run
 from openlifu.xdc import Transducer

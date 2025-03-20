@@ -9,24 +9,10 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from openlifu.geo import Point
+from openlifu.geo import ArrayTransform, Point
 from openlifu.util.json import PYFUSEncoder
 from openlifu.util.strings import sanitize
 
-
-@dataclass
-class ArrayTransform:
-    """Class representing the transform on a transducer array to position it in space.
-    units:
-    """
-
-    matrix: np.ndarray
-    """4x4 affine transform matrix"""
-
-    units : str
-    """The units of the space on which to apply the transform matrix , e.g. "mm"
-    (In order to apply the transform to transducer points,
-    first represent the points in these units.)"""
 
 @dataclass
 class TransducerTrackingResult:
