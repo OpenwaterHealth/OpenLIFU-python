@@ -31,7 +31,7 @@ PARAM_FORMATS = {
     "p0_MPa": ["max", "0.3f", "MPa", "Emitted Pressure"],
     "power_W": [None, "0.3f", "W", "Emitted Power"],
     "TIC": [None, "0.3f", "", "TIC"],
-    "MI": ["max", "0.3f", "", "MI"]}
+    "MI": [None, "0.3f", "", "MI"]}
 
 @dataclass
 class SolutionAnalysis(DictMixin):

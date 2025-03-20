@@ -71,9 +71,9 @@ def example_solution() -> Solution:
                 )
             },
             coords={
-                'x': xa.DataArray(dims=["x"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
-                'y': xa.DataArray(dims=["y"], data=np.linspace(0, 1, 2), attrs={'units': "m"}),
-                'z': xa.DataArray(dims=["z"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
+                'lat': xa.DataArray(dims=["lat"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
+                'ele': xa.DataArray(dims=["ele"], data=np.linspace(0, 1, 2), attrs={'units': "m"}),
+                'ax': xa.DataArray(dims=["ax"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
                 'focal_point_index': [0]
             }
         )
