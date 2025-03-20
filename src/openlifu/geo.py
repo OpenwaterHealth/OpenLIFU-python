@@ -8,6 +8,7 @@ from typing import Any, Dict, Tuple
 import numpy as np
 import vtk
 
+from openlifu.util.dict_conversion import DictMixin
 from openlifu.util.units import getunitconversion
 
 
@@ -140,7 +141,7 @@ class Point:
 
 
 @dataclass
-class ArrayTransform:
+class ArrayTransform(DictMixin):
     """An affine transform with a unit string, often intended to represent how a transducer array is positionsed in space."""
 
     matrix: np.ndarray

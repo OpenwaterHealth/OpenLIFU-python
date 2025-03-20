@@ -138,13 +138,13 @@ class Session:
         if 'volume' in d:
             raise ValueError("Sessions no longer recognize a volume attribute -- it is now volume_id.")
         if 'array_transform' in d:
-            d['array_transform'] = ArrayTransform(np.array(d['array_transform']['matrix']), d['array_transform']['units'])
+            d['array_transform'] = ArrayTransform.from_dict(d['array_transform'])
         if 'transducer_tracking_results' in d:
             d['transducer_tracking_results'] = [
                 TransducerTrackingResult(
                     t['photoscan_id'],
-                    ArrayTransform(np.array(t['transducer_to_photoscan_transform']['matrix']),t['transducer_to_photoscan_transform']['units']),
-                    ArrayTransform(np.array(t['photoscan_to_volume_transform']['matrix']), t['photoscan_to_volume_transform']['units']),
+                    ArrayTransform.from_dict(t['transducer_to_photoscan_transform']),
+                    ArrayTransform.from_dict(t['photoscan_to_volume_transform']),
                     t['transducer_to_photoscan_tracking_approved'],
                     t['photoscan_to_volume_tracking_approved']
                     )
@@ -161,7 +161,7 @@ class Session:
             for target_id,(approval,transforms) in d['virtual_fit_results'].items():
                 d['virtual_fit_results'][target_id] = (
                     approval,
-                    [ArrayTransform(np.array(t_dict["matrix"]), t_dict["units"]) for t_dict in transforms],
+                    [ArrayTransform.from_dict(t_dict) for t_dict in transforms],
                 )
         if isinstance(d['markers'], list):
             if len(d['markers'])>0 and isinstance(d['markers'][0], dict):
