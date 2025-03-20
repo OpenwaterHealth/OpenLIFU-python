@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from helpers import dataclasses_are_equal
 
-from openlifu import Transducer
+from openlifu.xdc import Element, Transducer
 
 
 @pytest.fixture()
@@ -64,3 +64,28 @@ def test_get_effective_origin():
         transducer.get_effective_origin(apodizations = apodizations_with_just_one_element, units = "um"),
         transducer.get_positions(units="um")[element_index_to_turn_on],
     )
+
+def test_get_standoff_transform_in_units():
+    standoff_transform_in_mm = np.array([
+            [-0.1,0.9,0,20],
+            [0.9,0.1,0,30],
+            [0,0,1,40],
+            [0,0,0,1],
+    ])
+    standoff_transform_in_cm = np.array([
+            [-0.1,0.9,0,2],
+            [0.9,0.1,0,3],
+            [0,0,1,4],
+            [0,0,0,1],
+    ])
+    transducer = Transducer(units='mm')
+    transducer.standoff_transform = standoff_transform_in_mm
+    assert np.allclose(
+        transducer.get_standoff_transform_in_units("cm"),
+        standoff_transform_in_cm,
+    )
+
+def test_read_data_types(example_transducer:Transducer):
+    assert isinstance(example_transducer.standoff_transform, np.ndarray)
+    if len(example_transducer.elements) > 0:
+        assert isinstance(example_transducer.elements[0], Element)
