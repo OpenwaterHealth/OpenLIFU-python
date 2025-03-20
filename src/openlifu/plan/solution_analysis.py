@@ -92,7 +92,7 @@ class SolutionAnalysis(DictMixin):
     param_constraints: Annotated[Dict[str, ParameterConstraint], OpenLIFUFieldData("Parameter constraints", None)] = field(default_factory=dict)
     """TODO: Add description"""
 
-    def to_table(self, constraints:Dict[str,ParameterConstraint]|None=None) -> pd.DataFrame:
+    def to_table(self, constraints:Dict[str,ParameterConstraint]|None=None, focus_index=None) -> pd.DataFrame:
         records = []
         if constraints is None:
             constraints = self.param_constraints
@@ -101,28 +101,38 @@ class SolutionAnalysis(DictMixin):
                 raise ValueError(f"Unknown parameter constraint for '{p}'. Must be one of: {list(PARAM_FORMATS.keys())}")
         for param, fmt in PARAM_FORMATS.items():
             if fmt[0] is None:
-                pval = self.__dict__[param]
+                value_by_focus = None
+                agg_value = self.__dict__[param]
             elif fmt[0] == "max":
-                pval = max(self.__dict__[param])
+                value_by_focus = self.__dict__[param]
+                agg_value = max(value_by_focus)
             elif fmt[0] == "mean":
-                pval = np.mean(self.__dict__[param])
-            if pval is not None:
+                value_by_focus = self.__dict__[param]
+                agg_value = np.mean(value_by_focus)
+            if agg_value is not None:
                 record = {"id": param,
                           "Param": fmt[3],
                           "Value" : "",
                           "Units" : fmt[2],
                           "Status": "",
-                          "_value" : pval,
+                          "_value" : agg_value,
+                          "_value_by_focus": value_by_focus,
                           "_warning": False,
                           "_error": False}
-                if np.isnan(pval):
+                if np.isnan(agg_value):
                     record["Value"] = "NaN"
                 else:
-                    record["Value"] = f"{pval:{fmt[1]}}"
+                    if focus_index is None:
+                        record["Value"] = f"{agg_value:{fmt[1]}}"
+                    elif value_by_focus is None:
+                        record["Value"] = "N/A"
+                    else:
+                        value = value_by_focus[focus_index]
+                        record["Value"] = f"{value:{fmt[1]}}"
                     if param in constraints:
-                        record['_warning'] = constraints[param].is_warning(pval)
-                        record['_error'] = constraints[param].is_error(pval)
-                        record["Status"] = PARAM_STATUS_SYMBOLS[constraints[param].get_status(pval)]
+                        record['_warning'] = constraints[param].is_warning(agg_value)
+                        record['_error'] = constraints[param].is_error(agg_value)
+                        record["Status"] = PARAM_STATUS_SYMBOLS[constraints[param].get_status(agg_value)]
                 records.append(record)
         return pd.DataFrame.from_records(records)
 
