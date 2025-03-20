@@ -44,7 +44,7 @@ dependencies = [
   "ipykernel",
   "pyserial",
   "crcmod",
-  "k-wave-python==0.3.4",
+# "k_wave_python", # TODO: pip install -r requirements.txt
   "nvidia-ml-py",
   "OpenEXR",
   "scikit-image",
