@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Annotated, List, Literal, Dict, Tuple
+from typing import Annotated, Dict, Tuple
 
 import numpy as np
 import pandas as pd
@@ -31,7 +31,7 @@ PARAM_FORMATS = {
     "p0_MPa": ["max", "0.3f", "MPa", "Emitted Pressure"],
     "power_W": [None, "0.3f", "W", "Emitted Power"],
     "TIC": [None, "0.3f", "", "TIC"],
-    "MI": ["max", "0.3f", "", "MI"]}
+    "MI": [None, "0.3f", "", "MI"]}
 
 @dataclass
 class SolutionAnalysis(DictMixin):
