@@ -188,21 +188,6 @@ class LIFUUart:
             self.response_queues = {}  # Dictionary to map packet IDs to response queues
             self.response_lock = threading.Lock()  # Lock for thread-safe access to response_queues
 
-    def set_demo_mode(self, demo_mode: bool):
-        """Set the demo mode flag."""
-        if self.demo_mode:
-            log.info("Demo mode enabled.")
-            if self.is_connected():
-                self.stop_monitoring()
-                self.disconnect()
-        else:
-            log.info("Demo mode disabled.")
-            self.stop_monitoring()
-
-    def get_demo_mode(self) -> bool:
-        """get the demo mode flag"""
-        return self.demo_mode
-
     def connect(self):
         """Open the serial port."""
         if self.demo_mode:
@@ -263,11 +248,11 @@ class LIFUUart:
         """Check if the USB device is connected or disconnected."""
         device = self.list_vcp_with_vid_pid()
         if device and not self.port:
-            log.debug("Device found trying to connect.")
+            log.debug("Device found; trying to connect.")
             self.port = device
             self.connect()
         elif not device and self.port:
-            log.debug("Device removed disconnecting.")
+            log.debug("Device removed; disconnecting.")
             self.running = False
             self.disconnect()
 
@@ -405,21 +390,6 @@ class LIFUUart:
 
         return packet
 
-    def build_packet(self, id, packetType, command, addr, reserved, data):
-        if id is None:
-            self.packet_count += 1
-            id = self.packet_count
-        payload = data if data else b''
-        packet = bytearray([
-            OW_START_BYTE,
-            *id.to_bytes(2, 'big'),
-            packetType, command, addr, reserved,
-            *len(payload).to_bytes(2, 'big')
-        ]) + payload
-        packet.extend(util_crc16(packet[1:]).to_bytes(2, 'big'))
-        packet.append(OW_END_BYTE)
-        return packet
-
     def send_packet(self, id=None, packetType=OW_ACK, command=OW_CMD_NOP, addr=0, reserved=0, data=None, timeout=20):
         """
         Send a packet over UART and, if not running, return a response packet.
@@ -429,39 +399,59 @@ class LIFUUart:
                 log.error("Cannot send packet. Serial port is not connected.")
                 return None
 
-            # Auto-generate ID if not provided
             if id is None:
                 self.packet_count += 1
                 id = self.packet_count
 
-            # Build the packet
-            packet = self.build_packet(id, packetType, command, addr, reserved, data)
+            if data:
+                if not isinstance(data, (bytes, bytearray)):
+                    raise ValueError("Data must be bytes or bytearray")
+                payload = data
+                payload_length = len(payload)
+            else:
+                payload_length = 0
+                payload = b''
 
-            # Transmit the packet
+            packet = bytearray()
+            packet.append(OW_START_BYTE)
+            packet.extend(id.to_bytes(2, 'big'))
+            packet.append(packetType)
+            packet.append(command)
+            packet.append(addr)
+            packet.append(reserved)
+            packet.extend(payload_length.to_bytes(2, 'big'))
+            if payload_length > 0:
+                packet.extend(payload)
+
+            crc_value = util_crc16(packet[1:])  # Exclude start byte
+            packet.extend(crc_value.to_bytes(2, 'big'))
+            packet.append(OW_END_BYTE)
+
             self._tx(packet)
 
-            # Handle sync/async mode logic
             if not self.asyncMode:
                 return self.read_packet(timeout=timeout)
-
-            # Async mode logic
-            response_queue = queue.Queue()
-            with self.response_lock:
-                self.response_queues[id] = response_queue
-
-            try:
-                response = response_queue.get(timeout=timeout)
-                if response.packet_type == OW_RESP and response.command == command:
-                    return response
-                else:
-                    log.error("Unexpected response: Expected cmd 0x%02X, Received cmd 0x%02X", command, response.command)
-                    return response
-            except queue.Empty:
-                log.error("Timeout waiting for response to packet ID %d", id)
-                return None
-            finally:
+            else:
+                response_queue = queue.Queue()
                 with self.response_lock:
-                    self.response_queues.pop(id, None)
+                    self.response_queues[id] = response_queue
+
+                try:
+                    # Wait for a response that matches the packet ID.
+                    response = response_queue.get(timeout=timeout)
+                    # Optionally, check that the response has the expected type and command.
+                    if response.packet_type == OW_RESP and response.command == command:
+                        return response
+                    else:
+                        log.error("Received unexpected response: %s", response)
+                        return response
+                except queue.Empty:
+                    log.error("Timeout waiting for response to packet ID %d", id)
+                    return None
+                finally:
+                    with self.response_lock:
+                        # Clean up the queue entry regardless of outcome.
+                        self.response_queues.pop(id, None)
 
         except ValueError as ve:
             log.error("Validation error in send_packet: %s", ve)

@@ -213,38 +213,6 @@ class LIFUInterface:
             logger.error("Error Stopping sonication: %s", e)
             raise e
 
-    def set_test_mode(self, hv_test_enabled : bool, tx_test_enabled : bool) -> None:
-        """
-        Toggle test mode and reinitialize interface components.
-
-        Args:
-            enabled (bool): If True, enables test mode; otherwise, disables it.
-        """
-        self._test_mode = tx_test_enabled
-
-        # Create a LIFUHVController instance as part of the interface
-        logger.debug(f"Setting HVController Testmode to {hv_test_enabled}")
-        if hv_test_enabled and self._hv_uart:
-            self._hv_uart.set_demo_mode(hv_test_enabled)
-
-        # Create a TXDevice instance as part of the interface
-        logger.debug(f"Setting TXDevice Testmode to {tx_test_enabled}")
-        if tx_test_enabled and self._tx_uart:
-            self._tx_uart.set_demo_mode(tx_test_enabled)
-
-    def get_test_mode(self) -> tuple[bool, bool]:
-        """
-        Get the current state of the test mode settings.
-
-        Returns:
-            tuple: A tuple containing two boolean values:
-                - hv_test_enabled (bool): True if HV test mode is enabled, False otherwise.
-                - tx_test_enabled (bool): True if TX test mode is enabled, False otherwise.
-        """
-        hv_test_enabled = self._hv_uart.get_demo_mode() if self._hv_uart else False
-        tx_test_enabled = self._tx_uart.get_demo_mode() if self._tx_uart else False
-        return hv_test_enabled, tx_test_enabled
-
     def close(self):
         pass
 

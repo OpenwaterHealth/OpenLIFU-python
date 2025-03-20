@@ -23,6 +23,7 @@ from openlifu.io.LIFUConfig import (
     OW_POWER_GET_TEMP2,
     OW_POWER_HV_OFF,
     OW_POWER_HV_ON,
+    OW_POWER_SET_DACS,
     OW_POWER_SET_FAN,
     OW_POWER_SET_HV,
     OW_POWER_SET_RGB,
@@ -578,6 +579,89 @@ class HVController:
         except Exception as e:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
+
+    def set_dacs(self, hvp: int, hvm: int, hrp: int, hrm: int) -> bool:
+            """
+            Set the output voltage.
+
+            Args:
+                voltage (float): The desired output voltage.
+
+            Raises:
+                ValueError: If the controller is not connected or voltage exceeds supply voltage.
+            """
+            if self.uart.demo_mode:
+                return True
+
+            if not self.uart.is_connected():
+                raise ValueError("High voltage controller not connected")
+
+            # Validate and process the DAC input
+            if hvp is None:
+                hvp = 0
+            elif not (0 <= hvp <= 4095):
+                raise ValueError(
+                    "Dac hvp input range is 0 to 4095."
+                )
+
+            if hvm is None:
+                hvm = 0
+            elif not (0 <= hvm <= 4095):
+                raise ValueError(
+                    "Dac hvm input range is 0 to 4095."
+                )
+
+            if hrp is None:
+                hrp = 0
+            elif not (0 <= hrp <= 4095):
+                raise ValueError(
+                    "Dac hrp input range is 0 to 4095."
+                )
+
+            if hrm is None:
+                hrm = 0
+            elif not (0 <= hrm <= 4095):
+                raise ValueError(
+                    "Dac hrm input range is 0 to 4095."
+                )
+
+
+
+            try:
+                # logger.info("Setting DAC Value %d.", dac_input)
+                # Pack the 12-bit DAC input into two bytes
+                data = bytes(
+                    [
+                        (hvp >> 8) & 0xFF,  # High byte (most significant bits)
+                        hvp & 0xFF,  # Low byte (least significant bits)
+                        (hrp >> 8) & 0xFF,  # High byte (most significant bits)
+                        hrp & 0xFF,  # Low byte (least significant bits)
+                        (hvm >> 8) & 0xFF,  # High byte (most significant bits)
+                        hvm & 0xFF,  # Low byte (least significant bits)
+                        (hrm >> 8) & 0xFF,  # High byte (most significant bits)
+                        hrm & 0xFF,  # Low byte (least significant bits)
+                    ]
+                )
+
+                r = self.uart.send_packet(
+                    id=None, packetType=OW_POWER, command=OW_POWER_SET_DACS, data=data
+                )
+                self.uart.clear_buffer()
+                # r.print_packet()
+
+                if r.packet_type == OW_ERROR:
+                    logger.error("Error setting DACS")
+                    return False
+                else:
+                    return True
+
+            except ValueError as v:
+                logger.error("ValueError: %s", v)
+                raise  # Re-raise the exception for the caller to handle
+
+            except Exception as e:
+                logger.error("Unexpected error during process: %s", e)
+                raise  # Re-raise the exception for the caller to handle
 
     def get_voltage(self) -> float:
         """
