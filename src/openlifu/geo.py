@@ -139,6 +139,18 @@ class Point:
             return json.dumps(self.to_dict(), indent=4)
 
 
+@dataclass
+class ArrayTransform:
+    """An affine transform with a unit string, often intended to represent how a transducer array is positionsed in space."""
+
+    matrix: np.ndarray
+    """4x4 affine transform matrix"""
+
+    units : str
+    """The units of the space on which to apply the transform matrix , e.g. "mm"
+    (In order to apply the transform to points, first represent the points in these units.)
+    """
+
 # === Tools to work with spherical coordinate systems ===
 
 def cartesian_to_spherical(x:float,y:float,z:float) -> Tuple[float, float, float]:
