@@ -109,17 +109,9 @@ def virtual_fit( # pylint: disable=E1121
     standoff_transform : np.ndarray,
     volume_array : np.ndarray,
     volume_affine_RAS : np.ndarray,
+    units: str,
     target_RAS : Sequence[float],
-    pitch_range : float,
-    pitch_step : float,
-    yaw_range : float,
-    yaw_step : float,
-    transducer_steering_center_distance:float,
-    steering_limits:Tuple[Tuple[float,float],Tuple[float,float],Tuple[float,float]],
-    planefit_dyaw_extent = 15,
-    planefit_dyaw_step = 3,
-    planefit_dpitch_extent = 15,
-    planefit_dpitch_step = 3,
+    options : VirtualFitOptions,
 ) -> List[np.ndarray]:
     """Run patient-specific "virtual fitting" algorithm, suggesting a series of candidate transducer
     transforms for optimal sonicaiton of a given target.
@@ -128,28 +120,26 @@ def virtual_fit( # pylint: disable=E1121
         standoff_transform: See `create_standoff_transform` documentation for the meaning of this
         volume_array: A 3D volume MRI
         volume_affine_RAS: A 4x4 affine transform that maps `volume_array` into RAS space with certain units
-        target_RAS: A 3D point, in the coordinates and units of `volume_affine_RAS`
-        pitch_range:
-        pitch_step: Pitch step size when forming the transducer fitting search grid, in degrees
-        yaw_range: Range of yaws to include in the transducer fitting search grid, in degrees
-        yaw_step: Yaw step size when forming the transducer fitting search grid, in degrees
-        transducer_steering_center_distance: Distance from the transducer origin axially to the center of the steering zone,
-            in the units of `volume_affine_RAS`.
-        steering_limits: Left and right extents of the steering zone in the lateral, elevational, and then axial directions,
-            measured from the transducer steering center.
-        planefit_dyaw_extent: Left and right extents of the point grid to be used for plane fitting along the local yaw axes,
-            in spatial units of `volume_affine_RAS`. The plane fitting point grid will be twice this size, since this is left
-            and right extents. (Note that this has units of length, not angle!)
-        planefit_dyaw_step: Local yaw axis step size to use when constructing plane fitting grids. In spatial units of `volume_affine_RAS`.
-        planefit_dpitch_extent: Left and right extents of the point grid to be used for plane fitting along the local pitch axes,
-            in spatial units of `volume_affine_RAS`. The plane fitting point grid will be twice this size, since this is left
-            and right extents.
-        planefit_dpitch_step: Local pitch axis step size to use when constructing plane fitting grids.
-            In spatial units of `volume_affine_RAS`.
+        units: The spatial units of the RAS space into which volume_affine_RAS maps
+        target_RAS: A 3D point, in the coordinates and units of `volume_affine_RAS` (the `units` argument)
+        options : Virtual fitting algorithm configuration. See the `VirtualFitOptions` documentation.
 
     Returns: A list of transducer transform candidates sorted starting from the best-scoring one. The transforms map transducer space
-        into LPS space, and they are in the same units as the RAS space of `volume_affine_RAS`.
+        into LPS space, and they are in the same units as the RAS space of `volume_affine_RAS` (aka the `units` argument).
     """
+
+    # Express all virtual fit options in the units of volume_affine_RAS, i.e. the physical space of the volume
+    options = options.to_units(units)
+    pitch_range = options.pitch_range
+    pitch_step = options.pitch_step
+    yaw_range = options.yaw_range
+    yaw_step = options.yaw_step
+    transducer_steering_center_distance = options.transducer_steering_center_distance
+    steering_limits = options.steering_limits
+    planefit_dyaw_extent = options.planefit_dyaw_extent
+    planefit_dyaw_step = options.planefit_dyaw_step
+    planefit_dpitch_extent = options.planefit_dpitch_extent
+    planefit_dpitch_step = options.planefit_dpitch_step
 
     log.info("Computing foreground mask...")
     foreground_mask_array = compute_foreground_mask(volume_array)
