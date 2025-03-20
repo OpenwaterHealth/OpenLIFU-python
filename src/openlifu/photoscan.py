@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import json
 import shutil
 import subprocess
@@ -211,8 +212,7 @@ def convert_between_ras_and_lps(mesh : vtk.vtkPointSet) -> vtk.vtkPointSet:
 
     return transformFilter.GetOutput()
 
-def run_reconstruction(images: list[Path],
-                       pipeline: Path = Path(__file__).resolve().parent / "meshroom_pipelines" / "default_pipeline.mg") -> Photoscan:
+def run_reconstruction(images: list[Path], pipeline: Path | None = None) -> Photoscan:
     """Run Meshroom with the given images and pipeline.
     Args:
         images (list[Path]): List of image file paths.
@@ -220,6 +220,9 @@ def run_reconstruction(images: list[Path],
     Returns:
         photoscan: The Photoscan of the reconstructed images.
     """
+    if pipeline is None:
+        with importlib.resources.path("openlifu.meshroom_pipelines", "default_pipeline.mg") as default_path:
+            pipeline = default_path
 
     if shutil.which("meshroom_batch") is None:
         raise FileNotFoundError("Error: 'meshroom_batch' is not found in system PATH. Ensure it is installed and accessible.")
