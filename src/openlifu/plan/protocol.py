@@ -112,7 +112,7 @@ class Protocol:
             "delay_method": self.delay_method.to_dict(),
             "apod_method": self.apod_method.to_dict(),
             "seg_method": self.seg_method.to_dict(),
-            "param_constraints": self.param_constraints,
+            "param_constraints": {id: pc.to_dict() for id, pc in self.param_constraints.items()},
             "target_constraints": self.target_constraints,
             "virtual_fit_options": self.virtual_fit_options.to_dict(),
             "analysis_options": self.analysis_options,
