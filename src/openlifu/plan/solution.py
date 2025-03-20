@@ -216,7 +216,7 @@ class Solution:
             solution_analysis.p0_MPa += [1e-6*np.max(p0_Pa)]
         solution_analysis.TIC = np.mean(TIC)
         solution_analysis.power_W = np.mean(power_W)
-        solution_analysis.MI = (solution_analysis.mainlobe_pnp_MPa/np.sqrt(self.pulse.frequency*1e-6)).item()
+        solution_analysis.MI = (np.max(solution_analysis.mainlobe_pnp_MPa)/np.sqrt(self.pulse.frequency*1e-6))
         solution_analysis.global_ispta_mWcm2 = float((ita_mWcm2*z_mask).max())
         solution_analysis.param_constraints = param_constraints
         return solution_analysis

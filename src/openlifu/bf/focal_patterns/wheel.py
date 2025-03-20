@@ -17,12 +17,12 @@ class Wheel(FocalPattern):
     :ivar center: Whether to include the center point of the wheel pattern
     :ivar num_spokes: Number of spokes in the wheel pattern
     :ivar spoke_radius: Radius of the spokes in the wheel pattern
-    :ivar units: Units of the wheel pattern parameters
+    :ivar spoke_units: Units of the wheel pattern parameters
     """
     center: bool = True
     num_spokes: int = 4
     spoke_radius: float = 1.0 # mm
-    units: str = "mm"
+    spoke_units: str = "mm"
 
     def get_targets(self, target: Point):
         """
@@ -45,7 +45,7 @@ class Wheel(FocalPattern):
             spoke = Point(id=f"{target.id}_{np.rad2deg(theta):.0f}deg",
                               name=f"{target.name} ({np.rad2deg(theta):.0f}°)",
                               position=position,
-                              units=self.units,
+                              units=self.spoke_units,
                               radius=target.radius)
             targets.append(spoke)
         return targets
