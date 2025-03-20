@@ -106,22 +106,24 @@ class VirtualFitOptions(DictMixin):
 # (Currently we disable pylint E1121 because it is a temporary issue
 # which should be resolved by #165 and #166)
 def virtual_fit( # pylint: disable=E1121
-    standoff_transform : np.ndarray,
     volume_array : np.ndarray,
     volume_affine_RAS : np.ndarray,
     units: str,
     target_RAS : Sequence[float],
+    standoff_transform : np.ndarray,
     options : VirtualFitOptions,
 ) -> List[np.ndarray]:
     """Run patient-specific "virtual fitting" algorithm, suggesting a series of candidate transducer
     transforms for optimal sonicaiton of a given target.
 
     Args:
-        standoff_transform: See `create_standoff_transform` documentation for the meaning of this
         volume_array: A 3D volume MRI
         volume_affine_RAS: A 4x4 affine transform that maps `volume_array` into RAS space with certain units
         units: The spatial units of the RAS space into which volume_affine_RAS maps
         target_RAS: A 3D point, in the coordinates and units of `volume_affine_RAS` (the `units` argument)
+        standoff_transform: See the documentation of `create_standoff_transform` or
+            `Transducer.standoff_transform` for the meaning of this. Here it should be provided in the
+            units `units`. The method `Transducer.get_standoff_transform_in_units` is useful for getting this.
         options : Virtual fitting algorithm configuration. See the `VirtualFitOptions` documentation.
 
     Returns: A list of transducer transform candidates sorted starting from the best-scoring one. The transforms map transducer space
