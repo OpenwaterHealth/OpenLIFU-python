@@ -16,6 +16,7 @@ from __future__ import annotations
 from openlifu.bf import Pulse, Sequence, apod_methods, focal_patterns
 from openlifu.geo import Point
 from openlifu.plan import Protocol
+from openlifu.plan.param_constraint import ParameterConstraint
 from openlifu.sim import SimSetup
 from openlifu.xdc import Transducer
 
@@ -38,21 +39,16 @@ protocol = Protocol(
 
 target = Point(position=(0,0,50), units="mm", radius=2)
 trans = Transducer.gen_matrix_array(nx=8, ny=8, pitch=4, kerf=0.5, id="m3", name="openlifu", impulse_response=1e6/10)
+# -
+
 solution, sim_res, scaled_analysis = protocol.calc_solution(
     target=target,
     transducer=trans,
     simulate=True,
     scale=True)
-# -
-
-solution.analyze(transducer=trans).to_dict()
-
-from openlifu.plan.param_constraint import ParameterConstraint
 
 pc = {"MI":ParameterConstraint('<', 1.8, 1.85), "TIC":ParameterConstraint('<', 2.0), 'global_isppa_Wcm2':ParameterConstraint('within', error_value=(49, 190))}
 scaled_analysis.to_table(constraints=pc).set_index('Param')[['Value', 'Units', 'Status']]
-
-solution
 
 protocol = Protocol.from_file('../tests/resources/example_db/protocols/example_protocol/example_protocol.json')
 solution, sim_res, analysis = protocol.calc_solution(
