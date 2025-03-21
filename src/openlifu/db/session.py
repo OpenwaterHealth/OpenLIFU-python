@@ -24,14 +24,14 @@ class TransducerTrackingResult:
     photoscan_id: str
     """ID of the photoscan object used for transducer tracking"""
 
-    transducer_to_photoscan_transform: ArrayTransform
-    """Transform output by transducer tracking algorithm to register the transducer surface to the photoscan model"""
+    transducer_to_volume_transform: ArrayTransform
+    """Transform output by transducer tracking algorithm to register the transducer surface to the volume"""
 
     photoscan_to_volume_transform: ArrayTransform
     """Transform output by the transducer tracking algorithm to register the photoscan model the volume's skin segmentation"""
 
-    transducer_to_photoscan_tracking_approved: bool = False
-    """Approval state of transducer to photoscan tracking result. `True` means the user has provided some kind of
+    transducer_to_volume_tracking_approved: bool = False
+    """Approval state of transducer to volume tracking result. `True` means the user has provided some kind of
     confirmation that the transform result agrees with reality."""
 
     photoscan_to_volume_tracking_approved: bool = False
@@ -143,9 +143,9 @@ class Session:
             d['transducer_tracking_results'] = [
                 TransducerTrackingResult(
                     t['photoscan_id'],
-                    ArrayTransform.from_dict(t['transducer_to_photoscan_transform']),
+                    ArrayTransform.from_dict(t['transducer_to_volume_transform']),
                     ArrayTransform.from_dict(t['photoscan_to_volume_transform']),
-                    t['transducer_to_photoscan_tracking_approved'],
+                    t['transducer_to_volume_tracking_approved'],
                     t['photoscan_to_volume_tracking_approved']
                     )
                     for t in d['transducer_tracking_results']
