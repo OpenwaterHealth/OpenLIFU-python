@@ -213,6 +213,34 @@ class LIFUInterface:
             logger.error("Error Stopping sonication: %s", e)
             raise e
 
+    def toggle_test_mode(self, enabled : bool) -> None:
+        """
+        Toggle test mode and reinitialize interface components.
+
+        Args:
+            enabled (bool): If True, enables test mode; otherwise, disables it.
+        """
+        self._test_mode = enabled
+
+        # Create a TXDevice instance as part of the interface
+        logger.debug("Re-initializing TX Module of LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", self.vid, self.tx_pid, self.baudrate, self.timeout)
+        self._tx_uart = LIFUUart(vid=self.vid, pid=self.tx_pid, baudrate=self.baudrate, timeout=self.timeout, desc="TX", demo_mode=self._test_mode, async_mode=self._async_mode)
+        self.txdevice = TxDevice(uart=self._tx_uart)
+
+        # Create a LIFUHVController instance as part of the interface
+        logger.debug("Re-initializing Console of LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", self.vid, self.con_pid, self.baudrate, self.timeout)
+        self._hv_uart = LIFUUart(vid=self.vid, pid=self.con_pid, baudrate=self.baudrate, timeout=self.timeout, desc="HV", demo_mode=self._test_mode, async_mode=self._async_mode)
+        self.hvcontroller = HVController(uart=self._hv_uart)
+
+        # Connect signals to internal handlers
+        if self._async_mode:
+            self._tx_uart.signal_connect.connect(self.signal_connect.emit)
+            self._tx_uart.signal_disconnect.connect(self.signal_disconnect.emit)
+            self._tx_uart.signal_data_received.connect(self.signal_data_received.emit)
+            self._hv_uart.signal_connect.connect(self.signal_connect.emit)
+            self._hv_uart.signal_disconnect.connect(self.signal_disconnect.emit)
+            self._hv_uart.signal_data_received.connect(self.signal_data_received.emit)
+
     def close(self):
         pass
 
