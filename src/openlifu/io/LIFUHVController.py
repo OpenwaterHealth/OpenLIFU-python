@@ -432,7 +432,7 @@ class HVController:
             logger.info("Turning on high voltage.")
 
             r = self.uart.send_packet(
-                id=None, packetType=OW_POWER, command=OW_POWER_HV_ON
+                id=None, packetType=OW_POWER, command=OW_POWER_HV_ON, timeout=30
             )
             self.uart.clear_buffer()
             # r.print_packet()

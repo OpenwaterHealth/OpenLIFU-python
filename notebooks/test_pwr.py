@@ -21,11 +21,14 @@ print("Ping the device")
 interface.hvcontroller.ping()
 
 print("Starting DAC value increments...")
-dac_value = 2800
-reg_value = 3800
-print(f"Setting DACs: hvp={dac_value}, hrp={reg_value}, hvm={dac_value}, hrm={reg_value}")
-if interface.hvcontroller.set_dacs(hvp=dac_value, hrp=reg_value, hvm=dac_value, hrm=reg_value):
-    print(f"DACs successfully set to hvp={dac_value}, hrp={reg_value}, hvm={dac_value}, hrm={reg_value}")
+hvp_value = 3000
+hrp_value = 2000
+hrm_value = 3000
+hvm_value = 2000
+
+print(f"Setting DACs: hvp={hvp_value}, hrp={hrp_value}, hvm={hvm_value}, hrm={hrm_value}")
+if interface.hvcontroller.set_dacs(hvp=hvp_value, hrp=hrp_value, hvm=hvm_value, hrm=hrm_value):
+    print(f"DACs successfully set to hvp={hvp_value}, hrp={hrp_value}, hvm={hvm_value}, hrm={hrm_value}")
 else:
     print("Failed to set DACs.")
 
