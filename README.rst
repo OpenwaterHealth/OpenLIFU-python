@@ -55,6 +55,43 @@ Dev mode
 
    pip install -e '.[dev]'
 
+Installing Meshroom (On Ubuntu)
+-------------------------------
+
+This repo calls **Meshroom** as a subprocess, so you need to install it first.
+
+Download and Extract
+~~~~~~~~~~~~~~~~~~~~
+1. Download Meshroom for Linux from `<https://alicevision.org/#meshroom>`_.
+2. Extract the downloaded archive:
+
+   .. code:: sh
+
+      tar -xvf Meshroom-2023.3.0.tar.gz
+
+Add Meshroom to PATH
+~~~~~~~~~~~~~~~~~~~~
+To ensure the system can locate Meshroom, add it to your ``PATH``.
+
+Temporary (Current Session)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Run:
+
+.. code:: sh
+
+   export PATH="<path-to-meshroom>/Meshroom-2023.3.0:$PATH"
+
+Replace ``<path-to-meshroom>`` with the actual path where Meshroom was extracted.
+
+Permanent (Persistent Across Sessions)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+For Bash users:
+
+.. code:: sh
+
+   echo 'export PATH="<path-to-meshroom>/Meshroom-2023.3.0:$PATH"' >> ~/.bashrc
+   source ~/.bashrc
+
 Version control of database using DVC (Data Version Control)
 -------------------------------------------------------------
 
