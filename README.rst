@@ -55,42 +55,63 @@ Dev mode
 
    pip install -e '.[dev]'
 
-Installing Meshroom (On Ubuntu)
--------------------------------
+Installing Meshroom
+-------------------
 
 This repo calls **Meshroom** as a subprocess, so you need to install it first.
 
+Ubuntu
+~~~~~~
+
 Download and Extract
-~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^
 1. Download Meshroom for Linux from `<https://alicevision.org/#meshroom>`_.
 2. Extract the downloaded archive:
 
-   .. code:: sh
+   .. code:: bash
 
       tar -xvf Meshroom-2023.3.0.tar.gz
 
 Add Meshroom to PATH
-~~~~~~~~~~~~~~~~~~~~
-To ensure the system can locate Meshroom, add it to your ``PATH``.
+^^^^^^^^^^^^^^^^^^^^
 
-Temporary (Current Session)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Temporary (Current Session)**
 Run:
 
-.. code:: sh
+.. code:: bash
 
    export PATH="<path-to-meshroom>/Meshroom-2023.3.0:$PATH"
 
 Replace ``<path-to-meshroom>`` with the actual path where Meshroom was extracted.
 
-Permanent (Persistent Across Sessions)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Permanent (Persistent Across Sessions)**
 For Bash users:
 
-.. code:: sh
+.. code:: bash
 
    echo 'export PATH="<path-to-meshroom>/Meshroom-2023.3.0:$PATH"' >> ~/.bashrc
    source ~/.bashrc
+
+Windows (using `Chocolatey <https://chocolatey.org>`_)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Install Chocolatey (if not installed)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Open PowerShell as Administrator and run:
+
+.. code:: powershell
+
+   Set-ExecutionPolicy Bypass -Scope Process -Force; `
+   [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; `
+   iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+Install Meshroom
+^^^^^^^^^^^^^^^^
+After Chocolatey is installed, run:
+
+.. code:: powershell
+
+   choco install meshroom
 
 Version control of database using DVC (Data Version Control)
 -------------------------------------------------------------
