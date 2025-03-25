@@ -548,7 +548,7 @@ class HVController:
             )
 
         try:
-            dac_input = int((voltage / 162) * 4095)
+            dac_input = int(((voltage + 15) / 162) * 4095)
             # logger.info("Setting DAC Value %d.", dac_input)
             # Pack the 12-bit DAC input into two bytes
             data = bytes(
@@ -689,15 +689,14 @@ class HVController:
             # r.print_packet()
 
             if r.packet_type == OW_ERROR:
-                logger.error("Error setting HV")
+                logger.error("Error Getting HV Voltage reading")
                 return 0.0
-            elif r.data_len == 2:
-                dac_value = r.data[1] << 8 | r.data[0]
-                # logger.info("Got DAC Value %d.", dac_value)
-                voltage = dac_value / 4095 * 150
-                self.supply_voltage = voltage
-                logger.info("Output voltage set to %.2fV successfully.", voltage)
-                return voltage
+            elif r.data_len == 4:
+                # Unpack the float value from the received data (assuming little-endian)
+                voltage = struct.unpack('<f', r.data)[0]
+                # Truncate the temperature to 2 decimal places
+                truncated_voltage = round(voltage, 2)
+                return truncated_voltage
             else:
                 logger.error("Error getting output voltage from device")
                 return 0.0
