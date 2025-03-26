@@ -49,9 +49,19 @@ def get_karray(arr: xdc.Transducer,
     karray.set_array_position(translation, rotation)
     return karray
 
-def get_medium(params: xa.Dataset):
-    medium= kWaveMedium(sound_speed=params['sound_speed'].attrs['ref_value'],
-                       density=params['density'].attrs['ref_value'])
+def get_medium(params: xa.Dataset, ref_values_only: bool = False):
+    if ref_values_only:
+        medium = kWaveMedium(sound_speed=params['sound_speed'].attrs['ref_value'],
+                             density=params['density'].attrs['ref_value'],
+                             alpha_coeff=params['attenuation'].attrs['ref_value'],
+                             alpha_power=0.9,
+                             alpha_mode='no_dispersion')
+    else:
+        medium= kWaveMedium(sound_speed=params['sound_speed'].data,
+                        density=params['density'].data,
+                        alpha_coeff=params['attenuation'].data,
+                        alpha_power=0.9,
+                        alpha_mode='no_dispersion')
     return medium
 
 def get_sensor(kgrid, record=['p_max','p_min']):
@@ -79,7 +89,8 @@ def run_simulation(arr: xdc.Transducer,
                    cfl: float = 0.5,
                    bli_tolerance: float = 0.05,
                    upsampling_rate: int = 5,
-                   gpu: bool = True
+                   gpu: bool = True,
+                   ref_values_only: bool = False
 ):
     delays = delays if delays is not None else np.zeros(arr.numelements())
     apod = apod if apod is not None else np.ones(arr.numelements())
@@ -94,7 +105,7 @@ def run_simulation(arr: xdc.Transducer,
                         translation=array_offset,
                         bli_tolerance=bli_tolerance,
                         upsampling_rate=upsampling_rate)
-    medium = get_medium(params)
+    medium = get_medium(params, ref_values_only=ref_values_only)
     sensor = get_sensor(kgrid, record=['p_max', 'p_min'])
     source = get_source(kgrid, karray, source_mat)
     logging.info("Running simulation")
