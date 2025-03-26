@@ -100,7 +100,6 @@ def run_simulation(arr: xdc.Transducer,
                    sensor_record: List[str] = ['p_max', 'p_min'],
                    _source: kSource|None = None,
                    _sensor: kSensor|None = None
-
 ):
     delays = delays if delays is not None else np.zeros(arr.numelements())
     apod = apod if apod is not None else np.ones(arr.numelements())
