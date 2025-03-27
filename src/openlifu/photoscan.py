@@ -11,7 +11,9 @@ from typing import Dict, Tuple
 
 import numpy as np
 import OpenEXR
+import trimesh
 import vtk
+from PIL import Image
 from vtk.util.numpy_support import numpy_to_vtk
 
 
@@ -251,10 +253,67 @@ def run_reconstruction(images: list[Path], pipeline: Path | None = None) -> Phot
 
     subprocess.run(command, check=True)
 
-    photoscan_dict = {"model_filename": str(output_dir / "texturedMesh.obj"),
-     "texture_filename": str(output_dir / "texture_1001.png"),
-     "mtl_filename": str(output_dir / "texturedMesh.mtl")}
+    output_dir_merged = temp_dir / "output_dir_merged"
+    output_dir_merged.mkdir(parents=True, exist_ok=True)
+
+    merge_textures(output_dir / "texturedMesh.obj", output_dir_merged)
+
+    photoscan_dict = {"model_filename": str(output_dir_merged / "texturedMesh.obj"),
+     "texture_filename": str(output_dir_merged / "material_0.png"),
+     "mtl_filename": str(output_dir_merged / "material.mtl")}
 
     photoscan = Photoscan.from_dict(photoscan_dict)
 
     return photoscan
+
+def udim_to_tile(udim_str: str) -> Tuple[int, int]:
+    x = int(udim_str[-2:]) - 1
+    tile_u = x % 10
+    tile_v = x // 10
+    return tile_u, tile_v
+
+def merge_textures(input_obj_path: Path, output_path: Path) -> None:
+    scene = trimesh.load(input_obj_path, process=True)
+
+    if isinstance(scene, trimesh.Scene):
+        mesh_dict = scene.geometry
+    else:
+        mesh_dict = {'material_1001': scene}
+
+    for name, mesh in mesh_dict.items():
+        mesh.tile = udim_to_tile(name[-4:])
+
+    num_u_tiles = max(mesh.tile[0] for _, mesh in mesh_dict.items()) + 1
+    num_v_tiles = max(mesh.tile[1] for _, mesh in mesh_dict.items()) + 1
+
+    first_tile = np.array(mesh_dict['material_1001'].visual.material.image)
+    tile_height, tile_width, tile_ch = first_tile.shape
+    tex_height, tex_width = num_v_tiles*tile_height, num_u_tiles*tile_height
+    new_texture = np.zeros((tex_height, tex_width, tile_ch), dtype=first_tile.dtype)
+
+    new_verts = []
+    new_faces = []
+    new_uvs = []
+    num_verts = 0
+    for _, mesh in mesh_dict.items():
+        tile_u, tile_v = mesh.tile
+        texture_tile = np.array(mesh.visual.material.image)
+        new_texture[tex_height - tile_height*(tile_v+1): tex_height-tile_height*tile_v, tile_width*tile_u:tile_width*(tile_u+1)] = texture_tile
+        new_verts.append(mesh.vertices)
+        new_faces.append(mesh.faces+num_verts)
+        new_uvs.append(mesh.visual.uv)
+        num_verts += mesh.vertices.shape[0]
+
+    new_texture = Image.fromarray(new_texture)
+    new_verts = np.concatenate(new_verts, axis=0)
+    new_faces = np.concatenate(new_faces, axis=0)
+    new_uvs = np.concatenate(new_uvs, axis=0)
+
+    new_uvs = new_uvs/np.array([num_u_tiles, num_v_tiles]).reshape(-1,2)
+
+    mesh = trimesh.Trimesh() #Note putting vertices in this constructor will merge nearby ones
+    mesh.vertices = new_verts
+    mesh.faces = new_faces
+    mesh.visual = trimesh.visual.TextureVisuals(uv=new_uvs, image=new_texture)
+
+    mesh.export(output_path / "texturedMesh.obj")
