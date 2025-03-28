@@ -50,9 +50,19 @@ def get_karray(arr: xdc.Transducer,
     karray.set_array_position(translation, rotation)
     return karray
 
-def get_medium(params: xa.Dataset):
-    medium= kWaveMedium(sound_speed=params['sound_speed'].attrs['ref_value'],
-                       density=params['density'].attrs['ref_value'])
+def get_medium(params: xa.Dataset, ref_values_only: bool = False):
+    if ref_values_only:
+        medium = kWaveMedium(sound_speed=params['sound_speed'].attrs['ref_value'],
+                             density=params['density'].attrs['ref_value'],
+                             alpha_coeff=params['attenuation'].attrs['ref_value'],
+                             alpha_power=0.9,
+                             alpha_mode='no_dispersion')
+    else:
+        medium= kWaveMedium(sound_speed=params['sound_speed'].data,
+                        density=params['density'].data,
+                        alpha_coeff=params['attenuation'].data,
+                        alpha_power=0.9,
+                        alpha_mode='no_dispersion')
     return medium
 
 def get_sensor(kgrid, record=['p_max','p_min']):
