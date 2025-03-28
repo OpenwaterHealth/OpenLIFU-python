@@ -321,7 +321,7 @@ class Protocol:
             simulation_output_xarray = None
             if simulate:
                 self.logger.info(f"Simulate for focus {focus}...")
-                simulation_output_xarray, _ = run_simulation(
+                simulation_output_xarray = run_simulation(
                     arr=transducer,
                     params=params,
                     delays=delays,
