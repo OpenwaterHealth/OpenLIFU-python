@@ -12,6 +12,6 @@ from openlifu.xdc import Transducer
 
 @dataclass
 class Uniform(ApodizationMethod):
-    value = 1
+    value : float = 1.
     def calc_apodization(self, arr: Transducer, target: Point, params: xa.Dataset, transform:np.ndarray | None=None):
         return np.full(arr.numelements(), self.value)

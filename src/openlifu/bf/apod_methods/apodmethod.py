@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import xarray as xa
@@ -14,7 +15,7 @@ from openlifu.xdc import Transducer
 @dataclass
 class ApodizationMethod(ABC):
     @abstractmethod
-    def calc_apodization(self, arr: Transducer, target: Point, params: xa.Dataset, transform:np.ndarray | None=None):
+    def calc_apodization(self, arr: Transducer, target: Point, params: xa.Dataset, transform:np.ndarray | None=None) -> Any:
         pass
 
     def to_dict(self):
