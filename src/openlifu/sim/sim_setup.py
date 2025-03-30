@@ -27,7 +27,7 @@ class SimSetup(DictMixin):
     t_end: float = 0.
     c0: float = 1500.0
     cfl: float = 0.5
-    options: dict = field(default_factory=dict)
+    options: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self):
         if len(self.dims) != 3:

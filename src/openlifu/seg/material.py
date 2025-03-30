@@ -13,7 +13,7 @@ class Material:
     attenuation: float = 0.0 # dB/cm/MHz
     specific_heat: float = 4182.0 # J/kg/K
     thermal_conductivity: float = 0.598 # W/m/K
-    param_ids: Tuple[str] = field(default_factory= lambda: ("sound_speed", "density", "attenuation", "specific_heat", "thermal_conductivity"), init=False, repr=False)
+    param_ids: Tuple[str, str, str, str, str] = field(default_factory= lambda: ("sound_speed", "density", "attenuation", "specific_heat", "thermal_conductivity"), init=False, repr=False)
 
     @classmethod
     def param_info(cls, param_id: str):
