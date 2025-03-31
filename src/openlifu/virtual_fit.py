@@ -40,7 +40,7 @@ class VirtualFitOptions(DictMixin):
         yaw: 90 degrees minus the polar spherical coordinate.
     """
 
-    units:float = "mm"
+    units : str = "mm"
     """The units of length used in the length attributes of this class"""
 
     transducer_steering_center_distance:float = 50.
@@ -254,10 +254,10 @@ def virtual_fit(
         # Target in "steering space", where the origin is the center of the steering zone.
         target_steering_space = target_XYZ - np.array([0.,0.,transducer_steering_center_distance])
 
-        steering_distance:float = np.linalg.norm(target_steering_space)
+        steering_distance : float = float(np.linalg.norm(target_steering_space))
 
         # Check whether the target is in the steering range
-        target_in_bounds:bool = np.all((steering_mins < target_steering_space) & (target_steering_space < steering_maxs))
+        target_in_bounds : bool = bool(np.all((steering_mins < target_steering_space) & (target_steering_space < steering_maxs)))
 
         # Finally, fill out the arrays we have been building in this loop
         transducer_poses[i] = transducer_transform
