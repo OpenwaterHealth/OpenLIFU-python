@@ -3,9 +3,11 @@ from __future__ import annotations
 import copy
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from typing import Annotated
 
 import numpy as np
 
+from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 from openlifu.util.units import getunitconversion
 
 
@@ -30,19 +32,44 @@ def matrix2xyz(matrix):
 
 @dataclass
 class Element:
-    index: int = 0
-    x: float = 0
-    y: float = 0
-    z: float = 0
-    az: float = 0
-    el: float = 0
-    roll: float = 0
-    w: float = 1
-    l: float = 1
-    impulse_response: np.ndarray = field(repr=False, default_factory=lambda: np.array([1]))
-    impulse_dt: float = field(repr=False, default = 1)
-    pin: int = -1
-    units: str = "mm"
+    index: Annotated[int, OpenLIFUFieldData("Element index", "TODO: Add description")] = 0
+    """TODO: Add description"""
+
+    x: Annotated[float, OpenLIFUFieldData("X position", "TODO: Add description")] = 0
+    """TODO: Add description"""
+
+    y: Annotated[float, OpenLIFUFieldData("Y position", "TODO: Add description")] = 0
+    """TODO: Add description"""
+
+    z: Annotated[float, OpenLIFUFieldData("Z position", "TODO: Add description")] = 0
+    """TODO: Add description"""
+
+    az: Annotated[float, OpenLIFUFieldData("Azimuth angle", "TODO: Add description")] = 0
+    """TODO: Add description"""
+
+    el: Annotated[float, OpenLIFUFieldData("Elevation angle", "TODO: Add description")] = 0
+    """TODO: Add description"""
+
+    roll: Annotated[float, OpenLIFUFieldData("Roll angle", "TODO: Add description")] = 0
+    """TODO: Add description"""
+
+    w: Annotated[float, OpenLIFUFieldData("Width", "TODO: Add description")] = 1
+    """TODO: Add description"""
+
+    l: Annotated[float, OpenLIFUFieldData("Length", "TODO: Add description")] = 1
+    """TODO: Add description"""
+
+    impulse_response: Annotated[np.ndarray, OpenLIFUFieldData("Impulse response", "TODO: Add description")] = field(repr=False, default_factory=lambda: np.array([1]))
+    """TODO: Add description"""
+
+    impulse_dt: Annotated[float, OpenLIFUFieldData("Impulse response timestep", "TODO: Add description")] = field(repr=False, default=1)
+    """TODO: Add description"""
+
+    pin: Annotated[int, OpenLIFUFieldData("Pin", "TODO: Add description")] = -1
+    """TODO: Add description"""
+
+    units: Annotated[str, OpenLIFUFieldData("Units", "TODO: Add description")] = "mm"
+    """TODO: Add description"""
 
     def __post_init__(self):
         if isinstance(self.impulse_response, Iterable):

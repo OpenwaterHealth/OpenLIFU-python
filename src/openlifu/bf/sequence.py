@@ -1,26 +1,31 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Annotated
 
 import pandas as pd
 
 from openlifu.util.dict_conversion import DictMixin
+from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 
 
 @dataclass
 class Sequence(DictMixin):
     """
     Class for representing a sequence of pulses
-
-    :ivar pulse_interval: Interval between pulses in the sequence (s)
-    :ivar pulse_count: Number of pulses in the sequence
-    :ivar pulse_train_interval: Interval between pulse trains in the sequence (s)
-    :ivar pulse_train_count: Number of pulse trains in the sequence
     """
-    pulse_interval: float = 1.0 # s
-    pulse_count: int = 1
-    pulse_train_interval: float = 1.0 # s
-    pulse_train_count: int = 1
+
+    pulse_interval: Annotated[float, OpenLIFUFieldData("Pulse interval (s)", "Interval between pulses in the sequence (s)")] = 1.0  # s
+    """Interval between pulses in the sequence (s)"""
+
+    pulse_count: Annotated[int, OpenLIFUFieldData("Pulse count", "Number of pulses in the sequence")] = 1
+    """Number of pulses in the sequence"""
+
+    pulse_train_interval: Annotated[float, OpenLIFUFieldData("Pulse train interval (s)", "Interval between pulse trains in the sequence (s)")] = 1.0  # s
+    """Interval between pulse trains in the sequence (s)"""
+
+    pulse_train_count: Annotated[int, OpenLIFUFieldData("Pulse train count", "Number of pulse trains in the sequence")] = 1
+    """Number of pulse trains in the sequence"""
 
     def __post_init__(self):
         if self.pulse_interval <= 0:

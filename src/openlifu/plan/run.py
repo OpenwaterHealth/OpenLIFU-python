@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict
+from typing import Annotated, Any, Dict
 
 from openlifu.util.json import PYFUSEncoder
+from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 
 
 @dataclass
@@ -14,23 +15,23 @@ class Run:
     Class representing a run
     """
 
-    id: str | None = None
-    """id: ID of the run"""
+    id: Annotated[str | None, OpenLIFUFieldData("Run ID", "ID of the run")] = None
+    """ID of the run"""
 
-    name: str | None = None
-    """name: Name of the run"""
+    name: Annotated[str | None, OpenLIFUFieldData("Run name", "Name of the run")] = None
+    """Name of the run"""
 
-    success_flag: bool | None = None
-    """success_flag: True when run was successful, False otherwise"""
+    success_flag: Annotated[bool | None, OpenLIFUFieldData("Success?", "True when run was successful, False otherwise")] = None
+    """True when run was successful, False otherwise"""
 
-    note: str | None = None
-    """note: large text containing notes about the run"""
+    note: Annotated[str | None, OpenLIFUFieldData("Run notes", "Large text containing notes about the run")] = None
+    """Large text containing notes about the run"""
 
-    session_id: str | None = None
-    """session_id: session id"""
+    session_id: Annotated[str | None, OpenLIFUFieldData("Session ID", "Session ID")] = None
+    """Session ID"""
 
-    solution_id: str | None = None
-    """solution_id: solution id"""
+    solution_id: Annotated[str | None, OpenLIFUFieldData("Solution ID", "Solution ID")] = None
+    """Solution ID"""
 
     @staticmethod
     def from_file(filename):

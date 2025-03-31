@@ -1,18 +1,22 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Annotated
 
 import numpy as np
 import xarray as xa
 
 from openlifu.bf.delay_methods import DelayMethod
 from openlifu.geo import Point
+from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 from openlifu.xdc import Transducer
 
 
 @dataclass
 class Direct(DelayMethod):
-    c0: float = 1480.0
+    c0: Annotated[float, OpenLIFUFieldData("TODO: Add name", "TODO: Add description")] = 1480.0
+    """TODO: Add description"""
+
     def calc_delays(self, arr: Transducer, target: Point, params: xa.Dataset | None=None, transform:np.ndarray | None=None):
         if params is None:
             c = self.c0
