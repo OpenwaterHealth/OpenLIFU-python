@@ -5,11 +5,12 @@ import logging
 import re
 import struct
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Dict, List, Literal
+from typing import TYPE_CHECKING, Annotated, Dict, List, Literal
 
 import numpy as np
 
 from openlifu.io.LIFUUart import LIFUUart
+from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 from openlifu.util.units import getunitconversion
 
 DEFAULT_NUM_TRANSMITTERS = 2
@@ -1518,10 +1519,17 @@ def swap_byte_order(regs):
 
 @dataclass
 class Tx7332DelayProfile:
-    profile: int
-    delays: List[float]
-    apodizations: List[int] | None = None
-    units: str = 's'
+    profile: Annotated[int, OpenLIFUFieldData("Profile index", "TODO: Add description")]
+    """TODO: Add description"""
+
+    delays: Annotated[List[float], OpenLIFUFieldData("Delay values", "TODO: Add description")]
+    """TODO: Add description"""
+
+    apodizations: Annotated[List[int] | None, OpenLIFUFieldData("Apodizations", "TODO: Add description")] = None
+    """TODO: Add description"""
+
+    units: Annotated[str, OpenLIFUFieldData("Units", "TODO: Add description")] = 's'
+    """TODO: Add description"""
 
     def __post_init__(self):
         self.num_elements = len(self.delays)
@@ -1534,12 +1542,23 @@ class Tx7332DelayProfile:
 
 @dataclass
 class Tx7332PulseProfile:
-    profile: int
-    frequency: float
-    cycles: int
-    duty_cycle: float=DEFAULT_PATTERN_DUTY_CYCLE
-    tail_count: int=DEFAULT_TAIL_COUNT
-    invert: bool=False
+    profile: Annotated[int, OpenLIFUFieldData("Profile index", "TODO: Add description")]
+    """TODO: Add description"""
+
+    frequency: Annotated[float, OpenLIFUFieldData("Frequency", "TODO: Add description")]
+    """TODO: Add description"""
+
+    cycles: Annotated[int, OpenLIFUFieldData("Number of cycles", "TODO: Add description")]
+    """TODO: Add description"""
+
+    duty_cycle: Annotated[float, OpenLIFUFieldData("Duty cycle", "TODO: Add description")] = DEFAULT_PATTERN_DUTY_CYCLE
+    """TODO: Add description"""
+
+    tail_count: Annotated[int, OpenLIFUFieldData("Tail count", "TODO: Add description")] = DEFAULT_TAIL_COUNT
+    """TODO: Add description"""
+
+    invert: Annotated[bool, OpenLIFUFieldData("Invert polarity", "TODO: Add description")] = False
+    """TODO: Add description"""
 
     def __post_init__(self):
         if self.profile not in VALID_PATTERN_PROFILES:
@@ -1547,11 +1566,20 @@ class Tx7332PulseProfile:
 
 @dataclass
 class Tx7332Registers:
-    bf_clk: float = DEFAULT_CLK_FREQ
-    _delay_profiles_list: List[Tx7332DelayProfile] = field(default_factory=list)
-    _pulse_profiles_list: List[Tx7332PulseProfile] = field(default_factory=list)
-    active_delay_profile: int | None = None
-    active_pulse_profile: int | None = None
+    bf_clk: Annotated[float, OpenLIFUFieldData("TODO: Add name", "TODO: Add description")] = DEFAULT_CLK_FREQ
+    """TODO: Add description"""
+
+    _delay_profiles_list: Annotated[List[Tx7332DelayProfile], OpenLIFUFieldData("Delay profiles list", "Internal list of available delay profiles")] = field(default_factory=list)
+    """Internal list of available delay profiles"""
+
+    _pulse_profiles_list: Annotated[List[Tx7332PulseProfile], OpenLIFUFieldData("Pulse profiles list", "Internal list of available pulse profiles")] = field(default_factory=list)
+    """Internal list of available pulse profiles"""
+
+    active_delay_profile: Annotated[int | None, OpenLIFUFieldData("Active delay profile", "Index of the currently active delay profile")] = None
+    """Index of the currently active delay profile"""
+
+    active_pulse_profile: Annotated[int | None, OpenLIFUFieldData("Active pulse profile", "Index of the currently active pulse profile")] = None
+    """Index of the currently active pulse profile"""
 
     def __post_init__(self):
         delay_profile_indices = self.configured_delay_profiles()
@@ -1778,12 +1806,23 @@ class Tx7332Registers:
 
 @dataclass
 class TxDeviceRegisters:
-    bf_clk: int = DEFAULT_CLK_FREQ
-    _delay_profiles_list: List[Tx7332DelayProfile] = field(default_factory=list)
-    _profiles_list: List[Tx7332PulseProfile] = field(default_factory=list)
-    active_delay_profile: int | None = None
-    active_profile: int | None = None
-    num_transmitters: int = DEFAULT_NUM_TRANSMITTERS
+    bf_clk: Annotated[int, OpenLIFUFieldData("TODO: Add name", "TODO: Add description")] = DEFAULT_CLK_FREQ
+    """TODO: Add description"""
+
+    _delay_profiles_list: Annotated[List[Tx7332DelayProfile], OpenLIFUFieldData("Delay profiles list", "Internal list of available delay profiles")] = field(default_factory=list)
+    """Internal list of available delay profiles"""
+
+    _profiles_list: Annotated[List[Tx7332PulseProfile], OpenLIFUFieldData("Pulse profiles list", "Internal list of available pulse profiles")] = field(default_factory=list)
+    """Internal list of available pulse profiles"""
+
+    active_delay_profile: Annotated[int | None, OpenLIFUFieldData("Active delay profile", "Index of the currently active delay profile")] = None
+    """Index of the currently active delay profile"""
+
+    active_profile: Annotated[int | None, OpenLIFUFieldData("Active pulse profile", "Index of the currently active pulse profile")] = None
+    """Index of the currently active pulse profile"""
+
+    num_transmitters: Annotated[int, OpenLIFUFieldData("Number of transmitters", "The number of transmitters available on the device")] = DEFAULT_NUM_TRANSMITTERS
+    """The number of transmitters available on the device"""
 
     def __post_init__(self):
         self.transmitters = tuple([Tx7332Registers(bf_clk=self.bf_clk) for _ in range(self.num_transmitters)])

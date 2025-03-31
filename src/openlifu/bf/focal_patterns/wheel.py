@@ -1,28 +1,32 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Annotated
 
 import numpy as np
 
 from openlifu.bf.focal_patterns import FocalPattern
 from openlifu.geo import Point
+from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 
 
 @dataclass
 class Wheel(FocalPattern):
     """
     Class for representing a wheel pattern
-
-    :ivar target_pressure: Target pressure of the focal pattern in Pa
-    :ivar center: Whether to include the center point of the wheel pattern
-    :ivar num_spokes: Number of spokes in the wheel pattern
-    :ivar spoke_radius: Radius of the spokes in the wheel pattern
-    :ivar units: Units of the wheel pattern parameters
     """
-    center: bool = True
-    num_spokes: int = 4
-    spoke_radius: float = 1.0 # mm
-    units: str = "mm"
+
+    center: Annotated[bool, OpenLIFUFieldData("Include center point?", "Whether to include the center for the wheel pattern")] = True
+    """Whether to include the center for the wheel pattern"""
+
+    num_spokes: Annotated[int, OpenLIFUFieldData("Number of spokes", "Number of spokes in the wheel pattern")] = 4
+    """Number of spokes in the wheel pattern"""
+
+    spoke_radius: Annotated[float, OpenLIFUFieldData("Spoke radius", "Radius of the spokes in the wheel pattern")] = 1.0  # mm
+    """Radius of the spokes in the wheel pattern"""
+
+    units: Annotated[str, OpenLIFUFieldData("Units", "Units of the wheel pattern parameters")] = "mm"
+    """Units of the wheel pattern parameters"""
 
     def get_targets(self, target: Point):
         """

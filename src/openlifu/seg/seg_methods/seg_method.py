@@ -3,18 +3,23 @@ from __future__ import annotations
 import copy
 from abc import abstractmethod
 from dataclasses import asdict, dataclass, field
+from typing import Annotated
 
 import numpy as np
 import xarray as xa
 
 from openlifu.seg import seg_methods
 from openlifu.seg.material import MATERIALS, Material
+from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 
 
 @dataclass
 class SegmentationMethod:
-    materials: dict[str,Material] = field(default_factory=lambda: MATERIALS.copy())
-    ref_material: str = "water"
+    materials: Annotated[dict[str, Material], OpenLIFUFieldData("Segmentation materials", "Dictionary mapping of label names to material definitions used during segmentation")] = field(default_factory=lambda: MATERIALS.copy())
+    """Dictionary mapping of label names to material definitions used during segmentation"""
+
+    ref_material: Annotated[str, OpenLIFUFieldData("Reference material", "TODO: Add description")] = "water"
+    """TODO: Add description"""
 
     def __post_init__(self):
         if self.ref_material not in self.materials:

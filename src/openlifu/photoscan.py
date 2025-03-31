@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Annotated, Dict, Tuple
 
 import numpy as np
 import OpenEXR
@@ -16,27 +16,28 @@ import vtk
 from PIL import Image
 from vtk.util.numpy_support import numpy_to_vtk
 
+from openlifu.util.openlifu_annotations import OpenLIFUFieldData
+
 
 @dataclass
 class Photoscan:
-
-    id : str = "photoscan"
+    id: Annotated[str, OpenLIFUFieldData("Photoscan ID", "ID of this photoscan")] = "photoscan"
     """ID of this photoscan"""
 
-    name: str = "Photoscan"
+    name: Annotated[str, OpenLIFUFieldData("Photoscan name", "Photoscan name")] = "Photoscan"
     """Photoscan name"""
 
-    model_filename: str | None =  None
+    model_filename: Annotated[str | None, OpenLIFUFieldData("Model filename", "Relative path to model")] = None
     """Relative path to model"""
 
-    texture_filename: str | None = None
+    texture_filename: Annotated[str | None, OpenLIFUFieldData("Texture filename", "Relative path to texture image")] = None
     """Relative path to texture image"""
 
-    mtl_filename: str | None = None
+    mtl_filename: Annotated[str | None, OpenLIFUFieldData("Material filename", "Relative path to materials file")] = None
     """Relative path to materials file"""
 
-    photoscan_approved: bool = False
-    """Approval state of the photoscan. 'True' means means the user has provided some kind of
+    photoscan_approved: Annotated[bool, OpenLIFUFieldData("Approved?", "Approval state of the photoscan. 'True' means the user has provided some kind of confirmation that the photoscan is good enough to be used.")] = False
+    """Approval state of the photoscan. 'True' means the user has provided some kind of
     confirmation that the photoscan is good enough to be used."""
 
     @staticmethod
