@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
-from typing import Any, Dict, List, Sequence, Tuple
+from typing import Annotated, Any, Dict, List, Sequence, Tuple
 
 import numpy as np
 
@@ -19,6 +18,7 @@ from openlifu.seg.skinseg import (
     vtk_img_from_array_and_affine,
 )
 from openlifu.util.dict_conversion import DictMixin
+from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 from openlifu.util.units import getunitconversion
 
 log = logging.getLogger("VirtualFit")
@@ -26,12 +26,11 @@ log = logging.getLogger("VirtualFit")
 ras2asl_3x3 = np.array([[0,1,0],[0,0,1],[-1,0,0]], dtype=float) # ASL means Anterior-Superior-Left coordinates
 asl2ras_3x3 = ras2asl_3x3.transpose()
 
-@dataclass
 class VirtualFitOptions(DictMixin):
     """Parameters to configure the `virtual_fit` algorithm.
 
     The terms 'pitch' and 'yaw' used here refer to the following target-centric angular coordinates in patient space:
-        pitch: The angle between the anterior axis through the target and the ray from from the target to the projection of
+        pitch: The angle between the anterior axis through the target and the ray from the target to the projection of
             a given point into the anterior-superior plane.
         yaw: The angle between the anterior-superior plane through the target and the ray from the target to a given point.
 
@@ -40,44 +39,45 @@ class VirtualFitOptions(DictMixin):
         yaw: 90 degrees minus the polar spherical coordinate.
     """
 
-    units : str = "mm"
+    units: Annotated[str, OpenLIFUFieldData("Length units", "The units of length used in the length attributes of this class")] = "mm"
     """The units of length used in the length attributes of this class"""
 
-    transducer_steering_center_distance:float = 50.
+    transducer_steering_center_distance: Annotated[float, OpenLIFUFieldData("Steering center distance", "Distance from the transducer origin axially to the center of the steering zone in the units `units`")] = 50.
     """Distance from the transducer origin axially to the center of the steering zone in the units `units`"""
 
-    steering_limits:Tuple[Tuple[float,float],Tuple[float,float],Tuple[float,float]] = ((-50,50),(-50,50),(-50,50))
+    steering_limits: Annotated[Tuple[Tuple[float, float], Tuple[float, float], Tuple[float, float]],
+                               OpenLIFUFieldData("Steering limits", "Steering bounds along each axis from the transducer origin, in the units `units`")] = ((-50, 50), (-50, 50), (-50, 50))
     """Distance from the transducer origin axially to the center of the steering zone in the units `units`"""
 
-    pitch_range : Tuple[float,float] = (-10,150)
+    pitch_range: Annotated[Tuple[float, float], OpenLIFUFieldData("Pitch range (deg)", "Range of pitches to include in the transducer fitting search grid, in degrees")] = (-10, 150)
     """Range of pitches to include in the transducer fitting search grid, in degrees"""
 
-    pitch_step : float = 5
+    pitch_step: Annotated[float, OpenLIFUFieldData("Pitch step size (deg)", "Pitch step size when forming the transducer fitting search grid, in degrees")] = 5
     """Pitch step size when forming the transducer fitting search grid, in degrees"""
 
-    yaw_range : Tuple[float, float] = (-65, 65)
+    yaw_range: Annotated[Tuple[float, float], OpenLIFUFieldData("Yaw range (deg)", "Range of yaws to include in the transducer fitting search grid, in degrees")] = (-65, 65)
     """Range of yaws to include in the transducer fitting search grid, in degrees"""
 
-    yaw_step : float = 5
+    yaw_step: Annotated[float, OpenLIFUFieldData("Yaw step size (deg)", "Yaw step size when forming the transducer fitting search grid, in degrees")] = 5
     """Yaw step size when forming the transducer fitting search grid, in degrees"""
 
-    planefit_dyaw_extent:float = 15
+    planefit_dyaw_extent: Annotated[float, OpenLIFUFieldData("Plane fit yaw extent", "Left and right extents of the point grid to be used for plane fitting along the local yaw axes, in units of `units`")] = 15
     """Left and right extents of the point grid to be used for plane fitting along the local yaw axes,
     in units of `units`. The plane fitting point grid will be twice this size, since this is left
     and right extents. (Note that this has units of length, not angle!)"""
 
-    planefit_dyaw_step:float = 3
+    planefit_dyaw_step: Annotated[float, OpenLIFUFieldData("Plane fit yaw step", "Local yaw axis step size to use when constructing plane fitting grids. In spatial units of `units`")] = 3
     """Local yaw axis step size to use when constructing plane fitting grids. In spatial units of `units`."""
 
-    planefit_dpitch_extent:float = 15
+    planefit_dpitch_extent: Annotated[float, OpenLIFUFieldData("Plane fit pitch extent", "Left and right extents of the point grid to be used for plane fitting along the local pitch axes, in spatial units of `units`")] = 15
     """Left and right extents of the point grid to be used for plane fitting along the local pitch axes,
     in spatial units of `units`. The plane fitting point grid will be twice this size, since this is left
     and right extents."""
 
-    planefit_dpitch_step:float = 3
+    planefit_dpitch_step: Annotated[float, OpenLIFUFieldData("Plane fit pitch step", "Local pitch axis step size to use when constructing plane fitting grids. In spatial units of `units`")] = 3
     """Local pitch axis step size to use when constructing plane fitting grids. In spatial units of `units`."""
 
-    def to_units(self, target_units:str) -> VirtualFitOptions:
+    def to_units(self, target_units: str) -> VirtualFitOptions:
         """Do unit conversion and return a version of this VirtualFitOptions that uses
         `target_units` as the units for all attributes that have units of length."""
         conversion_factor = getunitconversion(from_unit = self.units, to_unit=target_units)
@@ -96,7 +96,7 @@ class VirtualFitOptions(DictMixin):
         )
 
     @staticmethod
-    def from_dict(parameter_dict:Dict[str,Any]) -> VirtualFitOptions: # Override DictMixin here
+    def from_dict(parameter_dict: Dict[str,Any]) -> VirtualFitOptions: # Override DictMixin here
         parameter_dict["pitch_range"] = tuple(parameter_dict["pitch_range"])
         parameter_dict["yaw_range"] = tuple(parameter_dict["yaw_range"])
         parameter_dict["steering_limits"] = tuple(map(tuple,parameter_dict["steering_limits"]))

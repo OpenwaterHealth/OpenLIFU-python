@@ -5,12 +5,13 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Annotated, Dict, List, Tuple
 
 import numpy as np
 
 from openlifu.geo import ArrayTransform, Point
 from openlifu.util.json import PYFUSEncoder
+from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 from openlifu.util.strings import sanitize
 
 
@@ -21,20 +22,20 @@ class TransducerTrackingResult:
     algorithm.
     """
 
-    photoscan_id: str
+    photoscan_id: Annotated[str, OpenLIFUFieldData("Photoscan ID", "ID of the photoscan object used for transducer tracking")]
     """ID of the photoscan object used for transducer tracking"""
 
-    transducer_to_volume_transform: ArrayTransform
+    transducer_to_volume_transform: Annotated[ArrayTransform, OpenLIFUFieldData("Transducer to volume transform", "Transform output by transducer tracking algorithm to register the transducer surface to the volume")]
     """Transform output by transducer tracking algorithm to register the transducer surface to the volume"""
 
-    photoscan_to_volume_transform: ArrayTransform
+    photoscan_to_volume_transform: Annotated[ArrayTransform, OpenLIFUFieldData("Photoscan to volume transform", "Transform output by the transducer tracking algorithm to register the photoscan model the volume's skin segmentation")]
     """Transform output by the transducer tracking algorithm to register the photoscan model the volume's skin segmentation"""
 
-    transducer_to_volume_tracking_approved: bool = False
+    transducer_to_volume_tracking_approved: Annotated[bool, OpenLIFUFieldData("Transducer tracking approved?", "Approval state of transducer to volume tracking result. `True` means the user has provided some kind of confirmation that the transform result agrees with reality.")] = False
     """Approval state of transducer to volume tracking result. `True` means the user has provided some kind of
     confirmation that the transform result agrees with reality."""
 
-    photoscan_to_volume_tracking_approved: bool = False
+    photoscan_to_volume_tracking_approved: Annotated[bool, OpenLIFUFieldData("Photoscan tracking approved?", "Approval state of photoscan to volume tracking result. `True` means the user has provided some kind of confirmation that the transform result agrees with reality.")] = False
     """Approval state of photoscan to volume tracking result. `True` means the user has provided some kind of
     confirmation that the transform result agrees with reality."""
 
@@ -45,43 +46,43 @@ class Session:
     to use, potential targets for sonication, and a transducer situated in the patient space.
     """
 
-    id: str | None = None
+    id: Annotated[str | None, OpenLIFUFieldData("Session ID", "ID of this session")] = None
     """ID of this session"""
 
-    subject_id: str | None = None
+    subject_id: Annotated[str | None, OpenLIFUFieldData("Subject ID", "ID of the parent subject of this session")] = None
     """ID of the parent subject of this session"""
 
-    name: str | None = None
+    name: Annotated[str | None, OpenLIFUFieldData("Session name", "Session name")] = None
     """Session name"""
 
-    date_created: datetime = field(default_factory=datetime.now)
+    date_created: Annotated[datetime, OpenLIFUFieldData("Date created", "Date of creation of the session")] = field(default_factory=datetime.now)
     """Date of creation of the session"""
 
-    date_modified: datetime = field(default_factory=datetime.now)
+    date_modified: Annotated[datetime, OpenLIFUFieldData("Date modified", "Date of modification of the session")] = field(default_factory=datetime.now)
     """Date of modification of the session"""
 
-    protocol_id: str | None = None
+    protocol_id: Annotated[str | None, OpenLIFUFieldData("Protocol ID", "ID of the protocol used for this session")] = None
     """ID of the protocol used for this session"""
 
-    volume_id: str | None = None
+    volume_id: Annotated[str | None, OpenLIFUFieldData("Volume ID", "ID of the subject volume associated with this session")] = None
     """ID of the subject volume associated with this session"""
 
-    transducer_id: str | None = None
+    transducer_id: Annotated[str | None, OpenLIFUFieldData("Transducer ID", "ID of the transducer associated with this session")] = None
     """ID of the transducer associated with this session"""
 
-    array_transform: ArrayTransform = field(default_factory=lambda : ArrayTransform(np.eye(4),"mm"))
+    array_transform: Annotated[ArrayTransform, OpenLIFUFieldData("Array transform", "The transducer affine transform matrix with units, situating the transducer in space")] = field(default_factory=lambda: ArrayTransform(np.eye(4), "mm"))
     """The transducer affine transform matrix with units, situating the transducer in space"""
 
-    targets: List[Point] = field(default_factory=list)
+    targets: Annotated[List[Point], OpenLIFUFieldData("Targets", "Targets saved to this session")] = field(default_factory=list)
     """Targets saved to this session"""
 
-    markers: List[Point] = field(default_factory=list)
+    markers: Annotated[List[Point], OpenLIFUFieldData("Markers", "Registration markers saved to this session")] = field(default_factory=list)
     """Registration markers saved to this session"""
 
-    attrs: dict = field(default_factory=dict)
+    attrs: Annotated[dict, OpenLIFUFieldData("Custom attributes", "Dictionary of additional custom attributes to save to the session")] = field(default_factory=dict)
     """Dictionary of additional custom attributes to save to the session"""
 
-    virtual_fit_results: Dict[str,Tuple[bool,List[ArrayTransform]]] = field(default_factory=dict)
+    virtual_fit_results: Annotated[Dict[str, Tuple[bool, List[ArrayTransform]]], OpenLIFUFieldData("Virtual fit results", "Virtual fit results. This is a dictionary mapping target IDs to pairs `(approval, transforms)`...")] = field(default_factory=dict)
     """Virtual fit results. This is a dictionary mapping target IDs to pairs `(approval, transforms)`,
     where:
 
@@ -93,7 +94,7 @@ class Session:
     only. None of the other transforms in the list are considered to be approved.
     """
 
-    transducer_tracking_results: List[TransducerTrackingResult] = field(default_factory=list)
+    transducer_tracking_results: Annotated[List[TransducerTrackingResult], OpenLIFUFieldData("Tracking results", "List of any transducer tracking results")] = field(default_factory=list)
     """List of any transducer tracking results"""
 
     def __post_init__(self):

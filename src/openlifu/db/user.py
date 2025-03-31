@@ -4,25 +4,27 @@ import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Annotated, Any, Dict, List
+
+from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 
 
 @dataclass
 class User:
-    id: str = "user"
-    """ The unique identifier of the user """
+    id: Annotated[str, OpenLIFUFieldData("User ID", "The unique identifier of the user")] = "user"
+    """The unique identifier of the user"""
 
-    password_hash: str = ""
-    """ A hashed user password for authentication. """
+    password_hash: Annotated[str, OpenLIFUFieldData("Password hash", "A hashed user password for authentication.")] = ""
+    """A hashed user password for authentication."""
 
-    roles: List[str] = field(default_factory=list)
-    """ A list of roles """
+    roles: Annotated[List[str], OpenLIFUFieldData("Roles", "A list of roles")] = field(default_factory=list)
+    """A list of roles"""
 
-    name: str = "User"
-    """ The name of the user """
+    name: Annotated[str, OpenLIFUFieldData("User name", "The name of the user")] = "User"
+    """The name of the user"""
 
-    description: str = ""
-    """ A description of the user """
+    description: Annotated[str, OpenLIFUFieldData("Description", "A description of the user")] = ""
+    """A description of the user"""
 
     def __post_init__(self):
         self.logger = logging.getLogger(__name__)
