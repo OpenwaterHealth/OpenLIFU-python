@@ -214,13 +214,14 @@ def convert_between_ras_and_lps(mesh : vtk.vtkPointSet) -> vtk.vtkPointSet:
 
     return transformFilter.GetOutput()
 
-def run_reconstruction(images: list[Path], pipeline: Path | None = None) -> Photoscan:
+def run_reconstruction(images: list[Path], pipeline: Path | None = None) -> Tuple[Photoscan,Path]:
     """Run Meshroom with the given images and pipeline.
     Args:
         images (list[Path]): List of image file paths.
         pipeline (Path): Path to the Meshroom pipeline file.
     Returns:
         photoscan: The Photoscan of the reconstructed images.
+        data_dir (Path): The directory containing the underlying data files whose names are given in the Photoscan.
     """
     if pipeline is None:
         with importlib.resources.path("openlifu.meshroom_pipelines", "default_pipeline.mg") as default_path:
@@ -258,13 +259,15 @@ def run_reconstruction(images: list[Path], pipeline: Path | None = None) -> Phot
 
     merge_textures(output_dir / "texturedMesh.obj", output_dir_merged)
 
-    photoscan_dict = {"model_filename": str(output_dir_merged / "texturedMesh.obj"),
-     "texture_filename": str(output_dir_merged / "material_0.png"),
-     "mtl_filename": str(output_dir_merged / "material.mtl")}
+    photoscan_dict = {
+        "model_filename":  "texturedMesh.obj",
+        "texture_filename": "material_0.png",
+        "mtl_filename": "material.mtl",
+    }
 
     photoscan = Photoscan.from_dict(photoscan_dict)
 
-    return photoscan
+    return photoscan, output_dir_merged
 
 def udim_to_tile(udim_str: str) -> Tuple[int, int]:
     x = int(udim_str[-2:]) - 1
