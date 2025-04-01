@@ -81,21 +81,27 @@ class Point:
         actor.GetProperty().SetColor(self.color)
         return actor
 
-    def rescale(self, units: str):
+    def rescale(self, units: str) -> Point:
         scl = getunitconversion(self.units, units)
-        self.position = self.position * scl
-        self.radius = self.radius * scl
-        self.units = units
+        pt = self.copy()
+        pt.position = pt.position * scl
+        pt.radius = pt.radius * scl
+        pt.units = units
+        return pt
 
     def transform(self,
-                  matrix: np.ndarray,
+                  matrix: np.ndarray|ArrayTransform,
                   units: str | None = None,
                   new_dims: Tuple[str, str, str] | None=None):
+        pt = self.copy()
         if units is not None:
-            self.rescale(units)
-        self.position = np.dot(matrix, np.append(self.position, 1.0))[:3]
+            pt = pt.rescale(units)
+        if isinstance(matrix, ArrayTransform):
+            matrix = matrix.get_matrix(units=pt.units)
+        pt.position = np.dot(matrix, np.append(pt.position, 1.0))[:3]
         if new_dims is not None:
-            self.dims = new_dims
+            pt.dims = new_dims
+        return pt
 
     def to_dict(self):
         return {"id": self.id,
@@ -151,6 +157,28 @@ class ArrayTransform(DictMixin):
     """The units of the space on which to apply the transform matrix , e.g. "mm"
     (In order to apply the transform to points, first represent the points in these units.)
     """
+
+    def get_matrix(self, units: str | None = None) -> np.ndarray:
+        """Return the transform matrix in the requested units."""
+        if units is None:
+            return self.matrix
+        else:
+            scl = getunitconversion(self.units, units)
+            matrix = self.matrix.copy()
+            matrix[0:3, 3] = matrix[0:3, 3] * scl
+            return matrix
+
+    def inverse(self, units: str | None = None) -> ArrayTransform:
+        """Return the inverse of the transform matrix in the requested units."""
+        if units is None:
+            return ArrayTransform(np.linalg.inv(self.matrix), self.units)
+        else:
+            scl = getunitconversion(self.units, units)
+            matrix_inv = self.matrix.copy()
+            matrix_inv[0:3, 3] = matrix_inv[0:3, 3] * scl
+            matrix_inv = np.linalg.inv(matrix_inv)
+            return ArrayTransform(matrix_inv, units)
+
 
 # === Tools to work with spherical coordinate systems ===
 

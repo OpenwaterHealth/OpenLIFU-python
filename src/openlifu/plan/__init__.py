@@ -5,7 +5,7 @@ from .protocol import Protocol
 from .run import Run
 from .solution import Solution
 from .solution_analysis import SolutionAnalysis, SolutionAnalysisOptions
-from .target_constraints import TargetConstraints
+from .target_constraint import TargetConstraint
 
 __all__ = [
     "Protocol",
@@ -13,6 +13,6 @@ __all__ = [
     "Run",
     "SolutionAnalysis",
     "SolutionAnalysisOptions",
-    "TargetConstraints",
+    "TargetConstraint",
     "ParameterConstraint"
 ]

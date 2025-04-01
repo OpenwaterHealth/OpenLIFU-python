@@ -91,7 +91,16 @@
   "param_constraints": {
     "MI": { "operator": "<", "error_value": 1.9 }
   },
-  "target_constraints": [],
+  "target_constraints_global": {
+    "L": { "min": -150, "max": 150, "units": "mm" },
+    "P": { "min": -150, "max": 150, "units": "mm" },
+    "S": { "min": -150, "max": 150, "units": "mm" }
+  },
+  "target_constraints_local": {
+    "lat": { "min": -20, "max": 20, "units": "mm" },
+    "ele": { "min": -20, "max": 20, "units": "mm" },
+    "ax": { "min": 20, "max": 70, "units": "mm" }
+  },
   "virtual_fit_options": {
     "units": "mm",
     "transducer_steering_center_distance": 50.0,

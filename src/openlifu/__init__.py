@@ -16,7 +16,7 @@ from openlifu.bf import (
     delay_methods,
     focal_patterns,
 )
-from openlifu.db import Database, User
+from openlifu.db import Database, Session, Subject, User
 
 #from . import bf, db, io, plan, seg, sim, xdc, geo
 from openlifu.geo import Point
@@ -64,6 +64,8 @@ __all__ = [
     "SimSetup",
     "Database",
     "User",
+    "Subject",
+    "Session",
     "virtual_fit",
     "LIFUInterface",
     "__version__",

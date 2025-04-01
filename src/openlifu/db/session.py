@@ -112,6 +112,18 @@ class Session:
         else:
             self.markers = list(self.markers)
 
+    def get_local_targets(self, units:str|None = None, new_dims=("lat","ele","ax")) -> List[Point]:
+        """Get the targets in the local coordinate system of the transducer.
+
+        :param units: Units to use for the coordinates. If None, then the units of the target are used.
+        :returns: List of targets in the local coordinate system of the transducer.
+        """
+        local_targets = []
+        for t in self.targets:
+            t_local = t.transform(self.array_transform.inverse(), units, new_dims=new_dims)
+            local_targets.append(t_local)
+        return local_targets
+
     @staticmethod
     def from_file(filename):
         """

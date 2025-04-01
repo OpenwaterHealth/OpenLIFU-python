@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Literal, Tuple
 
 import numpy as np
 import xarray as xa
@@ -19,7 +19,7 @@ from openlifu.geo import Point
 from openlifu.plan.param_constraint import ParameterConstraint
 from openlifu.plan.solution import Solution
 from openlifu.plan.solution_analysis import SolutionAnalysis, SolutionAnalysisOptions
-from openlifu.plan.target_constraints import TargetConstraints
+from openlifu.plan.target_constraint import TargetConstraint
 from openlifu.sim import run_simulation
 from openlifu.util.checkgpu import gpu_available
 from openlifu.util.json import PYFUSEncoder
@@ -28,7 +28,7 @@ from openlifu.xdc import Transducer
 
 OnPulseMismatchAction = Enum("OnPulseMismatchAction", ["ERROR", "ROUND", "ROUNDUP", "ROUNDDOWN"])
 
-
+CoordinateOptions = Literal["global", "local"]
 @dataclass
 class Protocol:
     id: str = "protocol"
@@ -64,7 +64,10 @@ class Protocol:
     param_constraints: dict = field(default_factory=dict)  #TODO: this seems to be used only in `plan.check_analysis` but not called anywhere
     """ The constraints on the analysis parameters. If computed parameters are outside of the ranges defined here, warnings or errors may be flagged to reject the solution """
 
-    target_constraints: List[TargetConstraints] = field(default_factory=list)
+    target_constraints_global: dict = field(default_factory=dict)
+    """ The constraints on the target position. If the target is outside of the bounds defined here, warnings or errors may be flagged to reject the solution """
+
+    target_constraints_local: dict = field(default_factory=dict)
     """ The constraints on the target position. If the target is outside of the bounds defined here, warnings or errors may be flagged to reject the solution """
 
     analysis_options: SolutionAnalysisOptions = field(default_factory=SolutionAnalysisOptions)
@@ -87,9 +90,13 @@ class Protocol:
         if "materials" in d:
             seg_method_dict["materials"] = seg.Material.from_dict(d.pop("materials"))
         d["seg_method"] = seg.SegmentationMethod.from_dict(seg_method_dict)
-        d['param_constraints'] = {key: ParameterConstraint.from_dict(val) for key, val in d.get("param_constraints", {}).items()}
+        d['param_constraints'] = {param: ParameterConstraint.from_dict(pc) for param, pc in d.get("param_constraints", {}).items()}
         if "target_constraints" in d:
-            d['target_constraints'] = [TargetConstraints.from_dict(d_tc) for d_tc in d.get("target_constraints", {})]
+            d.pop("target_constraints")
+        if "target_constraints_global" in d:
+            d["target_constraints_global"] = {dim: TargetConstraint.from_dict(tc) for dim, tc in d["target_constraints_global"].items()}
+        if "target_constraints_local" in d:
+            d["target_constraints_local"] = {dim: TargetConstraint.from_dict(tc) for dim, tc in d["target_constraints_local"].items()}
         if "virtual_fit_options" in d:
             d['virtual_fit_options'] = VirtualFitOptions.from_dict(d['virtual_fit_options'])
         if "analysis_options" in d:
@@ -110,8 +117,9 @@ class Protocol:
             "delay_method": self.delay_method.to_dict(),
             "apod_method": self.apod_method.to_dict(),
             "seg_method": self.seg_method.to_dict(),
-            "param_constraints": {id: pc.to_dict() for id, pc in self.param_constraints.items()},
-            "target_constraints": self.target_constraints,
+            "param_constraints": {param: pc.to_dict() for param, pc in self.param_constraints.items()},
+            "target_constraints_global": {dim: tc.to_dict() for dim, tc in self.target_constraints_global.items()},
+            "target_constraints_local": {dim: tc.to_dict() for dim, tc in self.target_constraints_local.items()},
             "virtual_fit_options": self.virtual_fit_options.to_dict(),
             "analysis_options": self.analysis_options,
         }
@@ -157,24 +165,45 @@ class Protocol:
         with open(filename, 'w') as file:
             file.write(self.to_json(compact=False))
 
-
-    def check_target(self, target: Point):
+    def check_target(self, target: Point, coordinates:CoordinateOptions="global") -> Tuple[bool, Dict[str, bool], List[str]]:
         """
         Check if a target is within bounds, raising an exception if it isn't.
 
         Args:
             target: The geo.Point target to check.
+            coordinates: The coordinate system of the target position. Can be either 'global' or 'local'.
+
+        Returns:
+            all_ok: A boolean indicating if the target is within bounds.
+            dim_ok: A dictionary indicating if each dimension is within bounds.
+            errmsg: A list of error messages for each dimension that is out of bounds.
         """
         if isinstance(target, list):
             raise ValueError(f"Input target {target} not supposed to be a list!")
 
         # check if target position is within target_constraints defined bounds.
-        for target_constraint in self.target_constraints:
+        all_ok = True
+        dim_ok = {}
+        errmsg = []
+        if coordinates == "global":
+            target_constraints = self.target_constraints_global
+        elif coordinates == "local":
+            target_constraints = self.target_constraints_local
+        else:
+            raise ValueError(f"Unknown coordinate system {coordinates}!")
+        for dim, target_constraint in target_constraints.items():
             pos = target.get_position(
-                dim=target_constraint.dim,
+                dim=dim,
                 units=target_constraint.units
             )
-            target_constraint.check_bounds(pos)
+            if target_constraint.is_in_bounds(pos):
+                dim_ok[dim] = True
+            else:
+                dim_ok[dim] = False
+                all_ok = False
+                errmsg.append([f"The {dim} position of {target.name} ({pos:0.3f} {target_constraint.units}) is not within [{target_constraint.min}, {target_constraint.max}]!"])
+        return all_ok, dim_ok, errmsg
+
 
     def fix_pulse_mismatch(self, on_pulse_mismatch: OnPulseMismatchAction, foci: List[Point]):
         """Fix the protocol sequence pulse count in-place given a pulse_mismatch action."""
@@ -251,7 +280,12 @@ class Protocol:
         if analysis_options is None:
             analysis_options = self.analysis_options
         # check before if target is within bounds
-        self.check_target(target)
+        all_ok, dim_ok, errmsg = self.check_target(target, "local")
+        if not all_ok:
+            msg = f"{len(errmsg)} dims out of bounds:\n" + errmsg.join("\n")
+            self.logger.error(msg=msg)
+            raise ValueError(msg)
+
         params = sim_options.setup_sim_scene(self.seg_method, volume=volume)
 
         delays_to_stack: List[np.ndarray] = []
