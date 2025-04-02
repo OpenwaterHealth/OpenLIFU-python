@@ -93,9 +93,9 @@ else:
     print("Failed to turn on 12V.")
 
 # Set High Voltage Level
-print("Set HV Power to +/- 45V")
-if interface.hvcontroller.set_voltage(voltage=45.0):
-    print("Voltage set to 45.0 V.")
+print("Set HV Power to +/- 85V")
+if interface.hvcontroller.set_voltage(voltage=75.0):
+    print("Voltage set to 85.0 V.")
 else:
     print("Failed to set voltage.")
 
