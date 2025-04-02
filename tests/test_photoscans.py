@@ -135,5 +135,5 @@ def test_convert_numpy_to_vtkimage():
 
 def test_resource_import():
     """Ensure that a meshroom pipeline resource file can be imported"""
-    with importlib.resources.path("openlifu.meshroom_pipelines", "default_pipeline.mg") as pipeline_path:
-        assert pipeline_path.exists()
+    pipeline_path = importlib.resources.files("openlifu.meshroom_pipelines") / "default_pipeline.mg"
+    assert pipeline_path.exists()
