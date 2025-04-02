@@ -224,8 +224,7 @@ def run_reconstruction(images: list[Path], pipeline: Path | None = None) -> Tupl
         data_dir (Path): The directory containing the underlying data files whose names are given in the Photoscan.
     """
     if pipeline is None:
-        with importlib.resources.path("openlifu.meshroom_pipelines", "default_pipeline.mg") as default_path:
-            pipeline = default_path
+        pipeline = importlib.resources.files("openlifu.meshroom_pipelines") / "default_pipeline.mg"
 
     if shutil.which("meshroom_batch") is None:
         raise FileNotFoundError("Error: 'meshroom_batch' is not found in system PATH. Ensure it is installed and accessible.")
