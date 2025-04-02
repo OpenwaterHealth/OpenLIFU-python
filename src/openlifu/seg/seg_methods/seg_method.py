@@ -18,7 +18,7 @@ class SegmentationMethod:
     materials: Annotated[dict[str, Material], OpenLIFUFieldData("Segmentation materials", "Dictionary mapping of label names to material definitions used during segmentation")] = field(default_factory=lambda: MATERIALS.copy())
     """Dictionary mapping of label names to material definitions used during segmentation"""
 
-    ref_material: Annotated[str, OpenLIFUFieldData("Reference material", "TODO: Add description")] = "water"
+    ref_material: Annotated[str, OpenLIFUFieldData("Reference material", None)] = "water"
     """TODO: Add description"""
 
     def __post_init__(self):

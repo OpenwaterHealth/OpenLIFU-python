@@ -9,5 +9,5 @@ from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 
 @dataclass
 class Tissue(UniformSegmentation):
-    ref_material: Annotated[str, OpenLIFUFieldData("Reference material", "TODO: Add description")] = "tissue"
+    ref_material: Annotated[str, OpenLIFUFieldData("Reference material", None)] = "tissue"
     """TODO: Add description"""

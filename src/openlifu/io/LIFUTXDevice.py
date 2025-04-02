@@ -1519,16 +1519,16 @@ def swap_byte_order(regs):
 
 @dataclass
 class Tx7332DelayProfile:
-    profile: Annotated[int, OpenLIFUFieldData("Profile index", "TODO: Add description")]
+    profile: Annotated[int, OpenLIFUFieldData("Profile index", None)]
     """TODO: Add description"""
 
-    delays: Annotated[List[float], OpenLIFUFieldData("Delay values", "TODO: Add description")]
+    delays: Annotated[List[float], OpenLIFUFieldData("Delay values", None)]
     """TODO: Add description"""
 
-    apodizations: Annotated[List[int] | None, OpenLIFUFieldData("Apodizations", "TODO: Add description")] = None
+    apodizations: Annotated[List[int] | None, OpenLIFUFieldData("Apodizations", None)] = None
     """TODO: Add description"""
 
-    units: Annotated[str, OpenLIFUFieldData("Units", "TODO: Add description")] = 's'
+    units: Annotated[str, OpenLIFUFieldData("Units", None)] = 's'
     """TODO: Add description"""
 
     def __post_init__(self):
@@ -1542,22 +1542,22 @@ class Tx7332DelayProfile:
 
 @dataclass
 class Tx7332PulseProfile:
-    profile: Annotated[int, OpenLIFUFieldData("Profile index", "TODO: Add description")]
+    profile: Annotated[int, OpenLIFUFieldData("Profile index", None)]
     """TODO: Add description"""
 
-    frequency: Annotated[float, OpenLIFUFieldData("Frequency", "TODO: Add description")]
+    frequency: Annotated[float, OpenLIFUFieldData("Frequency", None)]
     """TODO: Add description"""
 
-    cycles: Annotated[int, OpenLIFUFieldData("Number of cycles", "TODO: Add description")]
+    cycles: Annotated[int, OpenLIFUFieldData("Number of cycles", None)]
     """TODO: Add description"""
 
-    duty_cycle: Annotated[float, OpenLIFUFieldData("Duty cycle", "TODO: Add description")] = DEFAULT_PATTERN_DUTY_CYCLE
+    duty_cycle: Annotated[float, OpenLIFUFieldData("Duty cycle", None)] = DEFAULT_PATTERN_DUTY_CYCLE
     """TODO: Add description"""
 
-    tail_count: Annotated[int, OpenLIFUFieldData("Tail count", "TODO: Add description")] = DEFAULT_TAIL_COUNT
+    tail_count: Annotated[int, OpenLIFUFieldData("Tail count", None)] = DEFAULT_TAIL_COUNT
     """TODO: Add description"""
 
-    invert: Annotated[bool, OpenLIFUFieldData("Invert polarity", "TODO: Add description")] = False
+    invert: Annotated[bool, OpenLIFUFieldData("Invert polarity", None)] = False
     """TODO: Add description"""
 
     def __post_init__(self):
@@ -1566,7 +1566,7 @@ class Tx7332PulseProfile:
 
 @dataclass
 class Tx7332Registers:
-    bf_clk: Annotated[float, OpenLIFUFieldData("TODO: Add name", "TODO: Add description")] = DEFAULT_CLK_FREQ
+    bf_clk: Annotated[float, OpenLIFUFieldData(None, None)] = DEFAULT_CLK_FREQ
     """TODO: Add description"""
 
     _delay_profiles_list: Annotated[List[Tx7332DelayProfile], OpenLIFUFieldData("Delay profiles list", "Internal list of available delay profiles")] = field(default_factory=list)
@@ -1806,7 +1806,7 @@ class Tx7332Registers:
 
 @dataclass
 class TxDeviceRegisters:
-    bf_clk: Annotated[int, OpenLIFUFieldData("TODO: Add name", "TODO: Add description")] = DEFAULT_CLK_FREQ
+    bf_clk: Annotated[int, OpenLIFUFieldData(None, None)] = DEFAULT_CLK_FREQ
     """TODO: Add description"""
 
     _delay_profiles_list: Annotated[List[Tx7332DelayProfile], OpenLIFUFieldData("Delay profiles list", "Internal list of available delay profiles")] = field(default_factory=list)

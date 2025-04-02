@@ -17,22 +17,22 @@ from .element import Element
 
 @dataclass
 class Transducer:
-    id: Annotated[str, OpenLIFUFieldData("Transducer ID", "TODO: Add description")] = "transducer"
+    id: Annotated[str, OpenLIFUFieldData("Transducer ID", None)] = "transducer"
     """TODO: Add description"""
 
-    name: Annotated[str, OpenLIFUFieldData("Transducer name", "TODO: Add description")] = ""
+    name: Annotated[str, OpenLIFUFieldData("Transducer name", None)] = ""
     """TODO: Add description"""
 
-    elements: Annotated[Tuple[Element], OpenLIFUFieldData("Elements", "TODO: Add description")] = ()
+    elements: Annotated[Tuple[Element], OpenLIFUFieldData("Elements", None)] = ()
     """TODO: Add description"""
 
-    frequency: Annotated[float, OpenLIFUFieldData("Frequency", "TODO: Add description")] = 400.6e3
+    frequency: Annotated[float, OpenLIFUFieldData("Frequency", None)] = 400.6e3
     """TODO: Add description"""
 
-    units: Annotated[str, OpenLIFUFieldData("Units", "TODO: Add description")] = "m"
+    units: Annotated[str, OpenLIFUFieldData("Units", None)] = "m"
     """TODO: Add description"""
 
-    attrs: Annotated[Dict[str, Any], OpenLIFUFieldData("Attributes", "TODO: Add description")] = field(default_factory=dict)
+    attrs: Annotated[Dict[str, Any], OpenLIFUFieldData("Attributes", None)] = field(default_factory=dict)
     """TODO: Add description"""
 
     registration_surface_filename: Annotated[str | None, OpenLIFUFieldData("Registration surface filename", "Relative path to an open surface of the transducer to be used for registration")] = None

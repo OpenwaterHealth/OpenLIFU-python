@@ -29,7 +29,7 @@ class Material:
     thermal_conductivity: Annotated[float, OpenLIFUFieldData("Thermal conductivity (W/m/K)", "Thermal conductivity of the material (W/m/K)")] = 0.598  # W/m/K
     """Thermal conductivity of the material (W/m/K)"""
 
-    param_ids: Annotated[Tuple[str, str, str, str, str], OpenLIFUFieldData("Parameter IDs", "TODO: Add description")] = field(default_factory=lambda: ("sound_speed", "density", "attenuation", "specific_heat", "thermal_conductivity"), init=False, repr=False)
+    param_ids: Annotated[Tuple[str, str, str, str, str], OpenLIFUFieldData("Parameter IDs", None)] = field(default_factory=lambda: ("sound_speed", "density", "attenuation", "specific_heat", "thermal_conductivity"), init=False, repr=False)
     """TODO: Add description"""
 
     @classmethod

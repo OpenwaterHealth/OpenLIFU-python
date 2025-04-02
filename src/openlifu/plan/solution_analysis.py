@@ -57,16 +57,16 @@ class SolutionAnalysis(DictMixin):
     p0_Pa: Annotated[list[float], OpenLIFUFieldData("Initial pressure", "Initial pressure values in the field, in Pa")] = field(default_factory=list)
     """Initial pressure values in the field, in Pa"""
 
-    TIC: Annotated[float | None, OpenLIFUFieldData("Thermal index", "TODO: Add description")] = None
+    TIC: Annotated[float | None, OpenLIFUFieldData("Thermal index", None)] = None
     """TODO: Add description"""
 
-    power_W: Annotated[float | None, OpenLIFUFieldData("Power", "TODO: Add description")] = None
+    power_W: Annotated[float | None, OpenLIFUFieldData("Power", None)] = None
     """TODO: Add description"""
 
-    MI: Annotated[float | None, OpenLIFUFieldData("Mechanical index", "TODO: Add description")] = None
+    MI: Annotated[float | None, OpenLIFUFieldData("Mechanical index", None)] = None
     """TODO: Add description"""
 
-    global_ispta_mWcm2: Annotated[float | None, OpenLIFUFieldData("Global ISPTA", "TODO: Add description")] = None
+    global_ispta_mWcm2: Annotated[float | None, OpenLIFUFieldData("Global ISPTA", None)] = None
     """TODO: Add description"""
 
     @staticmethod
@@ -90,34 +90,34 @@ class SolutionAnalysis(DictMixin):
 
 @dataclass
 class SolutionAnalysisOptions(DictMixin):
-    standoff_sound_speed: Annotated[float, OpenLIFUFieldData("Standoff sound speed", "TODO: Add description")] = 1500.0
+    standoff_sound_speed: Annotated[float, OpenLIFUFieldData("Standoff sound speed", None)] = 1500.0
     """TODO: Add description"""
 
-    standoff_density: Annotated[float, OpenLIFUFieldData("Standoff density", "TODO: Add description")] = 1000.0
+    standoff_density: Annotated[float, OpenLIFUFieldData("Standoff density", None)] = 1000.0
     """TODO: Add description"""
 
-    ref_sound_speed: Annotated[float, OpenLIFUFieldData("Reference sound speed", "TODO: Add description")] = 1500.0
+    ref_sound_speed: Annotated[float, OpenLIFUFieldData("Reference sound speed", None)] = 1500.0
     """TODO: Add description"""
 
-    ref_density: Annotated[float, OpenLIFUFieldData("Reference density", "TODO: Add description")] = 1000.0
+    ref_density: Annotated[float, OpenLIFUFieldData("Reference density", None)] = 1000.0
     """TODO: Add description"""
 
-    focus_diameter: Annotated[float, OpenLIFUFieldData("Focus diameter", "TODO: Add description")] = 0.5
+    focus_diameter: Annotated[float, OpenLIFUFieldData("Focus diameter", None)] = 0.5
     """TODO: Add description"""
 
-    mainlobe_aspect_ratio: Annotated[Tuple[float, float, float], OpenLIFUFieldData("Mainlobe aspect ratio", "TODO: Add description")] = (1., 1., 5.)
+    mainlobe_aspect_ratio: Annotated[Tuple[float, float, float], OpenLIFUFieldData("Mainlobe aspect ratio", None)] = (1., 1., 5.)
     """TODO: Add description"""
 
-    mainlobe_radius: Annotated[float, OpenLIFUFieldData("Mainlobe radius", "TODO: Add description")] = 2.5e-3
+    mainlobe_radius: Annotated[float, OpenLIFUFieldData("Mainlobe radius", None)] = 2.5e-3
     """TODO: Add description"""
 
-    beamwidth_radius: Annotated[float, OpenLIFUFieldData("Beamwidth radius", "TODO: Add description")] = 5e-3
+    beamwidth_radius: Annotated[float, OpenLIFUFieldData("Beamwidth radius", None)] = 5e-3
     """TODO: Add description"""
 
-    sidelobe_radius: Annotated[float, OpenLIFUFieldData("Sidelobe radius", "TODO: Add description")] = 3e-3
+    sidelobe_radius: Annotated[float, OpenLIFUFieldData("Sidelobe radius", None)] = 3e-3
     """TODO: Add description"""
 
-    sidelobe_zmin: Annotated[float, OpenLIFUFieldData("Sidelobe minimum z", "TODO: Add description")] = 1e-3
+    sidelobe_zmin: Annotated[float, OpenLIFUFieldData("Sidelobe minimum z", None)] = 1e-3
     """TODO: Add description"""
 
     distance_units: Annotated[str, OpenLIFUFieldData("Distance units", "The units used for distance measurements")] = "m"
