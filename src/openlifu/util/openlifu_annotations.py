@@ -25,5 +25,5 @@ class OpenLIFUFieldData:
     compatibility, and so fields will behave as though no annotation is present.
     """
 
-    name : Annotated[str, "The name of the dataclass field."] = field(default="Placeholder description")
-    description : Annotated[str, "The description of the dataclass field."] = field(default="Placeholder description.")
+    name : Annotated[str | None, "The name of the dataclass field."] = field(default=None)
+    description : Annotated[str | None, "The description of the dataclass field."] = field(default=None)

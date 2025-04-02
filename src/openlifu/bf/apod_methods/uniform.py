@@ -14,7 +14,7 @@ from openlifu.xdc import Transducer
 
 @dataclass
 class Uniform(ApodizationMethod):
-    value: Annotated[float, OpenLIFUFieldData("Value", "TODO: Add description")] = 1.0
+    value: Annotated[float, OpenLIFUFieldData("Value", None)] = 1.0
     """TODO: Add description"""
 
     def calc_apodization(self, arr: Transducer, target: Point, params: xa.Dataset, transform:np.ndarray | None=None):

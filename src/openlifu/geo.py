@@ -31,7 +31,7 @@ class Point:
     radius: Annotated[float, OpenLIFUFieldData("Radius", "Radius for rendering the point in the provided units")] = 1.0  # mm
     """Radius for rendering the point in the provided units"""
 
-    dims: Annotated[Tuple[str, str, str], OpenLIFUFieldData("TODO: Add name", "TODO: Add description")] = ("x", "y", "z")
+    dims: Annotated[Tuple[str, str, str], OpenLIFUFieldData(None, None)] = ("x", "y", "z")
     """TODO: Add description"""
 
     units: Annotated[str, OpenLIFUFieldData("Units", "Units for the point")] = "mm"
