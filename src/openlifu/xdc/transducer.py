@@ -17,20 +17,20 @@ from .element import Element
 
 @dataclass
 class Transducer:
-    id: Annotated[str, OpenLIFUFieldData("Transducer ID", None)] = "transducer"
-    """TODO: Add description"""
+    id: Annotated[str, OpenLIFUFieldData("Transducer ID", "Unique identifier for transducer")] = "transducer"
+    """Unique identifier for transducer"""
 
-    name: Annotated[str, OpenLIFUFieldData("Transducer name", None)] = ""
-    """TODO: Add description"""
+    name: Annotated[str, OpenLIFUFieldData("Transducer name", "Human readable name for transducer")] = ""
+    """Human readable name for transducer"""
 
-    elements: Annotated[Tuple[Element], OpenLIFUFieldData("Elements", None)] = ()
-    """TODO: Add description"""
+    elements: Annotated[Tuple[Element], OpenLIFUFieldData("Elements", "Collection of transducer Elements")] = ()
+    """Collection of transducer Elements"""
 
     frequency: Annotated[float, OpenLIFUFieldData("Frequency", None)] = 400.6e3
     """TODO: Add description"""
 
-    units: Annotated[str, OpenLIFUFieldData("Units", None)] = "m"
-    """TODO: Add description"""
+    units: Annotated[str, OpenLIFUFieldData("Units", "Native units of transducer local coordinate space")] = "m"
+    """Native units of transducer local coordinate space"""
 
     attrs: Annotated[Dict[str, Any], OpenLIFUFieldData("Attributes", None)] = field(default_factory=dict)
     """TODO: Add description"""
