@@ -17,32 +17,32 @@ from openlifu.xdc import Transducer
 
 @dataclass
 class SimSetup(DictMixin):
-    dims: Annotated[Tuple[str, str, str], OpenLIFUFieldData("Dimension keys", None)] = ("lat", "ele", "ax")
-    """TODO: Add description"""
+    dims: Annotated[Tuple[str, str, str], OpenLIFUFieldData("Dimension keys", "Codenames of the axes in the coordinate system being used")] = ("lat", "ele", "ax")
+    """Names of the axes in the coordinate system being used"""
 
-    names: Annotated[Tuple[str, str, str], OpenLIFUFieldData("Dimension names", None)] = ("Lateral", "Elevation", "Axial")
-    """TODO: Add description"""
+    names: Annotated[Tuple[str, str, str], OpenLIFUFieldData("Dimension names", "Human readable names of the axes in the coordinate system being used")] = ("Lateral", "Elevation", "Axial")
+    """"Human readable names of the axes in the coordinate system being used"""
 
-    spacing: Annotated[float, OpenLIFUFieldData(None, None)] = 1.0
-    """TODO: Add description"""
+    spacing: Annotated[float, OpenLIFUFieldData("Spacing", "Simulation grid spacing")] = 1.0
+    """Simulation grid spacing"""
 
     units: Annotated[str, OpenLIFUFieldData("Spatial units", "Units used for spatial measurements")] = "mm"
     """Units used for spatial measurements"""
 
-    x_extent: Annotated[Tuple[float, float], OpenLIFUFieldData(None, None)] = (-30., 30.)
-    """TODO: Add description"""
+    x_extent: Annotated[Tuple[float, float], OpenLIFUFieldData("X-extent", "Simulation grid extent along the first dimension")] = (-30., 30.)
+    """Simulation grid extent along the first dimension"""
 
-    y_extent: Annotated[Tuple[float, float], OpenLIFUFieldData(None, None)] = (-30., 30.)
-    """TODO: Add description"""
+    y_extent: Annotated[Tuple[float, float], OpenLIFUFieldData("Y-extent", "Simulation grid extend along the second dimension")] = (-30., 30.)
+    """Simulation grid extend along the second dimension"""
 
-    z_extent: Annotated[Tuple[float, float], OpenLIFUFieldData(None, None)] = (-4., 60.)
-    """TODO: Add description"""
+    z_extent: Annotated[Tuple[float, float], OpenLIFUFieldData("Z-extent", "Simulation grid extend along the third dimension")] = (-4., 60.)
+    """Simulation grid extend along the third dimension"""
 
-    dt: Annotated[float, OpenLIFUFieldData(None, None)] = 0.
-    """TODO: Add description"""
+    dt: Annotated[float, OpenLIFUFieldData("Time step", "Simulation time step")] = 0.
+    """Simulation time step"""
 
-    t_end: Annotated[float, OpenLIFUFieldData(None, None)] = 0.
-    """TODO: Add description"""
+    t_end: Annotated[float, OpenLIFUFieldData("End time", """Simulation end time""")] = 0.
+    """Simulation end time"""
 
     c0: Annotated[float, OpenLIFUFieldData(None, None)] = 1500.0
     """TODO: Add description"""

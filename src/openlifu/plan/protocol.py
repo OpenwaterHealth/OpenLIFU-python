@@ -70,8 +70,8 @@ class Protocol:
     analysis_options: Annotated[SolutionAnalysisOptions, OpenLIFUFieldData("Analysis options", "Options to adjust solution analysis. By default, the analysis is configured with default options")] = field(default_factory=SolutionAnalysisOptions)
     """Options to adjust solution analysis. By default, the analysis is configured with default options"""
 
-    virtual_fit_options: Annotated[VirtualFitOptions, OpenLIFUFieldData("Virtual fit options", None)] = field(default_factory=VirtualFitOptions)
-    """TODO: Add description"""
+    virtual_fit_options: Annotated[VirtualFitOptions, OpenLIFUFieldData("Virtual fit options", "Configuration of the virtual fit algorithm")] = field(default_factory=VirtualFitOptions)
+    """Configuration of the virtual fit algorithm"""
 
     def __post_init__(self):
         self.logger = logging.getLogger(__name__)

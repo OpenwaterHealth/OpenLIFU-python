@@ -1522,14 +1522,14 @@ class Tx7332DelayProfile:
     profile: Annotated[int, OpenLIFUFieldData("Profile index", None)]
     """TODO: Add description"""
 
-    delays: Annotated[List[float], OpenLIFUFieldData("Delay values", None)]
-    """TODO: Add description"""
+    delays: Annotated[List[float], OpenLIFUFieldData("Delay values", "Delay values for transducer elements")]
+    """Delay values for transducer elements"""
 
-    apodizations: Annotated[List[int] | None, OpenLIFUFieldData("Apodizations", None)] = None
-    """TODO: Add description"""
+    apodizations: Annotated[List[int] | None, OpenLIFUFieldData("Apodizations", "Apodization values for transducer elements")] = None
+    """Apodization values for transducer elements"""
 
-    units: Annotated[str, OpenLIFUFieldData("Units", None)] = 's'
-    """TODO: Add description"""
+    units: Annotated[str, OpenLIFUFieldData("Units", "Time units used for delay values")] = 's'
+    """Time units used for delay values"""
 
     def __post_init__(self):
         self.num_elements = len(self.delays)

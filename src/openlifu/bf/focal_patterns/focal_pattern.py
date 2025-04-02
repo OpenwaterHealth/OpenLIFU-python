@@ -18,8 +18,8 @@ class FocalPattern(ABC):
     target_pressure: Annotated[float, OpenLIFUFieldData("Target pressure", "Target pressure of the focal pattern in given units")] = 1.0
     """Target pressure of the focal pattern in given units"""
 
-    units: Annotated[str, OpenLIFUFieldData("Pressure units", None)] = "Pa"
-    """TODO: Add description"""
+    units: Annotated[str, OpenLIFUFieldData("Pressure units", "Pressure units")] = "Pa"
+    """Pressure units"""
 
     @abstractmethod
     def get_targets(self, target: Point):

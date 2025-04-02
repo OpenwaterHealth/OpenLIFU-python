@@ -17,8 +17,8 @@ class MaxAngle(ApodizationMethod):
     max_angle: Annotated[float, OpenLIFUFieldData("Maximum angle", None)] = 30.0
     """TODO: Add description"""
 
-    units: Annotated[str, OpenLIFUFieldData("Angle units", None)] = "deg"
-    """TODO: Add description"""
+    units: Annotated[str, OpenLIFUFieldData("Angle units", "Angle units")] = "deg"
+    """Angle units"""
 
     def calc_apodization(self, arr: Transducer, target: Point, params: xa.Dataset, transform:np.ndarray | None=None):
         target_pos = target.get_position(units="m")
