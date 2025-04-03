@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, Any, Dict, List
 
-from openlifu.util.openlifu_annotations import OpenLIFUFieldData
+from openlifu.util.annotations import OpenLIFUFieldData
 
 
 @dataclass

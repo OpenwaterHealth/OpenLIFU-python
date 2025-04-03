@@ -9,8 +9,8 @@ import xarray as xa
 
 from openlifu.geo import Point
 from openlifu.seg import SegmentationMethod
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
-from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 from openlifu.util.units import getunitconversion
 from openlifu.xdc import Transducer
 

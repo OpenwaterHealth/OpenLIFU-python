@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated
 
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
-from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 from openlifu.util.strings import sanitize
 
 

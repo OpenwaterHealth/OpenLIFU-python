@@ -10,7 +10,7 @@ import xarray as xa
 
 from openlifu.seg import seg_methods
 from openlifu.seg.material import MATERIALS, Material
-from openlifu.util.openlifu_annotations import OpenLIFUFieldData
+from openlifu.util.annotations import OpenLIFUFieldData
 
 
 @dataclass

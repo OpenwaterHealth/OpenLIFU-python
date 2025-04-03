@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Annotated, Dict, List, Literal
 import numpy as np
 
 from openlifu.io.LIFUUart import LIFUUart
-from openlifu.util.openlifu_annotations import OpenLIFUFieldData
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.units import getunitconversion
 
 DEFAULT_NUM_TRANSMITTERS = 2

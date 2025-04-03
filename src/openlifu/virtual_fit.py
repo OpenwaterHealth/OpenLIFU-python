@@ -18,8 +18,8 @@ from openlifu.seg.skinseg import (
     spherical_interpolator_from_mesh,
     vtk_img_from_array_and_affine,
 )
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
-from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 from openlifu.util.units import getunitconversion
 
 log = logging.getLogger("VirtualFit")

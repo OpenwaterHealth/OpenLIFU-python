@@ -20,9 +20,9 @@ from openlifu.plan.solution import Solution
 from openlifu.plan.solution_analysis import SolutionAnalysis, SolutionAnalysisOptions
 from openlifu.plan.target_constraints import TargetConstraints
 from openlifu.sim import run_simulation
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.checkgpu import gpu_available
 from openlifu.util.json import PYFUSEncoder
-from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 from openlifu.virtual_fit import VirtualFitOptions
 from openlifu.xdc import Transducer
 

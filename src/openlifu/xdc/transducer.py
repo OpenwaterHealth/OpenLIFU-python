@@ -9,7 +9,7 @@ from typing import Annotated, Any, Dict, List, Tuple
 import numpy as np
 import vtk
 
-from openlifu.util.openlifu_annotations import OpenLIFUFieldData
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.units import getunitconversion
 
 from .element import Element

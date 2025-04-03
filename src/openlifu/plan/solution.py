@@ -19,8 +19,8 @@ from openlifu.plan.solution_analysis import (
     get_beamwidth,
     get_mask,
 )
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.json import PYFUSEncoder
-from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 from openlifu.util.units import getunitconversion, rescale_coords, rescale_data_arr
 from openlifu.xdc import Transducer
 
