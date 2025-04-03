@@ -22,6 +22,7 @@ from openlifu.plan.target_constraints import TargetConstraints
 from openlifu.sim import run_simulation
 from openlifu.util.checkgpu import gpu_available
 from openlifu.util.json import PYFUSEncoder
+from openlifu.virtual_fit import VirtualFitOptions
 from openlifu.xdc import Transducer
 
 OnPulseMismatchAction = Enum("OnPulseMismatchAction", ["ERROR", "ROUND", "ROUNDUP", "ROUNDDOWN"])
@@ -68,6 +69,8 @@ class Protocol:
     analysis_options: SolutionAnalysisOptions = field(default_factory=SolutionAnalysisOptions)
     """ Options to adjust solution analysis. By default, the analysis is configured with default options """
 
+    virtual_fit_options : VirtualFitOptions = field(default_factory=VirtualFitOptions)
+
     def __post_init__(self):
         self.logger = logging.getLogger(__name__)
 
@@ -86,6 +89,8 @@ class Protocol:
         d['param_constraints'] = d.get("param_constraints", {})
         if "target_constraints" in d:
             d['target_constraints'] = [TargetConstraints.from_dict(d_tc) for d_tc in d.get("target_constraints", {})]
+        if "virtual_fit_options" in d:
+            d['virtual_fit_options'] = VirtualFitOptions.from_dict(d['virtual_fit_options'])
         if "analysis_options" in d:
             if "mainlobe_aspect_ratio" in d["analysis_options"]:
                 d["analysis_options"]["mainlobe_aspect_ratio"] = tuple(d["analysis_options"]["mainlobe_aspect_ratio"])
@@ -106,6 +111,7 @@ class Protocol:
             "seg_method": self.seg_method.to_dict(),
             "param_constraints": self.param_constraints,
             "target_constraints": self.target_constraints,
+            "virtual_fit_options": self.virtual_fit_options.to_dict(),
             "analysis_options": self.analysis_options,
         }
 

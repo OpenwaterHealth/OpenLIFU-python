@@ -22,10 +22,25 @@ class Transducer:
     frequency: float = 400.6e3
     units: str = "m"
     attrs: Dict[str, Any] = field(default_factory= dict)
+
     registration_surface_filename: str | None = None
     """Relative path to an open surface of the transducer to be used for registration"""
+
     transducer_body_filename: str | None = None
     """Relative path to the closed surface mesh for visualizing the transducer body"""
+
+    standoff_transform: np.ndarray = field(default_factory=lambda: np.eye(4, dtype=float))
+    """Affine transform representing the way in which the standoff for this transducer displaces the transducer.
+
+    A "standoff transform" applies a displacement in transducer space that moves a transducer to where it would
+    be situated with the standoff in place. The idea is that if you start with a transform that places a transducer
+    directly against skin, then pre-composing that transform by a "standoff transform" serves to nudge the transducer
+    such that there is space for the standoff to be between it and the skin.
+
+    See also `openlifu.geo.create_standoff_transform`.
+
+    The units of this transform are assumed to be the native units of the transducer, the `Transducer.units` field.
+    """
 
     def __post_init__(self):
         logging.info("Initializing transducer array")
@@ -155,6 +170,12 @@ class Transducer:
         matrix[0:3, 3] *= getunitconversion(units, self.units)
         return matrix
 
+    def get_standoff_transform_in_units(self, units:str) -> np.ndarray:
+        """Get the transducer's standoff transform in the desired units."""
+        matrix = self.standoff_transform.copy()
+        matrix[0:3, 3] *= getunitconversion(self.units, units)
+        return matrix
+
     @staticmethod
     def merge(list_of_transducers:List[Transducer]) -> Transducer:
         merged_array = list_of_transducers[0].copy()
@@ -175,6 +196,7 @@ class Transducer:
     def to_dict(self):
         d = self.__dict__.copy()
         d["elements"] = [element.to_dict() for element in d["elements"]]
+        d["standoff_transform"] =  d["standoff_transform"].tolist()
         return d
 
     def to_file(self, filename):
@@ -197,6 +219,8 @@ class Transducer:
     def from_dict(d, **kwargs):
         d = d.copy()
         d["elements"] = Element.from_dict(d["elements"])
+        if "standoff_transform" in d:
+            d["standoff_transform"] = np.array(d["standoff_transform"])
         return Transducer(**d, **kwargs)
 
     @staticmethod

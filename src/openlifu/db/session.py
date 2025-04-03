@@ -9,24 +9,10 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from openlifu.geo import Point
+from openlifu.geo import ArrayTransform, Point
 from openlifu.util.json import PYFUSEncoder
 from openlifu.util.strings import sanitize
 
-
-@dataclass
-class ArrayTransform:
-    """Class representing the transform on a transducer array to position it in space.
-    units:
-    """
-
-    matrix: np.ndarray
-    """4x4 affine transform matrix"""
-
-    units : str
-    """The units of the space on which to apply the transform matrix , e.g. "mm"
-    (In order to apply the transform to transducer points,
-    first represent the points in these units.)"""
 
 @dataclass
 class TransducerTrackingResult:
@@ -38,14 +24,14 @@ class TransducerTrackingResult:
     photoscan_id: str
     """ID of the photoscan object used for transducer tracking"""
 
-    transducer_to_photoscan_transform: ArrayTransform
-    """Transform output by transducer tracking algorithm to register the transducer surface to the photoscan model"""
+    transducer_to_volume_transform: ArrayTransform
+    """Transform output by transducer tracking algorithm to register the transducer surface to the volume"""
 
     photoscan_to_volume_transform: ArrayTransform
     """Transform output by the transducer tracking algorithm to register the photoscan model the volume's skin segmentation"""
 
-    transducer_to_photoscan_tracking_approved: bool = False
-    """Approval state of transducer to photoscan tracking result. `True` means the user has provided some kind of
+    transducer_to_volume_tracking_approved: bool = False
+    """Approval state of transducer to volume tracking result. `True` means the user has provided some kind of
     confirmation that the transform result agrees with reality."""
 
     photoscan_to_volume_tracking_approved: bool = False
@@ -152,14 +138,14 @@ class Session:
         if 'volume' in d:
             raise ValueError("Sessions no longer recognize a volume attribute -- it is now volume_id.")
         if 'array_transform' in d:
-            d['array_transform'] = ArrayTransform(np.array(d['array_transform']['matrix']), d['array_transform']['units'])
+            d['array_transform'] = ArrayTransform.from_dict(d['array_transform'])
         if 'transducer_tracking_results' in d:
             d['transducer_tracking_results'] = [
                 TransducerTrackingResult(
                     t['photoscan_id'],
-                    ArrayTransform(np.array(t['transducer_to_photoscan_transform']['matrix']),t['transducer_to_photoscan_transform']['units']),
-                    ArrayTransform(np.array(t['photoscan_to_volume_transform']['matrix']), t['photoscan_to_volume_transform']['units']),
-                    t['transducer_to_photoscan_tracking_approved'],
+                    ArrayTransform.from_dict(t['transducer_to_volume_transform']),
+                    ArrayTransform.from_dict(t['photoscan_to_volume_transform']),
+                    t['transducer_to_volume_tracking_approved'],
                     t['photoscan_to_volume_tracking_approved']
                     )
                     for t in d['transducer_tracking_results']
@@ -175,7 +161,7 @@ class Session:
             for target_id,(approval,transforms) in d['virtual_fit_results'].items():
                 d['virtual_fit_results'][target_id] = (
                     approval,
-                    [ArrayTransform(np.array(t_dict["matrix"]), t_dict["units"]) for t_dict in transforms],
+                    [ArrayTransform.from_dict(t_dict) for t_dict in transforms],
                 )
         if isinstance(d['markers'], list):
             if len(d['markers'])>0 and isinstance(d['markers'][0], dict):

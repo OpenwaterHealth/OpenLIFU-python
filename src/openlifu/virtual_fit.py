@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Sequence, Tuple
+from dataclasses import dataclass
+from typing import Any, Dict, List, Sequence, Tuple
 
 import numpy as np
 
@@ -17,58 +18,17 @@ from openlifu.seg.skinseg import (
     spherical_interpolator_from_mesh,
     vtk_img_from_array_and_affine,
 )
+from openlifu.util.dict_conversion import DictMixin
+from openlifu.util.units import getunitconversion
 
 log = logging.getLogger("VirtualFit")
 
 ras2asl_3x3 = np.array([[0,1,0],[0,0,1],[-1,0,0]], dtype=float) # ASL means Anterior-Superior-Left coordinates
 asl2ras_3x3 = ras2asl_3x3.transpose()
 
-# (Currently we disable pylint E1121 because it is a temporary issue
-# which should be resolved by #165 and #166)
-def virtual_fit( # pylint: disable=E1121
-    standoff_transform : np.ndarray,
-    volume_array : np.ndarray,
-    volume_affine_RAS : np.ndarray,
-    target_RAS : Sequence[float],
-    pitch_range : float,
-    pitch_step : float,
-    yaw_range : float,
-    yaw_step : float,
-    transducer_steering_center_distance:float,
-    steering_limits:Tuple[Tuple[float,float],Tuple[float,float],Tuple[float,float]],
-    planefit_dyaw_extent = 15,
-    planefit_dyaw_step = 3,
-    planefit_dpitch_extent = 15,
-    planefit_dpitch_step = 3,
-) -> List[np.ndarray]:
-    """Run patient-specific "virtual fitting" algorithm, suggesting a series of candidate transducer
-    transforms for optimal sonicaiton of a given target.
-
-    Args:
-        standoff_transform: See `create_standoff_transform` documentation for the meaning of this
-        volume_array: A 3D volume MRI
-        volume_affine_RAS: A 4x4 affine transform that maps `volume_array` into RAS space with certain units
-        target_RAS: A 3D point, in the coordinates and units of `volume_affine_RAS`
-        pitch_range: Range of pitches to include in the transducer fitting search grid, in degrees
-        pitch_step: Pitch step size when forming the transducer fitting search grid, in degrees
-        yaw_range: Range of yaws to include in the transducer fitting search grid, in degrees
-        yaw_step: Yaw step size when forming the transducer fitting search grid, in degrees
-        transducer_steering_center_distance: Distance from the transducer origin axially to the center of the steering zone,
-            in the units of `volume_affine_RAS`.
-        steering_limits: Left and right extents of the steering zone in the lateral, elevational, and then axial directions,
-            measured from the transducer steering center.
-        planefit_dyaw_extent: Left and right extents of the point grid to be used for plane fitting along the local yaw axes,
-            in spatial units of `volume_affine_RAS`. The plane fitting point grid will be twice this size, since this is left
-            and right extents. (Note that this has units of length, not angle!)
-        planefit_dyaw_step: Local yaw axis step size to use when constructing plane fitting grids. In spatial units of `volume_affine_RAS`.
-        planefit_dpitch_extent: Left and right extents of the point grid to be used for plane fitting along the local pitch axes,
-            in spatial units of `volume_affine_RAS`. The plane fitting point grid will be twice this size, since this is left
-            and right extents.
-        planefit_dpitch_step: Local pitch axis step size to use when constructing plane fitting grids.
-            In spatial units of `volume_affine_RAS`.
-
-    Returns: A list of transducer transform candidates sorted starting from the best-scoring one. The transforms map transducer space
-        into LPS space, and they are in the same units as `volume_affine_RAS`.
+@dataclass
+class VirtualFitOptions(DictMixin):
+    """Parameters to configure the `virtual_fit` algorithm.
 
     The terms 'pitch' and 'yaw' used here refer to the following target-centric angular coordinates in patient space:
         pitch: The angle between the anterior axis through the target and the ray from from the target to the projection of
@@ -79,6 +39,107 @@ def virtual_fit( # pylint: disable=E1121
         pitch: The azimuthal spherical coordinate.
         yaw: 90 degrees minus the polar spherical coordinate.
     """
+
+    units:float = "mm"
+    """The units of length used in the length attributes of this class"""
+
+    transducer_steering_center_distance:float = 50.
+    """Distance from the transducer origin axially to the center of the steering zone in the units `units`"""
+
+    steering_limits:Tuple[Tuple[float,float],Tuple[float,float],Tuple[float,float]] = ((-50,50),(-50,50),(-50,50))
+    """Distance from the transducer origin axially to the center of the steering zone in the units `units`"""
+
+    pitch_range : Tuple[float,float] = (-10,150)
+    """Range of pitches to include in the transducer fitting search grid, in degrees"""
+
+    pitch_step : float = 5
+    """Pitch step size when forming the transducer fitting search grid, in degrees"""
+
+    yaw_range : Tuple[float, float] = (-65, 65)
+    """Range of yaws to include in the transducer fitting search grid, in degrees"""
+
+    yaw_step : float = 5
+    """Yaw step size when forming the transducer fitting search grid, in degrees"""
+
+    planefit_dyaw_extent:float = 15
+    """Left and right extents of the point grid to be used for plane fitting along the local yaw axes,
+    in units of `units`. The plane fitting point grid will be twice this size, since this is left
+    and right extents. (Note that this has units of length, not angle!)"""
+
+    planefit_dyaw_step:float = 3
+    """Local yaw axis step size to use when constructing plane fitting grids. In spatial units of `units`."""
+
+    planefit_dpitch_extent:float = 15
+    """Left and right extents of the point grid to be used for plane fitting along the local pitch axes,
+    in spatial units of `units`. The plane fitting point grid will be twice this size, since this is left
+    and right extents."""
+
+    planefit_dpitch_step:float = 3
+    """Local pitch axis step size to use when constructing plane fitting grids. In spatial units of `units`."""
+
+    def to_units(self, target_units:str) -> VirtualFitOptions:
+        """Do unit conversion and return a version of this VirtualFitOptions that uses
+        `target_units` as the units for all attributes that have units of length."""
+        conversion_factor = getunitconversion(from_unit = self.units, to_unit=target_units)
+        return VirtualFitOptions(
+            units = target_units,
+            transducer_steering_center_distance = conversion_factor * self.transducer_steering_center_distance,
+            steering_limits = tuple(map(tuple,conversion_factor*np.array(self.steering_limits))),
+            pitch_range = self.pitch_range,
+            pitch_step = self.pitch_step,
+            yaw_range = self.yaw_range,
+            yaw_step = self.yaw_step,
+            planefit_dyaw_extent = conversion_factor * self.planefit_dyaw_extent,
+            planefit_dyaw_step = conversion_factor * self.planefit_dyaw_step,
+            planefit_dpitch_extent = conversion_factor * self.planefit_dpitch_extent,
+            planefit_dpitch_step = conversion_factor * self.planefit_dpitch_step,
+        )
+
+    @staticmethod
+    def from_dict(parameter_dict:Dict[str,Any]) -> VirtualFitOptions: # Override DictMixin here
+        parameter_dict["pitch_range"] = tuple(parameter_dict["pitch_range"])
+        parameter_dict["yaw_range"] = tuple(parameter_dict["yaw_range"])
+        parameter_dict["steering_limits"] = tuple(map(tuple,parameter_dict["steering_limits"]))
+        return VirtualFitOptions(**parameter_dict)
+
+
+def virtual_fit(
+    volume_array : np.ndarray,
+    volume_affine_RAS : np.ndarray,
+    units: str,
+    target_RAS : Sequence[float],
+    standoff_transform : np.ndarray,
+    options : VirtualFitOptions,
+) -> List[np.ndarray]:
+    """Run patient-specific "virtual fitting" algorithm, suggesting a series of candidate transducer
+    transforms for optimal sonicaiton of a given target.
+
+    Args:
+        volume_array: A 3D volume MRI
+        volume_affine_RAS: A 4x4 affine transform that maps `volume_array` into RAS space with certain units
+        units: The spatial units of the RAS space into which volume_affine_RAS maps
+        target_RAS: A 3D point, in the coordinates and units of `volume_affine_RAS` (the `units` argument)
+        standoff_transform: See the documentation of `create_standoff_transform` or
+            `Transducer.standoff_transform` for the meaning of this. Here it should be provided in the
+            units `units`. The method `Transducer.get_standoff_transform_in_units` is useful for getting this.
+        options : Virtual fitting algorithm configuration. See the `VirtualFitOptions` documentation.
+
+    Returns: A list of transducer transform candidates sorted starting from the best-scoring one. The transforms map transducer space
+        into LPS space, and they are in the same units as the RAS space of `volume_affine_RAS` (aka the `units` argument).
+    """
+
+    # Express all virtual fit options in the units of volume_affine_RAS, i.e. the physical space of the volume
+    options = options.to_units(units)
+    pitch_range = options.pitch_range
+    pitch_step = options.pitch_step
+    yaw_range = options.yaw_range
+    yaw_step = options.yaw_step
+    transducer_steering_center_distance = options.transducer_steering_center_distance
+    steering_limits = options.steering_limits
+    planefit_dyaw_extent = options.planefit_dyaw_extent
+    planefit_dyaw_step = options.planefit_dyaw_step
+    planefit_dpitch_extent = options.planefit_dpitch_extent
+    planefit_dpitch_step = options.planefit_dpitch_step
 
     log.info("Computing foreground mask...")
     foreground_mask_array = compute_foreground_mask(volume_array)
@@ -132,7 +193,7 @@ def virtual_fit( # pylint: disable=E1121
 
         r_hat, theta_hat, phi_hat = spherical_coordinate_basis(theta_rad,phi_rad)
         planefit_points_unprojected_cartesian = (
-            point.reshape(1,1,3)
+            point.reshape((1,1,3))
             + dtheta_grid[...,np.newaxis] * theta_hat.reshape(1,1,3) # shape (num dthetas, num dphis, 3)
             + dphi_grid[...,np.newaxis] * phi_hat.reshape(1,1,3) # shape (num dthetas, num dphis, 3)
         ) # shape (num dthetas, num dphis, 3)
