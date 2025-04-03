@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Any, Dict
 
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.json import PYFUSEncoder
-from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 
 
 @dataclass

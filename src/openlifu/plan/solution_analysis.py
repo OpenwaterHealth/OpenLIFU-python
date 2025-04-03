@@ -7,8 +7,8 @@ from typing import Annotated, Tuple
 import numpy as np
 import xarray as xa
 
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
-from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 
 DEFAULT_ORIGIN = np.zeros(3)
 

@@ -7,7 +7,7 @@ from typing import Annotated
 
 import numpy as np
 
-from openlifu.util.openlifu_annotations import OpenLIFUFieldData
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.units import getunitconversion
 
 

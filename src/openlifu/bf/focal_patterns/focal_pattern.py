@@ -6,7 +6,7 @@ from typing import Annotated
 
 from openlifu.bf import focal_patterns
 from openlifu.geo import Point
-from openlifu.util.openlifu_annotations import OpenLIFUFieldData
+from openlifu.util.annotations import OpenLIFUFieldData
 
 
 @dataclass

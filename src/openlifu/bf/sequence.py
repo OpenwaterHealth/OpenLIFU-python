@@ -5,8 +5,8 @@ from typing import Annotated
 
 import pandas as pd
 
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
-from openlifu.util.openlifu_annotations import OpenLIFUFieldData
 
 
 @dataclass

@@ -16,7 +16,7 @@ import vtk
 from PIL import Image
 from vtk.util.numpy_support import numpy_to_vtk
 
-from openlifu.util.openlifu_annotations import OpenLIFUFieldData
+from openlifu.util.annotations import OpenLIFUFieldData
 
 
 @dataclass
