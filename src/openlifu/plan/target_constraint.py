@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Literal
 
 from openlifu.util.dict_conversion import DictMixin
 
-global_or_local = Literal["global", "local"]
 
 @dataclass
 class TargetConstraint(DictMixin):

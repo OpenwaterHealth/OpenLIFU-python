@@ -12,7 +12,7 @@ from openlifu import Point, Protocol, Transducer
 from openlifu.bf.focal_patterns import Wheel
 from openlifu.db import Session
 from openlifu.plan.protocol import OnPulseMismatchAction
-from openlifu.plan.target_constraints import TargetConstraints
+from openlifu.plan.target_constraint import TargetConstraint
 
 
 @pytest.fixture()
@@ -42,24 +42,19 @@ def test_default_protocol():
 @pytest.mark.parametrize(
     "target_constraints",
     [
-        [
-            TargetConstraints(dim="P", units="mm", min=0.0, max=float("inf")),
-        ],
-        [
-            TargetConstraints(dim="P", units="m", min=-0.001, max=0.0),
-        ],
-        [
-            TargetConstraints(dim="L", units="mm", min=-100.0, max=0.0),
-            TargetConstraints(dim="P", units="mm", min=-100.0, max=0.0),
-            TargetConstraints(dim="S", units="mm", min=-100.0, max=-10.0),
-        ]
+        {"lat": TargetConstraint(units="mm", min=0.1, max=None)},
+        {"ax": TargetConstraint(units="m", min=-0.001, max=.050)},
+        {"lat": TargetConstraint(units="mm", min=-100.0, max=100.0),
+         "ele": TargetConstraint(units="mm", min=-100.0, max=100.0),
+         "ax": TargetConstraint(units="mm", min=30.0, max=50.0)}
     ]
 )
-def test_check_target(example_protocol: Protocol, example_session: Session, target_constraints: TargetConstraints):
+def test_check_target(example_protocol: Protocol, example_session: Session, target_constraints: TargetConstraint):
     """Ensure that the target can be correctly verified."""
     example_protocol.target_constraints = target_constraints
-    with pytest.raises(ValueError, match="not within bounds"):
-        example_protocol.check_target(example_session.targets[0])
+    target = example_session.get_local_targets()[0]
+    all_ok, dim_ok, errmsgs = example_protocol.check_target(target)
+    assert not all_ok
 
 @pytest.mark.parametrize("on_pulse_mismatch", [
             OnPulseMismatchAction.ERROR,
@@ -123,7 +118,7 @@ def test_calc_solution_use_gpu(
         return_value = (example_simulation_output, None),
     )
     example_protocol.calc_solution(
-        target = Point(),
+        target = Point(position=[0, 0, 50], units="mm", dims=["lat", "ele", "ax"]),
         transducer = example_transducer,
         simulate = True,
         scale = False,
