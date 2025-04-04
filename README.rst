@@ -58,7 +58,7 @@ Dev mode
 Installing Meshroom
 -------------------
 
-This repo calls **Meshroom** as a subprocess, so you need to install it first.
+If you are using ``openlifu.photoscan`` to reconstruct meshes from photo collections, then you will need to set up **Meshroom**.
 
 Ubuntu
 ~~~~~~
