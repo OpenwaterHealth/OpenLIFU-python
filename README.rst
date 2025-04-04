@@ -92,26 +92,34 @@ For Bash users:
    echo 'export PATH="<path-to-meshroom>/Meshroom-2023.3.0:$PATH"' >> ~/.bashrc
    source ~/.bashrc
 
-Windows (using `Chocolatey <https://chocolatey.org>`_)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Windows
+~~~~~~~
 
-Install Chocolatey (if not installed)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Open PowerShell as Administrator and run:
+Download and Extract
+^^^^^^^^^^^^^^^^^^^^
 
-.. code:: powershell
+1. Download Meshroom for Windows from `<https://alicevision.org/#meshroom>`_.
+2. Extract the downloaded archive to a directory of your choice.
 
-   Set-ExecutionPolicy Bypass -Scope Process -Force; `
-   [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; `
-   iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+Add Meshroom to PATH
+^^^^^^^^^^^^^^^^^^^^
 
-Install Meshroom
-^^^^^^^^^^^^^^^^
-After Chocolatey is installed, run:
+1. Open **Edit environment variables for your account** from the Start menu.
+2. In the **Environment Variables** window, under **User variables**, select **Path** and click **Edit**.
+3. Click **New**, and add the path to the folder containing ``Meshroom.exe``.
+4. Click **OK** to save the changes.
 
-.. code:: powershell
+Enable GPU Acceleration
+^^^^^^^^^^^^^^^^^^^^^^^
 
-   choco install meshroom
+To ensure Meshroom uses your NVIDIA GPU:
+
+1. Open **NVIDIA Control Panel**.
+2. In the left sidebar under **3D Settings**, click **Manage 3D settings**.
+3. Go to the **Program Settings** tab.
+4. Click **Add**, then browse to and select ``Meshroom.exe`` from the folder where you extracted Meshroom.
+5. Under **Select the preferred graphics processor for this program**, choose **High-performance NVIDIA processor**.
+6. Click **Apply**.
 
 Version control of database using DVC (Data Version Control)
 -------------------------------------------------------------
