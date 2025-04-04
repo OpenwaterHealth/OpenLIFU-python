@@ -54,7 +54,7 @@ class Wheel(FocalPattern):
             targets.append(spoke)
         return targets
 
-    def num_foci(self):
+    def num_foci(self) -> int:
         """
         Get the number of foci in the focal pattern
 
