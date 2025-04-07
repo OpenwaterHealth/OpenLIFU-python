@@ -1519,7 +1519,7 @@ def swap_byte_order(regs):
 
 @dataclass
 class Tx7332DelayProfile:
-    profile: Annotated[int, OpenLIFUFieldData("Profile Index", "Index of the delay profile (1-16)")]
+    profile: Annotated[int, OpenLIFUFieldData("Profile Index (1-16)", "Index of the delay profile (1-16)")]
     """Index of the delay profile (1-16). The Tx7332 support 16 unique delay profiles."""
 
     delays: Annotated[List[float], OpenLIFUFieldData("Delay values", "Delay values for transducer elements")]
@@ -1542,7 +1542,7 @@ class Tx7332DelayProfile:
 
 @dataclass
 class Tx7332PulseProfile:
-    profile: Annotated[int, OpenLIFUFieldData("Profile index", "Index of the pulse profile (1-32)")]
+    profile: Annotated[int, OpenLIFUFieldData("Profile index (1-32)", "Index of the pulse profile (1-32)")]
     """Index of the pulse profile (1-32). The Tx7332 supports 32 unique pulse profiles."""
 
     frequency: Annotated[float, OpenLIFUFieldData("Frequency (Hz)", "Center frequency of the pulse (Hz)")]
@@ -1551,13 +1551,13 @@ class Tx7332PulseProfile:
     cycles: Annotated[int, OpenLIFUFieldData("Number of cycles", "Number of cycles in the pulse")]
     """Number of cycles in the pulse"""
 
-    duty_cycle: Annotated[float, OpenLIFUFieldData("Duty cycle", "Pulse duty cycle for the generated square wave (0-1)")] = DEFAULT_PATTERN_DUTY_CYCLE
+    duty_cycle: Annotated[float, OpenLIFUFieldData("Duty cycle (0-1)", "Pulse duty cycle for the generated square wave (0-1)")] = DEFAULT_PATTERN_DUTY_CYCLE
     """Pulse duty cycle for the generated square wave (0-1). By default 0.66 is used to approximate a sinusoidal wave."""
 
     tail_count: Annotated[int, OpenLIFUFieldData("Tail count (cycles)", "Clock cycles to actively drive the pulser to ground after the pulse ends")] = DEFAULT_TAIL_COUNT
     """Clock cycles to actively drive the pulser to ground after the pulse ends. Default 29"""
 
-    invert: Annotated[bool, OpenLIFUFieldData("Invert polarity", "Invert the pulse amplitude")] = False
+    invert: Annotated[bool, OpenLIFUFieldData("Invert polarity?", "Flag indicating whether to invert the pulse amplitude")] = False
     """Invert the pulse amplitude. Default False"""
 
     def __post_init__(self):

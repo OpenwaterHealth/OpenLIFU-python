@@ -14,7 +14,7 @@ from openlifu.xdc import Transducer
 
 @dataclass
 class Direct(DelayMethod):
-    c0: Annotated[float, OpenLIFUFieldData("Speed of Sound", "Speed of sound in the medium (m/s)")] = 1480.0
+    c0: Annotated[float, OpenLIFUFieldData("Speed of Sound (m/s)", "Speed of sound in the medium (m/s)")] = 1480.0
     """Speed of sound in the medium (m/s)"""
 
     def calc_delays(self, arr: Transducer, target: Point, params: xa.Dataset | None=None, transform:np.ndarray | None=None):
