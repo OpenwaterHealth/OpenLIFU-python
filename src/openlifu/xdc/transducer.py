@@ -26,7 +26,7 @@ class Transducer:
     elements: Annotated[Tuple[Element], OpenLIFUFieldData("Elements", "Collection of transducer Elements")] = ()
     """Collection of transducer Elements"""
 
-    frequency: Annotated[float, OpenLIFUFieldData("Frequency", "Nominal array frequency (Hz)")] = 400.6e3
+    frequency: Annotated[float, OpenLIFUFieldData("Frequency (Hz)", "Nominal array frequency (Hz)")] = 400.6e3
     """Nominal array frequency (Hz)"""
 
     units: Annotated[str, OpenLIFUFieldData("Units", "Native units of transducer local coordinate space")] = "m"
