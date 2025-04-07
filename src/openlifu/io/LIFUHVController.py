@@ -548,7 +548,7 @@ class HVController:
             )
 
         try:
-            dac_input = int(((voltage + 15) / 162) * 4095)
+            dac_input = int(((voltage) / 162) * 4095)
             # logger.info("Setting DAC Value %d.", dac_input)
             # Pack the 12-bit DAC input into two bytes
             data = bytes(
