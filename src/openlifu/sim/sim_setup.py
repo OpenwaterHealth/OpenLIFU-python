@@ -44,14 +44,14 @@ class SimSetup(DictMixin):
     t_end: Annotated[float, OpenLIFUFieldData("End time", """Simulation end time""")] = 0.
     """Simulation end time"""
 
-    c0: Annotated[float, OpenLIFUFieldData(None, None)] = 1500.0
-    """TODO: Add description"""
+    c0: Annotated[float, OpenLIFUFieldData("Speed of Sound (m/s)", "Reference speed of sound for converting distance to time")] = 1500.0
+    """Reference speed of sound for converting distance to time"""
 
-    cfl: Annotated[float, OpenLIFUFieldData("CFL number", None)] = 0.5
-    """TODO: Add description"""
+    cfl: Annotated[float, OpenLIFUFieldData("CFL number", "Courant-Friedrichs-Lewy number")] = 0.5
+    """Courant-Friedrichs-Lewy number"""
 
-    options: Annotated[dict[str, str], OpenLIFUFieldData("Simulation options", None)] = field(default_factory=dict)
-    """TODO: Add description"""
+    options: Annotated[dict[str, str], OpenLIFUFieldData("Simulation options", "Additional simulation options")] = field(default_factory=dict)
+    """Additional simulation options"""
 
     def __post_init__(self):
         if len(self.dims) != 3:

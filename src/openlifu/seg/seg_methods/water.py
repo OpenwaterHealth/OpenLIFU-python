@@ -9,5 +9,5 @@ from openlifu.util.annotations import OpenLIFUFieldData
 
 @dataclass
 class Water(UniformSegmentation):
-    ref_material: Annotated[str, OpenLIFUFieldData("Reference material", None)] = "water"
-    """TODO: Add description"""
+    ref_material: Annotated[str, OpenLIFUFieldData("Reference material", "Reference Material ID to use")] = "water"
+    """Reference Material ID to use. For the Water dataclass, this should remain as 'water'."""

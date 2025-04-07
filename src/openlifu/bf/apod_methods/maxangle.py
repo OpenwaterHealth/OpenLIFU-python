@@ -14,8 +14,8 @@ from openlifu.xdc import Transducer
 
 @dataclass
 class MaxAngle(ApodizationMethod):
-    max_angle: Annotated[float, OpenLIFUFieldData("Maximum angle", None)] = 30.0
-    """TODO: Add description"""
+    max_angle: Annotated[float, OpenLIFUFieldData("Maximum acceptance angle", "Maximum acceptance angle for each element from the vector normal to the element surface")] = 30.0
+    """Maximum acceptance angle for each element from the vector normal to the element surface"""
 
     units: Annotated[str, OpenLIFUFieldData("Angle units", "Angle units")] = "deg"
     """Angle units"""

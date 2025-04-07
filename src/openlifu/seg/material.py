@@ -1,11 +1,25 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Annotated, Tuple
+from dataclasses import dataclass
+from typing import Annotated
 
 from openlifu.util.annotations import OpenLIFUFieldData
 
-
+PARAM_INFO = {"sound_speed":{"id":"sound_speed",
+                               "name": "Speed of Sound",
+                               "units": "m/s"},
+                "density":{"id":"density",
+                           "name": "Density",
+                           "units": "kg/m^3"},
+                "attenuation":{"id":"attenuation",
+                               "name": "Attenuation",
+                               "units": "dB/cm/MHz"},
+                "specific_heat":{"id":"specific_heat",
+                                 "name": "Specific Heat",
+                                 "units": "J/kg/K"},
+                "thermal_conductivity":{"id":"thermal_conductivity",
+                                        "name": "Thermal Conductivity",
+                                        "units": "W/m/K"}}
 @dataclass
 class Material:
     id: Annotated[str, OpenLIFUFieldData("Material ID", "The unique identifier of the material")] = "material"
@@ -29,32 +43,14 @@ class Material:
     thermal_conductivity: Annotated[float, OpenLIFUFieldData("Thermal conductivity (W/m/K)", "Thermal conductivity of the material (W/m/K)")] = 0.598  # W/m/K
     """Thermal conductivity of the material (W/m/K)"""
 
-    param_ids: Annotated[Tuple[str, str, str, str, str], OpenLIFUFieldData("Parameter IDs", None)] = field(default_factory=lambda: ("sound_speed", "density", "attenuation", "specific_heat", "thermal_conductivity"), init=False, repr=False)
-    """TODO: Add description"""
-
     @classmethod
     def param_info(cls, param_id: str):
-        INFO = {"sound_speed":{"id":"sound_speed",
-                               "name": "Speed of Sound",
-                               "units": "m/s"},
-                "density":{"id":"density",
-                           "name": "Density",
-                           "units": "kg/m^3"},
-                "attenuation":{"id":"attenuation",
-                               "name": "Attenuation",
-                               "units": "dB/cm/MHz"},
-                "specific_heat":{"id":"specific_heat",
-                                 "name": "Specific Heat",
-                                 "units": "J/kg/K"},
-                "thermal_conductivity":{"id":"thermal_conductivity",
-                                        "name": "Thermal Conductivity",
-                                        "units": "W/m/K"}}
-        if param_id not in INFO:
+        if param_id not in PARAM_INFO:
             raise ValueError(f"Parameter {param_id} not found.")
-        return INFO[param_id]
+        return PARAM_INFO[param_id]
 
     def get_param(self, param_id: str):
-        if param_id not in self.param_ids:
+        if param_id not in PARAM_INFO:
             raise ValueError(f"Parameter {param_id} not found.")
         return self.__getattribute__(param_id)
 

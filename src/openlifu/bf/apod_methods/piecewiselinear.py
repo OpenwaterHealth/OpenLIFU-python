@@ -14,11 +14,11 @@ from openlifu.xdc import Transducer
 
 @dataclass
 class PiecewiseLinear(ApodizationMethod):
-    zero_angle: Annotated[float, OpenLIFUFieldData("Zero-angle", None)] = 90.0
-    """TODO: Add description"""
+    zero_angle: Annotated[float, OpenLIFUFieldData("Zero Apodization Angle", "Angle at and beyond which the piecewise linear apodization is 0%")] = 90.0
+    """Angle at and beyond which the piecewise linear apodization is 0%"""
 
-    rolloff_angle: Annotated[float, OpenLIFUFieldData("Rolloff angle", None)] = 45.0
-    """TODO: Add description"""
+    rolloff_angle: Annotated[float, OpenLIFUFieldData("Rolloff start angle", "Angle below which the piecewise linear apodization is 100%")] = 45.0
+    """Angle below which the piecewise linear apodization is 100%"""
 
     units: Annotated[str, OpenLIFUFieldData("Angle units", "Angle units")] = "deg"
     """Angle units"""

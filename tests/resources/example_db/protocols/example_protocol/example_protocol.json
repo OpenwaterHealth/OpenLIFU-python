@@ -112,7 +112,6 @@
     "standoff_density": 1000.0,
     "ref_sound_speed": 1500.0,
     "ref_density": 1000.0,
-    "focus_diameter": 0.5,
     "mainlobe_aspect_ratio": [1.0, 1.0, 5.0],
     "mainlobe_radius": 2.5e-3,
     "beamwidth_radius": 5e-3,

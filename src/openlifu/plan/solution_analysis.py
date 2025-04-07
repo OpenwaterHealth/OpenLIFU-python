@@ -54,20 +54,20 @@ class SolutionAnalysis(DictMixin):
     global_isppa_Wcm2: Annotated[list[float], OpenLIFUFieldData("Global ISPPA", "Maximum spatial peak pulse average intensity in the entire field, in W/cm²")] = field(default_factory=list)
     """Maximum spatial peak pulse average intensity in the entire field, in W/cm²"""
 
-    p0_Pa: Annotated[list[float], OpenLIFUFieldData("Initial pressure", "Initial pressure values in the field, in Pa")] = field(default_factory=list)
-    """Initial pressure values in the field, in Pa"""
+    p0_Pa: Annotated[list[float], OpenLIFUFieldData("Emitted pressure (Pa)", "Initial pressure values in the field, in Pa")] = field(default_factory=list)
+    """Initial pressure values in the field (Pa)"""
 
-    TIC: Annotated[float | None, OpenLIFUFieldData("Thermal index", None)] = None
-    """TODO: Add description"""
+    TIC: Annotated[float | None, OpenLIFUFieldData("Thermal index (TIC)", "Thermal index in cranium (TIC)")] = None
+    """Thermal index in cranium (TIC)"""
 
-    power_W: Annotated[float | None, OpenLIFUFieldData("Power", None)] = None
-    """TODO: Add description"""
+    power_W: Annotated[float | None, OpenLIFUFieldData("Emitted Power (W)", "Emitted power from the transducer face (W)")] = None
+    """Emitted power from the transducer face (W)"""
 
-    MI: Annotated[float | None, OpenLIFUFieldData("Mechanical index", None)] = None
-    """TODO: Add description"""
+    MI: Annotated[float | None, OpenLIFUFieldData("Mechanical index (MI)", "Mechanical index (MI)")] = None
+    """Mechanical index (MI)"""
 
-    global_ispta_mWcm2: Annotated[float | None, OpenLIFUFieldData("Global ISPTA", None)] = None
-    """TODO: Add description"""
+    global_ispta_mWcm2: Annotated[float | None, OpenLIFUFieldData("Global ISPTA", "Global Intensity at Spatial-Peak, Time-Average (I_SPTA) (mW/cm²)")] = None
+    """Global Intensity at Spatial-Peak, Time-Average (I_SPTA) (mW/cm²)"""
 
     @staticmethod
     def from_json(json_string : str) -> SolutionAnalysis:
@@ -90,35 +90,32 @@ class SolutionAnalysis(DictMixin):
 
 @dataclass
 class SolutionAnalysisOptions(DictMixin):
-    standoff_sound_speed: Annotated[float, OpenLIFUFieldData("Standoff sound speed", None)] = 1500.0
-    """TODO: Add description"""
+    standoff_sound_speed: Annotated[float, OpenLIFUFieldData("Standoff sound speed (m/s)", "Speed of sound in standoff, for calculating initial impedance")] = 1500.0
+    """Speed of sound in standoff, for calculating initial impedance"""
 
-    standoff_density: Annotated[float, OpenLIFUFieldData("Standoff density", None)] = 1000.0
-    """TODO: Add description"""
+    standoff_density: Annotated[float, OpenLIFUFieldData("Standoff density (kg/m³)", "Density of standoff medium (kg/m³)")] = 1000.0
+    """Density of standoff medium (kg/m³)"""
 
-    ref_sound_speed: Annotated[float, OpenLIFUFieldData("Reference sound speed", None)] = 1500.0
-    """TODO: Add description"""
+    ref_sound_speed: Annotated[float, OpenLIFUFieldData("Reference sound speed (m/s)", "Reference speed of sound in the medium (m/s)")] = 1500.0
+    """Reference speed of sound in the medium (m/s)"""
 
-    ref_density: Annotated[float, OpenLIFUFieldData("Reference density", None)] = 1000.0
-    """TODO: Add description"""
+    ref_density: Annotated[float, OpenLIFUFieldData("Reference density", "Reference density (kg/m³)")] = 1000.0
+    """Reference density (kg/m³)"""
 
-    focus_diameter: Annotated[float, OpenLIFUFieldData("Focus diameter", None)] = 0.5
-    """TODO: Add description"""
+    mainlobe_aspect_ratio: Annotated[Tuple[float, float, float], OpenLIFUFieldData("Mainlobe aspect ratio", "Aspect ratio of the mainlobe mask")] = (1., 1., 5.)
+    """Aspect ratio of the mainlobe ellipsoid mask, in the form (lat,ele,ax). (1,1,5) means an ellipsoid 5x as long as it is wide."""
 
-    mainlobe_aspect_ratio: Annotated[Tuple[float, float, float], OpenLIFUFieldData("Mainlobe aspect ratio", None)] = (1., 1., 5.)
-    """TODO: Add description"""
+    mainlobe_radius: Annotated[float, OpenLIFUFieldData("Mainlobe mask radius (m)", "Size of the mainlobe mask (m)")] = 2.5e-3
+    """Size of the mainlobe mask (m). The mainlobe mask is an ellipsoid with this radius, scaled by the `mainlobe_aspect_ratio`."""
 
-    mainlobe_radius: Annotated[float, OpenLIFUFieldData("Mainlobe radius", None)] = 2.5e-3
-    """TODO: Add description"""
+    beamwidth_radius: Annotated[float, OpenLIFUFieldData("Beamwidth search radius (m)", "Size of the beamwidth search (m)")] = 5e-3
+    """Size of the beamwidth search (m). The beamwidth is found along the lateral and elevation lines perpendicular to the focus axis."""
 
-    beamwidth_radius: Annotated[float, OpenLIFUFieldData("Beamwidth radius", None)] = 5e-3
-    """TODO: Add description"""
+    sidelobe_radius: Annotated[float, OpenLIFUFieldData("Sidelobe radius", "Size of the sidelobe mask (m)")] = 3e-3
+    """Size of the sidelobe mask (m). Pressure outside of this ellipsoid (scaled by `mainlobe_aspect_ratio`) is considered outside of the focal region."""
 
-    sidelobe_radius: Annotated[float, OpenLIFUFieldData("Sidelobe radius", None)] = 3e-3
-    """TODO: Add description"""
-
-    sidelobe_zmin: Annotated[float, OpenLIFUFieldData("Sidelobe minimum z", None)] = 1e-3
-    """TODO: Add description"""
+    sidelobe_zmin: Annotated[float, OpenLIFUFieldData("Sidelobe minimum z", "Minimum z coordinate of the sidelobe mask (m)")] = 1e-3
+    """Minimum z coordinate of the sidelobe mask (m). This value is used to ignore emitted pressure artifacts."""
 
     distance_units: Annotated[str, OpenLIFUFieldData("Distance units", "The units used for distance measurements")] = "m"
     """The units used for distance measurements"""
