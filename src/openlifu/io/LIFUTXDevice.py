@@ -1519,8 +1519,8 @@ def swap_byte_order(regs):
 
 @dataclass
 class Tx7332DelayProfile:
-    profile: Annotated[int, OpenLIFUFieldData("Profile index", None)]
-    """TODO: Add description"""
+    profile: Annotated[int, OpenLIFUFieldData("Profile Index", "Index of the delay profile (1-16)")]
+    """Index of the delay profile (1-16). The Tx7332 support 16 unique delay profiles."""
 
     delays: Annotated[List[float], OpenLIFUFieldData("Delay values", "Delay values for transducer elements")]
     """Delay values for transducer elements"""
@@ -1542,23 +1542,23 @@ class Tx7332DelayProfile:
 
 @dataclass
 class Tx7332PulseProfile:
-    profile: Annotated[int, OpenLIFUFieldData("Profile index", None)]
-    """TODO: Add description"""
+    profile: Annotated[int, OpenLIFUFieldData("Profile index", "Index of the pulse profile (1-32)")]
+    """Index of the pulse profile (1-32). The Tx7332 supports 32 unique pulse profiles."""
 
-    frequency: Annotated[float, OpenLIFUFieldData("Frequency", None)]
-    """TODO: Add description"""
+    frequency: Annotated[float, OpenLIFUFieldData("Frequency (Hz)", "Center frequency of the pulse (Hz)")]
+    """Center frequency of the pulse (Hz)"""
 
-    cycles: Annotated[int, OpenLIFUFieldData("Number of cycles", None)]
-    """TODO: Add description"""
+    cycles: Annotated[int, OpenLIFUFieldData("Number of cycles", "Number of cycles in the pulse")]
+    """Number of cycles in the pulse"""
 
-    duty_cycle: Annotated[float, OpenLIFUFieldData("Duty cycle", None)] = DEFAULT_PATTERN_DUTY_CYCLE
-    """TODO: Add description"""
+    duty_cycle: Annotated[float, OpenLIFUFieldData("Duty cycle", "Pulse duty cycle for the generated square wave (0-1)")] = DEFAULT_PATTERN_DUTY_CYCLE
+    """Pulse duty cycle for the generated square wave (0-1). By default 0.66 is used to approximate a sinusoidal wave."""
 
-    tail_count: Annotated[int, OpenLIFUFieldData("Tail count", None)] = DEFAULT_TAIL_COUNT
-    """TODO: Add description"""
+    tail_count: Annotated[int, OpenLIFUFieldData("Tail count (cycles)", "Clock cycles to actively drive the pulser to ground after the pulse ends")] = DEFAULT_TAIL_COUNT
+    """Clock cycles to actively drive the pulser to ground after the pulse ends. Default 29"""
 
-    invert: Annotated[bool, OpenLIFUFieldData("Invert polarity", None)] = False
-    """TODO: Add description"""
+    invert: Annotated[bool, OpenLIFUFieldData("Invert polarity", "Invert the pulse amplitude")] = False
+    """Invert the pulse amplitude. Default False"""
 
     def __post_init__(self):
         if self.profile not in VALID_PATTERN_PROFILES:
@@ -1566,8 +1566,8 @@ class Tx7332PulseProfile:
 
 @dataclass
 class Tx7332Registers:
-    bf_clk: Annotated[float, OpenLIFUFieldData(None, None)] = DEFAULT_CLK_FREQ
-    """TODO: Add description"""
+    bf_clk: Annotated[float, OpenLIFUFieldData("Clock Frequency (Hz)", "The beamformer clock frequency in Hz.")] = DEFAULT_CLK_FREQ
+    """The beamformer clock frequency in Hz. This much match the hardware clock frequency in order for calculated register values to produce the correct pulse and delay timting. Default is 64 MHz."""
 
     _delay_profiles_list: Annotated[List[Tx7332DelayProfile], OpenLIFUFieldData("Delay profiles list", "Internal list of available delay profiles")] = field(default_factory=list)
     """Internal list of available delay profiles"""
@@ -1806,8 +1806,8 @@ class Tx7332Registers:
 
 @dataclass
 class TxDeviceRegisters:
-    bf_clk: Annotated[int, OpenLIFUFieldData(None, None)] = DEFAULT_CLK_FREQ
-    """TODO: Add description"""
+    bf_clk: Annotated[int, OpenLIFUFieldData("Clock Frequency (Hz)", "The beamformer clock frequency in Hz.")] = DEFAULT_CLK_FREQ
+    """The beamformer clock frequency in Hz. This much match the hardware clock frequency in order for calculated register values to produce the correct pulse and delay timting. Default is 64 MHz."""
 
     _delay_profiles_list: Annotated[List[Tx7332DelayProfile], OpenLIFUFieldData("Delay profiles list", "Internal list of available delay profiles")] = field(default_factory=list)
     """Internal list of available delay profiles"""

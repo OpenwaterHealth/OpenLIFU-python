@@ -26,14 +26,14 @@ class Transducer:
     elements: Annotated[Tuple[Element], OpenLIFUFieldData("Elements", "Collection of transducer Elements")] = ()
     """Collection of transducer Elements"""
 
-    frequency: Annotated[float, OpenLIFUFieldData("Frequency", None)] = 400.6e3
-    """TODO: Add description"""
+    frequency: Annotated[float, OpenLIFUFieldData("Frequency", "Nominal array frequency (Hz)")] = 400.6e3
+    """Nominal array frequency (Hz)"""
 
     units: Annotated[str, OpenLIFUFieldData("Units", "Native units of transducer local coordinate space")] = "m"
     """Native units of transducer local coordinate space"""
 
-    attrs: Annotated[Dict[str, Any], OpenLIFUFieldData("Attributes", None)] = field(default_factory=dict)
-    """TODO: Add description"""
+    attrs: Annotated[Dict[str, Any], OpenLIFUFieldData("Attributes", "Additional transducer attributes")] = field(default_factory=dict)
+    """Additional transducer attributes"""
 
     registration_surface_filename: Annotated[str | None, OpenLIFUFieldData("Registration surface filename", "Relative path to an open surface of the transducer to be used for registration")] = None
     """Relative path to an open surface of the transducer to be used for registration"""

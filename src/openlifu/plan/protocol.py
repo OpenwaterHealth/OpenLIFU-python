@@ -283,6 +283,7 @@ class Protocol:
                     cycles = simulation_cycles,
                     dt=sim_options.dt,
                     t_end=sim_options.t_end,
+                    cfl=sim_options.cfl,
                     amplitude = self.pulse.amplitude,
                     gpu = use_gpu
                 )
