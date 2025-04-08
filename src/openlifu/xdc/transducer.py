@@ -4,7 +4,7 @@ import copy
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Annotated, Any, Dict, List, Tuple
+from typing import Annotated, Any, Dict, List
 
 import numpy as np
 import vtk
@@ -23,7 +23,7 @@ class Transducer:
     name: Annotated[str, OpenLIFUFieldData("Transducer name", "Human readable name for transducer")] = ""
     """Human readable name for transducer"""
 
-    elements: Annotated[Tuple[Element], OpenLIFUFieldData("Elements", "Collection of transducer Elements")] = ()
+    elements: Annotated[List[Element], OpenLIFUFieldData("Elements", "Collection of transducer Elements")] = field(default_factory=list)
     """Collection of transducer Elements"""
 
     frequency: Annotated[float, OpenLIFUFieldData("Frequency (Hz)", "Nominal array frequency (Hz)")] = 400.6e3
@@ -230,7 +230,7 @@ class Transducer:
     @staticmethod
     def from_dict(d, **kwargs):
         d = d.copy()
-        d["elements"] = Element.from_dict(d["elements"])
+        d["elements"] = [Element.from_dict(element) for element in d["elements"]]
         if "standoff_transform" in d:
             d["standoff_transform"] = np.array(d["standoff_transform"])
         return Transducer(**d, **kwargs)
