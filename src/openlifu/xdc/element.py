@@ -224,7 +224,4 @@ class Element:
 
     @staticmethod
     def from_dict(d):
-        if isinstance(d, dict):
-            return [Element(**d)]
-        else:
-            return [Element(**di) for di in d]
+        return Element(**d)
