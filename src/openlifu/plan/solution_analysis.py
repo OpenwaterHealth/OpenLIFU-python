@@ -2,16 +2,37 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Annotated, Tuple
+from typing import Annotated, Dict, Tuple
 
 import numpy as np
+import pandas as pd
 import xarray as xa
 
+from openlifu.plan.param_constraint import PARAM_STATUS_SYMBOLS, ParameterConstraint
 from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
 
 DEFAULT_ORIGIN = np.zeros(3)
 
+PARAM_FORMATS = {
+    "mainlobe_pnp_MPa": ["max", "0.3f", "MPa", "Mainlobe Peak Negative Pressure"],
+    "mainlobe_isppa_Wcm2": ["max", "0.3f", "W/cm^2", "Mainlobe I_SPPA"],
+    "mainlobe_ispta_mWcm2": ["mean", "0.3f", "mW/cm^2", "Mainlobe I_SPTA"],
+    "beamwidth_lat_3dB_mm": ["mean", "0.3f", "mm", "3dB Lateral Beamwidth"],
+    "beamwidth_ele_3dB_mm": ["mean", "0.3f", "mm", "3dB Elevational Beamwidth"],
+    "beamwidth_ax_3dB_mm": ["mean", "0.3f", "mm", "3dB Axial Beamwidth"],
+    "beamwidth_lat_6dB_mm": ["mean", "0.3f", "mm", "6dB Lateral Beamwidth"],
+    "beamwidth_ele_6dB_mm": ["mean", "0.3f", "mm", "6dB Elevational Beamwidth"],
+    "beamwidth_ax_6dB_mm": ["mean", "0.3f", "mm", "6dB Axial Beamwidth"],
+    "sidelobe_pnp_MPa": ["max", "0.3f", "MPa", "Sidelobe Peak Negative Pressure"],
+    "sidelobe_isppa_Wcm2": ["max", "0.3f", "W/cm^2", "Sidelobe I_SPPA"],
+    "global_pnp_MPa": ["max", "0.3f", "MPa", "Global Peak Negative Pressure"],
+    "global_isppa_Wcm2": ["max", "0.3f", "W/cm^2", "Global I_SPPA"],
+    "global_ispta_mWcm2": [None, "0.3f", "mW/cm^2", "Global I_SPTA"],
+    "p0_MPa": ["max", "0.3f", "MPa", "Emitted Pressure"],
+    "power_W": [None, "0.3f", "W", "Emitted Power"],
+    "TIC": [None, "0.3f", "", "TIC"],
+    "MI": [None, "0.3f", "", "MI"]}
 
 @dataclass
 class SolutionAnalysis(DictMixin):
@@ -54,8 +75,8 @@ class SolutionAnalysis(DictMixin):
     global_isppa_Wcm2: Annotated[list[float], OpenLIFUFieldData("Global ISPPA", "Maximum spatial peak pulse average intensity in the entire field, in W/cm²")] = field(default_factory=list)
     """Maximum spatial peak pulse average intensity in the entire field, in W/cm²"""
 
-    p0_Pa: Annotated[list[float], OpenLIFUFieldData("Initial pressure", "Initial pressure values in the field, in Pa")] = field(default_factory=list)
-    """Initial pressure values in the field, in Pa"""
+    p0_MPa: Annotated[list[float], OpenLIFUFieldData("Initial pressure", "Initial pressure values in the field, in MPa")] = field(default_factory=list)
+    """Initial pressure values in the field, in MPa"""
 
     TIC: Annotated[float | None, OpenLIFUFieldData("Thermal index", None)] = None
     """TODO: Add description"""
@@ -68,6 +89,55 @@ class SolutionAnalysis(DictMixin):
 
     global_ispta_mWcm2: Annotated[float | None, OpenLIFUFieldData("Global ISPTA", None)] = None
     """TODO: Add description"""
+
+    param_constraints: Annotated[Dict[str, ParameterConstraint], OpenLIFUFieldData("Parameter constraints", None)] = field(default_factory=dict)
+    """TODO: Add description"""
+
+    def to_table(self, constraints:Dict[str,ParameterConstraint]|None=None, focus_index=None) -> pd.DataFrame:
+        records = []
+        if constraints is None:
+            constraints = self.param_constraints
+        for p in constraints:
+            if p not in PARAM_FORMATS:
+                raise ValueError(f"Unknown parameter constraint for '{p}'. Must be one of: {list(PARAM_FORMATS.keys())}")
+        for param, fmt in PARAM_FORMATS.items():
+            if fmt[0] is None:
+                value_by_focus = None
+                agg_value = self.__dict__[param]
+            elif fmt[0] == "max":
+                value_by_focus = self.__dict__[param]
+                agg_value = max(value_by_focus)
+            elif fmt[0] == "mean":
+                value_by_focus = self.__dict__[param]
+                agg_value = np.mean(value_by_focus)
+            else:
+                raise ValueError(f"Unknown aggregation method '{fmt[0]}' for parameter '{param}'.")
+            if agg_value is not None:
+                record = {"id": param,
+                          "Param": fmt[3],
+                          "Value" : "",
+                          "Units" : fmt[2],
+                          "Status": "",
+                          "_value" : agg_value,
+                          "_value_by_focus": value_by_focus,
+                          "_warning": False,
+                          "_error": False}
+                if np.isnan(agg_value):
+                    record["Value"] = "NaN"
+                else:
+                    if focus_index is None:
+                        record["Value"] = f"{agg_value:{fmt[1]}}"
+                    elif value_by_focus is None:
+                        record["Value"] = "N/A"
+                    else:
+                        value = value_by_focus[focus_index]
+                        record["Value"] = f"{value:{fmt[1]}}"
+                    if param in constraints:
+                        record['_warning'] = constraints[param].is_warning(agg_value)
+                        record['_error'] = constraints[param].is_error(agg_value)
+                        record["Status"] = PARAM_STATUS_SYMBOLS[constraints[param].get_status(agg_value)]
+                records.append(record)
+        return pd.DataFrame.from_records(records)
 
     @staticmethod
     def from_json(json_string : str) -> SolutionAnalysis:
@@ -86,7 +156,6 @@ class SolutionAnalysis(DictMixin):
             return json.dumps(self.to_dict(), separators=(',', ':'))
         else:
             return json.dumps(self.to_dict(), indent=4)
-
 
 @dataclass
 class SolutionAnalysisOptions(DictMixin):
@@ -122,6 +191,9 @@ class SolutionAnalysisOptions(DictMixin):
 
     distance_units: Annotated[str, OpenLIFUFieldData("Distance units", "The units used for distance measurements")] = "m"
     """The units used for distance measurements"""
+
+    param_constraints: Annotated[Dict[str, ParameterConstraint], OpenLIFUFieldData("Parameter constraints", None)] = field(default_factory=dict)
+    """TODO: Add description"""
 
 def find_centroid(da: xa.DataArray, cutoff:float) -> np.ndarray:
     """Find the centroid of a thresholded region of a DataArray"""
