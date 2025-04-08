@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import xarray as xa
 
+from openlifu.plan.param_constraint import PARAM_STATUS_SYMBOLS, ParameterConstraint
 from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
 
@@ -109,6 +110,8 @@ class SolutionAnalysis(DictMixin):
             elif fmt[0] == "mean":
                 value_by_focus = self.__dict__[param]
                 agg_value = np.mean(value_by_focus)
+            else:
+                raise ValueError(f"Unknown aggregation method '{fmt[0]}' for parameter '{param}'.")
             if agg_value is not None:
                 record = {"id": param,
                           "Param": fmt[3],

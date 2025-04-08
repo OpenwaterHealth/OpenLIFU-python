@@ -99,15 +99,19 @@ class Solution:
     def analyze(self,
                 transducer: Transducer,
                 options: SolutionAnalysisOptions = SolutionAnalysisOptions(),
-                param_constraints: Dict[str,ParameterConstraint] = {}) -> SolutionAnalysis:
+                param_constraints: Dict[str,ParameterConstraint]|None = None) -> SolutionAnalysis:
         """Analyzes the treatment solution.
 
         Args:
             transducer: A Transducer item.
             options: A struct for solution analysis options.
+            param_constraints: A dictionary of parameter constraints to apply to the analysis.
+                The keys are the parameter names and the values are the ParameterConstraint objects.
 
         Returns: A struct containing the results of the analysis.
         """
+        if param_constraints is None:
+            param_constraints = {}
         solution_analysis = SolutionAnalysis()
 
         if transducer.id != self.transducer_id:
