@@ -105,17 +105,17 @@ class SolutionAnalysisOptions(DictMixin):
     mainlobe_aspect_ratio: Annotated[Tuple[float, float, float], OpenLIFUFieldData("Mainlobe aspect ratio (lat,ele,ax)", "Aspect ratio of the mainlobe mask")] = (1., 1., 5.)
     """Aspect ratio of the mainlobe ellipsoid mask, in the form (lat,ele,ax). (1,1,5) means an ellipsoid 5x as long as it is wide."""
 
-    mainlobe_radius: Annotated[float, OpenLIFUFieldData("Mainlobe mask radius (m)", "Size of the mainlobe mask (m)")] = 2.5e-3
-    """Size of the mainlobe mask (m). The mainlobe mask is an ellipsoid with this radius, scaled by the `mainlobe_aspect_ratio`."""
+    mainlobe_radius: Annotated[float, OpenLIFUFieldData("Mainlobe mask radius", "Size of the mainlobe mask, in the units provided for Distance units (`distance_units`)")] = 2.5e-3
+    """Size of the mainlobe mask, in the units provided for Distance units (`distance_units`). The mainlobe mask is an ellipsoid with this radius, scaled by the `mainlobe_aspect_ratio`."""
 
-    beamwidth_radius: Annotated[float, OpenLIFUFieldData("Beamwidth search radius (m)", "Size of the beamwidth search (m)")] = 5e-3
-    """Size of the beamwidth search (m). The beamwidth is found along the lateral and elevation lines perpendicular to the focus axis."""
+    beamwidth_radius: Annotated[float, OpenLIFUFieldData("Beamwidth search radius", "Size of the beamwidth search, in the units provided for Distance units (`distance_units`)")] = 5e-3
+    """Size of the beamwidth search, in the units provided for Distance units (`distance_units`). The beamwidth is found along the lateral and elevation lines perpendicular to the focus axis."""
 
-    sidelobe_radius: Annotated[float, OpenLIFUFieldData("Sidelobe radius (m)", "Size of the sidelobe mask (m)")] = 3e-3
-    """Size of the sidelobe mask (m). Pressure outside of this ellipsoid (scaled by `mainlobe_aspect_ratio`) is considered outside of the focal region."""
+    sidelobe_radius: Annotated[float, OpenLIFUFieldData("Sidelobe radius", "Size of the sidelobe mask, in the units provided for Distance units (`distance_units`)")] = 3e-3
+    """Size of the sidelobe mask, in the units provided for Distance units (`distance_units`). Pressure outside of this ellipsoid (scaled by `mainlobe_aspect_ratio`) is considered outside of the focal region."""
 
-    sidelobe_zmin: Annotated[float, OpenLIFUFieldData("Sidelobe minimum z (m)", "Minimum z coordinate of the sidelobe mask (m)")] = 1e-3
-    """Minimum z coordinate of the sidelobe mask (m). This value is used to ignore emitted pressure artifacts."""
+    sidelobe_zmin: Annotated[float, OpenLIFUFieldData("Sidelobe minimum z", "Minimum z coordinate of the sidelobe mask, in the units provided for Distance units (`distance_units`)")] = 1e-3
+    """Minimum z coordinate of the sidelobe mask, in the units provided for Distance units (`distance_units`). This value is used to ignore emitted pressure artifacts."""
 
     distance_units: Annotated[str, OpenLIFUFieldData("Distance units", "The units used for distance measurements")] = "m"
     """The units used for distance measurements"""
