@@ -215,23 +215,28 @@ def convert_between_ras_and_lps(mesh : vtk.vtkPointSet) -> vtk.vtkPointSet:
 
     return transformFilter.GetOutput()
 
-def run_reconstruction(images: list[Path], pipeline: Path | None = None) -> Tuple[Photoscan,Path]:
+def run_reconstruction(images: list[Path], pipeline_name: str = "default_pipeline") -> Tuple[Photoscan,Path]:
     """Run Meshroom with the given images and pipeline.
     Args:
         images (list[Path]): List of image file paths.
-        pipeline (Path): Path to the Meshroom pipeline file.
+        pipeline (str): Name of the Meshroom pipeline in meshroom_pipelines folder.
     Returns:
         photoscan: The Photoscan of the reconstructed images.
         data_dir (Path): The directory containing the underlying data files whose names are given in the Photoscan.
     """
-    if pipeline is None:
-        pipeline = importlib.resources.files("openlifu.meshroom_pipelines") / "default_pipeline.mg"
+    pipeline_dir = importlib.resources.files("openlifu.meshroom_pipelines")
+    valid_configs = [f.stem for f in pipeline_dir.iterdir() if f.suffix == ".mg"]
+
+    if pipeline_name not in valid_configs:
+        raise ValueError(
+            f"Invalid pipeline name '{pipeline_name}'. "
+            f"Valid options are: {', '.join(valid_configs)}"
+        )
+
+    pipeline = pipeline_dir / f"{pipeline_name}.mg"
 
     if shutil.which("meshroom_batch") is None:
         raise FileNotFoundError("Error: 'meshroom_batch' is not found in system PATH. Ensure it is installed and accessible.")
-
-    if not Path.exists(pipeline):
-        raise FileNotFoundError(f"Error: The pipeline file '{pipeline}' does not exist.")
 
     temp_dir = Path(tempfile.mkdtemp())
 

@@ -1,46 +1,46 @@
 {
     "header": {
-        "pipelineVersion": "2.2",
+        "nodesVersions": {
+            "FeatureExtraction": "1.3",
+            "StructureFromMotion": "3.3",
+            "ImageMatching": "2.0",
+            "PrepareDenseScene": "3.1",
+            "MeshFiltering": "3.0",
+            "FeatureMatching": "2.0",
+            "Texturing": "6.0",
+            "CameraInit": "9.0",
+            "Meshing": "7.0",
+            "Publish": "1.3"
+        },
         "releaseVersion": "2023.3.0",
         "fileVersion": "1.1",
-        "template": true,
-        "nodesVersions": {
-            "MeshFiltering": "3.0",
-            "DepthMapFilter": "4.0",
-            "MeshDecimate": "1.0",
-            "Meshing": "7.0",
-            "FeatureExtraction": "1.3",
-            "CameraInit": "9.0",
-            "Texturing": "6.0",
-            "ImageMatching": "2.0",
-            "Publish": "1.3",
-            "DepthMap": "5.0",
-            "FeatureMatching": "2.0",
-            "PrepareDenseScene": "3.1",
-            "StructureFromMotion": "3.3"
-        }
+        "template": true
     },
     "graph": {
-        "Meshing_1": {
-            "nodeType": "Meshing",
+        "Texturing_1": {
+            "nodeType": "Texturing",
             "position": [
                 1600,
                 0
             ],
             "inputs": {
-                "input": "{DepthMapFilter_1.input}",
-                "depthMapsFolder": "{DepthMapFilter_1.output}"
+                "input": "{Meshing_1.output}",
+                "imagesFolder": "{PrepareDenseScene_1.output}",
+                "inputMesh": "{MeshFiltering_1.outputMesh}",
+                "colorMapping": {
+                    "enable": true,
+                    "colorMappingFileType": "png"
+                }
             }
         },
-        "DepthMapFilter_1": {
-            "nodeType": "DepthMapFilter",
+        "Meshing_1": {
+            "nodeType": "Meshing",
             "position": [
-                1400,
+                1200,
                 0
             ],
             "inputs": {
-                "input": "{DepthMap_1.input}",
-                "depthMapsFolder": "{DepthMap_1.output}"
+                "input": "{PrepareDenseScene_1.input}"
             }
         },
         "ImageMatching_1": {
@@ -82,16 +82,6 @@
                 "describerTypes": "{FeatureMatching_1.describerTypes}"
             }
         },
-        "PrepareDenseScene_1": {
-            "nodeType": "PrepareDenseScene",
-            "position": [
-                1000,
-                0
-            ],
-            "inputs": {
-                "input": "{StructureFromMotion_1.output}"
-            }
-        },
         "CameraInit_1": {
             "nodeType": "CameraInit",
             "position": [
@@ -100,22 +90,10 @@
             ],
             "inputs": {}
         },
-        "DepthMap_1": {
-            "nodeType": "DepthMap",
-            "position": [
-                1200,
-                0
-            ],
-            "inputs": {
-                "input": "{PrepareDenseScene_1.input}",
-                "imagesFolder": "{PrepareDenseScene_1.output}",
-                "downscale": 2
-            }
-        },
         "MeshFiltering_1": {
             "nodeType": "MeshFiltering",
             "position": [
-                1800,
+                1400,
                 0
             ],
             "inputs": {
@@ -135,20 +113,14 @@
                 "describerTypes": "{FeatureExtraction_1.describerTypes}"
             }
         },
-        "Texturing_1": {
-            "nodeType": "Texturing",
+        "PrepareDenseScene_1": {
+            "nodeType": "PrepareDenseScene",
             "position": [
-                2178,
-                24
+                1000,
+                0
             ],
             "inputs": {
-                "input": "{Meshing_1.output}",
-                "imagesFolder": "{DepthMap_1.imagesFolder}",
-                "inputMesh": "{MeshFiltering_1.outputMesh}",
-                "colorMapping": {
-                    "enable": true,
-                    "colorMappingFileType": "png"
-                }
+                "input": "{StructureFromMotion_1.output}"
             }
         },
         "Publish_1": {
