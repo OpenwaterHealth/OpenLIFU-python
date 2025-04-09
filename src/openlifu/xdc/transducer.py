@@ -254,7 +254,16 @@ class Transducer:
             return json.dumps(self.to_dict(), indent=4)
 
     @staticmethod
-    def gen_matrix_array(nx=2, ny=2, pitch=1, kerf=0, units="mm", impulse_response=1, impulse_dt=1, id='array', name='Array', attrs={}):
+    def gen_matrix_array(nx:int=2,
+                         ny:int=2,
+                         pitch:float=1.0,
+                         kerf:float=0.0,
+                         units:str="mm",
+                         impulse_response:float|np.ndarray=1.0,
+                         impulse_dt:float=1.0,
+                         id:str='array',
+                         name:str='Array',
+                         attrs:Dict|None=None):
         """Generate a 2D flat matrix array
 
         Args:
@@ -291,4 +300,6 @@ class Transducer:
                 impulse_dt=impulse_dt,
                 units=units
             ))
+        if attrs is None:
+            attrs = {}
         return Transducer(elements=elements, id=id, name=name, attrs=attrs)
