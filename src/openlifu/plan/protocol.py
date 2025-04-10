@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Annotated, Any, Dict, List, Tuple
 
 import numpy as np
 import xarray as xa
@@ -20,6 +20,7 @@ from openlifu.plan.solution import Solution
 from openlifu.plan.solution_analysis import SolutionAnalysis, SolutionAnalysisOptions
 from openlifu.plan.target_constraints import TargetConstraints
 from openlifu.sim import run_simulation
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.checkgpu import gpu_available
 from openlifu.util.json import PYFUSEncoder
 from openlifu.virtual_fit import VirtualFitOptions
@@ -30,46 +31,47 @@ OnPulseMismatchAction = Enum("OnPulseMismatchAction", ["ERROR", "ROUND", "ROUNDU
 
 @dataclass
 class Protocol:
-    id: str = "protocol"
-    """ The unique identifier of the protocol """
+    id: Annotated[str, OpenLIFUFieldData("Protocol ID", "The unique identifier of the protocol")] = "protocol"
+    """The unique identifier of the protocol"""
 
-    name: str = "Protocol"
-    """ The name of the protocol """
+    name: Annotated[str, OpenLIFUFieldData("Protocol name", "The name of the protocol")] = "Protocol"
+    """The name of the protocol"""
 
-    description: str = ""
-    """ A more detailed description of the protocol """
+    description: Annotated[str, OpenLIFUFieldData("Protocol description", "A more detailed description of the protocol")] = ""
+    """A more detailed description of the protocol"""
 
-    pulse: bf.Pulse = field(default_factory=bf.Pulse)
-    """ The pulse definition used in the protocol """
+    pulse: Annotated[bf.Pulse, OpenLIFUFieldData("Pulse definition", "The pulse definition used in the protocol")] = field(default_factory=bf.Pulse)
+    """The pulse definition used in the protocol"""
 
-    sequence: bf.Sequence = field(default_factory=bf.Sequence)
-    """ The sequence of pulses used in the protocol """
+    sequence: Annotated[bf.Sequence, OpenLIFUFieldData("Pulse sequence", "The sequence of pulses used in the protocol")] = field(default_factory=bf.Sequence)
+    """The sequence of pulses used in the protocol"""
 
-    focal_pattern: bf.FocalPattern = field(default_factory=bf.SinglePoint)
-    """ The focal pattern used in the protocol. By default, a single point is used """
+    focal_pattern: Annotated[bf.FocalPattern, OpenLIFUFieldData("Focal pattern", "The focal pattern used in the protocol. By default, a single point is used")] = field(default_factory=bf.SinglePoint)
+    """The focal pattern used in the protocol. By default, a single point is used"""
 
-    sim_setup: sim.SimSetup = field(default_factory=sim.SimSetup)
-    """ Configuration options for using k-wave to simulate wave propagation """
+    sim_setup: Annotated[sim.SimSetup, OpenLIFUFieldData("Simulation setup", "Configuration options for using k-wave to simulate wave propagation")] = field(default_factory=sim.SimSetup)
+    """Configuration options for using k-wave to simulate wave propagation"""
 
-    delay_method: bf.DelayMethod = field(default_factory=bf.delay_methods.Direct)
-    """ The method used to calculate transmit delays. By default, delays are calculated using a nominal speed of sound """
+    delay_method: Annotated[bf.DelayMethod, OpenLIFUFieldData("Delay method", "The method used to calculate transmit delays. By default, delays are calculated using a nominal speed of sound")] = field(default_factory=bf.delay_methods.Direct)
+    """The method used to calculate transmit delays. By default, delays are calculated using a nominal speed of sound"""
 
-    apod_method: bf.ApodizationMethod = field(default_factory=bf.apod_methods.Uniform)
-    """ The method used to calculate transmit apodizations. By default, apodizations are uniform """
+    apod_method: Annotated[bf.ApodizationMethod, OpenLIFUFieldData("Apodization method", "The method used to calculate transmit apodizations. By default, apodizations are uniform")] = field(default_factory=bf.apod_methods.Uniform)
+    """The method used to calculate transmit apodizations. By default, apodizations are uniform"""
 
-    seg_method: seg.SegmentationMethod = field(default_factory=seg.seg_methods.Water)
-    """ The method used to segment the subject's MRI for delay calculation. By default, the entire field is assumed to be water """
+    seg_method: Annotated[seg.SegmentationMethod, OpenLIFUFieldData("Segmentation method", "The method used to segment the subject's MRI for delay calculation. By default, the entire field is assumed to be water")] = field(default_factory=seg.seg_methods.Water)
+    """The method used to segment the subject's MRI for delay calculation. By default, the entire field is assumed to be water"""
 
-    param_constraints: dict = field(default_factory=dict)  #TODO: this seems to be used only in `plan.check_analysis` but not called anywhere
-    """ The constraints on the analysis parameters. If computed parameters are outside of the ranges defined here, warnings or errors may be flagged to reject the solution """
+    param_constraints: Annotated[dict, OpenLIFUFieldData("Parameter constraints", "The constraints on the analysis parameters. If computed parameters are outside of the ranges defined here, warnings or errors may be flagged to reject the solution")] = field(default_factory=dict)
+    """The constraints on the analysis parameters. If computed parameters are outside of the ranges defined here, warnings or errors may be flagged to reject the solution"""
 
-    target_constraints: List[TargetConstraints] = field(default_factory=list)
-    """ The constraints on the target position. If the target is outside of the bounds defined here, warnings or errors may be flagged to reject the solution """
+    target_constraints: Annotated[List[TargetConstraints], OpenLIFUFieldData("Target constraints", "The constraints on the target position. If the target is outside of the bounds defined here, warnings or errors may be flagged to reject the solution")] = field(default_factory=list)
+    """The constraints on the target position. If the target is outside of the bounds defined here, warnings or errors may be flagged to reject the solution"""
 
-    analysis_options: SolutionAnalysisOptions = field(default_factory=SolutionAnalysisOptions)
-    """ Options to adjust solution analysis. By default, the analysis is configured with default options """
+    analysis_options: Annotated[SolutionAnalysisOptions, OpenLIFUFieldData("Analysis options", "Options to adjust solution analysis. By default, the analysis is configured with default options")] = field(default_factory=SolutionAnalysisOptions)
+    """Options to adjust solution analysis. By default, the analysis is configured with default options"""
 
-    virtual_fit_options : VirtualFitOptions = field(default_factory=VirtualFitOptions)
+    virtual_fit_options: Annotated[VirtualFitOptions, OpenLIFUFieldData("Virtual fit options", "Configuration of the virtual fit algorithm")] = field(default_factory=VirtualFitOptions)
+    """Configuration of the virtual fit algorithm"""
 
     def __post_init__(self):
         self.logger = logging.getLogger(__name__)
@@ -281,6 +283,7 @@ class Protocol:
                     cycles = simulation_cycles,
                     dt=sim_options.dt,
                     t_end=sim_options.t_end,
+                    cfl=sim_options.cfl,
                     amplitude = self.pulse.amplitude,
                     gpu = use_gpu
                 )

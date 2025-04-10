@@ -48,6 +48,7 @@ dependencies = [
   "nvidia-ml-py",
   "OpenEXR",
   "scikit-image",
+  "trimesh",
 ]
 
 [project.optional-dependencies]

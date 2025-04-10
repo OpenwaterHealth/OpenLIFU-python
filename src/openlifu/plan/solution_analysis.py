@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Tuple
+from typing import Annotated, Tuple
 
 import numpy as np
 import xarray as xa
 
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
 
 DEFAULT_ORIGIN = np.zeros(3)
@@ -14,24 +15,59 @@ DEFAULT_ORIGIN = np.zeros(3)
 
 @dataclass
 class SolutionAnalysis(DictMixin):
-    mainlobe_pnp_MPa: list[float] = field(default_factory=list)
-    mainlobe_isppa_Wcm2: list[float] = field(default_factory=list)
-    mainlobe_ispta_mWcm2: list[float] = field(default_factory=list)
-    beamwidth_lat_3dB_mm: list[float] = field(default_factory=list)
-    beamwidth_ele_3dB_mm: list[float] = field(default_factory=list)
-    beamwidth_ax_3dB_mm: list[float] = field(default_factory=list)
-    beamwidth_lat_6dB_mm: list[float] = field(default_factory=list)
-    beamwidth_ele_6dB_mm: list[float] = field(default_factory=list)
-    beamwidth_ax_6dB_mm: list[float] = field(default_factory=list)
-    sidelobe_pnp_MPa: list[float] = field(default_factory=list)
-    sidelobe_isppa_Wcm2: list[float] = field(default_factory=list)
-    global_pnp_MPa: list[float] = field(default_factory=list)
-    global_isppa_Wcm2: list[float] = field(default_factory=list)
-    p0_Pa: list[float] = field(default_factory=list)
-    TIC: float | None = None
-    power_W: float | None = None
-    MI: float | None = None
-    global_ispta_mWcm2: float | None = None
+    mainlobe_pnp_MPa: Annotated[list[float], OpenLIFUFieldData("Mainlobe PNP", "Peak negative pressure in the mainlobe, in MPa")] = field(default_factory=list)
+    """Peak negative pressure in the mainlobe, in MPa"""
+
+    mainlobe_isppa_Wcm2: Annotated[list[float], OpenLIFUFieldData("Mainlobe ISPPA", "Spatial peak pulse average intensity in the mainlobe, in W/cm²")] = field(default_factory=list)
+    """Spatial peak pulse average intensity in the mainlobe, in W/cm²"""
+
+    mainlobe_ispta_mWcm2: Annotated[list[float], OpenLIFUFieldData("Mainlobe ISPTA", "Spatial peak time average intensity in the mainlobe, in mW/cm²")] = field(default_factory=list)
+    """Spatial peak time average intensity in the mainlobe, in mW/cm²"""
+
+    beamwidth_lat_3dB_mm: Annotated[list[float], OpenLIFUFieldData("3dB lateral beamwidth", "Lateral beamwidth at -3 dB, in mm")] = field(default_factory=list)
+    """Lateral beamwidth at -3 dB, in mm"""
+
+    beamwidth_ele_3dB_mm: Annotated[list[float], OpenLIFUFieldData("3dB elevation beamwidth", "Elevation beamwidth at -3 dB, in mm")] = field(default_factory=list)
+    """Elevation beamwidth at -3 dB, in mm"""
+
+    beamwidth_ax_3dB_mm: Annotated[list[float], OpenLIFUFieldData("3dB axial beamwidth", "Axial beamwidth at -3 dB, in mm")] = field(default_factory=list)
+    """Axial beamwidth at -3 dB, in mm"""
+
+    beamwidth_lat_6dB_mm: Annotated[list[float], OpenLIFUFieldData("6dB lateral beamwidth", "Lateral beamwidth at -6 dB, in mm")] = field(default_factory=list)
+    """Lateral beamwidth at -6 dB, in mm"""
+
+    beamwidth_ele_6dB_mm: Annotated[list[float], OpenLIFUFieldData("6dB elevation beamwidth", "Elevation beamwidth at -6 dB, in mm")] = field(default_factory=list)
+    """Elevation beamwidth at -6 dB, in mm"""
+
+    beamwidth_ax_6dB_mm: Annotated[list[float], OpenLIFUFieldData("6dB axial beamwidth", "Axial beamwidth at -6 dB, in mm")] = field(default_factory=list)
+    """Axial beamwidth at -6 dB, in mm"""
+
+    sidelobe_pnp_MPa: Annotated[list[float], OpenLIFUFieldData("Sidelobe PNP", "Peak negative pressure in the sidelobes, in MPa")] = field(default_factory=list)
+    """Peak negative pressure in the sidelobes, in MPa"""
+
+    sidelobe_isppa_Wcm2: Annotated[list[float], OpenLIFUFieldData("Sidelobe ISPPA", "Spatial peak pulse average intensity in the sidelobes, in W/cm²")] = field(default_factory=list)
+    """Spatial peak pulse average intensity in the sidelobes, in W/cm²"""
+
+    global_pnp_MPa: Annotated[list[float], OpenLIFUFieldData("Global PNP", "Maximum peak negative pressure in the entire field, in MPa")] = field(default_factory=list)
+    """Maximum peak negative pressure in the entire field, in MPa"""
+
+    global_isppa_Wcm2: Annotated[list[float], OpenLIFUFieldData("Global ISPPA", "Maximum spatial peak pulse average intensity in the entire field, in W/cm²")] = field(default_factory=list)
+    """Maximum spatial peak pulse average intensity in the entire field, in W/cm²"""
+
+    p0_Pa: Annotated[list[float], OpenLIFUFieldData("Emitted pressure (Pa)", "Initial pressure values in the field, in Pa")] = field(default_factory=list)
+    """Initial pressure values in the field (Pa)"""
+
+    TIC: Annotated[float | None, OpenLIFUFieldData("Thermal index (TIC)", "Thermal index in cranium (TIC)")] = None
+    """Thermal index in cranium (TIC)"""
+
+    power_W: Annotated[float | None, OpenLIFUFieldData("Emitted Power (W)", "Emitted power from the transducer face (W)")] = None
+    """Emitted power from the transducer face (W)"""
+
+    MI: Annotated[float | None, OpenLIFUFieldData("Mechanical index (MI)", "Mechanical index (MI)")] = None
+    """Mechanical index (MI)"""
+
+    global_ispta_mWcm2: Annotated[float | None, OpenLIFUFieldData("Global ISPTA (mW/cm²)", "Global Intensity at Spatial-Peak, Time-Average (I_SPTA) (mW/cm²)")] = None
+    """Global Intensity at Spatial-Peak, Time-Average (I_SPTA) (mW/cm²)"""
 
     @staticmethod
     def from_json(json_string : str) -> SolutionAnalysis:
@@ -54,17 +90,35 @@ class SolutionAnalysis(DictMixin):
 
 @dataclass
 class SolutionAnalysisOptions(DictMixin):
-    standoff_sound_speed: float = 1500.0
-    standoff_density: float = 1000.0
-    ref_sound_speed: float = 1500.0
-    ref_density: float = 1000.0
-    focus_diameter: float = 0.5
-    mainlobe_aspect_ratio: Tuple[float, float, float] = (1., 1., 5.)
-    mainlobe_radius: float = 2.5e-3
-    beamwidth_radius: float = 5e-3
-    sidelobe_radius: float = 3e-3
-    sidelobe_zmin: float = 1e-3
-    distance_units: str = "m"
+    standoff_sound_speed: Annotated[float, OpenLIFUFieldData("Standoff sound speed (m/s)", "Speed of sound in standoff, for calculating initial impedance")] = 1500.0
+    """Speed of sound in standoff, for calculating initial impedance"""
+
+    standoff_density: Annotated[float, OpenLIFUFieldData("Standoff density (kg/m³)", "Density of standoff medium (kg/m³)")] = 1000.0
+    """Density of standoff medium (kg/m³)"""
+
+    ref_sound_speed: Annotated[float, OpenLIFUFieldData("Reference sound speed (m/s)", "Reference speed of sound in the medium (m/s)")] = 1500.0
+    """Reference speed of sound in the medium (m/s)"""
+
+    ref_density: Annotated[float, OpenLIFUFieldData("Reference density (kg/m³)", "Reference density (kg/m³)")] = 1000.0
+    """Reference density (kg/m³)"""
+
+    mainlobe_aspect_ratio: Annotated[Tuple[float, float, float], OpenLIFUFieldData("Mainlobe aspect ratio (lat,ele,ax)", "Aspect ratio of the mainlobe mask")] = (1., 1., 5.)
+    """Aspect ratio of the mainlobe ellipsoid mask, in the form (lat,ele,ax). (1,1,5) means an ellipsoid 5x as long as it is wide."""
+
+    mainlobe_radius: Annotated[float, OpenLIFUFieldData("Mainlobe mask radius", "Size of the mainlobe mask, in the units provided for Distance units (`distance_units`)")] = 2.5e-3
+    """Size of the mainlobe mask, in the units provided for Distance units (`distance_units`). The mainlobe mask is an ellipsoid with this radius, scaled by the `mainlobe_aspect_ratio`."""
+
+    beamwidth_radius: Annotated[float, OpenLIFUFieldData("Beamwidth search radius", "Size of the beamwidth search, in the units provided for Distance units (`distance_units`)")] = 5e-3
+    """Size of the beamwidth search, in the units provided for Distance units (`distance_units`). The beamwidth is found along the lateral and elevation lines perpendicular to the focus axis."""
+
+    sidelobe_radius: Annotated[float, OpenLIFUFieldData("Sidelobe radius", "Size of the sidelobe mask, in the units provided for Distance units (`distance_units`)")] = 3e-3
+    """Size of the sidelobe mask, in the units provided for Distance units (`distance_units`). Pressure outside of this ellipsoid (scaled by `mainlobe_aspect_ratio`) is considered outside of the focal region."""
+
+    sidelobe_zmin: Annotated[float, OpenLIFUFieldData("Sidelobe minimum z", "Minimum z coordinate of the sidelobe mask, in the units provided for Distance units (`distance_units`)")] = 1e-3
+    """Minimum z coordinate of the sidelobe mask, in the units provided for Distance units (`distance_units`). This value is used to ignore emitted pressure artifacts."""
+
+    distance_units: Annotated[str, OpenLIFUFieldData("Distance units", "The units used for distance measurements")] = "m"
+    """The units used for distance measurements"""
 
 def find_centroid(da: xa.DataArray, cutoff:float) -> np.ndarray:
     """Find the centroid of a thresholded region of a DataArray"""

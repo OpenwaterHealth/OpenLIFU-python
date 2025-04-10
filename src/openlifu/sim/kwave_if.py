@@ -20,13 +20,13 @@ from openlifu import xdc
 from openlifu.util.units import getunitconversion
 
 
-def get_kgrid(coords: xa.Coordinates, t_end = 0, dt = 0, sound_speed_ref=1500):
+def get_kgrid(coords: xa.Coordinates, t_end = 0, dt = 0, sound_speed_ref=1500, cfl=0.5):
     scl = getunitconversion(coords['lat'].attrs['units'], 'm')
     sz = [len(coord) for coord in coords.values()]
     dx = [np.diff(coord)[0]*scl for coord in coords.values()]
     kgrid = kWaveGrid(sz, dx)
     if dt == 0 or t_end == 0:
-        kgrid.makeTime(sound_speed_ref)
+        kgrid.makeTime(sound_speed_ref, cfl)
     else:
         Nt = round(t_end / dt)
         kgrid.setTime(Nt, dt)
@@ -76,13 +76,14 @@ def run_simulation(arr: xdc.Transducer,
                    amplitude: float = 1,
                    dt: float = 0,
                    t_end: float = 0,
+                   cfl: float = 0.5,
                    bli_tolerance: float = 0.05,
                    upsampling_rate: int = 5,
                    gpu: bool = True
 ):
     delays = delays if delays is not None else np.zeros(arr.numelements())
     apod = apod if apod is not None else np.ones(arr.numelements())
-    kgrid = get_kgrid(params.coords, dt=dt, t_end=t_end)
+    kgrid = get_kgrid(params.coords, dt=dt, t_end=t_end, cfl=cfl)
     t = np.arange(0, cycles / freq, kgrid.dt)
     input_signal = amplitude * np.sin(2 * np.pi * freq * t)
     source_mat = arr.calc_output(input_signal, kgrid.dt, delays, apod)

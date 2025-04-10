@@ -3,9 +3,11 @@ from __future__ import annotations
 import copy
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from typing import Annotated
 
 import numpy as np
 
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.units import getunitconversion
 
 
@@ -30,19 +32,44 @@ def matrix2xyz(matrix):
 
 @dataclass
 class Element:
-    index: int = 0
-    x: float = 0
-    y: float = 0
-    z: float = 0
-    az: float = 0
-    el: float = 0
-    roll: float = 0
-    w: float = 1
-    l: float = 1
-    impulse_response: np.ndarray = field(repr=False, default_factory=lambda: np.array([1]))
-    impulse_dt: float = field(repr=False, default = 1)
-    pin: int = -1
-    units: str = "mm"
+    index: Annotated[int, OpenLIFUFieldData("Element index", "Element index")] = 0
+    """Element index to identify the element in the array."""
+
+    x: Annotated[float, OpenLIFUFieldData("X position", "X position of the element")] = 0
+    """X position of the element."""
+
+    y: Annotated[float, OpenLIFUFieldData("Y position", "Y position of the element")] = 0
+    """Y position of the element."""
+
+    z: Annotated[float, OpenLIFUFieldData("Z position", "Z position of the element")] = 0
+    """Z position of the element."""
+
+    az: Annotated[float, OpenLIFUFieldData("Azimuth angle (rad)", "Azimuth angle of the element")] = 0
+    """Azimuth angle of the element, or rotation about the y-axis (rad)"""
+
+    el: Annotated[float, OpenLIFUFieldData("Elevation angle (rad)", "Elevation angle of the element")] = 0
+    """Elevation angle of the element, or rotation about the x'-axis (rad)"""
+
+    roll: Annotated[float, OpenLIFUFieldData("Roll angle (rad)", "Roll angle of the element")] = 0
+    """Roll angle of the element, or rotation about the z''-axis (rad)"""
+
+    w: Annotated[float, OpenLIFUFieldData("Width", "Width of the element in the x dimension")] = 1
+    """Width of the element in the x dimension"""
+
+    l: Annotated[float, OpenLIFUFieldData("Length", "Length of the element in the y dimension")] = 1
+    """Length of the element in the y dimension"""
+
+    impulse_response: Annotated[np.ndarray, OpenLIFUFieldData("Impulse response", "Impulse response of the element")] = field(repr=False, default_factory=lambda: np.array([1]))
+    """Impulse response of the element, can be a single value or an array of values. If an array, `impulse_dt` must be set to the time step of the impulse response. Is convolved with the input signal."""
+
+    impulse_dt: Annotated[float, OpenLIFUFieldData("Impulse response timestep", """Impulse response timestep""")] = field(repr=False, default=1)
+    """Impulse response timestep. If `impulse_response` is an array, this is the time step of the impulse response."""
+
+    pin: Annotated[int, OpenLIFUFieldData("Pin", "Channel pin to which the element is connected")] = -1
+    """Channel pin to which the element is connected. 1-(64*number of modules)."""
+
+    units: Annotated[str, OpenLIFUFieldData("Units", "Spatial units")] = "mm"
+    """Spatial units of the element specification."""
 
     def __post_init__(self):
         if isinstance(self.impulse_response, Iterable):

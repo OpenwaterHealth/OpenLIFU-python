@@ -1,23 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Tuple
+from dataclasses import dataclass
+from typing import Annotated
 
+from openlifu.util.annotations import OpenLIFUFieldData
 
-@dataclass
-class Material:
-    id: str = "material"
-    name: str = "Material"
-    sound_speed: float = 1500.0 # m/s
-    density: float = 1000.0 # kg/m^3
-    attenuation: float = 0.0 # dB/cm/MHz
-    specific_heat: float = 4182.0 # J/kg/K
-    thermal_conductivity: float = 0.598 # W/m/K
-    param_ids: Tuple[str] = field(default_factory= lambda: ("sound_speed", "density", "attenuation", "specific_heat", "thermal_conductivity"), init=False, repr=False)
-
-    @classmethod
-    def param_info(cls, param_id: str):
-        INFO = {"sound_speed":{"id":"sound_speed",
+PARAM_INFO = {"sound_speed":{"id":"sound_speed",
                                "name": "Speed of Sound",
                                "units": "m/s"},
                 "density":{"id":"density",
@@ -32,12 +20,37 @@ class Material:
                 "thermal_conductivity":{"id":"thermal_conductivity",
                                         "name": "Thermal Conductivity",
                                         "units": "W/m/K"}}
-        if param_id not in INFO:
+@dataclass
+class Material:
+    id: Annotated[str, OpenLIFUFieldData("Material ID", "The unique identifier of the material")] = "material"
+    """The unique identifier of the material"""
+
+    name: Annotated[str, OpenLIFUFieldData("Material name", "Name for the material")] = "Material"
+    """Name for the material"""
+
+    sound_speed: Annotated[float, OpenLIFUFieldData("Sound speed (m/s)", "Speed of sound in the material (m/s)")] = 1500.0  # m/s
+    """Speed of sound in the material (m/s)"""
+
+    density: Annotated[float, OpenLIFUFieldData("Density (kg/m^3)", "Mass density of the material (kg/m^3)")] = 1000.0  # kg/m^3
+    """Mass density of the material (kg/m^3)"""
+
+    attenuation: Annotated[float, OpenLIFUFieldData("Attenuation (dB/cm/MHz)", "Ultrasound attenuation in the material (dB/cm/MHz)")] = 0.0  # dB/cm/MHz
+    """Ultrasound attenuation in the material (dB/cm/MHz)"""
+
+    specific_heat: Annotated[float, OpenLIFUFieldData("Specific heat (J/kg/K)", "Specific heat capacity of the material (J/kg/K)")] = 4182.0  # J/kg/K
+    """Specific heat capacity of the material (J/kg/K)"""
+
+    thermal_conductivity: Annotated[float, OpenLIFUFieldData("Thermal conductivity (W/m/K)", "Thermal conductivity of the material (W/m/K)")] = 0.598  # W/m/K
+    """Thermal conductivity of the material (W/m/K)"""
+
+    @classmethod
+    def param_info(cls, param_id: str):
+        if param_id not in PARAM_INFO:
             raise ValueError(f"Parameter {param_id} not found.")
-        return INFO[param_id]
+        return PARAM_INFO[param_id]
 
     def get_param(self, param_id: str):
-        if param_id not in self.param_ids:
+        if param_id not in PARAM_INFO:
             raise ValueError(f"Parameter {param_id} not found.")
         return self.__getattribute__(param_id)
 

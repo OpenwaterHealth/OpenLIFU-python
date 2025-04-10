@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Annotated
 
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
 from openlifu.util.strings import sanitize
 
@@ -12,15 +14,16 @@ from openlifu.util.strings import sanitize
 class Subject(DictMixin):
     """
     Class representing a subject
-
-    ivar id: ID of the subject
-    ivar name: Name of the subject
-    ivar volumes: List of volume IDs
-    ivar attrs: Dictionary of attributes
     """
-    id: str | None = None
-    name: str | None = None
-    attrs: dict = field(default_factory=dict)
+
+    id: Annotated[str | None, OpenLIFUFieldData("Subject ID", "ID of the subject")] = None
+    """ID of the subject"""
+
+    name: Annotated[str | None, OpenLIFUFieldData("Subject name", "Name of the subject")] = None
+    """Name of the subject"""
+
+    attrs: Annotated[dict, OpenLIFUFieldData("Attributes", "Dictionary of attributes")] = field(default_factory=dict)
+    """Dictionary of attributes"""
 
     def __post_init__(self):
         if self.id is None and self.name is None:

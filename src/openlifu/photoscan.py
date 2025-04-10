@@ -7,34 +7,37 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Annotated, Dict, Tuple
 
 import numpy as np
 import OpenEXR
+import trimesh
 import vtk
+from PIL import Image
 from vtk.util.numpy_support import numpy_to_vtk
+
+from openlifu.util.annotations import OpenLIFUFieldData
 
 
 @dataclass
 class Photoscan:
-
-    id : str = "photoscan"
+    id: Annotated[str, OpenLIFUFieldData("Photoscan ID", "ID of this photoscan")] = "photoscan"
     """ID of this photoscan"""
 
-    name: str = "Photoscan"
+    name: Annotated[str, OpenLIFUFieldData("Photoscan name", "Photoscan name")] = "Photoscan"
     """Photoscan name"""
 
-    model_filename: str | None =  None
+    model_filename: Annotated[str | None, OpenLIFUFieldData("Model filename", "Relative path to model")] = None
     """Relative path to model"""
 
-    texture_filename: str | None = None
+    texture_filename: Annotated[str | None, OpenLIFUFieldData("Texture filename", "Relative path to texture image")] = None
     """Relative path to texture image"""
 
-    mtl_filename: str | None = None
+    mtl_filename: Annotated[str | None, OpenLIFUFieldData("Material filename", "Relative path to materials file")] = None
     """Relative path to materials file"""
 
-    photoscan_approved: bool = False
-    """Approval state of the photoscan. 'True' means means the user has provided some kind of
+    photoscan_approved: Annotated[bool, OpenLIFUFieldData("Approved?", "Approval state of the photoscan. 'True' means the user has provided some kind of confirmation that the photoscan is good enough to be used.")] = False
+    """Approval state of the photoscan. 'True' means the user has provided some kind of
     confirmation that the photoscan is good enough to be used."""
 
     @staticmethod
@@ -212,17 +215,17 @@ def convert_between_ras_and_lps(mesh : vtk.vtkPointSet) -> vtk.vtkPointSet:
 
     return transformFilter.GetOutput()
 
-def run_reconstruction(images: list[Path], pipeline: Path | None = None) -> Photoscan:
+def run_reconstruction(images: list[Path], pipeline: Path | None = None) -> Tuple[Photoscan,Path]:
     """Run Meshroom with the given images and pipeline.
     Args:
         images (list[Path]): List of image file paths.
         pipeline (Path): Path to the Meshroom pipeline file.
     Returns:
         photoscan: The Photoscan of the reconstructed images.
+        data_dir (Path): The directory containing the underlying data files whose names are given in the Photoscan.
     """
     if pipeline is None:
-        with importlib.resources.path("openlifu.meshroom_pipelines", "default_pipeline.mg") as default_path:
-            pipeline = default_path
+        pipeline = importlib.resources.files("openlifu.meshroom_pipelines") / "default_pipeline.mg"
 
     if shutil.which("meshroom_batch") is None:
         raise FileNotFoundError("Error: 'meshroom_batch' is not found in system PATH. Ensure it is installed and accessible.")
@@ -251,10 +254,69 @@ def run_reconstruction(images: list[Path], pipeline: Path | None = None) -> Phot
 
     subprocess.run(command, check=True)
 
-    photoscan_dict = {"model_filename": str(output_dir / "texturedMesh.obj"),
-     "texture_filename": str(output_dir / "texture_1001.png"),
-     "mtl_filename": str(output_dir / "texturedMesh.mtl")}
+    output_dir_merged = temp_dir / "output_dir_merged"
+    output_dir_merged.mkdir(parents=True, exist_ok=True)
+
+    merge_textures(output_dir / "texturedMesh.obj", output_dir_merged)
+
+    photoscan_dict = {
+        "model_filename":  "texturedMesh.obj",
+        "texture_filename": "material_0.png",
+        "mtl_filename": "material.mtl",
+    }
 
     photoscan = Photoscan.from_dict(photoscan_dict)
 
-    return photoscan
+    return photoscan, output_dir_merged
+
+def udim_to_tile(udim_str: str) -> Tuple[int, int]:
+    x = int(udim_str[-2:]) - 1
+    tile_u = x % 10
+    tile_v = x // 10
+    return tile_u, tile_v
+
+def merge_textures(input_obj_path: Path, output_path: Path) -> None:
+    scene = trimesh.load(input_obj_path, process=True)
+
+    if isinstance(scene, trimesh.Scene):
+        mesh_dict = scene.geometry
+    else:
+        mesh_dict = {'material_1001': scene}
+
+    for name, mesh in mesh_dict.items():
+        mesh.tile = udim_to_tile(name[-4:])
+
+    num_u_tiles = max(mesh.tile[0] for _, mesh in mesh_dict.items()) + 1
+    num_v_tiles = max(mesh.tile[1] for _, mesh in mesh_dict.items()) + 1
+
+    first_tile = np.array(mesh_dict['material_1001'].visual.material.image)
+    tile_height, tile_width, tile_ch = first_tile.shape
+    tex_height, tex_width = num_v_tiles*tile_height, num_u_tiles*tile_height
+    new_texture = np.zeros((tex_height, tex_width, tile_ch), dtype=first_tile.dtype)
+
+    new_verts = []
+    new_faces = []
+    new_uvs = []
+    num_verts = 0
+    for _, mesh in mesh_dict.items():
+        tile_u, tile_v = mesh.tile
+        texture_tile = np.array(mesh.visual.material.image)
+        new_texture[tex_height - tile_height*(tile_v+1): tex_height-tile_height*tile_v, tile_width*tile_u:tile_width*(tile_u+1)] = texture_tile
+        new_verts.append(mesh.vertices)
+        new_faces.append(mesh.faces+num_verts)
+        new_uvs.append(mesh.visual.uv)
+        num_verts += mesh.vertices.shape[0]
+
+    new_texture = Image.fromarray(new_texture)
+    new_verts = np.concatenate(new_verts, axis=0)
+    new_faces = np.concatenate(new_faces, axis=0)
+    new_uvs = np.concatenate(new_uvs, axis=0)
+
+    new_uvs = new_uvs/np.array([num_u_tiles, num_v_tiles]).reshape(-1,2)
+
+    mesh = trimesh.Trimesh() #Note putting vertices in this constructor will merge nearby ones
+    mesh.vertices = new_verts
+    mesh.faces = new_faces
+    mesh.visual = trimesh.visual.TextureVisuals(uv=new_uvs, image=new_texture)
+
+    mesh.export(output_path / "texturedMesh.obj")

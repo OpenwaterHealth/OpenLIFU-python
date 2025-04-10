@@ -5,7 +5,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Tuple
+from typing import Annotated, List, Tuple
 
 import numpy as np
 import xarray as xa
@@ -19,6 +19,7 @@ from openlifu.plan.solution_analysis import (
     get_beamwidth,
     get_mask,
 )
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.json import PYFUSEncoder
 from openlifu.util.units import getunitconversion, rescale_coords, rescale_data_arr
 from openlifu.xdc import Transducer
@@ -36,37 +37,38 @@ class Solution:
     """
     A sonication solution resulting from beamforming and running a simulation.
     """
-    id: str = "solution"  # the *solution* id, a concept that did not exist in the matlab software
+
+    id: Annotated[str, OpenLIFUFieldData("Solution ID", "ID of this solution")] = "solution"  # the *solution* id, a concept that did not exist in the matlab software
     """ID of this solution"""
 
-    name: str = "Solution"
+    name: Annotated[str, OpenLIFUFieldData("Solution name", "Name of this solution")] = "Solution"
     """Name of this solution"""
 
-    protocol_id: str | None = None  # this used to be called plan_id in the matlab code
+    protocol_id: Annotated[str | None, OpenLIFUFieldData("Protocol ID", "ID of the protocol that was used when generating this solution")] = None  # this used to be called plan_id in the matlab code
     """ID of the protocol that was used when generating this solution"""
 
-    transducer_id: str | None = None
+    transducer_id: Annotated[str | None, OpenLIFUFieldData("Transducer ID", "ID of the transducer that was used when generating this solution")] = None
     """ID of the transducer that was used when generating this solution"""
 
-    date_created: datetime = field(default_factory=datetime.now)
+    date_created: Annotated[datetime, OpenLIFUFieldData("Creation date", "Solution creation time")] = field(default_factory=datetime.now)
     """Solution creation time"""
 
-    description: str = ""
+    description: Annotated[str, OpenLIFUFieldData("Description", "Description of this solution")] = ""
     """Description of this solution"""
 
-    delays: np.ndarray | None = None
+    delays: Annotated[np.ndarray | None, OpenLIFUFieldData("Delays", "Vectors of time delays to steer the beam. Shape is (number of foci, number of transducer elements).")] = None
     """Vectors of time delays to steer the beam. Shape is (number of foci, number of transducer elements)."""
 
-    apodizations: np.ndarray | None = None
+    apodizations: Annotated[np.ndarray | None, OpenLIFUFieldData("Apodizations", "Vectors of apodizations to steer the beam. Shape is (number of foci, number of transducer elements).")] = None
     """Vectors of apodizations to steer the beam. Shape is (number of foci, number of transducer elements)."""
 
-    pulse: Pulse = field(default_factory=Pulse)
+    pulse: Annotated[Pulse, OpenLIFUFieldData("Pulse", "Pulse to send to the transducer when running sonication")] = field(default_factory=Pulse)
     """Pulse to send to the transducer when running sonication"""
 
-    sequence: Sequence = field(default_factory=Sequence)
+    sequence: Annotated[Sequence, OpenLIFUFieldData("Pulse sequence", "Pulse sequence to use when running sonication")] = field(default_factory=Sequence)
     """Pulse sequence to use when running sonication"""
 
-    foci: List[Point] = field(default_factory=list)
+    foci: Annotated[List[Point], OpenLIFUFieldData("Foci", "Points that are focused on in this Solution due to the focal pattern around the target. Each item in this list is a unique point from the focal pattern, and the pulse sequence is what determines how many times each point will be used.")] = field(default_factory=list)
     """Points that are focused on in this Solution due to the focal pattern around the target.
     Each item in this list is a unique point from the focal pattern, and the pulse sequence is
     what determines how many times each point will be used.
@@ -76,16 +78,16 @@ class Solution:
     # I believe this was only needed in the matlab software because solutions were organized by target rather
     # than having their own unique solution ID. We do have unique solution IDs so it's possible we don't need
     # this target attribute at all here. Keeping it here for now just in case.
-    target: Point | None = None
+    target: Annotated[Point | None, OpenLIFUFieldData("Target point", "The ultimate target of this sonication. This sonication solution is focused on one focal point in a pattern that is centered on this target.")] = None
     """The ultimate target of this sonication. This sonication solution is focused on one focal point
     in a pattern that is centered on this target."""
 
     # In the matlab code the simulation result was saved as a separate .mat file.
     # Here we include it as an xarray dataset.
-    simulation_result: xa.Dataset = field(default_factory=xa.Dataset)
+    simulation_result: Annotated[xa.Dataset, OpenLIFUFieldData("Simulation result", "The xarray Dataset of simulation results")] = field(default_factory=xa.Dataset)
     """The xarray Dataset of simulation results"""
 
-    approved: bool = False
+    approved: Annotated[bool, OpenLIFUFieldData("Approved?", "Approval state of this solution as a sonication plan. `True` means the user has provided some kind of confirmation that the solution is safe and acceptable to be executed.")] = False
     """Approval state of this solution as a sonication plan. `True` means the user has provided some
     kind of confirmation that the solution is safe and acceptable to be executed."""
 

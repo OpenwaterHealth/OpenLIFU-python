@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import Annotated
 
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
 
 
 @dataclass
 class TargetConstraints(DictMixin):
-    """ A class for storing target constraints.
+    """A class for storing target constraints.
 
     Target constraints are used to define the acceptable range of
     positions for a target. For example, a target constraint could
@@ -16,19 +18,19 @@ class TargetConstraints(DictMixin):
     of a target.
     """
 
-    dim: str = "x"
+    dim: Annotated[str, OpenLIFUFieldData("Constrained dimension ID", "The dimension ID being constrained")] = "x"
     """The dimension ID being constrained"""
 
-    name: str = "dim"
+    name: Annotated[str, OpenLIFUFieldData("Constrained dimension name", "The name of the dimension being constrained")] = "dim"
     """The name of the dimension being constrained"""
 
-    units: str = "m"
+    units: Annotated[str, OpenLIFUFieldData("Dimension units", "The units of the dimension being constrained")] = "m"
     """The units of the dimension being constrained"""
 
-    min: float = float("-inf")
+    min: Annotated[float, OpenLIFUFieldData("Minimum allowed value", "The minimum value of the dimension")] = float("-inf")
     """The minimum value of the dimension"""
 
-    max: float = float("inf")
+    max: Annotated[float, OpenLIFUFieldData("Maximum allowed value", "The maximum value of the dimension")] = float("inf")
     """The maximum value of the dimension"""
 
     def check_bounds(self, pos: float):

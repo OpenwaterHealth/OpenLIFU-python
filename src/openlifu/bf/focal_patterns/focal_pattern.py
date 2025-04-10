@@ -2,20 +2,24 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Annotated
 
 from openlifu.bf import focal_patterns
 from openlifu.geo import Point
+from openlifu.util.annotations import OpenLIFUFieldData
 
 
 @dataclass
 class FocalPattern(ABC):
     """
     Abstract base class for representing a focal pattern
-
-    :ivar target_pressure: Target pressure of the focal pattern in given units
     """
-    target_pressure: float = 1.0
-    units: str = "Pa"
+
+    target_pressure: Annotated[float, OpenLIFUFieldData("Target pressure", "Target pressure of the focal pattern in given units")] = 1.0
+    """Target pressure of the focal pattern in given units"""
+
+    units: Annotated[str, OpenLIFUFieldData("Pressure units", "Pressure units")] = "Pa"
+    """Pressure units"""
 
     @abstractmethod
     def get_targets(self, target: Point):
