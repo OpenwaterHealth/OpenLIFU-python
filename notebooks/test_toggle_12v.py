@@ -4,6 +4,9 @@ import sys
 
 from openlifu.io.LIFUInterface import LIFUInterface
 
+# set PYTHONPATH=%cd%\src;%PYTHONPATH%
+# python notebooks/test_toggle_12v.py
+
 print("Starting LIFU Test Script...")
 interface = LIFUInterface(TX_test_mode=False)
 
@@ -20,7 +23,9 @@ if not hv_connected:
 print("Ping the device")
 interface.hvcontroller.ping()
 
-if interface.hvcontroller.is_12v_on:
-    interface.hvcontroller.turn_12v_off()
-else:
-    interface.hvcontroller.turn_12v_on()
+interface.hvcontroller.turn_12v_on()
+
+print("12v ON. Press enter to TURN OFF:")
+input()  # Wait for user input
+
+interface.hvcontroller.turn_12v_off()

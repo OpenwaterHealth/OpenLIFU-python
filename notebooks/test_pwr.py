@@ -4,6 +4,9 @@ import sys
 
 from openlifu.io.LIFUInterface import LIFUInterface
 
+# set PYTHONPATH=%cd%\src;%PYTHONPATH%
+# python notebooks/test_pwr.py
+
 print("Starting LIFU Test Script...")
 interface = LIFUInterface(TX_test_mode=False)
 
