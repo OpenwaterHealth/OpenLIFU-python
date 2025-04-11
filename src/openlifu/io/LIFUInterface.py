@@ -166,9 +166,19 @@ class LIFUInterface:
             if self._test_mode:
                 return True
 
+            logger.info("Turn ON HV")
+            bHvOn = self.hvcontroller.turn_hv_on()
+
             logger.info("Start Sonication")
             # Send the solution data to the device
-            return self.txdevice.start_trigger()
+            bTriggerOn = self.txdevice.start_trigger()
+
+            if bTriggerOn and bHvOn:
+                logger.info("Sonication started successfully.")
+                return True
+            else:
+                logger.error("Failed to start sonication.")
+                return False
 
         except ValueError as v:
             logger.error("ValueError: %s", v)
@@ -203,7 +213,15 @@ class LIFUInterface:
 
             logger.info("Stop Sonication")
             # Send the solution data to the device
-            return self.txdevice.stop_trigger()
+            bTriggerOff = self.txdevice.stop_trigger()
+            bHvOff = self.hvcontroller.turn_hv_off()
+
+            if bTriggerOff and bHvOff:
+                logger.info("Sonication stopped successfully.")
+                return True
+            else:
+                logger.error("Failed to stop sonication.")
+                return False
 
         except ValueError as v:
             logger.error("ValueError: %s", v)

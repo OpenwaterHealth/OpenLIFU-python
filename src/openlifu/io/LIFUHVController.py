@@ -23,6 +23,7 @@ from openlifu.io.LIFUConfig import (
     OW_POWER_GET_TEMP2,
     OW_POWER_HV_OFF,
     OW_POWER_HV_ON,
+    OW_POWER_SET_DACS,
     OW_POWER_SET_FAN,
     OW_POWER_SET_HV,
     OW_POWER_SET_RGB,
@@ -108,7 +109,7 @@ class HVController:
         """
         try:
             if self.uart.demo_mode:
-                return 'v0.1.1'
+                return "v0.1.1"
 
             if not self.uart.is_connected():
                 raise ValueError("Console Device not connected")
@@ -264,14 +265,16 @@ class HVController:
                 return 0
 
             # Send the GET_TEMP command
-            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_POWER_GET_TEMP1)
+            r = self.uart.send_packet(
+                id=None, packetType=OW_POWER, command=OW_POWER_GET_TEMP1
+            )
             self.uart.clear_buffer()
             # r.print_packet()
 
             # Check if the data length matches a float (4 bytes)
             if r.data_len == 4:
                 # Unpack the float value from the received data (assuming little-endian)
-                temperature = struct.unpack('<f', r.data)[0]
+                temperature = struct.unpack("<f", r.data)[0]
                 # Truncate the temperature to 2 decimal places
                 truncated_temperature = round(temperature, 2)
                 return truncated_temperature
@@ -301,14 +304,16 @@ class HVController:
                 return 0
 
             # Send the GET_TEMP command
-            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_POWER_GET_TEMP2)
+            r = self.uart.send_packet(
+                id=None, packetType=OW_POWER, command=OW_POWER_GET_TEMP2
+            )
             self.uart.clear_buffer()
             # r.print_packet()
 
             # Check if the data length matches a float (4 bytes)
             if r.data_len == 4:
                 # Unpack the float value from the received data (assuming little-endian)
-                temperature = struct.unpack('<f', r.data)[0]
+                temperature = struct.unpack("<f", r.data)[0]
                 # Truncate the temperature to 2 decimal places
                 truncated_temperature = round(temperature, 2)
                 return truncated_temperature
@@ -431,7 +436,7 @@ class HVController:
             logger.info("Turning on high voltage.")
 
             r = self.uart.send_packet(
-                id=None, packetType=OW_POWER, command=OW_POWER_HV_ON
+                id=None, packetType=OW_POWER, command=OW_POWER_HV_ON, timeout=30
             )
             self.uart.clear_buffer()
             # r.print_packet()
@@ -547,7 +552,7 @@ class HVController:
             )
 
         try:
-            dac_input = int((voltage / 150) * 4095)
+            dac_input = int(((voltage) / 162) * 4095)
             # logger.info("Setting DAC Value %d.", dac_input)
             # Pack the 12-bit DAC input into two bytes
             data = bytes(
@@ -569,6 +574,79 @@ class HVController:
             else:
                 self.supply_voltage = voltage
                 logger.info("Output voltage set to %.2fV successfully.", voltage)
+                return True
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+    def set_dacs(self, hvp: int, hvm: int, hrp: int, hrm: int) -> bool:
+        """
+        Set the output voltage.
+
+        Args:
+            voltage (float): The desired output voltage.
+
+        Raises:
+            ValueError: If the controller is not connected or voltage exceeds supply voltage.
+        """
+        if self.uart.demo_mode:
+            return True
+
+        if not self.uart.is_connected():
+            raise ValueError("High voltage controller not connected")
+
+        # Validate and process the DAC input
+        if hvp is None:
+            hvp = 0
+        elif not (0 <= hvp <= 4095):
+            raise ValueError("Dac hvp input range is 0 to 4095.")
+
+        if hvm is None:
+            hvm = 0
+        elif not (0 <= hvm <= 4095):
+            raise ValueError("Dac hvm input range is 0 to 4095.")
+
+        if hrp is None:
+            hrp = 0
+        elif not (0 <= hrp <= 4095):
+            raise ValueError("Dac hrp input range is 0 to 4095.")
+
+        if hrm is None:
+            hrm = 0
+        elif not (0 <= hrm <= 4095):
+            raise ValueError("Dac hrm input range is 0 to 4095.")
+
+        try:
+            # logger.info("Setting DAC Value %d.", dac_input)
+            # Pack the 12-bit DAC input into two bytes
+            data = bytes(
+                [
+                    (hvp >> 8) & 0xFF,  # High byte (most significant bits)
+                    hvp & 0xFF,  # Low byte (least significant bits)
+                    (hrp >> 8) & 0xFF,  # High byte (most significant bits)
+                    hrp & 0xFF,  # Low byte (least significant bits)
+                    (hvm >> 8) & 0xFF,  # High byte (most significant bits)
+                    hvm & 0xFF,  # Low byte (least significant bits)
+                    (hrm >> 8) & 0xFF,  # High byte (most significant bits)
+                    hrm & 0xFF,  # Low byte (least significant bits)
+                ]
+            )
+
+            r = self.uart.send_packet(
+                id=None, packetType=OW_POWER, command=OW_POWER_SET_DACS, data=data
+            )
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error setting DACS")
+                return False
+            else:
                 return True
 
         except ValueError as v:
@@ -605,15 +683,14 @@ class HVController:
             # r.print_packet()
 
             if r.packet_type == OW_ERROR:
-                logger.error("Error setting HV")
+                logger.error("Error Getting HV Voltage reading")
                 return 0.0
-            elif r.data_len == 2:
-                dac_value = r.data[1] << 8 | r.data[0]
-                # logger.info("Got DAC Value %d.", dac_value)
-                voltage = dac_value / 4095 * 150
-                self.supply_voltage = voltage
-                logger.info("Output voltage set to %.2fV successfully.", voltage)
-                return voltage
+            elif r.data_len == 4:
+                # Unpack the float value from the received data (assuming little-endian)
+                voltage = struct.unpack("<f", r.data)[0]
+                # Truncate the temperature to 2 decimal places
+                truncated_voltage = round(voltage, 2)
+                return truncated_voltage
             else:
                 logger.error("Error getting output voltage from device")
                 return 0.0
@@ -662,7 +739,11 @@ class HVController:
             )
 
             r = self.uart.send_packet(
-                id=None, addr=fan_id, packetType=OW_POWER, command=OW_POWER_SET_FAN, data=data
+                id=None,
+                addr=fan_id,
+                packetType=OW_POWER,
+                command=OW_POWER_SET_FAN,
+                data=data,
             )
 
             self.uart.clear_buffer()
@@ -672,7 +753,7 @@ class HVController:
                 logger.error("Error setting Fan Speed")
                 return -1
 
-            logger.info(f'Set fan speed to {fan_speed}')
+            logger.info(f"Set fan speed to {fan_speed}")
             return fan_speed
 
         except ValueError as v:
@@ -721,7 +802,7 @@ class HVController:
 
             elif r.data_len == 1:
                 fan_value = r.data[0]
-                logger.info(f'Output fan speed is {fan_value}')
+                logger.info(f"Output fan speed is {fan_value}")
                 return fan_value
             else:
                 logger.error("Error getting output voltage from device")
@@ -752,7 +833,9 @@ class HVController:
             raise ValueError("High voltage controller not connected")
 
         if rgb_state not in [0, 1, 2, 3]:
-            raise ValueError("Invalid RGB state. Must be 0 (OFF), 1 (RED), 2 (BLUE), or 3 (GREEN)")
+            raise ValueError(
+                "Invalid RGB state. Must be 0 (OFF), 1 (RED), 2 (BLUE), or 3 (GREEN)"
+            )
 
         try:
             if self.uart.demo_mode:
@@ -765,7 +848,7 @@ class HVController:
                 id=None,
                 reserved=rgb_state & 0xFF,  # Send the RGB state as a single byte
                 packetType=OW_POWER,
-                command=OW_POWER_SET_RGB
+                command=OW_POWER_SET_RGB,
             )
 
             self.uart.clear_buffer()
@@ -774,7 +857,7 @@ class HVController:
                 logger.error("Error setting RGB LED state")
                 return -1
 
-            logger.info(f'Set RGB LED state to {rgb_state}')
+            logger.info(f"Set RGB LED state to {rgb_state}")
             return rgb_state
 
         except ValueError as v:
@@ -805,9 +888,7 @@ class HVController:
             logger.info("Getting current RGB LED state.")
 
             r = self.uart.send_packet(
-                id=None,
-                packetType=OW_POWER,
-                command=OW_POWER_GET_RGB
+                id=None, packetType=OW_POWER, command=OW_POWER_GET_RGB
             )
 
             self.uart.clear_buffer()
@@ -817,7 +898,7 @@ class HVController:
                 return -1
 
             rgb_state = r.reserved
-            logger.info(f'Current RGB LED state is {rgb_state}')
+            logger.info(f"Current RGB LED state is {rgb_state}")
             return rgb_state
 
         except ValueError as v:
