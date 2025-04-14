@@ -9,7 +9,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Dict, Tuple
 
+import cv2
 import numpy as np
+import onnxruntime as ort
 import OpenEXR
 import trimesh
 import vtk
@@ -215,7 +217,10 @@ def convert_between_ras_and_lps(mesh : vtk.vtkPointSet) -> vtk.vtkPointSet:
 
     return transformFilter.GetOutput()
 
-def run_reconstruction(images: list[Path], pipeline_name: str = "default_pipeline") -> Tuple[Photoscan,Path]:
+def run_reconstruction(images: list[Path],
+                       pipeline_name: str = "default_pipeline",
+                       new_width=3024,
+                       use_masks=True) -> Tuple[Photoscan,Path]:
     """Run Meshroom with the given images and pipeline.
     Args:
         images (list[Path]): List of image file paths.
@@ -243,8 +248,24 @@ def run_reconstruction(images: list[Path], pipeline_name: str = "default_pipelin
     images_dir = temp_dir / "images"
     images_dir.mkdir(parents=True, exist_ok=True)
 
+    #resize the images and store in tmp dir
+    new_paths = []
     for image in images:
-        shutil.copy(image, images_dir / image.name)
+        img = Image.open(image)
+        orientation = img.getexif().get(274, 1)
+        if orientation in range(4,8):
+            #camera is rotated. Get the perceived width.
+            old_width = img.height
+        else:
+            old_width = img.width
+        scale = new_width/old_width
+
+        resize_width = int(scale*img.width)
+        resize_height = int(scale*img.height)
+
+        img = img.resize((resize_width, resize_height), Image.Resampling.LANCZOS)
+        img.save( images_dir / image.name, exif=img.getexif())
+        new_paths.append(images_dir / image.name)
 
     output_dir = temp_dir / "output"
     cache_dir = temp_dir / "cache"
@@ -256,6 +277,12 @@ def run_reconstruction(images: list[Path], pipeline_name: str = "default_pipelin
         "--input", str(images_dir),
         "--cache", str(cache_dir)
     ]
+
+    if use_masks:
+        masks_dir = temp_dir / "masks"
+        masks_dir.mkdir(parents=True, exist_ok=True)
+        make_masks(new_paths, masks_dir)
+        command += ["--paramOverrides", f"PrepareDenseScene_1.masksFolders=['{masks_dir}']"]
 
     subprocess.run(command, check=True)
 
@@ -325,3 +352,124 @@ def merge_textures(input_obj_path: Path, output_path: Path) -> None:
     mesh.visual = trimesh.visual.TextureVisuals(uv=new_uvs, image=new_texture)
 
     mesh.export(output_path / "texturedMesh.obj")
+
+
+def apply_exif_orientation_numpy(image: np.ndarray, orientation: int, inverse: bool = False) -> np.ndarray:
+    """
+    Transforms an image array to undo or redo EXIF orientation.
+
+    Args:
+        image (np.ndarray): The image array (H x W x C or H x W).
+        orientation (int): EXIF orientation tag value (1-8).
+        inverse (bool): If True, applies the inverse transformation.
+
+    Returns:
+        np.ndarray: The transformed image.
+    """
+    if orientation == 1:
+        return image  # No transformation needed
+
+    # Define forward transformations
+    def transform(img):
+        if orientation == 2:
+            return np.fliplr(img)
+        elif orientation == 3:
+            return np.rot90(img, 2)
+        elif orientation == 4:
+            return np.flipud(img)
+        elif orientation == 5:
+            return np.rot90(np.fliplr(img), -1)
+        elif orientation == 6:
+            return np.rot90(img, -1)
+        elif orientation == 7:
+            return np.rot90(np.fliplr(img), 1)
+        elif orientation == 8:
+            return np.rot90(img, 1)
+        else:
+            raise ValueError("Unknown exif orientation")
+
+    # Define inverse transformations
+    def inverse_transform(img):
+        if orientation == 2:
+            return np.fliplr(img)
+        elif orientation == 3:
+            return np.rot90(img, 2)
+        elif orientation == 4:
+            return np.flipud(img)
+        elif orientation == 5:
+            return np.fliplr(np.rot90(img, 1))
+        elif orientation == 6:
+            return np.rot90(img, 1)
+        elif orientation == 7:
+            return np.fliplr(np.rot90(img, -1))
+        elif orientation == 8:
+            return np.rot90(img, -1)
+        else:
+            raise ValueError("Unknown exif orientation")
+
+    return inverse_transform(image) if inverse else transform(image)
+
+
+def get_modnet_path():
+    """Read environment variable MODNET_PATH to get checkpoint for now
+       TODO: Add logic for finding and downloading
+    """
+    import os
+    ckpt_path = os.getenv("MODNET_PATH")
+    if ckpt_path is None:
+        raise RuntimeError("MODNET_PATH environment variable is not set.")
+
+    ckpt_path = Path(ckpt_path)
+    if not ckpt_path.exists():
+        raise FileNotFoundError(f"Checkpoint not found at {ckpt_path}")
+
+    ckpt_path = ckpt_path.resolve()
+    return ckpt_path
+
+
+def make_masks(image_paths, output_dir, threshold=0.01):
+    ref_size = 512
+    # Load the ONNX model
+    ckpt_path = get_modnet_path()
+    session = ort.InferenceSession(ckpt_path, providers=["CPUExecutionProvider"])  # or CUDAExecutionProvider
+    for image_path in image_paths:
+        image = Image.open(image_path)
+        exif = image.getexif()
+        orientation = exif.get(274,1)
+        image = np.array(image)
+        image = apply_exif_orientation_numpy(image, orientation=orientation)
+
+        image = image.astype(np.float32) / 255.0
+        image = 2*image-1
+
+        im_h, im_w, _ = image.shape
+        if max(im_h, im_w) < ref_size or min(im_h, im_w) > ref_size:
+            if im_w >= im_h:
+                im_rh = ref_size
+                im_rw = int(im_w / im_h * ref_size)
+            elif im_w < im_h:
+                im_rw = ref_size
+                im_rh = int(im_h / im_w * ref_size)
+        else:
+            im_rh = im_h
+            im_rw = im_w
+
+        im_rw = im_rw - im_rw % 32
+        im_rh = im_rh - im_rh % 32
+
+        image = cv2.resize(image, (im_rw, im_rh), interpolation=cv2.INTER_AREA)
+        image = np.transpose(image, (2, 0, 1))  # HWC to CHW
+        image = np.expand_dims(image, axis=0)  # add batch dimension
+
+        # Run the model
+        mask = session.run(["output"], {"input": image})[0].squeeze()
+        mask = cv2.resize(mask, (im_w, im_h), interpolation=cv2.INTER_AREA)
+        mask = mask > threshold
+        mask = (mask.astype(np.float32)*255).astype(np.uint8)
+        mask = np.repeat(mask[:, :, np.newaxis], 3, axis=2)
+
+        mask = apply_exif_orientation_numpy(mask, orientation=orientation, inverse=True)
+
+        mask = Image.fromarray(mask)
+        output_path = output_dir / (image_path.stem + ".png")
+        mask.save(output_path, exif=exif)
