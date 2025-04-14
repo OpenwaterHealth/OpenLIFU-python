@@ -101,6 +101,8 @@ class SolutionAnalysis(DictMixin):
             if p not in PARAM_FORMATS:
                 raise ValueError(f"Unknown parameter constraint for '{p}'. Must be one of: {list(PARAM_FORMATS.keys())}")
         for param, fmt in PARAM_FORMATS.items():
+            value_by_focus = None
+            agg_value = None
             if fmt[0] is None:
                 value_by_focus = None
                 agg_value = self.__dict__[param]
