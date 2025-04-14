@@ -49,6 +49,7 @@ dependencies = [
   "OpenEXR",
   "scikit-image",
   "trimesh",
+  "onnxruntime",
 ]
 
 [project.optional-dependencies]
