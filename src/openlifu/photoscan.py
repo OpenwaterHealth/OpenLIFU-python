@@ -13,6 +13,7 @@ import cv2
 import numpy as np
 import onnxruntime as ort
 import OpenEXR
+import requests
 import trimesh
 import vtk
 from PIL import Image
@@ -411,20 +412,32 @@ def apply_exif_orientation_numpy(image: np.ndarray, orientation: int, inverse: b
 
 
 def get_modnet_path():
-    """Read environment variable MODNET_PATH to get checkpoint for now
-       TODO: Add logic for finding and downloading
+    """Get the MODNet checkpoint path. Download it if not present.
     """
-    import os
-    ckpt_path = os.getenv("MODNET_PATH")
-    if ckpt_path is None:
-        raise RuntimeError("MODNET_PATH environment variable is not set.")
+    package = "openlifu.modnet_checkpoints"
+    filename = "modnet_photographic_portrait_matting.onnx"
+    url = "https://data.kitware.com/api/v1/file/67feb2cb31a330568827ab32/download"
+    try:
+        # Try to find the checkpoint in the package
+        resource_path = importlib.resources.files(package) / filename
+        if resource_path.is_file():
+            return resource_path
+    except (FileNotFoundError, ModuleNotFoundError):
+        pass
 
-    ckpt_path = Path(ckpt_path)
-    if not ckpt_path.exists():
-        raise FileNotFoundError(f"Checkpoint not found at {ckpt_path}")
+    # Fallback: Download the checkpoint
+    base_dir = Path(importlib.resources.files(package))
+    full_path = base_dir / filename
+    response = requests.get(url, stream=True)
+    if response.status_code == 200:
+        with open(full_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+    else:
+        raise RuntimeError(f"Failed to download MODNet checkpoint: {response.status_code} - {response.text}")
 
-    ckpt_path = ckpt_path.resolve()
-    return ckpt_path
+    return full_path
 
 
 def make_masks(image_paths, output_dir, threshold=0.01):
