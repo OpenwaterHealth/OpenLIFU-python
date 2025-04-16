@@ -41,6 +41,9 @@ class Protocol:
     description: Annotated[str, OpenLIFUFieldData("Protocol description", "A more detailed description of the protocol")] = ""
     """A more detailed description of the protocol"""
 
+    allowed_roles: Annotated[List[str], OpenLIFUFieldData("Allowed roles", "A list of user roles allowed to interact with this protocol")] = field(default_factory=list)
+    """A list of user roles allowed to interact with this protocol"""
+
     pulse: Annotated[bf.Pulse, OpenLIFUFieldData("Pulse definition", "The pulse definition used in the protocol")] = field(default_factory=bf.Pulse)
     """The pulse definition used in the protocol"""
 
