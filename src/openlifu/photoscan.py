@@ -428,7 +428,7 @@ def get_modnet_path():
     # Fallback: Download the checkpoint
     base_dir = Path(importlib.resources.files(package))
     full_path = base_dir / filename
-    response = requests.get(url, stream=True)
+    response = requests.get(url, stream=True, timeout=(10, 300))
     if response.status_code == 200:
         with open(full_path, 'wb') as f:
             for chunk in response.iter_content(chunk_size=8192):
