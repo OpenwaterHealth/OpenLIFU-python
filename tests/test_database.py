@@ -18,8 +18,8 @@ from openlifu.db import Session, Subject, User
 from openlifu.db.database import Database, OnConflictOpts
 from openlifu.db.session import TransducerTrackingResult
 from openlifu.geo import ArrayTransform, Point
-from openlifu.photoscan import Photoscan
 from openlifu.plan import Protocol, Run
+from openlifu.trk.photoscan import Photoscan
 from openlifu.xdc import Transducer
 
 
