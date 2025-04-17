@@ -230,7 +230,7 @@ def run_reconstruction(images: list[Path],
         photoscan: The Photoscan of the reconstructed images.
         data_dir (Path): The directory containing the underlying data files whose names are given in the Photoscan.
     """
-    pipeline_dir = importlib.resources.files("openlifu.meshroom_pipelines")
+    pipeline_dir = importlib.resources.files("openlifu.trk.meshroom_pipelines")
     valid_configs = [f.stem for f in pipeline_dir.iterdir() if f.suffix == ".mg"]
 
     if pipeline_name not in valid_configs:
@@ -414,7 +414,7 @@ def apply_exif_orientation_numpy(image: np.ndarray, orientation: int, inverse: b
 def get_modnet_path():
     """Get the MODNet checkpoint path. Download it if not present.
     """
-    package = "openlifu.modnet_checkpoints"
+    package = "openlifu.trk.modnet_checkpoints"
     filename = "modnet_photographic_portrait_matting.onnx"
     url = "https://data.kitware.com/api/v1/file/67feb2cb31a330568827ab32/download"
     try:

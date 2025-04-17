@@ -9,7 +9,7 @@ import pytest
 from vtk import VTK_UNSIGNED_SHORT, vtkImageData, vtkPoints, vtkPolyData
 
 from openlifu.db.database import Database
-from openlifu.photoscan import (
+from openlifu.trk.photoscan import (
     Photoscan,
     convert_between_ras_and_lps,
     convert_numpy_to_vtkimage,
@@ -135,5 +135,5 @@ def test_convert_numpy_to_vtkimage():
 
 def test_resource_import():
     """Ensure that a meshroom pipeline resource file can be imported"""
-    pipeline_path = importlib.resources.files("openlifu.meshroom_pipelines") / "default_pipeline.mg"
+    pipeline_path = importlib.resources.files("openlifu.trk.meshroom_pipelines") / "default_pipeline.mg"
     assert pipeline_path.exists()
