@@ -13,6 +13,7 @@ from openlifu.trk.photoscan import (
     Photoscan,
     convert_between_ras_and_lps,
     convert_numpy_to_vtkimage,
+    get_meshroom_pipeline_names,
     load_data_from_filepaths,
     load_data_from_photoscan,
 )
@@ -137,3 +138,9 @@ def test_resource_import():
     """Ensure that a meshroom pipeline resource file can be imported"""
     pipeline_path = importlib.resources.files("openlifu.trk.meshroom_pipelines") / "default_pipeline.mg"
     assert pipeline_path.exists()
+
+def test_get_meshroom_pipeline_names():
+    """Verify that get_meshroom_pipeline_names gets us a nonempty list of strings"""
+    pipeline_names = get_meshroom_pipeline_names()
+    assert len(pipeline_names) > 0
+    assert isinstance(pipeline_names[0],str)

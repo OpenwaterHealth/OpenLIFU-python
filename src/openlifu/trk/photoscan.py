@@ -218,6 +218,11 @@ def convert_between_ras_and_lps(mesh : vtk.vtkPointSet) -> vtk.vtkPointSet:
 
     return transformFilter.GetOutput()
 
+def get_meshroom_pipeline_names() -> list[str]:
+    """Get a list of names of valid meshroom pipelines that can be used in run_reconstruction"""
+    pipeline_dir = importlib.resources.files("openlifu.trk.meshroom_pipelines")
+    return [f.stem for f in pipeline_dir.iterdir() if f.suffix == ".mg"]
+
 def run_reconstruction(images: list[Path],
                        pipeline_name: str = "default_pipeline",
                        new_width=3024,
@@ -226,12 +231,13 @@ def run_reconstruction(images: list[Path],
     Args:
         images (list[Path]): List of image file paths.
         pipeline (str): Name of the Meshroom pipeline in meshroom_pipelines folder.
+            See also `get_meshroom_pipeline_names`.
     Returns:
         photoscan: The Photoscan of the reconstructed images.
         data_dir (Path): The directory containing the underlying data files whose names are given in the Photoscan.
     """
     pipeline_dir = importlib.resources.files("openlifu.trk.meshroom_pipelines")
-    valid_configs = [f.stem for f in pipeline_dir.iterdir() if f.suffix == ".mg"]
+    valid_configs = get_meshroom_pipeline_names()
 
     if pipeline_name not in valid_configs:
         raise ValueError(
