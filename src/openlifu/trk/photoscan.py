@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import logging
 import shutil
 import subprocess
 import tempfile
@@ -21,6 +22,7 @@ from vtk.util.numpy_support import numpy_to_vtk
 
 from openlifu.util.annotations import OpenLIFUFieldData
 
+logger = logging.getLogger("MeshRecon")
 
 @dataclass
 class Photoscan:
@@ -437,6 +439,7 @@ def get_modnet_path() -> Path:
         # Try to find the checkpoint in the package
         resource_path = importlib.resources.files(package) / filename
         if resource_path.is_file():
+            logger.info(f"Found existing MODNet checkpoint at {resource_path}")
             return resource_path
     except (FileNotFoundError, ModuleNotFoundError):
         pass
@@ -444,12 +447,14 @@ def get_modnet_path() -> Path:
     # Fallback: Download the checkpoint
     base_dir = Path(importlib.resources.files(package))
     full_path = base_dir / filename
+    logger.info(f"MODNet checkpoint not found. Downloading from {url}...")
     response = requests.get(url, stream=True, timeout=(10, 300))
     if response.status_code == 200:
         with open(full_path, 'wb') as f:
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:
                     f.write(chunk)
+        logger.info(f"Downloaded MODNet checkpoint to {full_path}")
     else:
         raise RuntimeError(f"Failed to download MODNet checkpoint: {response.status_code} - {response.text}")
 
