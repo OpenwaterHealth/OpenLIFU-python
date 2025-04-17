@@ -373,7 +373,7 @@ def apply_exif_orientation_numpy(image: np.ndarray, orientation: int, inverse: b
     Returns:
         np.ndarray: The transformed image.
     """
-    if orientation == 1:
+    if orientation <= 1 or orientation > 8:
         return image  # No transformation needed
 
     # Define forward transformations
@@ -385,11 +385,11 @@ def apply_exif_orientation_numpy(image: np.ndarray, orientation: int, inverse: b
         elif orientation == 4:
             return np.flipud(img)
         elif orientation == 5:
-            return np.rot90(np.fliplr(img), -1)
+            return np.rot90(np.fliplr(img), 1)
         elif orientation == 6:
             return np.rot90(img, -1)
         elif orientation == 7:
-            return np.rot90(np.fliplr(img), 1)
+            return np.rot90(np.fliplr(img), -1)
         elif orientation == 8:
             return np.rot90(img, 1)
         else:
@@ -404,11 +404,11 @@ def apply_exif_orientation_numpy(image: np.ndarray, orientation: int, inverse: b
         elif orientation == 4:
             return np.flipud(img)
         elif orientation == 5:
-            return np.fliplr(np.rot90(img, 1))
+            return np.fliplr(np.rot90(img, -1))
         elif orientation == 6:
             return np.rot90(img, 1)
         elif orientation == 7:
-            return np.fliplr(np.rot90(img, -1))
+            return np.fliplr(np.rot90(img, 1))
         elif orientation == 8:
             return np.rot90(img, -1)
         else:
