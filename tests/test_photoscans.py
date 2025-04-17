@@ -17,6 +17,7 @@ from openlifu.trk.photoscan import (
     get_meshroom_pipeline_names,
     load_data_from_filepaths,
     load_data_from_photoscan,
+    preprocess_image_modnet,
 )
 
 
@@ -173,3 +174,9 @@ def test_apply_exif_orientation_numpy():
         img_tform = apply_exif_orientation_numpy(img, orientation)
         img_recon = apply_exif_orientation_numpy(img_tform, orientation, inverse=True)
         np.testing.assert_array_equal(img, img_recon)
+
+def test_preprocess_image_modnet():
+    """Verify preprocess_image_modnet resize image correctly"""
+    assert preprocess_image_modnet(np.zeros((400, 600, 3))).shape == (1,3,384, 576)
+    assert preprocess_image_modnet(np.zeros((600, 700, 3))).shape == (1,3,512,576)
+    assert preprocess_image_modnet(np.zeros((400, 300, 3))).shape == (1, 3, 672, 512)

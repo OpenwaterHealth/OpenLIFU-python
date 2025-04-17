@@ -225,8 +225,8 @@ def get_meshroom_pipeline_names() -> list[str]:
 
 def run_reconstruction(images: list[Path],
                        pipeline_name: str = "default_pipeline",
-                       new_width=3024,
-                       use_masks=True) -> Tuple[Photoscan,Path]:
+                       new_width: int = 3024,
+                       use_masks: bool = True) -> Tuple[Photoscan,Path]:
     """Run Meshroom with the given images and pipeline.
     Args:
         images (list[Path]): List of image file paths.
@@ -417,7 +417,7 @@ def apply_exif_orientation_numpy(image: np.ndarray, orientation: int, inverse: b
     return inverse_transform(image) if inverse else transform(image)
 
 
-def get_modnet_path():
+def get_modnet_path() -> Path:
     """Get the MODNet checkpoint path. Download it if not present.
     """
     package = "openlifu.trk.modnet_checkpoints"
@@ -445,9 +445,65 @@ def get_modnet_path():
 
     return full_path
 
+def preprocess_image_modnet(image: np.ndarray, ref_size: int = 512) -> np.ndarray:
+    """
+    Preprocess an input image for MODNet inference.
 
-def make_masks(image_paths, output_dir, threshold=0.01):
-    ref_size = 512
+    This function performs the same preprocessing steps as the official MODNet code:
+    - Normalizes image values to the range [-1, 1]
+    - Resizes the image based on a reference size (512), maintaining aspect ratio
+    - Ensures the resized dimensions are divisible by 32
+    - Converts the image to CHW format and adds a batch dimension
+
+    Args:
+        image (np.ndarray): Input image in HWC format with values in [0, 255].
+
+    Returns:
+        np.ndarray: Preprocessed image in NCHW format with float32 values in [-1, 1].
+    """
+
+    # Normalize image to [-1, 1]
+    image = image.astype(np.float32) / 255.0
+    image = 2 * image - 1
+
+    im_h, im_w, _ = image.shape
+
+    # Resize if both dimensions are smaller or larger than the reference size
+    if max(im_h, im_w) < ref_size or min(im_h, im_w) > ref_size:
+        if im_w >= im_h:
+            im_rh = ref_size
+            im_rw = int(im_w * ref_size / im_h)
+        else:
+            im_rw = ref_size
+            im_rh = int(im_h * ref_size / im_w)
+    else:
+        im_rh, im_rw = im_h, im_w
+
+    # Ensure dimensions are divisible by 32
+    im_rw -= im_rw % 32
+    im_rh -= im_rh % 32
+
+    # Resize, convert to CHW, and add batch dimension
+    image = cv2.resize(image, (im_rw, im_rh), interpolation=cv2.INTER_AREA)
+    image = np.transpose(image, (2, 0, 1))  # HWC to CHW
+    image = np.expand_dims(image, axis=0)  # Add batch dimension
+
+    return image
+
+
+def make_masks(image_paths: list[Path], output_dir: Path, threshold: float = 0.01) -> None:
+    """
+    Runs MODNet on a list of image paths and saves the output masks.
+
+    Each output mask is saved in `output_dir` using the original filename with a `.png` extension.
+    The `threshold` parameter is used to convert the MODNet soft segmentation output into a binary (hard) mask.
+    EXIF orientation data is preserved to ensure correct image alignment when loading into Meshroom.
+
+    Args:
+        image_paths (List[str]): List of input image file paths.
+        output_dir (str): Directory where the output masks will be saved.
+        threshold (float): Threshold to binarize the soft segmentation output.
+    """
     # Load the ONNX model
     ckpt_path = get_modnet_path()
     session = ort.InferenceSession(ckpt_path, providers=["CPUExecutionProvider"])  # or CUDAExecutionProvider
@@ -457,28 +513,8 @@ def make_masks(image_paths, output_dir, threshold=0.01):
         orientation = exif.get(274,1)
         image = np.array(image)
         image = apply_exif_orientation_numpy(image, orientation=orientation)
-
-        image = image.astype(np.float32) / 255.0
-        image = 2*image-1
-
         im_h, im_w, _ = image.shape
-        if max(im_h, im_w) < ref_size or min(im_h, im_w) > ref_size:
-            if im_w >= im_h:
-                im_rh = ref_size
-                im_rw = int(im_w / im_h * ref_size)
-            elif im_w < im_h:
-                im_rw = ref_size
-                im_rh = int(im_h / im_w * ref_size)
-        else:
-            im_rh = im_h
-            im_rw = im_w
-
-        im_rw = im_rw - im_rw % 32
-        im_rh = im_rh - im_rh % 32
-
-        image = cv2.resize(image, (im_rw, im_rh), interpolation=cv2.INTER_AREA)
-        image = np.transpose(image, (2, 0, 1))  # HWC to CHW
-        image = np.expand_dims(image, axis=0)  # add batch dimension
+        image = preprocess_image_modnet(image)
 
         # Run the model
         mask = session.run(["output"], {"input": image})[0].squeeze()
