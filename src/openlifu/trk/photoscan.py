@@ -225,13 +225,16 @@ def get_meshroom_pipeline_names() -> list[str]:
 
 def run_reconstruction(images: list[Path],
                        pipeline_name: str = "default_pipeline",
-                       new_width: int = 3024,
+                       input_resize_width: int = 3024,
                        use_masks: bool = True) -> Tuple[Photoscan,Path]:
     """Run Meshroom with the given images and pipeline.
     Args:
         images (list[Path]): List of image file paths.
-        pipeline (str): Name of the Meshroom pipeline in meshroom_pipelines folder.
+        pipeline_name (str): Name of the Meshroom pipeline in meshroom_pipelines folder.
             See also `get_meshroom_pipeline_names`.
+        input_resize_width (int): Target width for image resizing.
+        use_masks (bool): When True computes segmentation masks with MODNet to filter dense reconstruction.
+
     Returns:
         photoscan: The Photoscan of the reconstructed images.
         data_dir (Path): The directory containing the underlying data files whose names are given in the Photoscan.
@@ -265,7 +268,7 @@ def run_reconstruction(images: list[Path],
             old_width = img.height
         else:
             old_width = img.width
-        scale = new_width/old_width
+        scale = input_resize_width/old_width
 
         resize_width = int(scale*img.width)
         resize_height = int(scale*img.height)
@@ -309,12 +312,19 @@ def run_reconstruction(images: list[Path],
     return photoscan, output_dir_merged
 
 def udim_to_tile(udim_str: str) -> Tuple[int, int]:
+    """Convert UDIM string to tile coordinates"""
     x = int(udim_str[-2:]) - 1
     tile_u = x % 10
     tile_v = x // 10
     return tile_u, tile_v
 
 def merge_textures(input_obj_path: Path, output_path: Path) -> None:
+    """Merge the UDIM textures output by meshroom into a single large texture
+
+    Args:
+        input_obj_path (Path): Path to .obj mesh to merge.
+        output_path (Path): Path to save merged .obj mesh.
+    """
     scene = trimesh.load(input_obj_path, process=True)
 
     if isinstance(scene, trimesh.Scene):
