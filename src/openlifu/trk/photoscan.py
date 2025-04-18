@@ -234,7 +234,7 @@ def run_reconstruction(images: list[Path],
         images (list[Path]): List of image file paths.
         pipeline_name (str): Name of the Meshroom pipeline in meshroom_pipelines folder.
             See also `get_meshroom_pipeline_names`.
-        input_resize_width (int): Target width for image resizing.
+        input_resize_width (int): Width to which input images will be resized, in pixels.
         use_masks (bool): Whether to include a background removal step to filter the dense reconstruction.
 
     Returns:
