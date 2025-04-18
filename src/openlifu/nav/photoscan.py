@@ -222,7 +222,7 @@ def convert_between_ras_and_lps(mesh : vtk.vtkPointSet) -> vtk.vtkPointSet:
 
 def get_meshroom_pipeline_names() -> list[str]:
     """Get a list of names of valid meshroom pipelines that can be used in run_reconstruction"""
-    pipeline_dir = importlib.resources.files("openlifu.trk.meshroom_pipelines")
+    pipeline_dir = importlib.resources.files("openlifu.nav.meshroom_pipelines")
     return [f.stem for f in pipeline_dir.iterdir() if f.suffix == ".mg"]
 
 def run_reconstruction(images: list[Path],
@@ -241,7 +241,7 @@ def run_reconstruction(images: list[Path],
         photoscan: The Photoscan of the reconstructed images.
         data_dir (Path): The directory containing the underlying data files whose names are given in the Photoscan.
     """
-    pipeline_dir = importlib.resources.files("openlifu.trk.meshroom_pipelines")
+    pipeline_dir = importlib.resources.files("openlifu.nav.meshroom_pipelines")
     valid_configs = get_meshroom_pipeline_names()
 
     if pipeline_name not in valid_configs:
@@ -432,7 +432,7 @@ def apply_exif_orientation_numpy(image: np.ndarray, orientation: int, inverse: b
 def get_modnet_path() -> Path:
     """Get the MODNet checkpoint path. Download it if not present.
     """
-    package = "openlifu.trk.modnet_checkpoints"
+    package = "openlifu.nav.modnet_checkpoints"
     filename = "modnet_photographic_portrait_matting.onnx"
     url = "https://data.kitware.com/api/v1/file/67feb2cb31a330568827ab32/download"
     try:
