@@ -71,12 +71,12 @@ def example_solution() -> Solution:
                 )
             },
             coords={
-                'x': xa.DataArray(dims=["x"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
-                'y': xa.DataArray(dims=["y"], data=np.linspace(0, 1, 2), attrs={'units': "m"}),
-                'z': xa.DataArray(dims=["z"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
+                'lat': xa.DataArray(dims=["lat"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
+                'ele': xa.DataArray(dims=["ele"], data=np.linspace(0, 1, 2), attrs={'units': "m"}),
+                'ax': xa.DataArray(dims=["ax"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
                 'focal_point_index': [0]
             }
-        ),
+        )
     )
 
 
@@ -142,10 +142,12 @@ def test_solution_analyze_data_types(example_solution:Solution, example_transduc
     analysis = example_solution.analyze(example_transducer)
     for f in fields(analysis):
         value = getattr(analysis, f.name)
-        if not isinstance(value, float):
-            assert isinstance(value, list)
-            if len(value) > 0:
-                assert isinstance(value[0], float)
+        if f.name == "param_constraints":
+            assert isinstance(value, dict)
+        elif not isinstance(value, float):
+                assert isinstance(value, list)
+                if len(value) > 0:
+                    assert isinstance(value[0], float)
 
 
 def test_solution_created_date():

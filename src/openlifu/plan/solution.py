@@ -5,7 +5,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated, List, Tuple
+from typing import Annotated, Dict, List, Tuple
 
 import numpy as np
 import xarray as xa
@@ -13,6 +13,7 @@ import xarray as xa
 from openlifu.bf import Pulse, Sequence
 from openlifu.bf.focal_patterns import FocalPattern
 from openlifu.geo import Point
+from openlifu.plan.param_constraint import ParameterConstraint
 from openlifu.plan.solution_analysis import (
     SolutionAnalysis,
     SolutionAnalysisOptions,
@@ -95,15 +96,22 @@ class Solution:
         """Get the number of foci"""
         return len(self.foci)
 
-    def analyze(self, transducer: Transducer, options: SolutionAnalysisOptions = SolutionAnalysisOptions()) -> SolutionAnalysis:
+    def analyze(self,
+                transducer: Transducer,
+                options: SolutionAnalysisOptions = SolutionAnalysisOptions(),
+                param_constraints: Dict[str,ParameterConstraint] | None = None) -> SolutionAnalysis:
         """Analyzes the treatment solution.
 
         Args:
             transducer: A Transducer item.
             options: A struct for solution analysis options.
+            param_constraints: A dictionary of parameter constraints to apply to the analysis.
+                The keys are the parameter names and the values are the ParameterConstraint objects.
 
         Returns: A struct containing the results of the analysis.
         """
+        if param_constraints is None:
+            param_constraints = {}
         solution_analysis = SolutionAnalysis()
 
         if transducer.id != self.transducer_id:
@@ -211,11 +219,12 @@ class Solution:
             i0ta_Wcm2 = i0_Wcm2 * pulsetrain_dutycycle * treatment_dutycycle
             power_W[focus_index] = np.mean(np.sum(i0ta_Wcm2 * ele_sizes_cm2 * self.apodizations[focus_index, :]))
             TIC[focus_index] = power_W[focus_index] / (d_eq_cm * c_tic)
-            solution_analysis.p0_Pa += [np.max(p0_Pa)]
+            solution_analysis.p0_MPa += [1e-6*np.max(p0_Pa)]
         solution_analysis.TIC = np.mean(TIC)
         solution_analysis.power_W = np.mean(power_W)
-        solution_analysis.MI = (solution_analysis.mainlobe_pnp_MPa/np.sqrt(self.pulse.frequency*1e-6)).item()
+        solution_analysis.MI = (np.max(solution_analysis.mainlobe_pnp_MPa)/np.sqrt(self.pulse.frequency*1e-6))
         solution_analysis.global_ispta_mWcm2 = float((ita_mWcm2*z_mask).max())
+        solution_analysis.param_constraints = param_constraints
         return solution_analysis
 
     def compute_scaling_factors(
@@ -253,7 +262,7 @@ class Solution:
             transducer: Transducer,
             focal_pattern: FocalPattern,
             analysis_options: SolutionAnalysisOptions = SolutionAnalysisOptions()
-    ) -> SolutionAnalysis:
+    ) -> None:
         """
         Scale the solution in-place to match the target pressure.
 
@@ -276,10 +285,6 @@ class Solution:
             self.simulation_result['intensity'][i].data *= scaling**2
             self.apodizations[i] = self.apodizations[i]*apod_factors[i]
         self.pulse.amplitude = v1
-
-        analysis_scaled = self.analyze(transducer, options=analysis_options)
-
-        return analysis_scaled
 
     def get_pulsetrain_dutycycle(self) -> float:
         """
