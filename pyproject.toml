@@ -252,4 +252,4 @@ messages_control.disable = [
 ]
 
 [tool.setuptools.package-data]
-openlifu = ["trk/meshroom_pipelines/*.mg"]
+openlifu = ["nav/meshroom_pipelines/*.mg"]

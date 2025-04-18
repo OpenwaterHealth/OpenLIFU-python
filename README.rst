@@ -58,7 +58,7 @@ Dev mode
 Installing Meshroom
 -------------------
 
-If you are using ``openlifu.trk.photoscan`` to reconstruct meshes from photo collections, then you will need to set up **Meshroom**.
+If you are using ``openlifu.nav.photoscan`` to reconstruct meshes from photo collections, then you will need to set up **Meshroom**.
 
 Ubuntu
 ~~~~~~
