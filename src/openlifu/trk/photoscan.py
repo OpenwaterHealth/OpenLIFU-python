@@ -235,7 +235,7 @@ def run_reconstruction(images: list[Path],
         pipeline_name (str): Name of the Meshroom pipeline in meshroom_pipelines folder.
             See also `get_meshroom_pipeline_names`.
         input_resize_width (int): Target width for image resizing.
-        use_masks (bool): When True computes segmentation masks with MODNet to filter dense reconstruction.
+        use_masks (bool): Whether to include a background removal step to filter the dense reconstruction.
 
     Returns:
         photoscan: The Photoscan of the reconstructed images.
