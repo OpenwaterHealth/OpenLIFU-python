@@ -4,10 +4,11 @@ import importlib
 import json
 import logging
 import shutil
-import subprocess
 import tempfile
+import threading
 from dataclasses import dataclass
 from pathlib import Path
+from subprocess import PIPE, CalledProcessError, CompletedProcess, Popen
 from typing import Annotated, Dict, Tuple
 
 import cv2
@@ -22,7 +23,8 @@ from vtk.util.numpy_support import numpy_to_vtk
 
 from openlifu.util.annotations import OpenLIFUFieldData
 
-logger = logging.getLogger("MeshRecon")
+logger_meshrecon = logging.getLogger("MeshRecon")
+logger_meshroom = logging.getLogger("Meshroom")
 
 @dataclass
 class Photoscan:
@@ -225,6 +227,36 @@ def get_meshroom_pipeline_names() -> list[str]:
     pipeline_dir = importlib.resources.files("openlifu.nav.meshroom_pipelines")
     return [f.stem for f in pipeline_dir.iterdir() if f.suffix == ".mg"]
 
+def subprocess_stream_output(
+    args,
+    stdout_handler,
+    stderr_handler,
+    check=True,
+    text=True,
+    **kwargs,
+):
+    """Run a subprocess and stream its stdout and stderr output to separate handlers."""
+    with Popen(args, stdout=PIPE, stderr=PIPE, text=text, **kwargs) as process:
+
+        def log_stream(stream, handler):
+            for line in stream:
+                handler(line.rstrip())
+
+        # Create threads for each stream
+        stdout_thread = threading.Thread(target=log_stream, args=(process.stdout, stdout_handler))
+        stderr_thread = threading.Thread(target=log_stream, args=(process.stderr, stderr_handler))
+        stdout_thread.start()
+        stderr_thread.start()
+
+        stdout_thread.join()
+        stderr_thread.join()
+
+        retcode = process.wait()
+
+    if check and retcode:
+        raise CalledProcessError(retcode, process.args)
+    return CompletedProcess(process.args, retcode)
+
 def run_reconstruction(images: list[Path],
                        pipeline_name: str = "default_pipeline",
                        input_resize_width: int = 3024,
@@ -296,7 +328,7 @@ def run_reconstruction(images: list[Path],
         make_masks(new_paths, masks_dir)
         command += ["--paramOverrides", f"PrepareDenseScene_1.masksFolders=['{masks_dir}']"]
 
-    subprocess.run(command, check=True)
+    subprocess_stream_output(command, logger_meshroom.info, logger_meshroom.error)
 
     output_dir_merged = temp_dir / "output_dir_merged"
     output_dir_merged.mkdir(parents=True, exist_ok=True)
@@ -439,7 +471,7 @@ def get_modnet_path() -> Path:
         # Try to find the checkpoint in the package
         resource_path = importlib.resources.files(package) / filename
         if resource_path.is_file():
-            logger.info(f"Found existing MODNet checkpoint at {resource_path}")
+            logger_meshrecon.info(f"Found existing MODNet checkpoint at {resource_path}")
             return resource_path
     except (FileNotFoundError, ModuleNotFoundError):
         pass
@@ -447,14 +479,14 @@ def get_modnet_path() -> Path:
     # Fallback: Download the checkpoint
     base_dir = Path(importlib.resources.files(package))
     full_path = base_dir / filename
-    logger.info(f"MODNet checkpoint not found. Downloading from {url}...")
+    logger_meshrecon.info(f"MODNet checkpoint not found. Downloading from {url}...")
     response = requests.get(url, stream=True, timeout=(10, 300))
     if response.status_code == 200:
         with open(full_path, 'wb') as f:
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:
                     f.write(chunk)
-        logger.info(f"Downloaded MODNet checkpoint to {full_path}")
+        logger_meshrecon.info(f"Downloaded MODNet checkpoint to {full_path}")
     else:
         raise RuntimeError(f"Failed to download MODNet checkpoint: {response.status_code} - {response.text}")
 
