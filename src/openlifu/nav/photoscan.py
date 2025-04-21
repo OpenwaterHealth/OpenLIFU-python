@@ -333,17 +333,17 @@ def run_reconstruction(images: list[Path],
 
     command = [
         "meshroom_batch",
-        "--pipeline", str(pipeline),
-        "--output", str(output_dir),
-        "--input", str(images_dir),
-        "--cache", str(cache_dir)
+        "--pipeline", pipeline.as_posix(),
+        "--output", output_dir.as_posix(),
+        "--input", images_dir.as_posix(),
+        "--cache", cache_dir.as_posix()
     ]
 
     if use_masks:
         masks_dir = temp_dir / "masks"
         masks_dir.mkdir(parents=True, exist_ok=True)
         make_masks(new_paths, masks_dir)
-        command += ["--paramOverrides", f"PrepareDenseScene_1.masksFolders=['{masks_dir}']"]
+        command += ["--paramOverrides", f"PrepareDenseScene_1.masksFolders=['{masks_dir.as_posix()}']"]
 
     subprocess_stream_output(command, logger_meshroom.info, logger_meshroom.error)
 
