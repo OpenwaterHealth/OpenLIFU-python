@@ -345,7 +345,7 @@ def run_reconstruction(images: list[Path],
         make_masks(new_paths, masks_dir)
         command += ["--paramOverrides", f"PrepareDenseScene_1.masksFolders=['{masks_dir.as_posix()}']"]
 
-    subprocess_stream_output(command, logger_meshroom.info, logger_meshroom.error)
+    subprocess_stream_output(command, logger_meshroom.info, logger_meshroom.warning)
 
     output_dir_merged = temp_dir / "output_dir_merged"
     output_dir_merged.mkdir(parents=True, exist_ok=True)
