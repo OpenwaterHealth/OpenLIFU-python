@@ -9,7 +9,7 @@ import threading
 from dataclasses import dataclass
 from pathlib import Path
 from subprocess import PIPE, CalledProcessError, CompletedProcess, Popen
-from typing import Annotated, Dict, Tuple
+from typing import Annotated, Any, Callable, Dict, List, Tuple
 
 import cv2
 import numpy as np
@@ -228,14 +228,31 @@ def get_meshroom_pipeline_names() -> list[str]:
     return [f.stem for f in pipeline_dir.iterdir() if f.suffix == ".mg"]
 
 def subprocess_stream_output(
-    args,
-    stdout_handler,
-    stderr_handler,
-    check=True,
-    text=True,
-    **kwargs,
-):
-    """Run a subprocess and stream its stdout and stderr output to separate handlers."""
+    args: str | List[str],
+    stdout_handler: Callable[[str], None],
+    stderr_handler: Callable[[str], None],
+    check: bool = True,
+    text: bool = True,
+    **kwargs: Any,
+) -> CompletedProcess:
+    """
+    Run a subprocess and stream its stdout and stderr output to separate handlers/loggers. A drop in replacement
+    for subprocess.run that handles logging.
+
+    Args:
+        args (Union[str, List[str]]): Command and arguments to execute. Can be a string or list of strings.
+        stdout_handler (Callable[[str], None]): Function to handle each line of standard output.
+        stderr_handler (Callable[[str], None]): Function to handle each line of standard error.
+        check (bool, optional): If True, raise CalledProcessError if the subprocess exits with a non-zero code.
+        text (bool, optional): If True, communicate with the process using text mode. Defaults to True.
+        **kwargs (Any): Additional keyword arguments passed to subprocess.Popen.
+
+    Returns:
+        CompletedProcess: An object containing the arguments used and the return code.
+
+    Raises:
+        CalledProcessError: If `check` is True and the subprocess exits with a non-zero status.
+    """
     with Popen(args, stdout=PIPE, stderr=PIPE, text=text, **kwargs) as process:
 
         def log_stream(stream, handler):
