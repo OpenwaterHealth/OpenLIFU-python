@@ -21,14 +21,14 @@ Test script to automate:
 3. Test Device functionality.
 """
 
-log_interval = 1  # seconds; you can adjust this variable as needed
-stop_logging = False  # flag to signal the logging thread to stop
+log_interval = 2  # seconds; you can adjust this variable as needed
 
 frequency = 405e3
 voltage = 100.0
-duration_msec = 100
-interval_msec = 200
+duration_msec = 10
+interval_msec = 20
 num_devices = 1
+
 console_shutoff_temp_C = 70.0 # Console shutoff temperature in Celsius
 tx_shutoff_temp_C = 70.0 # TX device shutoff temperature in Celsius
 ambient_shutowff_temp_C = 70.0 # Ambient shutoff temperature in Celsius
@@ -66,6 +66,7 @@ else:
 # Ask the user if they want to log temperature
 log_choice = input("Do you want to log temperature before starting trigger? (y/n): ").strip().lower()
 log_temp = (log_choice == "y")
+stop_logging = False  # flag to signal the logging thread to stop
 
 def log_temperature():
     # Create a file with the current timestamp in the name
@@ -165,7 +166,6 @@ interface.txdevice.set_solution(
 # If logging is enabled, start the logging thread
 if log_temp:
     t = threading.Thread(target=log_temperature)
-    t.start()
 else:
     print("Get Temperature")
     temperature = interface.txdevice.get_temperature()
@@ -185,10 +185,14 @@ if not interface.hvcontroller.turn_hv_on():
 
 print("Starting Trigger...")
 if interface.txdevice.start_trigger():
+    if log_temp:
+        t.start()  # Start the logging thread
+
     print("Trigger Running Press enter to STOP:")
     input()  # Wait for the user to press Enter
+    stop_logging = True
+    time.sleep(0.5)  # Give the logging thread time to finish
     if interface.txdevice.stop_trigger():
-        stop_logging = True
         print("Trigger stopped successfully.")
     else:
         print("Failed to stop trigger.")
