@@ -37,6 +37,7 @@ if not hv_connected:
 | `get_hardware_id()` | Returns the 16-byte hardware ID as a hex string |
 | `echo(data: bytes)` | Echoes back sent data, useful for testing       |
 | `soft_reset()`      | Sends a soft reset to the device                |
+| `enter_dfu()`       | Put the device into DFU mode                    |
 
 ---
 

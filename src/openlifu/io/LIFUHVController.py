@@ -4,6 +4,8 @@ import logging
 import struct
 
 from openlifu.io.LIFUConfig import (
+    OW_CMD,
+    OW_CMD_DFU,
     OW_CMD_ECHO,
     OW_CMD_HWID,
     OW_CMD_PING,
@@ -115,7 +117,7 @@ class HVController:
                 raise ValueError("Console Device not connected")
 
             r = self.uart.send_packet(
-                id=None, packetType=OW_POWER, command=OW_CMD_VERSION
+                id=None, packetType=OW_CMD, command=OW_CMD_VERSION
             )
             self.uart.clear_buffer()
             # r.print_packet()
@@ -162,7 +164,7 @@ class HVController:
                 raise TypeError("echo_data must be a byte array")
 
             r = self.uart.send_packet(
-                id=None, packetType=OW_POWER, command=OW_CMD_ECHO, data=echo_data
+                id=None, packetType=OW_CMD, command=OW_CMD_ECHO, data=echo_data
             )
             self.uart.clear_buffer()
             # r.print_packet()
@@ -195,7 +197,7 @@ class HVController:
                 raise ValueError("Console Device not connected")
 
             r = self.uart.send_packet(
-                id=None, packetType=OW_POWER, command=OW_CMD_TOGGLE_LED
+                id=None, packetType=OW_CMD, command=OW_CMD_TOGGLE_LED
             )
             self.uart.clear_buffer()
             # r.print_packet()
@@ -229,7 +231,7 @@ class HVController:
             if not self.uart.is_connected():
                 raise ValueError("Console Device not connected")
 
-            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_CMD_HWID)
+            r = self.uart.send_packet(id=None, packetType=OW_CMD, command=OW_CMD_HWID)
             self.uart.clear_buffer()
             # r.print_packet()
             if r.data_len == 16:
@@ -928,7 +930,7 @@ class HVController:
                 raise ValueError("Console Device  not connected")
 
             r = self.uart.send_packet(
-                id=None, packetType=OW_POWER, command=OW_CMD_RESET
+                id=None, packetType=OW_CMD, command=OW_CMD_RESET
             )
             self.uart.clear_buffer()
             # r.print_packet()
@@ -938,6 +940,40 @@ class HVController:
             else:
                 return True
 
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+    def enter_dfu(self) -> bool:
+        """
+        Perform a soft reset to enter DFU mode on TX device.
+
+        Returns:
+            bool: True if the reset was successful, False otherwise.
+
+        Raises:
+            ValueError: If the UART is not connected.
+            Exception: If an error occurs while resetting the device.
+        """
+        try:
+            if self.uart.demo_mode:
+                return True
+
+            if not self.uart.is_connected():
+                raise ValueError("TX Device not connected")
+
+            r = self.uart.send_packet(id=None, packetType=OW_CMD, command=OW_CMD_DFU)
+            self.uart.clear_buffer()
+            # r.print_packet()
+            if r.packet_type == OW_ERROR:
+                logger.error("Error setting DFU mode for device")
+                return False
+            else:
+                return True
         except ValueError as v:
             logger.error("ValueError: %s", v)
             raise  # Re-raise the exception for the caller to handle
