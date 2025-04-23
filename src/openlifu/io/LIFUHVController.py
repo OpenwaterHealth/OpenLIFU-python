@@ -79,7 +79,7 @@ class HVController:
                 raise ValueError("Console Device not connected")
 
             logger.info("Send Ping to Device.")
-            r = self.uart.send_packet(id=None, packetType=OW_POWER, command=OW_CMD_PING)
+            r = self.uart.send_packet(id=None, packetType=OW_CMD, command=OW_CMD_PING)
             self.uart.clear_buffer()
             logger.info("Received Ping from Device.")
             # r.print_packet()
