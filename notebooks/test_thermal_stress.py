@@ -70,6 +70,7 @@ stop_logging = False  # flag to signal the logging thread to stop
 
 def log_temperature():
     # Create a file with the current timestamp in the name
+    start = time.time()
     timestamp = time.strftime("%Y%m%d_%H%M%S")
     filename = f"{timestamp}_temp.csv"
     shutdown = False
@@ -103,6 +104,7 @@ def log_temperature():
                 logfile.flush()  # Ensure the data is written immediately
                 break
             time.sleep(log_interval)
+    print(f"Temperature logging stopped after {time.time() - start:.2f} seconds. Data saved to {filename}.")
 
 # Verify communication with the devices
 if not interface.txdevice.ping():
