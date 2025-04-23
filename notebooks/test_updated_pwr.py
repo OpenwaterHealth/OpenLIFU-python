@@ -3,7 +3,7 @@ from __future__ import annotations
 from openlifu.io.LIFUInterface import LIFUInterface
 
 # set PYTHONPATH=%cd%\src;%PYTHONPATH%
-# python notebooks/test_updated_if.py
+# python notebooks/test_updated_pwr.py
 """
 Test script to automate:
 1. Connect to the device.
@@ -52,9 +52,9 @@ else:
     print("Failed to turn on 12V.")
 
 # Set High Voltage Level
-print("Set HV Power to +/- 12V")
-if interface.hvcontroller.set_voltage(voltage=12.0):
-    print("Voltage set to 12.0 V.")
+print("Set HV Power to +/- 24V")
+if interface.hvcontroller.set_voltage(voltage=24.0):
+    print("Voltage set to 24.0 V.")
 else:
     print("Failed to set voltage.")
 
