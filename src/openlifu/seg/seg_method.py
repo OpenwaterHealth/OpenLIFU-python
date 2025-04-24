@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 from abc import ABC, abstractmethod
-from dataclasses import field
+from dataclasses import dataclass, field
 from typing import Annotated
 
 import numpy as np
@@ -12,6 +12,7 @@ from openlifu.seg.material import MATERIALS, PARAM_INFO, Material
 from openlifu.util.annotations import OpenLIFUFieldData
 
 
+@dataclass
 class SegmentationMethod(ABC):
     materials: Annotated[dict[str, Material], OpenLIFUFieldData("Segmentation materials", "Dictionary mapping of label names to material definitions used during segmentation")] = field(default_factory=lambda: MATERIALS.copy())
     """Dictionary mapping of label names to material definitions used during segmentation"""
