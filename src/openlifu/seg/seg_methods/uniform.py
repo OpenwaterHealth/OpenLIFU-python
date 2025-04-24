@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import xarray as xa
 
-from openlifu.seg import SegmentationMethod
 from openlifu.seg.material import MATERIALS, Material
+from openlifu.seg.seg_method import SegmentationMethod
 
 
 class UniformSegmentation(SegmentationMethod):

@@ -24,7 +24,7 @@ def test_run_simulation_runs():
         sim_setup=sim_setup
     )
     coords = sim_setup.get_coords()
-    default_seg_method = openlifu.seg.seg_methods.seg_method.SegmentationMethod()
+    default_seg_method = protocol.seg_method
     params = default_seg_method.ref_params(coords)
     delays, apod = protocol.beamform(arr=transducer, target=openlifu.Point(position=(0,0,5)), params=params)
 

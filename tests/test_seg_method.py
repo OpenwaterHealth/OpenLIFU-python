@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from openlifu.seg import Material, SegmentationMethod
+from openlifu.seg import Material, SegmentationMethod, seg_methods
 
 
 @pytest.fixture()
-def example_seg_method() -> SegmentationMethod:
-    return SegmentationMethod(
+def example_seg_method() -> seg_methods.UniformSegmentation:
+    return seg_methods.UniformSegmentation(
         materials = {
             'water' : Material(
                 name="water",
@@ -29,5 +29,5 @@ def example_seg_method() -> SegmentationMethod:
         ref_material = 'water',
     )
 
-def test_seg_method_dict_conversion(example_seg_method : SegmentationMethod):
+def test_seg_method_dict_conversion(example_seg_method : seg_methods.UniformSegmentation):
     assert SegmentationMethod.from_dict(example_seg_method.to_dict()) == example_seg_method
