@@ -28,55 +28,50 @@
     "class": "Uniform"
   },
   "seg_method": {
-    "class": "Water"
-  },
-  "materials": [
-    {
-      "id": "water",
-      "name": "water",
-      "sound_speed": 1500,
-      "density": 1000,
-      "attenuation": 0.0022,
-      "specific_heat": 4182,
-      "thermal_conductivity": 0.598
-    },
-    {
-      "id": "tissue",
-      "name": "tissue",
-      "sound_speed": 1540,
-      "density": 1050,
-      "attenuation": 0.3,
-      "specific_heat": 3600,
-      "thermal_conductivity": 0.528
-    },
-    {
-      "id": "skull",
-      "name": "skull",
-      "sound_speed": 2800,
-      "density": 1900,
-      "attenuation": 6,
-      "specific_heat": 1300,
-      "thermal_conductivity": 0.4
-    },
-    {
-      "id": "standoff",
-      "name": "standoff",
-      "sound_speed": 1420,
-      "density": 1000,
-      "attenuation": 1,
-      "specific_heat": 4182,
-      "thermal_conductivity": 0.598
-    },
-    {
-      "id": "air",
-      "name": "air",
-      "sound_speed": 344,
-      "density": 1.25,
-      "attenuation": 7.5,
-      "specific_heat": 1012,
-      "thermal_conductivity": 0.025
+    "class": "UniformWater",
+    "materials": {
+      "water": {
+        "name": "water",
+        "sound_speed": 1500,
+        "density": 1000,
+        "attenuation": 0.0022,
+        "specific_heat": 4182,
+        "thermal_conductivity": 0.598
+      },
+      "tissue": {
+        "name": "tissue",
+        "sound_speed": 1540,
+        "density": 1050,
+        "attenuation": 0.3,
+        "specific_heat": 3600,
+        "thermal_conductivity": 0.528
+      },
+      "skull": {
+        "name": "skull",
+        "sound_speed": 2800,
+        "density": 1900,
+        "attenuation": 6,
+        "specific_heat": 1300,
+        "thermal_conductivity": 0.4
+      },
+      "standoff": {
+        "name": "standoff",
+        "sound_speed": 1420,
+        "density": 1000,
+        "attenuation": 1,
+        "specific_heat": 4182,
+        "thermal_conductivity": 0.598
+      },
+      "air": {
+        "name": "air",
+        "sound_speed": 344,
+        "density": 1.25,
+        "attenuation": 7.5,
+        "specific_heat": 1012,
+        "thermal_conductivity": 0.025
+      }
     }
-  ],
+  },
   "sim_setup": {
     "dims": ["lat", "ele", "ax"],
     "names": ["Lateral", "Elevation", "Axial"],
