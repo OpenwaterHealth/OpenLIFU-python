@@ -22,9 +22,6 @@ PARAM_INFO = {"sound_speed":{"id":"sound_speed",
                                         "units": "W/m/K"}}
 @dataclass
 class Material:
-    id: Annotated[str, OpenLIFUFieldData("Material ID", "The unique identifier of the material")] = "material"
-    """The unique identifier of the material"""
-
     name: Annotated[str, OpenLIFUFieldData("Material name", "Name for the material")] = "Material"
     """Name for the material"""
 
@@ -42,6 +39,16 @@ class Material:
 
     thermal_conductivity: Annotated[float, OpenLIFUFieldData("Thermal conductivity (W/m/K)", "Thermal conductivity of the material (W/m/K)")] = 0.598  # W/m/K
     """Thermal conductivity of the material (W/m/K)"""
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "sound_speed": self.sound_speed,
+            "density": self.density,
+            "attenuation": self.attenuation,
+            "specific_heat": self.specific_heat,
+            "thermal_conductivity": self.thermal_conductivity
+        }
 
     @classmethod
     def param_info(cls, param_id: str):
@@ -80,40 +87,35 @@ class Material:
             return Material(**d)
 
 
-WATER = Material(id="water",
-                 name="water",
+WATER = Material(name="water",
                  sound_speed=1500.0,
                  density=1000.0,
                  attenuation=0.0,
                  specific_heat=4182.0,
                  thermal_conductivity=0.598)
 
-TISSUE = Material(id="tissue",
-                  name="tissue",
+TISSUE = Material(name="tissue",
                   sound_speed=1540.0,
                   density=1000.0,
                   attenuation=0.0,
                   specific_heat=3600.0,
                   thermal_conductivity=0.5)
 
-SKULL = Material(id="skull",
-                 name="skull",
+SKULL = Material(name="skull",
                  sound_speed=4080.0,
                  density=1900.0,
                  attenuation=0.0,
                  specific_heat=1100.0,
                  thermal_conductivity=0.3)
 
-AIR = Material(id="air",
-               name="air",
+AIR = Material(name="air",
                sound_speed=344.0,
                density=1.25,
                attenuation=0.0,
                specific_heat=1012.0,
                thermal_conductivity=0.025)
 
-STANDOFF = Material(id="standoff",
-                    name="standoff",
+STANDOFF = Material(name="standoff",
                     sound_speed=1420.0,
                     density=1000.0,
                     attenuation=1.0,
