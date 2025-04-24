@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from . import seg_methods
 from .material import AIR, MATERIALS, SKULL, STANDOFF, TISSUE, WATER, Material
 from .seg_method import SegmentationMethod
-from . import seg_methods
 
 __all__ = [
     "Material",
