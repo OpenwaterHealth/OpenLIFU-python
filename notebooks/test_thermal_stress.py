@@ -23,11 +23,11 @@ Test script to automate:
 
 log_interval = 2  # seconds; you can adjust this variable as needed
 
-frequency = 405e3
-voltage = 100.0
-duration_msec = 10
-interval_msec = 20
-num_devices = 1
+frequency_kHz = 400 # Frequency in kHz
+voltage = 100.0 # Voltage in Volts
+duration_msec = 10 # Pulse Duration in milliseconds
+interval_msec = 20 # Pulse Repetition Interval in milliseconds
+num_modules = 2 # Number of modules in the system
 
 console_shutoff_temp_C = 70.0 # Console shutoff temperature in Celsius
 tx_shutoff_temp_C = 70.0 # TX device shutoff temperature in Celsius
@@ -80,7 +80,7 @@ def log_temperature():
             tx_temp = interface.txdevice.get_temperature()
             amb_temp = interface.txdevice.get_ambient_temperature()
             current_time = time.strftime("%Y-%m-%d %H:%M:%S")
-            log_line = f"{current_time},{frequency},{duration_msec},{voltage},{con_temp},{tx_temp},{amb_temp}\n"
+            log_line = f"{current_time},{frequency_kHz},{duration_msec},{voltage},{con_temp},{tx_temp},{amb_temp}\n"
             logfile.write(log_line)
             logfile.flush()  # Ensure the data is written immediately
             # Check if any temperature exceeds the shutoff threshold
@@ -119,11 +119,11 @@ print("Enumerate TX7332 chips")
 num_tx_devices = interface.txdevice.enum_tx7332_devices()
 if num_tx_devices == 0:
     raise Exception("No TX7332 devices found.")
-elif num_tx_devices == num_devices*2:
+elif num_tx_devices == num_modules*2:
     print(f"Number of TX7332 devices found: {num_tx_devices}")
     numelements = 32*num_tx_devices
 else:
-    raise Exception(f"Number of TX7332 devices found: {num_tx_devices} != 2x{num_devices}")
+    raise Exception(f"Number of TX7332 devices found: {num_tx_devices} != 2x{num_modules}")
 
 print("Set High Voltage")
 if interface.hvcontroller.set_voltage(voltage):
@@ -132,7 +132,7 @@ else:
     print("Failed to set High Voltage.")
     sys.exit(1)
 
-pulse = Pulse(frequency=frequency, amplitude=voltage, duration=duration_msec*1e-3)
+pulse = Pulse(frequency=frequency_kHz*1e3, amplitude=voltage, duration=duration_msec*1e-3)
 
 delays = np.zeros(numelements)  # Initialize delays to zero
 apodizations = np.ones(numelements)  # Initialize apodizations to ones
