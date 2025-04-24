@@ -62,7 +62,7 @@ class Protocol:
     apod_method: Annotated[bf.ApodizationMethod, OpenLIFUFieldData("Apodization method", "The method used to calculate transmit apodizations. By default, apodizations are uniform")] = field(default_factory=bf.apod_methods.Uniform)
     """The method used to calculate transmit apodizations. By default, apodizations are uniform"""
 
-    seg_method: Annotated[seg.SegmentationMethod, OpenLIFUFieldData("Segmentation method", "The method used to segment the subject's MRI for delay calculation. By default, the entire field is assumed to be water")] = field(default_factory=seg.seg_methods.Water)
+    seg_method: Annotated[seg.SegmentationMethod, OpenLIFUFieldData("Segmentation method", "The method used to segment the subject's MRI for delay calculation. By default, the entire field is assumed to be water")] = field(default_factory=seg.seg_methods.UniformWater)
     """The method used to segment the subject's MRI for delay calculation. By default, the entire field is assumed to be water"""
 
     param_constraints: Annotated[dict, OpenLIFUFieldData("Parameter constraints", "The constraints on the analysis parameters. If computed parameters are outside of the ranges defined here, warnings or errors may be flagged to reject the solution")] = field(default_factory=dict)

@@ -10,7 +10,6 @@ def example_seg_method() -> SegmentationMethod:
     return SegmentationMethod(
         materials = {
             'water' : Material(
-                id="water",
                 name="water",
                 sound_speed=1500.0,
                 density=1000.0,
@@ -19,7 +18,6 @@ def example_seg_method() -> SegmentationMethod:
                 thermal_conductivity=0.598
             ),
             'skull' : Material(
-                id="skull",
                 name="skull",
                 sound_speed=4080.0,
                 density=1900.0,
