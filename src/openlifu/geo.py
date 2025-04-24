@@ -3,11 +3,12 @@ from __future__ import annotations
 import copy
 import json
 from dataclasses import dataclass, field
-from typing import Any, Dict, Tuple
+from typing import Annotated, Any, Dict, Tuple
 
 import numpy as np
 import vtk
 
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
 from openlifu.util.units import getunitconversion
 
@@ -15,13 +16,26 @@ from openlifu.util.units import getunitconversion
 # === Tools to work with points ===
 @dataclass
 class Point:
-    position: np.ndarray = field(default_factory=lambda: np.array([0.0, 0.0, 0.0])) # mm
-    id: str = "point"
-    name: str = "Point"
-    color: Any = (1.0, 0.0, 0.0)
-    radius: float = 1. # mm
-    dims: Tuple[str, str, str] = ("x","y","z")
-    units: str = "mm"
+    position: Annotated[np.ndarray, OpenLIFUFieldData("Position", "3D position of the point in the provided units")] = field(default_factory=lambda: np.array([0.0, 0.0, 0.0]))  # mm
+    """3D position of the point in the provided units"""
+
+    id: Annotated[str, OpenLIFUFieldData("Point ID", "Unique identifier for the point")] = "point"
+    """Unique identifier for the point"""
+
+    name: Annotated[str, OpenLIFUFieldData("Point name", "Name of the point")] = "Point"
+    """Name of the point"""
+
+    color: Annotated[Any, OpenLIFUFieldData("Color (RGB)", "RGB color of the point")] = (1.0, 0.0, 0.0)
+    """RGB color of the point"""
+
+    radius: Annotated[float, OpenLIFUFieldData("Radius", "Radius for rendering the point in the provided units")] = 1.0  # mm
+    """Radius for rendering the point in the provided units"""
+
+    dims: Annotated[Tuple[str, str, str], OpenLIFUFieldData("Dimensions", "Names of the axes of the coordinate system being used")] = ("x", "y", "z")
+    """Names of the axes of the coordinate system being used"""
+
+    units: Annotated[str, OpenLIFUFieldData("Units", "Units for the point")] = "mm"
+    """Units for the point"""
 
     def __post_init__(self):
         if len(self.position) != len(self.dims):
@@ -142,12 +156,12 @@ class Point:
 
 @dataclass
 class ArrayTransform(DictMixin):
-    """An affine transform with a unit string, often intended to represent how a transducer array is positionsed in space."""
+    """An affine transform with a unit string, often intended to represent how a transducer array is positioned in space."""
 
-    matrix: np.ndarray
+    matrix: Annotated[np.ndarray, OpenLIFUFieldData("Affine matrix", "4x4 affine transform matrix")]
     """4x4 affine transform matrix"""
 
-    units : str
+    units: Annotated[str, OpenLIFUFieldData("Units", "The units of the space on which to apply the transform matrix , e.g. 'mm' (In order to apply the transform to points, first represent the points in these units.)")]
     """The units of the space on which to apply the transform matrix , e.g. "mm"
     (In order to apply the transform to points, first represent the points in these units.)
     """

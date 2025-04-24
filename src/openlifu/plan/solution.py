@@ -5,7 +5,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Tuple
+from typing import Annotated, Dict, List, Tuple
 
 import numpy as np
 import xarray as xa
@@ -13,12 +13,14 @@ import xarray as xa
 from openlifu.bf import Pulse, Sequence
 from openlifu.bf.focal_patterns import FocalPattern
 from openlifu.geo import Point
+from openlifu.plan.param_constraint import ParameterConstraint
 from openlifu.plan.solution_analysis import (
     SolutionAnalysis,
     SolutionAnalysisOptions,
     get_beamwidth,
     get_mask,
 )
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.json import PYFUSEncoder
 from openlifu.util.units import getunitconversion, rescale_coords, rescale_data_arr
 from openlifu.xdc import Transducer
@@ -36,37 +38,38 @@ class Solution:
     """
     A sonication solution resulting from beamforming and running a simulation.
     """
-    id: str = "solution"  # the *solution* id, a concept that did not exist in the matlab software
+
+    id: Annotated[str, OpenLIFUFieldData("Solution ID", "ID of this solution")] = "solution"  # the *solution* id, a concept that did not exist in the matlab software
     """ID of this solution"""
 
-    name: str = "Solution"
+    name: Annotated[str, OpenLIFUFieldData("Solution name", "Name of this solution")] = "Solution"
     """Name of this solution"""
 
-    protocol_id: str | None = None  # this used to be called plan_id in the matlab code
+    protocol_id: Annotated[str | None, OpenLIFUFieldData("Protocol ID", "ID of the protocol that was used when generating this solution")] = None  # this used to be called plan_id in the matlab code
     """ID of the protocol that was used when generating this solution"""
 
-    transducer_id: str | None = None
+    transducer_id: Annotated[str | None, OpenLIFUFieldData("Transducer ID", "ID of the transducer that was used when generating this solution")] = None
     """ID of the transducer that was used when generating this solution"""
 
-    date_created: datetime = field(default_factory=datetime.now)
+    date_created: Annotated[datetime, OpenLIFUFieldData("Creation date", "Solution creation time")] = field(default_factory=datetime.now)
     """Solution creation time"""
 
-    description: str = ""
+    description: Annotated[str, OpenLIFUFieldData("Description", "Description of this solution")] = ""
     """Description of this solution"""
 
-    delays: np.ndarray | None = None
+    delays: Annotated[np.ndarray | None, OpenLIFUFieldData("Delays", "Vectors of time delays to steer the beam. Shape is (number of foci, number of transducer elements).")] = None
     """Vectors of time delays to steer the beam. Shape is (number of foci, number of transducer elements)."""
 
-    apodizations: np.ndarray | None = None
+    apodizations: Annotated[np.ndarray | None, OpenLIFUFieldData("Apodizations", "Vectors of apodizations to steer the beam. Shape is (number of foci, number of transducer elements).")] = None
     """Vectors of apodizations to steer the beam. Shape is (number of foci, number of transducer elements)."""
 
-    pulse: Pulse = field(default_factory=Pulse)
+    pulse: Annotated[Pulse, OpenLIFUFieldData("Pulse", "Pulse to send to the transducer when running sonication")] = field(default_factory=Pulse)
     """Pulse to send to the transducer when running sonication"""
 
-    sequence: Sequence = field(default_factory=Sequence)
+    sequence: Annotated[Sequence, OpenLIFUFieldData("Pulse sequence", "Pulse sequence to use when running sonication")] = field(default_factory=Sequence)
     """Pulse sequence to use when running sonication"""
 
-    foci: List[Point] = field(default_factory=list)
+    foci: Annotated[List[Point], OpenLIFUFieldData("Foci", "Points that are focused on in this Solution due to the focal pattern around the target. Each item in this list is a unique point from the focal pattern, and the pulse sequence is what determines how many times each point will be used.")] = field(default_factory=list)
     """Points that are focused on in this Solution due to the focal pattern around the target.
     Each item in this list is a unique point from the focal pattern, and the pulse sequence is
     what determines how many times each point will be used.
@@ -76,16 +79,16 @@ class Solution:
     # I believe this was only needed in the matlab software because solutions were organized by target rather
     # than having their own unique solution ID. We do have unique solution IDs so it's possible we don't need
     # this target attribute at all here. Keeping it here for now just in case.
-    target: Point | None = None
+    target: Annotated[Point | None, OpenLIFUFieldData("Target point", "The ultimate target of this sonication. This sonication solution is focused on one focal point in a pattern that is centered on this target.")] = None
     """The ultimate target of this sonication. This sonication solution is focused on one focal point
     in a pattern that is centered on this target."""
 
     # In the matlab code the simulation result was saved as a separate .mat file.
     # Here we include it as an xarray dataset.
-    simulation_result: xa.Dataset = field(default_factory=xa.Dataset)
+    simulation_result: Annotated[xa.Dataset, OpenLIFUFieldData("Simulation result", "The xarray Dataset of simulation results")] = field(default_factory=xa.Dataset)
     """The xarray Dataset of simulation results"""
 
-    approved: bool = False
+    approved: Annotated[bool, OpenLIFUFieldData("Approved?", "Approval state of this solution as a sonication plan. `True` means the user has provided some kind of confirmation that the solution is safe and acceptable to be executed.")] = False
     """Approval state of this solution as a sonication plan. `True` means the user has provided some
     kind of confirmation that the solution is safe and acceptable to be executed."""
 
@@ -93,15 +96,22 @@ class Solution:
         """Get the number of foci"""
         return len(self.foci)
 
-    def analyze(self, transducer: Transducer, options: SolutionAnalysisOptions = SolutionAnalysisOptions()) -> SolutionAnalysis:
+    def analyze(self,
+                transducer: Transducer,
+                options: SolutionAnalysisOptions = SolutionAnalysisOptions(),
+                param_constraints: Dict[str,ParameterConstraint] | None = None) -> SolutionAnalysis:
         """Analyzes the treatment solution.
 
         Args:
             transducer: A Transducer item.
             options: A struct for solution analysis options.
+            param_constraints: A dictionary of parameter constraints to apply to the analysis.
+                The keys are the parameter names and the values are the ParameterConstraint objects.
 
         Returns: A struct containing the results of the analysis.
         """
+        if param_constraints is None:
+            param_constraints = {}
         solution_analysis = SolutionAnalysis()
 
         if transducer.id != self.transducer_id:
@@ -209,11 +219,12 @@ class Solution:
             i0ta_Wcm2 = i0_Wcm2 * pulsetrain_dutycycle * treatment_dutycycle
             power_W[focus_index] = np.mean(np.sum(i0ta_Wcm2 * ele_sizes_cm2 * self.apodizations[focus_index, :]))
             TIC[focus_index] = power_W[focus_index] / (d_eq_cm * c_tic)
-            solution_analysis.p0_Pa += [np.max(p0_Pa)]
+            solution_analysis.p0_MPa += [1e-6*np.max(p0_Pa)]
         solution_analysis.TIC = np.mean(TIC)
         solution_analysis.power_W = np.mean(power_W)
-        solution_analysis.MI = (solution_analysis.mainlobe_pnp_MPa/np.sqrt(self.pulse.frequency*1e-6)).item()
+        solution_analysis.MI = (np.max(solution_analysis.mainlobe_pnp_MPa)/np.sqrt(self.pulse.frequency*1e-6))
         solution_analysis.global_ispta_mWcm2 = float((ita_mWcm2*z_mask).max())
+        solution_analysis.param_constraints = param_constraints
         return solution_analysis
 
     def compute_scaling_factors(
@@ -251,7 +262,7 @@ class Solution:
             transducer: Transducer,
             focal_pattern: FocalPattern,
             analysis_options: SolutionAnalysisOptions = SolutionAnalysisOptions()
-    ) -> SolutionAnalysis:
+    ) -> None:
         """
         Scale the solution in-place to match the target pressure.
 
@@ -274,10 +285,6 @@ class Solution:
             self.simulation_result['intensity'][i].data *= scaling**2
             self.apodizations[i] = self.apodizations[i]*apod_factors[i]
         self.pulse.amplitude = v1
-
-        analysis_scaled = self.analyze(transducer, options=analysis_options)
-
-        return analysis_scaled
 
     def get_pulsetrain_dutycycle(self) -> float:
         """

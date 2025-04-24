@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.resources
 import shutil
 from pathlib import Path
 
@@ -8,12 +9,15 @@ import pytest
 from vtk import VTK_UNSIGNED_SHORT, vtkImageData, vtkPoints, vtkPolyData
 
 from openlifu.db.database import Database
-from openlifu.photoscan import (
+from openlifu.nav.photoscan import (
     Photoscan,
+    apply_exif_orientation_numpy,
     convert_between_ras_and_lps,
     convert_numpy_to_vtkimage,
+    get_meshroom_pipeline_names,
     load_data_from_filepaths,
     load_data_from_photoscan,
+    preprocess_image_modnet,
 )
 
 
@@ -131,3 +135,48 @@ def test_convert_numpy_to_vtkimage():
 
             # Assert that the values are equal
             assert(list(vtk_rgb) ==  list(expected_rgb))
+
+def test_resource_import():
+    """Ensure that a meshroom pipeline resource file can be imported"""
+    pipeline_path = importlib.resources.files("openlifu.nav.meshroom_pipelines") / "default_pipeline.mg"
+    assert pipeline_path.exists()
+
+def test_get_meshroom_pipeline_names():
+    """Verify that get_meshroom_pipeline_names gets us a nonempty list of strings"""
+    pipeline_names = get_meshroom_pipeline_names()
+    assert len(pipeline_names) > 0
+    assert isinstance(pipeline_names[0],str)
+
+def test_apply_exif_orientation_numpy():
+    """Verify apply_exif_orientation_numpy is consistent with PIL and inverse is consistent"""
+    img = np.array([[0,1],[2,3]])
+
+    # Values calculated with PIL ImageOps.exif_transpose
+    data = {
+        0: np.array([[0, 1], [2, 3]]), # < 1 do nothing
+        1: np.array([[0, 1], [2, 3]]),
+        2: np.array([[1, 0], [3, 2]]),
+        3: np.array([[3, 2], [1, 0]]),
+        4: np.array([[2, 3], [0, 1]]),
+        5: np.array([[0, 2], [1, 3]]),
+        6: np.array([[2, 0], [3, 1]]),
+        7: np.array([[3, 1], [2, 0]]),
+        8: np.array([[1, 3], [0, 2]]),
+        9: np.array([[0, 1], [2, 3]]), # > 8 do nothing
+    }
+
+    for orientation, datum in data.items():
+        img_tform = apply_exif_orientation_numpy(img, orientation)
+        np.testing.assert_array_equal(datum, img_tform)
+
+    # Test inverse is consistent
+    for orientation in range(9):
+        img_tform = apply_exif_orientation_numpy(img, orientation)
+        img_recon = apply_exif_orientation_numpy(img_tform, orientation, inverse=True)
+        np.testing.assert_array_equal(img, img_recon)
+
+def test_preprocess_image_modnet():
+    """Verify preprocess_image_modnet resize image correctly"""
+    assert preprocess_image_modnet(np.zeros((400, 600, 3))).shape == (1,3,384, 576)
+    assert preprocess_image_modnet(np.zeros((600, 700, 3))).shape == (1,3,512,576)
+    assert preprocess_image_modnet(np.zeros((400, 300, 3))).shape == (1, 3, 672, 512)

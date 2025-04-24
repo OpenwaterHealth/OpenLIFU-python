@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import sys
+import time
+
 import numpy as np
 
 from openlifu.bf.pulse import Pulse
@@ -17,14 +20,53 @@ Test script to automate:
 3. Test Device functionality.
 """
 print("Starting LIFU Test Script...")
+
 interface = LIFUInterface()
 tx_connected, hv_connected = interface.is_device_connected()
-if tx_connected and hv_connected:
-    print("LIFU Device Fully connected.")
-else:
-    print(f'LIFU Device NOT Fully Connected. TX: {tx_connected}, HV: {hv_connected}')
 
-print("Ping the device")
+if not tx_connected:
+    print("TX device not connected. Attempting to turn on 12V...")
+    interface.hvcontroller.turn_12v_on()
+
+    # Give time for the TX device to power up and enumerate over USB
+    time.sleep(2)
+
+    # Cleanup and recreate interface to reinitialize USB devices
+    interface.stop_monitoring()
+    del interface
+    time.sleep(1)  # Short delay before recreating
+
+    print("Reinitializing LIFU interface after powering 12V...")
+    interface = LIFUInterface()
+
+    # Re-check connection
+    tx_connected, hv_connected = interface.is_device_connected()
+
+if tx_connected and hv_connected:
+    print("✅ LIFU Device fully connected.")
+else:
+    print("❌ LIFU Device NOT fully connected.")
+    print(f"  TX Connected: {tx_connected}")
+    print(f"  HV Connected: {hv_connected}")
+    sys.exit(1)
+
+if interface.txdevice.is_connected():
+    print("LIFU Transmitter device connected.")
+    print("Ping Transmitter device")
+    interface.txdevice.ping()
+else:
+    print("Transmitter device not connected.")
+    sys.exit()
+
+print("Set HV to 20V")
+interface.hvcontroller.set_voltage(20.0)
+
+# Get Set High Voltage Setting
+print("Get Current HV Voltage")
+read_voltage = interface.hvcontroller.get_voltage()
+print(f"HV Voltage {read_voltage} V.")
+
+print("Ping Transmitter device")
 interface.txdevice.ping()
 
 print("Toggle LED")
@@ -108,6 +150,11 @@ if trigger_setting:
 else:
     print("Failed to get trigger setting.")
 
+
+
+print("Turn HV ON")
+interface.hvcontroller.turn_hv_on()
+
 print("Starting Trigger...")
 if interface.txdevice.start_trigger():
     print("Trigger Running Press enter to STOP:")
@@ -119,34 +166,8 @@ if interface.txdevice.start_trigger():
 else:
     print("Failed to get trigger setting.")
 
-print("Set Trigger")
-json_trigger_data = {
-    "TriggerFrequencyHz": 25,
-    "TriggerPulseCount": 0,
-    "TriggerPulseWidthUsec": 20000,
-    "TriggerPulseTrainInterval": 0,
-    "TriggerPulseTrainCount": 0,
-    "TriggerMode": 1,
-    "ProfileIndex": 0,
-    "ProfileIncrement": 0
-}
-
-trigger_setting = interface.txdevice.set_trigger_json(data=json_trigger_data)
-if trigger_setting:
-    print(f"Trigger Setting: {trigger_setting}")
-else:
-    print("Failed to set trigger setting.")
-
-print("Starting Trigger...")
-if interface.txdevice.start_trigger():
-    print("Trigger Running Press enter to STOP:")
-    input()  # Wait for the user to press Enter
-    if interface.txdevice.stop_trigger():
-        print("Trigger stopped successfully.")
-    else:
-        print("Failed to stop trigger.")
-else:
-    print("Failed to start trigger.")
+print("Turn HV OFF")
+interface.hvcontroller.turn_hv_off()
 
 print("Reset Device:")
 # Ask the user for confirmation

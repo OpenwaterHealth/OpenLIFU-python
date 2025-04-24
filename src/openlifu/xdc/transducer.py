@@ -4,11 +4,12 @@ import copy
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Tuple
+from typing import Annotated, Any, Dict, List
 
 import numpy as np
 import vtk
 
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.units import getunitconversion
 
 from .element import Element
@@ -16,20 +17,31 @@ from .element import Element
 
 @dataclass
 class Transducer:
-    id: str = "transducer"
-    name: str = ""
-    elements: Tuple[Element] = ()
-    frequency: float = 400.6e3
-    units: str = "m"
-    attrs: Dict[str, Any] = field(default_factory= dict)
+    id: Annotated[str, OpenLIFUFieldData("Transducer ID", "Unique identifier for transducer")] = "transducer"
+    """Unique identifier for transducer"""
 
-    registration_surface_filename: str | None = None
+    name: Annotated[str, OpenLIFUFieldData("Transducer name", "Human readable name for transducer")] = ""
+    """Human readable name for transducer"""
+
+    elements: Annotated[List[Element], OpenLIFUFieldData("Elements", "Collection of transducer Elements")] = field(default_factory=list)
+    """Collection of transducer Elements"""
+
+    frequency: Annotated[float, OpenLIFUFieldData("Frequency (Hz)", "Nominal array frequency (Hz)")] = 400.6e3
+    """Nominal array frequency (Hz)"""
+
+    units: Annotated[str, OpenLIFUFieldData("Units", "Native units of transducer local coordinate space")] = "m"
+    """Native units of transducer local coordinate space"""
+
+    attrs: Annotated[Dict[str, Any], OpenLIFUFieldData("Attributes", "Additional transducer attributes")] = field(default_factory=dict)
+    """Additional transducer attributes"""
+
+    registration_surface_filename: Annotated[str | None, OpenLIFUFieldData("Registration surface filename", "Relative path to an open surface of the transducer to be used for registration")] = None
     """Relative path to an open surface of the transducer to be used for registration"""
 
-    transducer_body_filename: str | None = None
+    transducer_body_filename: Annotated[str | None, OpenLIFUFieldData("Transducer body filename", "Relative path to the closed surface mesh for visualizing the transducer body")] = None
     """Relative path to the closed surface mesh for visualizing the transducer body"""
 
-    standoff_transform: np.ndarray = field(default_factory=lambda: np.eye(4, dtype=float))
+    standoff_transform: Annotated[np.ndarray, OpenLIFUFieldData("Standoff transform", "Affine transform representing the way in which the standoff for this transducer displaces the transducer.\n\nA \"standoff transform\" applies a displacement in transducer space that moves a transducer to where it would\nbe situated with the standoff in place. The idea is that if you start with a transform that places a transducer\ndirectly against skin, then pre-composing that transform by a \"standoff transform\" serves to nudge the transducer\nsuch that there is space for the standoff to be between it and the skin.\n\nSee also `openlifu.geo.create_standoff_transform`.\n\nThe units of this transform are assumed to be the native units of the transducer, the `Transducer.units` field.")] = field(default_factory=lambda: np.eye(4, dtype=float))
     """Affine transform representing the way in which the standoff for this transducer displaces the transducer.
 
     A "standoff transform" applies a displacement in transducer space that moves a transducer to where it would
@@ -218,7 +230,7 @@ class Transducer:
     @staticmethod
     def from_dict(d, **kwargs):
         d = d.copy()
-        d["elements"] = Element.from_dict(d["elements"])
+        d["elements"] = [Element.from_dict(element) for element in d["elements"]]
         if "standoff_transform" in d:
             d["standoff_transform"] = np.array(d["standoff_transform"])
         return Transducer(**d, **kwargs)
@@ -242,7 +254,16 @@ class Transducer:
             return json.dumps(self.to_dict(), indent=4)
 
     @staticmethod
-    def gen_matrix_array(nx=2, ny=2, pitch=1, kerf=0, units="mm", impulse_response=1, impulse_dt=1, id='array', name='Array', attrs={}):
+    def gen_matrix_array(nx:int=2,
+                         ny:int=2,
+                         pitch:float=1.0,
+                         kerf:float=0.0,
+                         units:str="mm",
+                         impulse_response:float|np.ndarray=1.0,
+                         impulse_dt:float=1.0,
+                         id:str='array',
+                         name:str='Array',
+                         attrs:Dict|None=None):
         """Generate a 2D flat matrix array
 
         Args:
@@ -279,4 +300,6 @@ class Transducer:
                 impulse_dt=impulse_dt,
                 units=units
             ))
+        if attrs is None:
+            attrs = {}
         return Transducer(elements=elements, id=id, name=name, attrs=attrs)

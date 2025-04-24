@@ -34,7 +34,7 @@ from openlifu.seg import (
     seg_methods,
 )
 from openlifu.sim import SimSetup
-from openlifu.virtual_fit import virtual_fit
+from openlifu.virtual_fit import VirtualFitOptions, virtual_fit
 from openlifu.xdc import Transducer
 
 from ._version import version as __version__
@@ -64,6 +64,7 @@ __all__ = [
     "SimSetup",
     "Database",
     "User",
+    "VirtualFitOptions",
     "virtual_fit",
     "LIFUInterface",
     "__version__",

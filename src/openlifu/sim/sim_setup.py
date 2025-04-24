@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Tuple
+from typing import Annotated, Tuple
 
 import numpy as np
 import xarray as xa
 
 from openlifu.geo import Point
 from openlifu.seg import SegmentationMethod
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
 from openlifu.util.units import getunitconversion
 from openlifu.xdc import Transducer
@@ -16,18 +17,41 @@ from openlifu.xdc import Transducer
 
 @dataclass
 class SimSetup(DictMixin):
-    dims: Tuple[str, str, str] = ("lat", "ele", "ax")
-    names: Tuple[str, str, str] = ("Lateral", "Elevation", "Axial")
-    spacing: float = 1.0
-    units: str = "mm"
-    x_extent: Tuple[float, float] = (-30., 30.)
-    y_extent: Tuple[float, float] = (-30., 30.)
-    z_extent: Tuple[float, float] = (-4., 60.)
-    dt: float = 0.
-    t_end: float = 0.
-    c0: float = 1500.0
-    cfl: float = 0.5
-    options: dict = field(default_factory=dict)
+    dims: Annotated[Tuple[str, str, str], OpenLIFUFieldData("Dimension keys", "Codenames of the axes in the coordinate system being used")] = ("lat", "ele", "ax")
+    """Names of the axes in the coordinate system being used"""
+
+    names: Annotated[Tuple[str, str, str], OpenLIFUFieldData("Dimension names", "Human readable names of the axes in the coordinate system being used")] = ("Lateral", "Elevation", "Axial")
+    """"Human readable names of the axes in the coordinate system being used"""
+
+    spacing: Annotated[float, OpenLIFUFieldData("Spacing", "Simulation grid spacing")] = 1.0
+    """Simulation grid spacing"""
+
+    units: Annotated[str, OpenLIFUFieldData("Spatial units", "Units used for spatial measurements")] = "mm"
+    """Units used for spatial measurements"""
+
+    x_extent: Annotated[Tuple[float, float], OpenLIFUFieldData("X-extent", "Simulation grid extent along the first dimension")] = (-30., 30.)
+    """Simulation grid extent along the first dimension"""
+
+    y_extent: Annotated[Tuple[float, float], OpenLIFUFieldData("Y-extent", "Simulation grid extend along the second dimension")] = (-30., 30.)
+    """Simulation grid extend along the second dimension"""
+
+    z_extent: Annotated[Tuple[float, float], OpenLIFUFieldData("Z-extent", "Simulation grid extend along the third dimension")] = (-4., 60.)
+    """Simulation grid extend along the third dimension"""
+
+    dt: Annotated[float, OpenLIFUFieldData("Time step", "Simulation time step")] = 0.
+    """Simulation time step"""
+
+    t_end: Annotated[float, OpenLIFUFieldData("End time", """Simulation end time""")] = 0.
+    """Simulation end time"""
+
+    c0: Annotated[float, OpenLIFUFieldData("Speed of Sound (m/s)", "Reference speed of sound for converting distance to time")] = 1500.0
+    """Reference speed of sound for converting distance to time"""
+
+    cfl: Annotated[float, OpenLIFUFieldData("CFL number", "Courant-Friedrichs-Lewy number")] = 0.5
+    """Courant-Friedrichs-Lewy number"""
+
+    options: Annotated[dict[str, str], OpenLIFUFieldData("Simulation options", "Additional simulation options")] = field(default_factory=dict)
+    """Additional simulation options"""
 
     def __post_init__(self):
         if len(self.dims) != 3:

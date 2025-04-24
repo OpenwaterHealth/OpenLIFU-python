@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import threading
 import time
 
@@ -25,35 +26,82 @@ Test script to automate:
 log_interval = 1  # seconds; you can adjust this variable as needed
 stop_logging = False  # flag to signal the logging thread to stop
 
-def log_temperature():
-    # Create a file with the current timestamp in the name
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
-    filename = f"{timestamp}_temp.log"
-    with open(filename, "w") as logfile:
-        while not stop_logging:
-            temperature = interface.txdevice.get_temperature()
-            a_temp = interface.txdevice.get_ambient_temperature()
-            current_time = time.strftime("%Y-%m-%d %H:%M:%S")
-            log_line = f"{current_time}: Temperature: {temperature}, Ambient Temperature: {a_temp}\n"
-            logfile.write(log_line)
-            logfile.flush()  # Ensure the data is written immediately
-            time.sleep(log_interval)
+# set focus
+xInput = 0
+yInput = 0
+zInput = 50
 
+frequency = 405e3
+voltage = 50.0
+duration = 2e-4
+
+json_trigger_data = {
+    "TriggerFrequencyHz": 5,
+    "TriggerMode": 1,
+    "TriggerPulseCount": 0,
+    "TriggerPulseWidthUsec": 20000
+}
 
 print("Starting LIFU Test Script...")
 interface = LIFUInterface()
 tx_connected, hv_connected = interface.is_device_connected()
+
+if not tx_connected:
+    print("TX device not connected. Attempting to turn on 12V...")
+    interface.hvcontroller.turn_12v_on()
+
+    # Give time for the TX device to power up and enumerate over USB
+    time.sleep(2)
+
+    # Cleanup and recreate interface to reinitialize USB devices
+    interface.stop_monitoring()
+    del interface
+    time.sleep(1)  # Short delay before recreating
+
+    print("Reinitializing LIFU interface after powering 12V...")
+    interface = LIFUInterface()
+
+    # Re-check connection
+    tx_connected, hv_connected = interface.is_device_connected()
+
 if tx_connected and hv_connected:
-    print("LIFU Device Fully connected.")
+    print("✅ LIFU Device fully connected.")
 else:
-    print(f'LIFU Device NOT Fully Connected. TX: {tx_connected}, HV: {hv_connected}')
+    print("❌ LIFU Device NOT fully connected.")
+    print(f"  TX Connected: {tx_connected}")
+    print(f"  HV Connected: {hv_connected}")
+    sys.exit(1)
 
 # Ask the user if they want to log temperature
 log_choice = input("Do you want to log temperature before starting trigger? (y/n): ").strip().lower()
 log_temp = (log_choice == "y")
 
-print("Ping the device")
-interface.txdevice.ping()
+def log_temperature():
+    # Create a file with the current timestamp in the name
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    filename = f"{timestamp}_temp.csv"
+    with open(filename, "w") as logfile:
+        while not stop_logging:
+            print("Retrieving Console temperature...")
+            con_temp = interface.hvcontroller.get_temperature1()
+            print("Retrieving TX temperature...")
+            tx_temp = interface.txdevice.get_temperature()
+            print("Retrieving TX Amb temperature...")
+            amb_temp = interface.txdevice.get_ambient_temperature()
+            current_time = time.strftime("%Y-%m-%d %H:%M:%S")
+            log_line = f"{current_time},{frequency},{duration},{voltage},{con_temp},{tx_temp},{amb_temp}\n"
+            logfile.write(log_line)
+            logfile.flush()  # Ensure the data is written immediately
+            time.sleep(log_interval)
+
+# Verify communication with the devices
+if not interface.txdevice.ping():
+    print("Failed to ping the transmitter device.")
+    sys.exit(1)
+
+if not interface.hvcontroller.ping():
+    print("Failed to ping the console devie.")
+    sys.exit(1)
 
 print("Enumerate TX7332 chips")
 num_tx_devices = interface.txdevice.enum_tx7332_devices()
@@ -62,21 +110,27 @@ if num_tx_devices > 0:
 else:
     raise Exception("No TX7332 devices found.")
 
-# set focus
-xInput = 0
-yInput = 0
-zInput = 50
+print("Set Trigger")
+trigger_setting = interface.txdevice.set_trigger_json(data=json_trigger_data)
+if trigger_setting:
+    print(f"Trigger Setting: {trigger_setting}")
+else:
+    print("Failed to set trigger setting.")
+    sys.exit(1)
 
-frequency = 405e3
-voltage = 12.0
-duration = 2e-5
+print("Set High Voltage")
+if interface.hvcontroller.set_voltage(voltage):
+    print("High Voltage set successfully.")
+else:
+    print("Failed to set High Voltage.")
+    sys.exit(1)
 
 pulse = Pulse(frequency=frequency, amplitude=voltage, duration=duration)
 pt = Point(position=(xInput,yInput,zInput), units="mm")
 
 #arr = Transducer.from_file(r"C:\Users\Neuromod2\Documents\OpenLIFU-python\OpenLIFU_2x.json")
 # arr = Transducer.from_file(R"..\M4_flex.json")
-arr = Transducer.from_file(R"E:\CURRENT-WORK\openwater\OpenLIFU-python\notebooks\pinmap.json")
+arr = Transducer.from_file(R".\notebooks\pinmap.json")
 
 focus = pt.get_position(units="mm")
 #arr.elements = np.array(arr.elements)[np.argsort([el.pin for el in arr.elements])].tolist()
@@ -85,9 +139,7 @@ tof = distances*1e-3 / 1500
 delays = tof.max() - tof
 apodizations = np.ones(arr.numelements())
 
-
-
-    # tURN only single element ON
+# Turn only single element ON
 #active_element = 25
 
 #delays = delays*0.0
@@ -123,17 +175,9 @@ interface.txdevice.set_solution(
     profile_increment=profile_increment
 )
 
-print("Get Trigger")
-trigger_setting = interface.txdevice.get_trigger_json()
-if trigger_setting:
-    print(f"Trigger Setting: {trigger_setting}")
-else:
-    print("Failed to get trigger setting.")
-
 # If logging is enabled, start the logging thread
 if log_temp:
     t = threading.Thread(target=log_temperature)
-    t.start()
 else:
     print("Get Temperature")
     temperature = interface.txdevice.get_temperature()
@@ -145,12 +189,24 @@ else:
 
 print("Press enter to START trigger:")
 input()  # Wait for the user to press Enter
+
+print("Enable  High Voltage")
+if not interface.hvcontroller.turn_hv_on():
+    print("Failed to turn on High Voltage.")
+    sys.exit(1)
+
 print("Starting Trigger...")
 if interface.txdevice.start_trigger():
+    if log_temp:
+        t.start()  # Start the logging thread
+    else:
+        print("Trigger started without logging.")
+
     print("Trigger Running Press enter to STOP:")
     input()  # Wait for the user to press Enter
+    stop_logging = True
+    time.sleep(1)  # Give the logging thread time to finish
     if interface.txdevice.stop_trigger():
-        stop_logging = True
         print("Trigger stopped successfully.")
     else:
         print("Failed to stop trigger.")

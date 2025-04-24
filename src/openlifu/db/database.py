@@ -11,7 +11,7 @@ from typing import Dict, List, Union
 
 import h5py
 
-from openlifu.photoscan import Photoscan, load_data_from_photoscan
+from openlifu.nav.photoscan import Photoscan, load_data_from_photoscan
 from openlifu.plan import Protocol, Run, Solution
 from openlifu.util.json import PYFUSEncoder
 from openlifu.xdc import Transducer

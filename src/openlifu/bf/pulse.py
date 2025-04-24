@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Annotated
 
 import numpy as np
 import pandas as pd
 
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
 
 
@@ -12,15 +14,16 @@ from openlifu.util.dict_conversion import DictMixin
 class Pulse(DictMixin):
     """
     Class for representing a sinusoidal pulse
-
-    :ivar frequency: Frequency of the pulse in Hz
-    :ivar amplitude: Amplitude of the pulse in volts
-    :ivar duration: Duration of the pulse in s
     """
 
-    frequency: float = 1.0 # Hz
-    amplitude: float = 1.0 # V
-    duration: float = 1.0 # s
+    frequency: Annotated[float, OpenLIFUFieldData("Frequency (Hz)", "Frequency of the pulse in Hz")] = 1.0  # Hz
+    """Frequency of the pulse in Hz"""
+
+    amplitude: Annotated[float, OpenLIFUFieldData("Amplitude (V)", "Amplitude of the pulse in volts")] = 1.0  # V
+    """Amplitude of the pulse in volts"""
+
+    duration: Annotated[float, OpenLIFUFieldData("Duration (s)", "Duration of the pulse in s")] = 1.0  # s
+    """Duration of the pulse in s"""
 
     def calc_pulse(self, t: np.array):
         """

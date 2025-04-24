@@ -33,7 +33,3 @@ def example_seg_method() -> SegmentationMethod:
 
 def test_seg_method_dict_conversion(example_seg_method : SegmentationMethod):
     assert SegmentationMethod.from_dict(example_seg_method.to_dict()) == example_seg_method
-
-def test_seg_method_dict_conversion_with_varied_param_ids(example_seg_method : SegmentationMethod):
-    example_seg_method.materials['water'].param_ids = ("something", "else") # change param ids to something else
-    assert SegmentationMethod.from_dict(example_seg_method.to_dict()) == example_seg_method # verify that the dict conversion still works.

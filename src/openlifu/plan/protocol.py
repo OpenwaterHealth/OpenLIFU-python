@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Annotated, Any, Dict, List, Tuple
 
 import numpy as np
 import xarray as xa
@@ -16,10 +16,12 @@ import xarray as xa
 from openlifu import bf, geo, seg, sim, xdc
 from openlifu.db.session import Session
 from openlifu.geo import Point
+from openlifu.plan.param_constraint import ParameterConstraint
 from openlifu.plan.solution import Solution
 from openlifu.plan.solution_analysis import SolutionAnalysis, SolutionAnalysisOptions
 from openlifu.plan.target_constraints import TargetConstraints
 from openlifu.sim import run_simulation
+from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.checkgpu import gpu_available
 from openlifu.util.json import PYFUSEncoder
 from openlifu.virtual_fit import VirtualFitOptions
@@ -30,46 +32,50 @@ OnPulseMismatchAction = Enum("OnPulseMismatchAction", ["ERROR", "ROUND", "ROUNDU
 
 @dataclass
 class Protocol:
-    id: str = "protocol"
-    """ The unique identifier of the protocol """
+    id: Annotated[str, OpenLIFUFieldData("Protocol ID", "The unique identifier of the protocol")] = "protocol"
+    """The unique identifier of the protocol"""
 
-    name: str = "Protocol"
-    """ The name of the protocol """
+    name: Annotated[str, OpenLIFUFieldData("Protocol name", "The name of the protocol")] = "Protocol"
+    """The name of the protocol"""
 
-    description: str = ""
-    """ A more detailed description of the protocol """
+    description: Annotated[str, OpenLIFUFieldData("Protocol description", "A more detailed description of the protocol")] = ""
+    """A more detailed description of the protocol"""
 
-    pulse: bf.Pulse = field(default_factory=bf.Pulse)
-    """ The pulse definition used in the protocol """
+    allowed_roles: Annotated[List[str], OpenLIFUFieldData("Allowed roles", "A list of user roles allowed to interact with this protocol")] = field(default_factory=list)
+    """A list of user roles allowed to interact with this protocol"""
 
-    sequence: bf.Sequence = field(default_factory=bf.Sequence)
-    """ The sequence of pulses used in the protocol """
+    pulse: Annotated[bf.Pulse, OpenLIFUFieldData("Pulse definition", "The pulse definition used in the protocol")] = field(default_factory=bf.Pulse)
+    """The pulse definition used in the protocol"""
 
-    focal_pattern: bf.FocalPattern = field(default_factory=bf.SinglePoint)
-    """ The focal pattern used in the protocol. By default, a single point is used """
+    sequence: Annotated[bf.Sequence, OpenLIFUFieldData("Pulse sequence", "The sequence of pulses used in the protocol")] = field(default_factory=bf.Sequence)
+    """The sequence of pulses used in the protocol"""
 
-    sim_setup: sim.SimSetup = field(default_factory=sim.SimSetup)
-    """ Configuration options for using k-wave to simulate wave propagation """
+    focal_pattern: Annotated[bf.FocalPattern, OpenLIFUFieldData("Focal pattern", "The focal pattern used in the protocol. By default, a single point is used")] = field(default_factory=bf.SinglePoint)
+    """The focal pattern used in the protocol. By default, a single point is used"""
 
-    delay_method: bf.DelayMethod = field(default_factory=bf.delay_methods.Direct)
-    """ The method used to calculate transmit delays. By default, delays are calculated using a nominal speed of sound """
+    sim_setup: Annotated[sim.SimSetup, OpenLIFUFieldData("Simulation setup", "Configuration options for using k-wave to simulate wave propagation")] = field(default_factory=sim.SimSetup)
+    """Configuration options for using k-wave to simulate wave propagation"""
 
-    apod_method: bf.ApodizationMethod = field(default_factory=bf.apod_methods.Uniform)
-    """ The method used to calculate transmit apodizations. By default, apodizations are uniform """
+    delay_method: Annotated[bf.DelayMethod, OpenLIFUFieldData("Delay method", "The method used to calculate transmit delays. By default, delays are calculated using a nominal speed of sound")] = field(default_factory=bf.delay_methods.Direct)
+    """The method used to calculate transmit delays. By default, delays are calculated using a nominal speed of sound"""
 
-    seg_method: seg.SegmentationMethod = field(default_factory=seg.seg_methods.Water)
-    """ The method used to segment the subject's MRI for delay calculation. By default, the entire field is assumed to be water """
+    apod_method: Annotated[bf.ApodizationMethod, OpenLIFUFieldData("Apodization method", "The method used to calculate transmit apodizations. By default, apodizations are uniform")] = field(default_factory=bf.apod_methods.Uniform)
+    """The method used to calculate transmit apodizations. By default, apodizations are uniform"""
 
-    param_constraints: dict = field(default_factory=dict)  #TODO: this seems to be used only in `plan.check_analysis` but not called anywhere
-    """ The constraints on the analysis parameters. If computed parameters are outside of the ranges defined here, warnings or errors may be flagged to reject the solution """
+    seg_method: Annotated[seg.SegmentationMethod, OpenLIFUFieldData("Segmentation method", "The method used to segment the subject's MRI for delay calculation. By default, the entire field is assumed to be water")] = field(default_factory=seg.seg_methods.Water)
+    """The method used to segment the subject's MRI for delay calculation. By default, the entire field is assumed to be water"""
 
-    target_constraints: List[TargetConstraints] = field(default_factory=list)
-    """ The constraints on the target position. If the target is outside of the bounds defined here, warnings or errors may be flagged to reject the solution """
+    param_constraints: Annotated[dict, OpenLIFUFieldData("Parameter constraints", "The constraints on the analysis parameters. If computed parameters are outside of the ranges defined here, warnings or errors may be flagged to reject the solution")] = field(default_factory=dict)
+    """The constraints on the analysis parameters. If computed parameters are outside of the ranges defined here, warnings or errors may be flagged to reject the solution"""
 
-    analysis_options: SolutionAnalysisOptions = field(default_factory=SolutionAnalysisOptions)
-    """ Options to adjust solution analysis. By default, the analysis is configured with default options """
+    target_constraints: Annotated[List[TargetConstraints], OpenLIFUFieldData("Target constraints", "The constraints on the target position. If the target is outside of the bounds defined here, warnings or errors may be flagged to reject the solution")] = field(default_factory=list)
+    """The constraints on the target position. If the target is outside of the bounds defined here, warnings or errors may be flagged to reject the solution"""
 
-    virtual_fit_options : VirtualFitOptions = field(default_factory=VirtualFitOptions)
+    analysis_options: Annotated[SolutionAnalysisOptions, OpenLIFUFieldData("Analysis options", "Options to adjust solution analysis. By default, the analysis is configured with default options")] = field(default_factory=SolutionAnalysisOptions)
+    """Options to adjust solution analysis. By default, the analysis is configured with default options"""
+
+    virtual_fit_options: Annotated[VirtualFitOptions, OpenLIFUFieldData("Virtual fit options", "Configuration of the virtual fit algorithm")] = field(default_factory=VirtualFitOptions)
+    """Configuration of the virtual fit algorithm"""
 
     def __post_init__(self):
         self.logger = logging.getLogger(__name__)
@@ -86,7 +92,7 @@ class Protocol:
         if "materials" in d:
             seg_method_dict["materials"] = seg.Material.from_dict(d.pop("materials"))
         d["seg_method"] = seg.SegmentationMethod.from_dict(seg_method_dict)
-        d['param_constraints'] = d.get("param_constraints", {})
+        d['param_constraints'] = {key: ParameterConstraint.from_dict(val) for key, val in d.get("param_constraints", {}).items()}
         if "target_constraints" in d:
             d['target_constraints'] = [TargetConstraints.from_dict(d_tc) for d_tc in d.get("target_constraints", {})]
         if "virtual_fit_options" in d:
@@ -109,7 +115,7 @@ class Protocol:
             "delay_method": self.delay_method.to_dict(),
             "apod_method": self.apod_method.to_dict(),
             "seg_method": self.seg_method.to_dict(),
-            "param_constraints": self.param_constraints,
+            "param_constraints": {id: pc.to_dict() for id, pc in self.param_constraints.items()},
             "target_constraints": self.target_constraints,
             "virtual_fit_options": self.virtual_fit_options.to_dict(),
             "analysis_options": self.analysis_options,
@@ -281,6 +287,7 @@ class Protocol:
                     cycles = simulation_cycles,
                     dt=sim_options.dt,
                     t_end=sim_options.t_end,
+                    cfl=sim_options.cfl,
                     amplitude = self.pulse.amplitude,
                     gpu = use_gpu
                 )
@@ -326,7 +333,7 @@ class Protocol:
                 raise ValueError(f"Cannot scale solution {solution.id} if simulation is not enabled!")
             self.logger.info(f"Scaling solution {solution.id}...")
             #TODO can analysis be an attribute of solution ?
-            scaled_solution_analysis = solution.scale(transducer, self.focal_pattern, analysis_options=analysis_options)
+            solution.scale(transducer, self.focal_pattern, analysis_options=analysis_options)
 
         if simulate:
             # Finally the resulting pressure is max-aggregated and intensity is mean-aggregated, over all focus points .
@@ -339,5 +346,9 @@ class Protocol:
             simulation_result_aggregated['p_min'] = pnp_aggregated
             simulation_result_aggregated['p_max'] = ppp_aggregated
             simulation_result_aggregated['intensity'] = intensity_aggregated
+            solution_analysis = solution.analyze(transducer=transducer, options=analysis_options, param_constraints=self.param_constraints)
+        else:
+            simulation_result_aggregated = None
+            solution_analysis = None
 
-        return solution, simulation_result_aggregated, scaled_solution_analysis
+        return solution, simulation_result_aggregated, solution_analysis
