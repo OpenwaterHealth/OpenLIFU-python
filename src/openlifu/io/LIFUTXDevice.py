@@ -480,9 +480,7 @@ class TxDevice:
             "TriggerPulseWidthUsec": pulse_width,
             "TriggerPulseTrainInterval": pulse_train_interval,
             "TriggerPulseTrainCount": pulse_train_count,
-            "TriggerMode": trigger_mode,
-            "ProfileIndex": profile_index,
-            "ProfileIncrement": int(profile_increment)
+            "TriggerMode": trigger_mode
         }
         return self.set_trigger_json(data=trigger_json)
 
