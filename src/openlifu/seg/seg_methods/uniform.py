@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import xarray as xa
 
-from openlifu.seg.material import MATERIALS, Material
 from openlifu.seg.seg_method import SegmentationMethod
 
 
 class UniformSegmentation(SegmentationMethod):
-    def __init__(self, ref_material: str = "water", materials: dict[str, Material] | None = None):
-        self.ref_material = ref_material
-        self.materials = materials if materials is not None else MATERIALS.copy()
+    #def __init__(self, ref_material: str = "water", materials: dict[str, Material] | None = None):
+    #    super().__init__(ref_material=ref_material, materials=materials)
 
     def _segment(self, vol: xa.DataArray):
         return self._ref_segment(vol.coords)

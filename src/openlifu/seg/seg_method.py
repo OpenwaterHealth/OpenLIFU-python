@@ -21,6 +21,8 @@ class SegmentationMethod(ABC):
     """Reference material ID to use"""
 
     def __post_init__(self):
+        if self.materials is None:
+            self.materials = MATERIALS.copy()
         if self.ref_material not in self.materials:
             raise ValueError(f"Reference material {self.ref_material} not found.")
 
