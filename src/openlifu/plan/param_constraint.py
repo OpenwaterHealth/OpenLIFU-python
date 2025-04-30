@@ -26,12 +26,12 @@ class ParameterConstraint(DictMixin):
     def __post_init__(self):
         if self.warning_value is None and self.error_value is None:
             raise ValueError("At least one of warning_value or error_value must be set")
-        if self.operator in ['within','inside','outside','outside_inclusive']:
-            if self.warning_value and (not isinstance(self.warning_value, tuple) or len(self.warning_value) != 2 or (self.warning_value[0] >= self.warning_value[1])):
+        if self.operator in ['within', 'inside', 'outside', 'outside_inclusive']:
+            if self.warning_value and (not isinstance(self.warning_value, tuple) or len(self.warning_value) != 2 or self.warning_value[0] >= self.warning_value[1]):
                 raise ValueError("Warning value must be a sorted tuple of two numbers")
-            if self.error_value and (not isinstance(self.error_value, tuple) or len(self.error_value) != 2 or not (self.error_value[0] >= self.error_value[1])):
+            if self.error_value and (not isinstance(self.error_value, tuple) or len(self.error_value) != 2 or self.error_value[0] >= self.error_value[1]):
                 raise ValueError("Error value must be a sorted tuple of two numbers")
-        elif self.operator in ['<','<=','>','>=']:
+        elif self.operator in ['<', '<=', '>', '>=']:
             if self.warning_value is not None and not isinstance(self.warning_value, (int, float)):
                 raise ValueError("Warning value must be a single value")
             if self.error_value is not None and not isinstance(self.error_value, (int, float)):
