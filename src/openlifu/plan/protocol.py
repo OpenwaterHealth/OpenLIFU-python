@@ -108,6 +108,7 @@ class Protocol:
             "id": self.id,
             "name": self.name,
             "description": self.description,
+            "allowed_roles": self.allowed_roles,
             "pulse": self.pulse.to_dict(),
             "sequence": self.sequence.to_dict(),
             "focal_pattern": self.focal_pattern.to_dict(),
