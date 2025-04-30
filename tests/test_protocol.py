@@ -31,6 +31,11 @@ def example_session() -> Session:
 def example_wheel_pattern() -> Wheel:
     return Wheel(num_spokes=6)
 
+def test_to_dict_from_dict(example_protocol: Protocol):
+    proto_dict = example_protocol.to_dict()
+    new_protocol = Protocol.from_dict(proto_dict)
+    assert new_protocol == example_protocol
+
 @pytest.mark.parametrize("compact_representation", [True, False])
 def test_serialize_deserialize_protocol(example_protocol : Protocol, compact_representation: bool):
     assert example_protocol.from_json(example_protocol.to_json(compact_representation)) == example_protocol
