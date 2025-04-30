@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
-from typing import Annotated, Dict, Tuple
+from dataclasses import dataclass, field, fields
+from typing import Annotated, Any, Dict, Tuple, Type, get_origin
 
 import numpy as np
 import pandas as pd
@@ -193,6 +193,31 @@ class SolutionAnalysisOptions(DictMixin):
 
     param_constraints: Annotated[Dict[str, ParameterConstraint], OpenLIFUFieldData("Parameter constraints", None)] = field(default_factory=dict)
     """TODO: Add description"""
+
+    @classmethod
+    def from_dict(cls: Type[SolutionAnalysisOptions], parameter_dict: Dict[str, Any]) -> SolutionAnalysisOptions:
+        if "class" in parameter_dict:
+            parameter_dict.pop("class")
+
+        # Convert mainlobe_aspect_ratio to tuple if present
+        if "mainlobe_aspect_ratio" in parameter_dict:
+            value = parameter_dict["mainlobe_aspect_ratio"]
+            if isinstance(value, list):
+                parameter_dict["mainlobe_aspect_ratio"] = tuple(value)
+
+        # Construct the object
+        new_object = cls(**parameter_dict)
+
+        # Retain numpy array handling from base class
+        for _field in fields(cls):
+            if (
+                get_origin(_field.type) is np.ndarray
+                or _field.type is np.ndarray
+                or "np.ndarray" in str(_field.type)
+            ):
+                setattr(new_object, _field.name, np.array(getattr(new_object, _field.name)))
+
+        return new_object
 
 def find_centroid(da: xa.DataArray, cutoff:float) -> np.ndarray:
     """Find the centroid of a thresholded region of a DataArray"""
