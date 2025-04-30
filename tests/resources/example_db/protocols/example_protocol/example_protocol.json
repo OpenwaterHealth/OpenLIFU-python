@@ -2,6 +2,7 @@
   "id": "example_protocol",
   "name": "Example protocol",
   "description": "Example protocol created 30-Jan-2024 09:16:02",
+  "allowed_roles": ["operator"],
   "pulse": {
     "frequency": 500000,
     "amplitude": 1,
