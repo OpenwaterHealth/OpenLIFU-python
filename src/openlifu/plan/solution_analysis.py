@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field, fields
-from typing import Annotated, Any, Dict, Tuple, Type, get_origin
+from dataclasses import dataclass, field
+from typing import Annotated, Any, Dict, Tuple, Type
 
 import numpy as np
 import pandas as pd
@@ -141,6 +141,22 @@ class SolutionAnalysis(DictMixin):
                 records.append(record)
         return pd.DataFrame.from_records(records)
 
+    @classmethod
+    def from_dict(cls: Type[SolutionAnalysis], parameter_dict: Dict[str, Any]) -> SolutionAnalysis:
+        """
+        Create an object from a dictionary
+
+        Args:
+            parameter_dict: dictionary of parameters to define the object
+        Returns: new object
+        """
+        parameter_dict["param_constraints"] = {
+            k: ParameterConstraint.from_dict(v)
+            for k, v in parameter_dict.get("param_constraints", {}).items()
+        }
+
+        return cls(**parameter_dict)
+
     @staticmethod
     def from_json(json_string : str) -> SolutionAnalysis:
         """Load a SolutionAnalysis from a json string"""
@@ -196,28 +212,21 @@ class SolutionAnalysisOptions(DictMixin):
 
     @classmethod
     def from_dict(cls: Type[SolutionAnalysisOptions], parameter_dict: Dict[str, Any]) -> SolutionAnalysisOptions:
-        if "class" in parameter_dict:
-            parameter_dict.pop("class")
+        """
+        Create an object from a dictionary
 
-        # Convert mainlobe_aspect_ratio to tuple if present
-        if "mainlobe_aspect_ratio" in parameter_dict:
-            value = parameter_dict["mainlobe_aspect_ratio"]
-            if isinstance(value, list):
-                parameter_dict["mainlobe_aspect_ratio"] = tuple(value)
+        Args:
+            parameter_dict: dictionary of parameters to define the object
+        Returns: new object
+        """
+        parameter_dict["mainlobe_aspect_ratio"] = tuple(parameter_dict["mainlobe_aspect_ratio"]) \
+            if isinstance(parameter_dict.get("mainlobe_aspect_ratio"), list) else parameter_dict.get("mainlobe_aspect_ratio")
+        parameter_dict["param_constraints"] = {
+            k: ParameterConstraint.from_dict(v)
+            for k, v in parameter_dict.get("param_constraints", {}).items()
+        }
 
-        # Construct the object
-        new_object = cls(**parameter_dict)
-
-        # Retain numpy array handling from base class
-        for _field in fields(cls):
-            if (
-                get_origin(_field.type) is np.ndarray
-                or _field.type is np.ndarray
-                or "np.ndarray" in str(_field.type)
-            ):
-                setattr(new_object, _field.name, np.array(getattr(new_object, _field.name)))
-
-        return new_object
+        return cls(**parameter_dict)
 
 def find_centroid(da: xa.DataArray, cutoff:float) -> np.ndarray:
     """Find the centroid of a thresholded region of a DataArray"""
