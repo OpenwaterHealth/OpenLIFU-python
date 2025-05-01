@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Annotated, Any
 
 from openlifu.util.annotations import OpenLIFUFieldData
 
@@ -62,30 +62,8 @@ class Material:
         return self.__getattribute__(param_id)
 
     @staticmethod
-    def get_materials(material_id="all", as_dict=True):
-        material_id = ("water", "tissue", "skull", "air", "standoff") if material_id == "all" else material_id
-        if isinstance(material_id, (list, tuple)):
-            materials = {m: Material.get_materials(m, as_dict=False) for m in material_id}
-        elif material_id in MATERIALS:
-            materials = MATERIALS[material_id]
-        else:
-            raise ValueError(f"Material {material_id} not found.")
-        if as_dict:
-            return {materials.id: materials}
-        else:
-            return materials
-
-    @staticmethod
-    def from_dict(d):
-        if isinstance(d, (list, tuple)):
-            return {dd['id']: Material.from_dict(dd) for dd in d}
-        elif isinstance(d, str):
-            return Material.get_materials(d, as_dict=False)
-        elif isinstance(d, Material):
-            return d
-        else:
-            return Material(**d)
-
+    def from_dict(d: dict[str, Any]):
+        return Material(**d)
 
 WATER = Material(name="water",
                  sound_speed=1500.0,
