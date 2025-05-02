@@ -554,13 +554,37 @@ class HVController:
             )
 
         try:
-            dac_input = int(((voltage) / 162) * 4095)
-            # logger.info("Setting DAC Value %d.", dac_input)
+            # dac_input = int(((voltage) / 162) * 4095)
+
+            # Voltage adjustment formulas
+
+            # These values will be from 50V-100V
+            # Positive Switching Supply (HVP)
+            hvp_intercept = -0.3741880342
+            hvp_slope     =  0.03965777778
+
+            # Negative Switching Supply (HVM)
+            hvm_intercept = -0.04010700855
+            hvm_slope     =  0.2834188034
+
+            # Add 20% margin to voltage
+            voltage_with_margin = voltage * 1.2
+
+            # Prevent power supply from going over 120V
+            if voltage_with_margin > 120:
+                voltage_with_margin = 120
+
+            # Get adjusted DAC values
+            dac_input_hvp = int((voltage_with_margin-hvp_intercept)/hvp_slope)
+            dac_input_hvm = int((voltage_with_margin-hvm_intercept)/hvm_slope)
+
             # Pack the 12-bit DAC input into two bytes
             data = bytes(
                 [
-                    (dac_input >> 8) & 0xFF,  # High byte (most significant bits)
-                    dac_input & 0xFF,  # Low byte (least significant bits)
+                    (dac_input_hvp >> 8) & 0xFF,  # High byte (most significant bits)
+                    dac_input_hvp & 0xFF,  # Low byte (least significant bits)
+                    (dac_input_hvm >> 8) & 0xFF,  # High byte (most significant bits)
+                    dac_input_hvm & 0xFF,  # Low byte (least significant bits)
                 ]
             )
 
@@ -625,7 +649,7 @@ class HVController:
 
         try:
             # logger.info("Setting DAC Value %d.", dac_input)
-            # Pack the 12-bit DAC input into two bytes
+            # Pack the 12-bit DAC input into two (but this is 4?) bytes
             data = bytes(
                 [
                     (hvp >> 8) & 0xFF,  # High byte (most significant bits)
