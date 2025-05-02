@@ -564,8 +564,8 @@ class HVController:
             hvp_slope     =  0.03965777778
 
             # Negative Switching Supply (HVM)
-            hvm_intercept = -0.04010700855
-            hvm_slope     =  0.2834188034
+            hvm_intercept = -0.2834188034
+            hvm_slope     = 0.04010700855
 
             # Add 20% margin to voltage
             voltage_with_margin = voltage * 1.2
