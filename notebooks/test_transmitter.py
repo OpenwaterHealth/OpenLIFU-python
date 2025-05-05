@@ -47,7 +47,7 @@ else:
 
 print("Set Trigger")
 json_trigger_data = {
-    "TriggerFrequencyHz": 25,
+    "TriggerFrequencyHz": 10,
     "TriggerMode": 1,
     "TriggerPulseCount": 0,
     "TriggerPulseWidthUsec": 20000
