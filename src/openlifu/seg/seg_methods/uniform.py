@@ -6,11 +6,8 @@ from openlifu.seg.seg_method import SegmentationMethod
 
 
 class UniformSegmentation(SegmentationMethod):
-    #def __init__(self, ref_material: str = "water", materials: dict[str, Material] | None = None):
-    #    super().__init__(ref_material=ref_material, materials=materials)
-
-    def _segment(self, vol: xa.DataArray):
-        return self._ref_segment(vol.coords)
+    def _segment(self, volume: xa.DataArray):
+        return self._ref_segment(volume.coords)
 
 class UniformTissue(UniformSegmentation):
     """ Assigns the tissue material to all voxels in the volume. """
