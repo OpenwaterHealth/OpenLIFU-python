@@ -94,7 +94,7 @@ for row, periods in enumerate(PATTERN_PERIOD_ORDER):
 MAX_REPEAT = 2**5-1
 MAX_ELASTIC_REPEAT = 2**16-1
 DEFAULT_TAIL_COUNT = 29
-DEFAULT_CLK_FREQ = 64e6
+DEFAULT_CLK_FREQ = 10e6
 ProfileOpts = Literal['active', 'configured', 'all']
 TriggerModeOpts = Literal['sequence', 'continuous','single']
 TRIGGER_MODE_SEQUENCE = 0
