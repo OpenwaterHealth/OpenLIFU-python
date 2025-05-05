@@ -557,7 +557,7 @@ class HVController:
             # dac_input = int(((voltage) / 162) * 4095)
 
             # Voltage adjustment formulas
-            if voltage <= 50:
+            if voltage < 50:
                 # Voltage adjustment formulas for 5V-50V
                 # Positive Switching Supply (HVP)
                 hvp_intercept = -0.3392857143
@@ -587,7 +587,10 @@ class HVController:
             dac_input_hvp = int((voltage_with_margin-hvp_intercept)/hvp_slope)
             dac_input_hvm = int((voltage_with_margin-hvm_intercept)/hvm_slope)
 
-            # Pack the 12-bit DAC input into two bytes
+            print("dac_input_hvp:", dac_input_hvp)
+            print("dac_input_hvm:", dac_input_hvm)
+
+            # Pack the 12-bit DAC input into 2 bytes each
             data = bytes(
                 [
                     (dac_input_hvp >> 8) & 0xFF,  # High byte (most significant bits)
@@ -597,11 +600,15 @@ class HVController:
                 ]
             )
 
+            # Print the data in a human-readable format
+            print("Packed data (hex):", " ".join(f"{byte:02X}" for byte in data))
+            print("Packed data (int):", {data[0] << 8 | data[1], data[2] << 8 | data[3]})
+
             r = self.uart.send_packet(
                 id=None, packetType=OW_POWER, command=OW_POWER_SET_HV, data=data
             )
             self.uart.clear_buffer()
-            # r.print_packet()
+            r.print_packet()
 
             if r.packet_type == OW_ERROR:
                 logger.error("Error setting HV")
