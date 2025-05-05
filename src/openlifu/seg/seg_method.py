@@ -30,6 +30,12 @@ class SegmentationMethod(ABC):
     def _segment(self, volume: xa.DataArray):
         pass
 
+    def to_dict(self) -> dict:
+        d = self.__dict__.copy()
+        d['materials'] = { k: v.to_dict() for k, v in self.materials.items() }
+        d['class'] = self.__class__.__name__
+        return d
+
     @staticmethod
     def from_dict(d: dict) -> SegmentationMethod:
         from openlifu.seg import seg_methods
@@ -86,9 +92,3 @@ class SegmentationMethod(ABC):
         sz = list(coords.sizes.values())
         seg = xa.DataArray(np.full(sz, m_idx, dtype=int), coords=coords)
         return seg
-
-    def to_dict(self):
-        d = {"materials": {material_key: material_definition.to_dict() for material_key, material_definition in self.materials.items()}}
-        d["ref_material"] = self.ref_material
-        d["class"] = self.__class__.__name__
-        return d
