@@ -27,7 +27,7 @@ class SegmentationMethod(ABC):
             raise ValueError(f"Reference material {self.ref_material} not found.")
 
     @abstractmethod
-    def _segment(self, volume: xa.DataArray):
+    def _segment(self, volume: xa.DataArray) -> xa.DataArray:
         pass
 
     def to_dict(self) -> dict:
