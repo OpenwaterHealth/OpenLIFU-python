@@ -31,18 +31,23 @@ class SegmentationMethod(ABC):
         pass
 
     @staticmethod
-    def from_dict(d):
+    def from_dict(d: dict) -> SegmentationMethod:
         from openlifu.seg import seg_methods
-        if isinstance(d, str):
-            d = {"class": d}
+        if not isinstance(d, dict):  # previous implementations might pass str
+            raise TypeError(f"Expected dict for from_dict, got {type(d).__name__}")
+
         d = copy.deepcopy(d)
         short_classname = d.pop("class")
-        if "materials" in d:
-            for material_key, material_definition in d["materials"].items():
-                if not isinstance(material_definition, Material): # if it is given as a dict rather than a fully hydrated object
-                    d["materials"][material_key] = Material.from_dict(material_definition)
-        module_dict = seg_methods.__dict__
-        class_constructor = module_dict[short_classname]
+
+        # Recursively construct Material instances
+        materials_dict = d.get("materials")
+        if materials_dict is not None:
+            d["materials"] = {
+                k: v if isinstance(v, Material) else Material.from_dict(v)
+                for k, v in materials_dict.items()
+            }
+
+        class_constructor = getattr(seg_methods, short_classname)
         return class_constructor(**d)
 
     def _material_indices(self, materials: dict | None = None):
