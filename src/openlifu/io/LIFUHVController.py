@@ -560,12 +560,12 @@ class HVController:
             if voltage < 50:
                 # Voltage adjustment formulas for 5V-50V
                 # Positive Switching Supply (HVP)
-                hvp_intercept = -0.3392857143
-                hvp_slope = 0.03967857143
+                hvp_intercept = -0.8945454545
+                hvp_slope = 0.04027272727
 
                 # Negative Switching Supply (HVM)
-                hvm_intercept = 0.007142857143
-                hvm_slope = 0.03992857143
+                hvm_intercept = 0.08727272727
+                hvm_slope = 0.03983030303
             else:
                 # Voltage adjustment formulas for 50V-100V
                 # Positive Switching Supply (HVP)
