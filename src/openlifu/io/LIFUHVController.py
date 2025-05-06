@@ -557,7 +557,16 @@ class HVController:
             # dac_input = int(((voltage) / 162) * 4095)
 
             # Voltage adjustment formulas
-            if voltage < 50:
+            if voltage > 5 and voltage <= 25:
+                # Voltage adjustment formulas for 5V-25V
+                # Positive Switching Supply (HVP)
+                hvp_intercept = -0.38
+                hvp_slope = 0.03973333333
+
+                # Negative Switching Supply (HVM)
+                hvm_intercept = -0.05772222222
+                hvm_slope = 0.03992333333
+            elif voltage > 25 and voltage < 50:
                 # Voltage adjustment formulas for 5V-50V
                 # Positive Switching Supply (HVP)
                 hvp_intercept = -0.8945454545
