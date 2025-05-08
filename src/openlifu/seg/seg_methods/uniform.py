@@ -17,7 +17,6 @@ class UniformTissue(UniformSegmentation):
     def to_dict(self):
         d = super().to_dict()
         d.pop("ref_material")
-        d["class"] = "UniformTissue"
         return d
 
 class UniformWater(UniformSegmentation):
@@ -28,5 +27,4 @@ class UniformWater(UniformSegmentation):
     def to_dict(self):
         d = super().to_dict()
         d.pop("ref_material")
-        d["class"] = "UniformWater"
         return d
