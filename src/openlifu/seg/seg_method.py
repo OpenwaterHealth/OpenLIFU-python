@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Annotated
+from typing import Annotated, Any
 
 import numpy as np
 import xarray as xa
@@ -30,7 +30,7 @@ class SegmentationMethod(ABC):
     def _segment(self, volume: xa.DataArray) -> xa.DataArray:
         pass
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         d = self.__dict__.copy()
         d['materials'] = { k: v.to_dict() for k, v in self.materials.items() }
         d['class'] = self.__class__.__name__
