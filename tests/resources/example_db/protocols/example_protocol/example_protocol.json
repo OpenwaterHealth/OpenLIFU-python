@@ -70,7 +70,8 @@
         "specific_heat": 1012,
         "thermal_conductivity": 0.025
       }
-    }
+    },
+    "ref_material": "water"
   },
   "sim_setup": {
     "dims": ["lat", "ele", "ax"],
