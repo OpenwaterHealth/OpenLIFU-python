@@ -53,6 +53,9 @@ class SegmentationMethod(ABC):
                 for k, v in materials_dict.items()
             }
 
+        # Ignore ref_material if class is `UniformWater` or `UniformTissue`
+        if short_classname in ["UniformWater", "UniformTissue"]:
+            d.pop("ref_material")
         class_constructor = getattr(seg_methods, short_classname)
         return class_constructor(**d)
 
