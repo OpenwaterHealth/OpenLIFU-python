@@ -129,8 +129,9 @@ pulse = Pulse(frequency=frequency, amplitude=voltage, duration=duration)
 pt = Point(position=(xInput,yInput,zInput), units="mm")
 
 #arr = Transducer.from_file(r"C:\Users\Neuromod2\Documents\OpenLIFU-python\OpenLIFU_2x.json")
-# arr = Transducer.from_file(R"..\M4_flex.json")
-arr = Transducer.from_file(R".\notebooks\pinmap.json")
+arr = Transducer.from_file(R".\M4_flex.json")
+# arr = Transducer.from_file(R".\notebooks\pinmap.json")
+pin_order = np.argsort([el.pin for el in arr.elements])
 
 focus = pt.get_position(units="mm")
 #arr.elements = np.array(arr.elements)[np.argsort([el.pin for el in arr.elements])].tolist()
@@ -167,8 +168,8 @@ profile_index = 1
 profile_increment = True
 interface.txdevice.set_solution(
     pulse = sol_dict['pulse'],
-    delays = sol_dict['delays'],
-    apodizations= sol_dict['apodizations'],
+    delays = sol_dict['delays'][pin_order],
+    apodizations= sol_dict['apodizations'][pin_order],
     sequence= sol_dict['sequence'],
     mode="continuous",
     profile_index=profile_index,
