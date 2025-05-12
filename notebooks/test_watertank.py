@@ -81,18 +81,21 @@ def log_temperature():
     timestamp = time.strftime("%Y%m%d_%H%M%S")
     filename = f"{timestamp}_temp.csv"
     with open(filename, "w") as logfile:
-        while not stop_logging:
-            print("Retrieving Console temperature...")
-            con_temp = interface.hvcontroller.get_temperature1()
-            print("Retrieving TX temperature...")
-            tx_temp = interface.txdevice.get_temperature()
-            print("Retrieving TX Amb temperature...")
-            amb_temp = interface.txdevice.get_ambient_temperature()
-            current_time = time.strftime("%Y-%m-%d %H:%M:%S")
-            log_line = f"{current_time},{frequency},{duration},{voltage},{con_temp},{tx_temp},{amb_temp}\n"
+            log_line = "Current Time,Frequency,Duration,Voltage,Console Temperature,Transmitter Temperature,Ambient Temperature\n"
             logfile.write(log_line)
             logfile.flush()  # Ensure the data is written immediately
-            time.sleep(log_interval)
+            while not stop_logging:
+                print("Retrieving Console temperature...")
+                con_temp = interface.hvcontroller.get_temperature1()
+                print("Retrieving TX temperature...")
+                tx_temp = interface.txdevice.get_temperature()
+                print("Retrieving TX Amb temperature...")
+                amb_temp = interface.txdevice.get_ambient_temperature()
+                current_time = time.strftime("%Y-%m-%d %H:%M:%S")
+                log_line = f"{current_time},{frequency},{duration},{voltage},{con_temp},{tx_temp},{amb_temp}\n"
+                logfile.write(log_line)
+                logfile.flush()  # Ensure the data is written immediately
+                time.sleep(log_interval)
 
 # Verify communication with the devices
 if not interface.txdevice.ping():
