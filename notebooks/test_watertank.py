@@ -33,14 +33,8 @@ zInput = 50
 
 frequency = 405e3
 voltage = 50.0
-duration = 2e-4
+duration = 5e-4
 
-json_trigger_data = {
-    "TriggerFrequencyHz": 5,
-    "TriggerMode": 1,
-    "TriggerPulseCount": 0,
-    "TriggerPulseWidthUsec": 20000
-}
 
 print("Starting LIFU Test Script...")
 interface = LIFUInterface()
