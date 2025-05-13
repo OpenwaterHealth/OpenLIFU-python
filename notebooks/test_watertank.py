@@ -104,14 +104,6 @@ if num_tx_devices > 0:
 else:
     raise Exception("No TX7332 devices found.")
 
-print("Set Trigger")
-trigger_setting = interface.txdevice.set_trigger_json(data=json_trigger_data)
-if trigger_setting:
-    print(f"Trigger Setting: {trigger_setting}")
-else:
-    print("Failed to set trigger setting.")
-    sys.exit(1)
-
 print("Set High Voltage")
 if interface.hvcontroller.set_voltage(voltage):
     print("High Voltage set successfully.")
