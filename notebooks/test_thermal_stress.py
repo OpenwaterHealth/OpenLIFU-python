@@ -21,10 +21,11 @@ Test script to automate:
 3. Test Device functionality.
 """
 
-log_interval = 2  # seconds; you can adjust this variable as needed
+log_temp = True
+log_interval = 1  # seconds; you can adjust this variable as needed
 
 frequency_kHz = 400 # Frequency in kHz
-voltage = 100.0 # Voltage in Volts
+voltage = 12.0 # Voltage in Volts
 duration_msec = 10 # Pulse Duration in milliseconds
 interval_msec = 20 # Pulse Repetition Interval in milliseconds
 num_modules = 2 # Number of modules in the system
@@ -63,16 +64,13 @@ else:
     print(f"  HV Connected: {hv_connected}")
     sys.exit(1)
 
-# Ask the user if they want to log temperature
-log_choice = input("Do you want to log temperature before starting trigger? (y/n): ").strip().lower()
-log_temp = (log_choice == "y")
 stop_logging = False  # flag to signal the logging thread to stop
 
 def log_temperature():
     # Create a file with the current timestamp in the name
     start = time.time()
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    filename = f"{timestamp}_temp.csv"
+    filename = f"{timestamp}_{frequency_kHz}kHz_{voltage}V_{duration_msec}ms_duration_{interval_msec}ms_interval_temp_readings.csv"
     shutdown = False
     with open(filename, "w") as logfile:
         while not (stop_logging or shutdown):
@@ -81,6 +79,7 @@ def log_temperature():
             amb_temp = interface.txdevice.get_ambient_temperature()
             current_time = time.strftime("%Y-%m-%d %H:%M:%S")
             log_line = f"{current_time},{frequency_kHz},{duration_msec},{voltage},{con_temp},{tx_temp},{amb_temp}\n"
+            print(log_line)
             logfile.write(log_line)
             logfile.flush()  # Ensure the data is written immediately
             # Check if any temperature exceeds the shutoff threshold
