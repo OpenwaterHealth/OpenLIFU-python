@@ -243,3 +243,12 @@ class LIFUInterface:
             self.txdevice.disconnect()
         if self.hvcontroller:
             self.hvcontroller.disconnect()
+
+    @staticmethod
+    def get_sdk_version() -> str:
+        """Get the SDK version from openlifu.__version__ or fallback."""
+        try:
+            import openlifu as m
+            return getattr(m, "__version__", "0.3.2")
+        except ImportError:
+            return "0.3.2"
