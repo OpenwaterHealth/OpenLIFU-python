@@ -30,6 +30,8 @@ duration_msec = 10 # Pulse Duration in milliseconds
 interval_msec = 20 # Pulse Repetition Interval in milliseconds
 num_modules = 2 # Number of modules in the system
 
+use_external_power_supply = False # Select whether to use console or power supply
+
 console_shutoff_temp_C = 70.0 # Console shutoff temperature in Celsius
 tx_shutoff_temp_C = 70.0 # TX device shutoff temperature in Celsius
 ambient_shutoff_temp_C = 70.0 # Ambient shutoff temperature in Celsius
@@ -61,13 +63,14 @@ if not tx_connected:
     # Re-check connection
     tx_connected, hv_connected = interface.is_device_connected()
 
-if tx_connected and hv_connected:
-    print("✅ LIFU Device fully connected.")
-else:
-    print("❌ LIFU Device NOT fully connected.")
+if tx_connected:
     print(f"  TX Connected: {tx_connected}")
-    print(f"  HV Connected: {hv_connected}")
-    sys.exit(1)
+    if use_external_power_supply:
+        print("  Using external power supply")
+    elif not hv_connected:
+        print("❌ LIFU Device NOT fully connected.")
+        print(f"  HV Connected: {hv_connected}")
+        sys.exit(1)
 
 stop_logging = False  # flag to signal the logging thread to stop
 
@@ -79,7 +82,10 @@ def log_temperature():
     shutdown = False
     with open(filename, "w") as logfile:
         while not (stop_logging or shutdown):
-            con_temp = interface.hvcontroller.get_temperature1()
+            if not use_external_power_supply:
+                con_temp = interface.hvcontroller.get_temperature1()
+            else:
+                con_temp = 0
             tx_temp = interface.txdevice.get_temperature()
             amb_temp = interface.txdevice.get_ambient_temperature()
             current_time = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -89,13 +95,15 @@ def log_temperature():
             logfile.flush()  # Ensure the data is written immediately
 
             # Check for initial rapid temperature increase
-            if ((con_temp or tx_temp or amb_temp) > rapid_temp_shutoff_C) and (time.time() - start < rapid_temp_shutoff_seconds):
-                print(f"Rapid temperature increase detected: {con_temp} °C, {tx_temp} °C, {amb_temp} °C.")
+            if ((con_temp > rapid_temp_shutoff_C or
+                 tx_temp  > rapid_temp_shutoff_C or
+                 amb_temp > rapid_temp_shutoff_C) and
+                 ((time.time() - start) < rapid_temp_shutoff_seconds)):
+                print("Rapid temperature increase detected! Shutting down...")
                 log_line = f"{current_time},SHUTDOWN,Rapid temperature increase detected\n"
                 shutdown=True
-
             # Check if any temperature exceeds the shutoff threshold
-            if con_temp > console_shutoff_temp_C:
+            elif (con_temp > console_shutoff_temp_C) and not use_external_power_supply:
                 print(f"Console temperature {con_temp} °C exceeds shutoff threshold {console_shutoff_temp_C} °C.")
                 log_line = f"{current_time},SHUTDOWN,Console temperature exceeded shutoff threshold\n"
                 shutdown=True
@@ -122,26 +130,26 @@ if not interface.txdevice.ping():
     print("Failed to ping the transmitter device.")
     sys.exit(1)
 
-if not interface.hvcontroller.ping():
+if not use_external_power_supply and not interface.hvcontroller.ping():
     print("Failed to ping the console devie.")
     sys.exit(1)
 
 print("Enumerate TX7332 chips")
 num_tx_devices = interface.txdevice.enum_tx7332_devices()
 if num_tx_devices == 0:
-    raise Exception("No TX7332 devices found.")
+    raise ValueError("No TX7332 devices found.")
 elif num_tx_devices == num_modules*2:
     print(f"Number of TX7332 devices found: {num_tx_devices}")
     numelements = 32*num_tx_devices
 else:
     raise Exception(f"Number of TX7332 devices found: {num_tx_devices} != 2x{num_modules}")
 
-print("Set High Voltage")
-if interface.hvcontroller.set_voltage(voltage):
-    print("High Voltage set successfully.")
-else:
-    print("Failed to set High Voltage.")
-    sys.exit(1)
+if not use_external_power_supply:
+    if interface.hvcontroller.set_voltage(voltage):
+        print("High Voltage set successfully.")
+    else:
+        print("Failed to set High Voltage.")
+        sys.exit(1)
 
 pulse = Pulse(frequency=frequency_kHz*1e3, amplitude=voltage, duration=duration_msec*1e-3)
 
@@ -188,13 +196,27 @@ else:
     a_temp = interface.txdevice.get_ambient_temperature()
     print(f"Ambient Temperature: {a_temp} °C")
 
+duty_cycle = (duration_msec/interval_msec) * 100
+if duty_cycle > 50:
+    print(f"Warning! Duty cycle is {duty_cycle:.2f}%.")
+
+print(f"User parameters set: \n\
+    Frequency: {frequency_kHz}kHz\n\
+    Voltage: {voltage}V\n\
+    Duration: {duration_msec}s\n\
+    Interval: {interval_msec}s\n\
+    Duty Cycle: {duty_cycle}%\n\
+    Initial Temp Safety Shutoff: Increase to {rapid_temp_shutoff_C}°C within {rapid_temp_shutoff_seconds}s\n\
+    General Temp Safety Shutoff: Increase of {rapid_temp_increase_per_second_shutoff_C}°C within {log_interval}s\n")
+
 print("Press enter to START trigger:")
 input()  # Wait for the user to press Enter
 
-print("Enable  High Voltage")
-if not interface.hvcontroller.turn_hv_on():
-    print("Failed to turn on High Voltage.")
-    sys.exit(1)
+if not use_external_power_supply:
+    print("Enable  High Voltage")
+    if not interface.hvcontroller.turn_hv_on():
+        print("Failed to turn on High Voltage.")
+        sys.exit(1)
 
 print("Starting Trigger...")
 if interface.txdevice.start_trigger():
@@ -215,3 +237,18 @@ else:
 # Stop the temperature logging before starting the trigger
 if log_temp:
     t.join()
+
+if not use_external_power_supply:
+    print("Attempting to turn off High Voltage")
+    interface.hvcontroller.turn_hv_off()
+    if interface.hvcontroller.get_hv_status():
+        print("Error: High Voltage is still on.")
+    else:
+        print("High Voltage successfully turned off.")
+
+print("Attempting to turn off 12V")
+interface.hvcontroller.turn_12v_off()
+if interface.hvcontroller.get_12v_status():
+    print("Error: 12V is on.")
+else:
+    print("12V has successfully been turned off.")
