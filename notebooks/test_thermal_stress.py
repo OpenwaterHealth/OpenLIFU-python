@@ -32,7 +32,12 @@ num_modules = 2 # Number of modules in the system
 
 console_shutoff_temp_C = 70.0 # Console shutoff temperature in Celsius
 tx_shutoff_temp_C = 70.0 # TX device shutoff temperature in Celsius
-ambient_shutowff_temp_C = 70.0 # Ambient shutoff temperature in Celsius
+ambient_shutoff_temp_C = 70.0 # Ambient shutoff temperature in Celsius
+
+# Fail-safe parameters if the temperature jumps too fast
+rapid_temp_shutoff_C = 40.0 # Cutoff temperature in Celsius if it jumps too fast
+rapid_temp_shutoff_seconds = 5 # Time in seconds to reach rapid temperature shutoff
+rapid_temp_increase_per_second_shutoff_C = 2 # Rapid temperature climbing shutoff in Celsius
 
 print("Starting LIFU Test Script...")
 interface = LIFUInterface()
@@ -79,9 +84,16 @@ def log_temperature():
             amb_temp = interface.txdevice.get_ambient_temperature()
             current_time = time.strftime("%Y-%m-%d %H:%M:%S")
             log_line = f"{current_time},{frequency_kHz},{duration_msec},{voltage},{con_temp},{tx_temp},{amb_temp}\n"
-            print(log_line)
+            print(f"Current Time: {current_time} Console Temp: {con_temp} °C TX Temp: {tx_temp} °C Ambient Temp: {amb_temp} °C")
             logfile.write(log_line)
             logfile.flush()  # Ensure the data is written immediately
+
+            # Check for initial rapid temperature increase
+            if ((con_temp or tx_temp or amb_temp) > rapid_temp_shutoff_C) and (time.time() - start < rapid_temp_shutoff_seconds):
+                print(f"Rapid temperature increase detected: {con_temp} °C, {tx_temp} °C, {amb_temp} °C.")
+                log_line = f"{current_time},SHUTDOWN,Rapid temperature increase detected\n"
+                shutdown=True
+
             # Check if any temperature exceeds the shutoff threshold
             if con_temp > console_shutoff_temp_C:
                 print(f"Console temperature {con_temp} °C exceeds shutoff threshold {console_shutoff_temp_C} °C.")
@@ -91,8 +103,8 @@ def log_temperature():
                 print(f"TX device temperature {tx_temp} °C exceeds shutoff threshold {tx_shutoff_temp_C} °C.")
                 log_line = f"{current_time},SHUTDOWN,TX device temperature exceeded shutoff threshold\n"
                 shutdown=True
-            elif amb_temp > ambient_shutowff_temp_C:
-                print(f"Ambient temperature {amb_temp} °C exceeds shutoff threshold {ambient_shutowff_temp_C} °C.")
+            elif amb_temp > ambient_shutoff_temp_C:
+                print(f"Ambient temperature {amb_temp} °C exceeds shutoff threshold {ambient_shutoff_temp_C} °C.")
                 log_line = f"{current_time},SHUTDOWN,Ambient temperature exceeded shutoff threshold\n"
                 shutdown=True
             else:
