@@ -32,7 +32,7 @@ yInput = 0
 zInput = 50
 
 frequency = 405e3
-voltage = 50.0
+voltage = 25.0
 duration = 2e-4
 
 json_trigger_data = {
@@ -82,11 +82,8 @@ def log_temperature():
     filename = f"{timestamp}_temp.csv"
     with open(filename, "w") as logfile:
         while not stop_logging:
-            print("Retrieving Console temperature...")
             con_temp = interface.hvcontroller.get_temperature1()
-            print("Retrieving TX temperature...")
             tx_temp = interface.txdevice.get_temperature()
-            print("Retrieving TX Amb temperature...")
             amb_temp = interface.txdevice.get_ambient_temperature()
             current_time = time.strftime("%Y-%m-%d %H:%M:%S")
             log_line = f"{current_time},{frequency},{duration},{voltage},{con_temp},{tx_temp},{amb_temp}\n"
