@@ -21,7 +21,6 @@ Test script to automate:
 3. Test Device functionality.
 """
 
-log_temp = True
 log_interval = 1  # seconds; you can adjust this variable as needed
 
 frequency_kHz = 400 # Frequency in kHz
@@ -36,16 +35,21 @@ console_shutoff_temp_C = 70.0 # Console shutoff temperature in Celsius
 tx_shutoff_temp_C = 70.0 # TX device shutoff temperature in Celsius
 ambient_shutoff_temp_C = 70.0 # Ambient shutoff temperature in Celsius
 
+#TODO: script_timeout_minutes = 30 # Prevent unintentionally leaving unit on for too long
+#TODO: log_temp_to_csv_file = True # Log readings to only terminal or terminal and CSV file
+
 # Fail-safe parameters if the temperature jumps too fast
 rapid_temp_shutoff_C = 40.0 # Cutoff temperature in Celsius if it jumps too fast
 rapid_temp_shutoff_seconds = 5 # Time in seconds to reach rapid temperature shutoff
 rapid_temp_increase_per_second_shutoff_C = 2 # Rapid temperature climbing shutoff in Celsius
 
+peak_to_peak_voltage = voltage * 2 # Peak to peak voltage for the pulse
+
 print("Starting LIFU Test Script...")
 interface = LIFUInterface()
 tx_connected, hv_connected = interface.is_device_connected()
 
-if not tx_connected:
+if not use_external_power_supply and not tx_connected:
     print("TX device not connected. Attempting to turn on 12V...")
     interface.hvcontroller.turn_12v_on()
 
@@ -78,52 +82,104 @@ def log_temperature():
     # Create a file with the current timestamp in the name
     start = time.time()
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    filename = f"{timestamp}_{frequency_kHz}kHz_{voltage}V_{duration_msec}ms_duration_{interval_msec}ms_interval_temp_readings.csv"
+    filename = f"{timestamp}_{frequency_kHz}kHz_{voltage}V_{duration_msec}ms_Duration_{interval_msec}ms_Interval_Temperature_Readings.csv"
     shutdown = False
+
+    prev_tx_temp = None
+    prev_amb_temp = None
+    prev_con_temp = None
+
+    if not use_external_power_supply:
+        con_temp = 0
+
     with open(filename, "w") as logfile:
+        # Create header for CSV file
+        log_line = "Current Time,Frequency (kHz),Duration (ms),Voltage (Per Rail),Voltage (Peak to Peak),Console Temperature (°C),Transmitter Temperature (°C),Ambient Temperature (°C)\n"
+        logfile.write(log_line)
+        logfile.flush()  # Ensure the data is written immediately
         while not (stop_logging or shutdown):
-            if not use_external_power_supply:
-                con_temp = interface.hvcontroller.get_temperature1()
-            else:
-                con_temp = 0
-            tx_temp = interface.txdevice.get_temperature()
-            amb_temp = interface.txdevice.get_ambient_temperature()
             current_time = time.strftime("%Y-%m-%d %H:%M:%S")
-            log_line = f"{current_time},{frequency_kHz},{duration_msec},{voltage},{con_temp},{tx_temp},{amb_temp}\n"
-            print(f"Current Time: {current_time} Console Temp: {con_temp} °C TX Temp: {tx_temp} °C Ambient Temp: {amb_temp} °C")
+
+            # Timer for initial rapid temperature increase
+            within_initial_time_threshold = (time.time() - start) < rapid_temp_shutoff_seconds
+
+            ## Check for too high of a temperature increase between readings
+            # Console general temperature increase (bypass if using external power supply)
+            if not use_external_power_supply:
+                if prev_con_temp is None:
+                    prev_con_temp = interface.hvcontroller.get_temperature1()
+                con_temp = interface.hvcontroller.get_temperature1()
+                if (con_temp - prev_con_temp) > rapid_temp_increase_per_second_shutoff_C:
+                    print(f"Console temperature {con_temp}°C exceeds rapid increase threshold of {rapid_temp_increase_per_second_shutoff_C}°C within {log_interval}s.")
+                    log_line = f"{current_time},SHUTDOWN,Console temperature exceeded rapid temp increase shutoff threshold\n"
+                    shutdown=True
+                else:
+                    prev_con_temp = con_temp
+
+            # TX device general temperature increase
+            if prev_tx_temp is None:
+                prev_tx_temp = interface.txdevice.get_temperature()
+            tx_temp = interface.txdevice.get_temperature()
+            if (tx_temp - prev_tx_temp) > rapid_temp_increase_per_second_shutoff_C:
+                print(f"TX device temperature {tx_temp}°C exceeds rapid increase threshold of {rapid_temp_increase_per_second_shutoff_C}°C within {log_interval}s.")
+                log_line = f"{current_time},SHUTDOWN,TX device temperature exceeded rapid temp increase shutoff threshold\n"
+                shutdown=True
+            else:
+                prev_tx_temp = tx_temp
+
+            # Ambient temperature general increase
+            if prev_amb_temp is None:
+                prev_amb_temp = interface.txdevice.get_ambient_temperature()
+            amb_temp = interface.txdevice.get_ambient_temperature()
+            if (amb_temp - prev_amb_temp) > rapid_temp_increase_per_second_shutoff_C:
+                print(f"Ambient temperature {amb_temp}°C exceeds rapid increase threshold of {rapid_temp_increase_per_second_shutoff_C}°C within {log_interval}s.")
+                log_line = f"{current_time},SHUTDOWN,Ambient temperature exceeded rapid temp increase shutoff threshold\n"
+                shutdown=True
+            else:
+                prev_amb_temp = amb_temp
+
+            # Check for initial rapid temperature increase
+            if (within_initial_time_threshold):
+                if not use_external_power_supply and (con_temp > rapid_temp_shutoff_C):
+                    print(f"Console temperature {con_temp}°C exceeds rapid shutoff threshold of {rapid_temp_shutoff_C}°C within {rapid_temp_shutoff_seconds}s.")
+                    log_line = f"{current_time},SHUTDOWN,Console temperature exceeded rapid shutoff threshold\n"
+                    shutdown=True
+                elif (tx_temp > rapid_temp_shutoff_C):
+                    print(f"TX device temperature {tx_temp}°C exceeds rapid shutoff threshold of {rapid_temp_shutoff_C}°C within {rapid_temp_shutoff_seconds}s.")
+                    log_line = f"{current_time},SHUTDOWN,TX device temperature exceeded shutoff threshold\n"
+                    shutdown=True
+                elif (amb_temp > rapid_temp_shutoff_C):
+                    print(f"Ambient temperature {amb_temp}°C exceeds rapid shutoff threshold of {rapid_temp_shutoff_C}°C within {rapid_temp_shutoff_seconds}s.")
+                    log_line = f"{current_time},SHUTDOWN,Ambient temperature exceeded shutoff threshold\n"
+                    shutdown=True
+
+            log_line = f"{current_time},{frequency_kHz},{duration_msec},{voltage},{peak_to_peak_voltage},{con_temp},{tx_temp},{amb_temp}\n"
+            print(f"Current Time: {current_time} Console Temp: {con_temp}°C TX Temp: {tx_temp}°C Ambient Temp: {amb_temp}°C")
             logfile.write(log_line)
             logfile.flush()  # Ensure the data is written immediately
 
-            # Check for initial rapid temperature increase
-            if ((con_temp > rapid_temp_shutoff_C or
-                 tx_temp  > rapid_temp_shutoff_C or
-                 amb_temp > rapid_temp_shutoff_C) and
-                 ((time.time() - start) < rapid_temp_shutoff_seconds)):
-                print("Rapid temperature increase detected! Shutting down...")
-                log_line = f"{current_time},SHUTDOWN,Rapid temperature increase detected\n"
-                shutdown=True
             # Check if any temperature exceeds the shutoff threshold
-            elif (con_temp > console_shutoff_temp_C) and not use_external_power_supply:
-                print(f"Console temperature {con_temp} °C exceeds shutoff threshold {console_shutoff_temp_C} °C.")
+            if not use_external_power_supply and (con_temp > console_shutoff_temp_C):
+                print(f"Console temperature {con_temp}°C exceeds shutoff threshold {console_shutoff_temp_C}°C.")
                 log_line = f"{current_time},SHUTDOWN,Console temperature exceeded shutoff threshold\n"
                 shutdown=True
-            elif tx_temp > tx_shutoff_temp_C:
-                print(f"TX device temperature {tx_temp} °C exceeds shutoff threshold {tx_shutoff_temp_C} °C.")
+            if tx_temp > tx_shutoff_temp_C:
+                print(f"TX device temperature {tx_temp}°C exceeds shutoff threshold {tx_shutoff_temp_C}°C.")
                 log_line = f"{current_time},SHUTDOWN,TX device temperature exceeded shutoff threshold\n"
                 shutdown=True
-            elif amb_temp > ambient_shutoff_temp_C:
-                print(f"Ambient temperature {amb_temp} °C exceeds shutoff threshold {ambient_shutoff_temp_C} °C.")
+            if amb_temp > ambient_shutoff_temp_C:
+                print(f"Ambient temperature {amb_temp}°C exceeds shutoff threshold {ambient_shutoff_temp_C}°C.")
                 log_line = f"{current_time},SHUTDOWN,Ambient temperature exceeded shutoff threshold\n"
                 shutdown=True
-            else:
-                shutdown=False
+
             if shutdown:
                 interface.txdevice.stop_trigger()
                 logfile.write(log_line)
                 logfile.flush()  # Ensure the data is written immediately
                 break
             time.sleep(log_interval)
-    print(f"Temperature logging stopped after {time.time() - start:.2f} seconds. Data saved to {filename}.")
+    print(f"Temperature logging stopped after {time.time() - start:.2f} seconds. Data saved to \"{filename}\".")
+    sys.exit(0)
 
 # Verify communication with the devices
 if not interface.txdevice.ping():
@@ -184,30 +240,22 @@ interface.txdevice.set_solution(
     profile_increment=profile_increment
 )
 
-# If logging is enabled, start the logging thread
-if log_temp:
-    t = threading.Thread(target=log_temperature)
-else:
-    print("Get Temperature")
-    temperature = interface.txdevice.get_temperature()
-    print(f"Temperature: {temperature} °C")
+t = threading.Thread(target=log_temperature)
 
-    print("Get Ambient")
-    a_temp = interface.txdevice.get_ambient_temperature()
-    print(f"Ambient Temperature: {a_temp} °C")
-
-duty_cycle = (duration_msec/interval_msec) * 100
+duty_cycle = int((duration_msec/interval_msec) * 100)
 if duty_cycle > 50:
-    print(f"Warning! Duty cycle is {duty_cycle:.2f}%.")
+    print("\n!! Warning !! Duty cycle is above 50%!\n")
 
 print(f"User parameters set: \n\
     Frequency: {frequency_kHz}kHz\n\
-    Voltage: {voltage}V\n\
+    Voltage Per Rail: {voltage}V\n\
+    Voltage Peak to Peak: {peak_to_peak_voltage}V\n\
     Duration: {duration_msec}s\n\
     Interval: {interval_msec}s\n\
     Duty Cycle: {duty_cycle}%\n\
-    Initial Temp Safety Shutoff: Increase to {rapid_temp_shutoff_C}°C within {rapid_temp_shutoff_seconds}s\n\
-    General Temp Safety Shutoff: Increase of {rapid_temp_increase_per_second_shutoff_C}°C within {log_interval}s\n")
+    Use External Power Supply: {use_external_power_supply}\n\
+    Initial Temp Safety Shutoff: Increase to {rapid_temp_shutoff_C}°C within {rapid_temp_shutoff_seconds}s of starting.\n\
+    General Temp Safety Shutoff: Increase of {rapid_temp_increase_per_second_shutoff_C}°C within {log_interval}s at any point.\n")
 
 print("Press enter to START trigger:")
 input()  # Wait for the user to press Enter
@@ -217,38 +265,42 @@ if not use_external_power_supply:
     if not interface.hvcontroller.turn_hv_on():
         print("Failed to turn on High Voltage.")
         sys.exit(1)
+else:
+    print("Using external power supply")
 
 print("Starting Trigger...")
 if interface.txdevice.start_trigger():
-    if log_temp:
-        t.start()  # Start the logging thread
+    t.start()  # Start the logging thread
 
     print("Trigger Running Press enter to STOP:")
-    input()  # Wait for the user to press Enter
-    stop_logging = True
-    time.sleep(0.5)  # Give the logging thread time to finish
-    if interface.txdevice.stop_trigger():
-        print("Trigger stopped successfully.")
-    else:
-        print("Failed to stop trigger.")
+    # input()  # Wait for the user to press Enter
+    try:
+        t.join()
+    except KeyboardInterrupt:
+        print("Logging interrupted by user.")
+        stop_logging = True
+        time.sleep(0.5)  # Give the logging thread time to finish
+        if interface.txdevice.stop_trigger():
+            print("Trigger stopped successfully.")
+        else:
+            print("Failed to stop trigger.")
 else:
     print("Failed to get trigger setting.")
 
 # Stop the temperature logging before starting the trigger
-if log_temp:
-    t.join()
+t.join()
 
 if not use_external_power_supply:
-    print("Attempting to turn off High Voltage")
+    print("Attempting to turn off High Voltage...")
     interface.hvcontroller.turn_hv_off()
     if interface.hvcontroller.get_hv_status():
         print("Error: High Voltage is still on.")
     else:
         print("High Voltage successfully turned off.")
 
-print("Attempting to turn off 12V")
+print("Attempting to turn off 12V...")
 interface.hvcontroller.turn_12v_off()
 if interface.hvcontroller.get_12v_status():
-    print("Error: 12V is on.")
+    print("Error: 12V is still on.")
 else:
     print("12V has successfully been turned off.")
