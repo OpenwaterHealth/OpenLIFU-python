@@ -67,14 +67,21 @@ if not use_external_power_supply and not tx_connected:
     # Re-check connection
     tx_connected, hv_connected = interface.is_device_connected()
 
+if not use_external_power_supply:
+    if hv_connected:
+        print(f"  HV Connected: {hv_connected}")
+    else:
+        print("❌ HV NOT fully connected.")
+        sys.exit(1)
+else:
+    print("  Using external power supply")
+
 if tx_connected:
     print(f"  TX Connected: {tx_connected}")
-    if use_external_power_supply:
-        print("  Using external power supply")
-    elif not hv_connected:
-        print("❌ LIFU Device NOT fully connected.")
-        print(f"  HV Connected: {hv_connected}")
-        sys.exit(1)
+    print("✅ LIFU Device fully connected.")
+else:
+    print("❌ TX NOT fully connected.")
+    sys.exit(1)
 
 stop_logging = False  # flag to signal the logging thread to stop
 
@@ -89,8 +96,8 @@ def log_temperature():
     prev_amb_temp = None
     prev_con_temp = None
 
-    if not use_external_power_supply:
-        con_temp = 0
+    if use_external_power_supply:
+        con_temp = "N/A"
 
     with open(filename, "w") as logfile:
         # Create header for CSV file
@@ -110,7 +117,7 @@ def log_temperature():
                     prev_con_temp = interface.hvcontroller.get_temperature1()
                 con_temp = interface.hvcontroller.get_temperature1()
                 if (con_temp - prev_con_temp) > rapid_temp_increase_per_second_shutoff_C:
-                    print(f"Console temperature {con_temp}°C exceeds rapid increase threshold of {rapid_temp_increase_per_second_shutoff_C}°C within {log_interval}s.")
+                    print(f"Console temperature rose from {prev_con_temp}°C to {con_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
                     log_line = f"{current_time},SHUTDOWN,Console temperature exceeded rapid temp increase shutoff threshold\n"
                     shutdown=True
                 else:
@@ -121,7 +128,7 @@ def log_temperature():
                 prev_tx_temp = interface.txdevice.get_temperature()
             tx_temp = interface.txdevice.get_temperature()
             if (tx_temp - prev_tx_temp) > rapid_temp_increase_per_second_shutoff_C:
-                print(f"TX device temperature {tx_temp}°C exceeds rapid increase threshold of {rapid_temp_increase_per_second_shutoff_C}°C within {log_interval}s.")
+                print(f"TX device temperature rose from {prev_tx_temp}°C to {tx_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
                 log_line = f"{current_time},SHUTDOWN,TX device temperature exceeded rapid temp increase shutoff threshold\n"
                 shutdown=True
             else:
@@ -132,7 +139,7 @@ def log_temperature():
                 prev_amb_temp = interface.txdevice.get_ambient_temperature()
             amb_temp = interface.txdevice.get_ambient_temperature()
             if (amb_temp - prev_amb_temp) > rapid_temp_increase_per_second_shutoff_C:
-                print(f"Ambient temperature {amb_temp}°C exceeds rapid increase threshold of {rapid_temp_increase_per_second_shutoff_C}°C within {log_interval}s.")
+                print(f"Ambient temperature rose from {prev_amb_temp}°C to {amb_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
                 log_line = f"{current_time},SHUTDOWN,Ambient temperature exceeded rapid temp increase shutoff threshold\n"
                 shutdown=True
             else:
@@ -154,7 +161,10 @@ def log_temperature():
                     shutdown=True
 
             log_line = f"{current_time},{frequency_kHz},{duration_msec},{voltage},{peak_to_peak_voltage},{con_temp},{tx_temp},{amb_temp}\n"
-            print(f"Current Time: {current_time} Console Temp: {con_temp}°C TX Temp: {tx_temp}°C Ambient Temp: {amb_temp}°C")
+            if not use_external_power_supply:
+                print(f"Current Time: {current_time} Console Temp: {con_temp}°C TX Temp: {tx_temp}°C Ambient Temp: {amb_temp}°C")
+            else:
+                print(f"Current Time: {current_time} Console Temp: {con_temp} TX Temp: {tx_temp}°C Ambient Temp: {amb_temp}°C")
             logfile.write(log_line)
             logfile.flush()  # Ensure the data is written immediately
 
