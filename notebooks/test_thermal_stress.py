@@ -250,8 +250,6 @@ interface.txdevice.set_solution(
     profile_increment=profile_increment
 )
 
-t = threading.Thread(target=log_temperature)
-
 duty_cycle = int((duration_msec/interval_msec) * 100)
 if duty_cycle > 50:
     print("\n!! Warning !! Duty cycle is above 50%!\n")
@@ -278,24 +276,24 @@ if not use_external_power_supply:
 else:
     print("Using external power supply")
 
+t = threading.Thread(target=log_temperature)
+t.start()  # Start the logging thread
+
 print("Starting Trigger...")
 if interface.txdevice.start_trigger():
-    t.start()  # Start the logging thread
-
-    print("Trigger Running Press enter to STOP:")
-    # input()  # Wait for the user to press Enter
-    try:
-        t.join()
-    except KeyboardInterrupt:
-        print("Logging interrupted by user.")
-        stop_logging = True
-        time.sleep(0.5)  # Give the logging thread time to finish
-        if interface.txdevice.stop_trigger():
-            print("Trigger stopped successfully.")
-        else:
-            print("Failed to stop trigger.")
+    print("Trigger Running\nPress enter to STOP trigger:")
+    input()  # Wait for the user to press Enter
+    print("Logging interrupted by user.")
+    stop_logging = True
+    time.sleep(0.5)  # Give the logging thread time to finish
+    if interface.txdevice.stop_trigger():
+        print("Trigger stopped successfully.")
+    else:
+        print("Failed to stop trigger.")
+    sys.exit(1)
 else:
     print("Failed to get trigger setting.")
+    sys.exit(1)
 
 # Stop the temperature logging before starting the trigger
 t.join()
