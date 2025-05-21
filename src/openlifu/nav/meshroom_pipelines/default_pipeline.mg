@@ -43,19 +43,6 @@
                 "depthMapsFolder": "{DepthMap_1.output}"
             }
         },
-        "ImageMatching_1": {
-            "nodeType": "ImageMatching",
-            "position": [
-                400,
-                0
-            ],
-            "inputs": {
-                "input": "{FeatureExtraction_1.input}",
-                "featuresFolders": [
-                    "{FeatureExtraction_1.output}"
-                ]
-            }
-        },
         "FeatureExtraction_1": {
             "nodeType": "FeatureExtraction",
             "position": [
@@ -129,9 +116,9 @@
                 0
             ],
             "inputs": {
-                "input": "{ImageMatching_1.input}",
-                "featuresFolders": "{ImageMatching_1.featuresFolders}",
-                "imagePairsList": "{ImageMatching_1.output}",
+                "input": "{FeatureExtraction_1.input}",
+                "featuresFolders": "{FeatureExtraction_1.output}",
+                "imagePairsList": "{}",
                 "describerTypes": "{FeatureExtraction_1.describerTypes}"
             }
         },

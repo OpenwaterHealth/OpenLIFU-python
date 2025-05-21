@@ -277,7 +277,8 @@ def subprocess_stream_output(
 def run_reconstruction(images: list[Path],
                        pipeline_name: str = "default_pipeline",
                        input_resize_width: int = 3024,
-                       use_masks: bool = True) -> Tuple[Photoscan,Path]:
+                       use_masks: bool = True,
+                       window_radius: int | None = None) -> Tuple[Photoscan,Path]:
     """Run Meshroom with the given images and pipeline.
     Args:
         images (list[Path]): List of image file paths.
@@ -285,6 +286,8 @@ def run_reconstruction(images: list[Path],
             See also `get_meshroom_pipeline_names`.
         input_resize_width (int): Width to which input images will be resized, in pixels.
         use_masks (bool): Whether to include a background removal step to filter the dense reconstruction.
+        window_radius (Optional[int]): number of images forward and backward in the sequence to try and
+            match with, if None match each images to all others.
 
     Returns:
         photoscan: The Photoscan of the reconstructed images.
@@ -330,21 +333,28 @@ def run_reconstruction(images: list[Path],
 
     output_dir = temp_dir / "output"
     cache_dir = temp_dir / "cache"
+    pair_file_path = cache_dir / "imageMatches.txt"
 
     command = [
         "meshroom_batch",
         "--pipeline", pipeline.as_posix(),
         "--output", output_dir.as_posix(),
         "--input", images_dir.as_posix(),
-        "--cache", cache_dir.as_posix()
+        "--cache", cache_dir.as_posix(),
+        "--paramOverrides", f"FeatureMatching_1.imagePairsList={pair_file_path.as_posix()}",
     ]
 
     if use_masks:
         masks_dir = temp_dir / "masks"
         masks_dir.mkdir(parents=True, exist_ok=True)
         make_masks(new_paths, masks_dir)
-        command += ["--paramOverrides", f"PrepareDenseScene_1.masksFolders=['{masks_dir.as_posix()}']"]
+        command.append( f"PrepareDenseScene_1.masksFolders=['{masks_dir.as_posix()}']" )
 
+    command_camera_init = [*command.copy(), "--toNode", "CameraInit"]
+    subprocess_stream_output(command_camera_init, logger_meshroom.info, logger_meshroom.warning)
+
+    camera_init_path = next(cache_dir.glob("CameraInit/*/cameraInit.sfm"))
+    write_pair_file(new_paths, camera_init_path, pair_file_path, window_radius=window_radius)
     subprocess_stream_output(command, logger_meshroom.info, logger_meshroom.warning)
 
     output_dir_merged = temp_dir / "output_dir_merged"
@@ -592,3 +602,61 @@ def make_masks(image_paths: list[Path], output_dir: Path, threshold: float = 0.0
         mask = Image.fromarray(mask)
         output_path = output_dir / (image_path.stem + ".png")
         mask.save(output_path, exif=exif)
+
+def _read_path_to_view_ids(input_path: Path) -> Dict[Path, str]:
+    """Read the mapping from image paths to viewIds produced by Meshroom CameraInit node"""
+    with open(input_path) as f:
+        data = json.load(f)
+
+    basename_to_viewid = {
+        Path(view['path']): view['viewId']
+        for view in data.get('views', [])
+    }
+    return basename_to_viewid
+
+
+def _make_pairs(view_ids: List[str], window_radius: int | None = None) -> List[List[str]]:
+    """
+    Generate image match pairs from a list of view IDs. Assumes view_ids are sequential and
+    wrap around. Each view is matched with the `window_radius` views before and after it.
+    If `window_radius` is None or large enough to cover all views, exhaustive matching is used.
+
+    Args:
+        view_ids (List[str]): Ordered list of view identifiers.
+        window_radius (Optional[int]): Number of neighbors to match on each side.
+
+    Returns:
+        rows (List[List[str]]): Each row is of the form [src, tgt1, tgt2, ...], meaning src
+                                is matched to tgt1, tgt2, etc.
+    """
+    num_views = len(view_ids)
+
+    if window_radius is None or 2*window_radius + 1 >= num_views:
+        rows = [[view_ids[i] for i in range(j, num_views)] for j in range(num_views)]
+    else:
+        rows = []
+        for i in range(num_views):
+            rows.append([view_ids[i]])
+            for j in range(window_radius):
+                k =  i+j+1
+                if k < num_views:
+                    rows[i].append(view_ids[k])
+                else:
+                    rows[k % num_views].append(view_ids[i])
+
+    rows = rows[:-1]
+    return rows
+
+def write_pair_file(image_paths: List[Path], camera_init_file: Path, output_path: Path, window_radius: int | None=None) -> None:
+    """
+    Write the imagePairsList file for Meshroom to perform sequential matching with wrap around.
+    Assumes that `image_paths` are ordered sequentially and wrap around.
+    """
+    path_to_viewid = _read_path_to_view_ids(camera_init_file)
+    view_ids = [path_to_viewid[im_path] for im_path in image_paths]
+
+    rows = _make_pairs(view_ids, window_radius)
+
+    with open(output_path, "w") as f:
+        for row in rows:
+            f.write(" ".join(map(str, row)) + "\n")
