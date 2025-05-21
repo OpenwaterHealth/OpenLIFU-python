@@ -11,6 +11,7 @@ from vtk import VTK_UNSIGNED_SHORT, vtkImageData, vtkPoints, vtkPolyData
 from openlifu.db.database import Database
 from openlifu.nav.photoscan import (
     Photoscan,
+    _make_pairs,
     apply_exif_orientation_numpy,
     convert_between_ras_and_lps,
     convert_numpy_to_vtkimage,
@@ -180,3 +181,20 @@ def test_preprocess_image_modnet():
     assert preprocess_image_modnet(np.zeros((400, 600, 3))).shape == (1,3,384, 576)
     assert preprocess_image_modnet(np.zeros((600, 700, 3))).shape == (1,3,512,576)
     assert preprocess_image_modnet(np.zeros((400, 300, 3))).shape == (1, 3, 672, 512)
+
+def test_make_pairs():
+    """Verify sequential matching _make_pairs works correctly"""
+    expected_all_way_three = [['a', 'b', 'c'], ['b', 'c']]
+    #no window_radius
+    assert _make_pairs(['a','b','c'], window_radius=None) == expected_all_way_three
+    #2*window_radius + 1 == list length
+    assert _make_pairs(['a','b','c'], window_radius=1) == expected_all_way_three
+    #2*window_radius + 1 > list length
+    assert _make_pairs(['a','b','c'], window_radius=2) == expected_all_way_three
+    #usual case
+    expected = [['a', 'b', 'c', 'e', 'f'],
+                ['b', 'c', 'd', 'f'],
+                ['c', 'd', 'e'],
+                ['d', 'e', 'f'],
+                ['e', 'f']]
+    assert _make_pairs(['a','b','c','d','e','f'], window_radius=2) == expected

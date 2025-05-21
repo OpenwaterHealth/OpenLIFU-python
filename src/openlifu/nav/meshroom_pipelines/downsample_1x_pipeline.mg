@@ -96,7 +96,7 @@
             "inputs": {
                 "input": "{PrepareDenseScene_1.input}",
                 "imagesFolder": "{PrepareDenseScene_1.output}",
-                "downscale": 8
+                "downscale": 1
             }
         },
         "MeshFiltering_1": {
