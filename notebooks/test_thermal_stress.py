@@ -118,7 +118,7 @@ def log_temperature():
 
     with open(filename, "w") as logfile:
         # Create header for CSV file
-        log_line = "Current Time,Frequency (kHz),Duration (ms),Voltage (Per Rail),Voltage (Peak to Peak),Console Temperature (°C),Transmitter Temperature (°C),Ambient Temperature (°C)\n"
+        log_line = "Current Time,Frequency (kHz),Duration (ms),Interval (ms),Voltage (Per Rail),Voltage (Peak to Peak),Console Temperature (°C),Transmitter Temperature (°C),Ambient Temperature (°C)\n"
         logfile.write(log_line)
         logfile.flush()  # Ensure the data is written immediately
         while not (stop_logging or shutdown):
@@ -177,7 +177,7 @@ def log_temperature():
                     log_line = f"{current_time},SHUTDOWN,Ambient temperature exceeded shutoff threshold\n"
                     shutdown=True
 
-            log_line = f"{current_time},{frequency_kHz},{duration_msec},{voltage},{peak_to_peak_voltage},{con_temp},{tx_temp},{amb_temp}\n"
+            log_line = f"{current_time},{frequency_kHz},{duration_msec},{interval_msec},{voltage},{peak_to_peak_voltage},{con_temp},{tx_temp},{amb_temp}\n"
             if not use_external_power_supply:
                 logger.info(f"Console Temp: {con_temp}°C TX Temp: {tx_temp}°C Ambient Temp: {amb_temp}°C")
             else:
@@ -290,8 +290,8 @@ logger.info(f"User parameters set: \n\
     Frequency: {frequency_kHz}kHz\n\
     Voltage Per Rail: {voltage}V\n\
     Voltage Peak to Peak: {peak_to_peak_voltage}V\n\
-    Duration: {duration_msec}s\n\
-    Interval: {interval_msec}s\n\
+    Duration: {duration_msec}ms\n\
+    Interval: {interval_msec}ms\n\
     Duty Cycle: {duty_cycle}%\n\
     Use External Power Supply: {use_external_power_supply}\n\
     Initial Temp Safety Shutoff: Increase to {rapid_temp_shutoff_C}°C within {rapid_temp_shutoff_seconds}s of starting.\n\
