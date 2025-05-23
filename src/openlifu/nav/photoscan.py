@@ -8,6 +8,7 @@ import re
 import shutil
 import tempfile
 import threading
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from subprocess import PIPE, CalledProcessError, CompletedProcess, Popen
@@ -276,11 +277,25 @@ def subprocess_stream_output(
         raise CalledProcessError(retcode, process.args)
     return CompletedProcess(process.args, retcode)
 
+#Just hard code node order
+_nodes = [  "FeatureExtraction_1",
+            "FeatureMatching_1",
+            "StructureFromMotion_1",
+            "PrepareDenseScene_1",
+            "DepthMap_1",
+            "DepthMapFilter_1",
+            "Meshing_1",
+            "MeshFiltering_1",
+            "Texturing_1",
+            "Publish_1" ]
+
 def run_reconstruction(images: list[Path],
                        pipeline_name: str = "default_pipeline",
                        input_resize_width: int = 3024,
                        use_masks: bool = True,
-                       window_radius: int | None = None) -> Tuple[Photoscan,Path]:
+                       window_radius: int | None = None,
+                       return_durations: bool = False
+                       ) -> Tuple[Photoscan, Path] | Tuple[Photoscan, Path, Dict[str, float]]:
     """Run Meshroom with the given images and pipeline.
     Args:
         images (list[Path]): List of image file paths.
@@ -290,11 +305,15 @@ def run_reconstruction(images: list[Path],
         use_masks (bool): Whether to include a background removal step to filter the dense reconstruction.
         window_radius (Optional[int]): number of images forward and backward in the sequence to try and
             match with, if None match each images to all others.
+        return_durations (bool): If True, also return a dictionary mapping node names to durations in seconds.
 
     Returns:
-        photoscan: The Photoscan of the reconstructed images.
-        data_dir (Path): The directory containing the underlying data files whose names are given in the Photoscan.
+        Union[Tuple[Photoscan, Path], Tuple[Photoscan, Path, Dict[str, float]]]:
+            - If return_durations is False: returns the Photoscan and the data directory path.
+            - If return_durations is True: also returns a dictionary of node execution times.
     """
+    durations = {}
+
     pipeline_dir = importlib.resources.files("openlifu.nav.meshroom_pipelines")
     valid_configs = get_meshroom_pipeline_names()
 
@@ -306,6 +325,8 @@ def run_reconstruction(images: list[Path],
 
     pipeline = pipeline_dir / f"{pipeline_name}.mg"
 
+    config_nodes, downscale_factor = get_meshroom_config_info(pipeline)
+
     if shutil.which("meshroom_batch") is None:
         raise FileNotFoundError("Error: 'meshroom_batch' is not found in system PATH. Ensure it is installed and accessible.")
 
@@ -315,6 +336,7 @@ def run_reconstruction(images: list[Path],
     images_dir.mkdir(parents=True, exist_ok=True)
 
     #resize the images and store in tmp dir
+    start_time = time.perf_counter()
     new_paths = []
     for image in images:
         img = Image.open(image)
@@ -328,10 +350,19 @@ def run_reconstruction(images: list[Path],
 
         resize_width = int(scale*img.width)
         resize_height = int(scale*img.height)
+        min_allowed = downscale_factor * 128
+        min_side = min(resize_height, resize_width)
+
+        if downscale_factor > 0 and min_side < min_allowed:
+            raise ValueError(
+                f"Minimum resized side length is {min_side}, but the minimum allowed for pipeline '{pipeline_name}' is {min_allowed}. "
+                "Please increase `input_resize_width` or use a pipeline with less downscaling."
+            )
 
         img = img.resize((resize_width, resize_height), Image.Resampling.LANCZOS)
         img.save( images_dir / image.name, exif=img.getexif())
         new_paths.append(images_dir / image.name)
+    durations["ImageResizing"] = time.perf_counter() - start_time
 
     output_dir = temp_dir / "output"
     cache_dir = temp_dir / "cache"
@@ -347,18 +378,32 @@ def run_reconstruction(images: list[Path],
     ]
 
     if use_masks:
+        start_time = time.perf_counter()
         masks_dir = temp_dir / "masks"
         masks_dir.mkdir(parents=True, exist_ok=True)
         make_masks(new_paths, masks_dir)
         command.append( f"PrepareDenseScene_1.masksFolders=['{masks_dir.as_posix()}']" )
+        durations["MaskCreation"] = time.perf_counter() - start_time
 
+    #run CameraInit node to set view ids
     command_camera_init = [*command.copy(), "--toNode", "CameraInit"]
     subprocess_stream_output(command_camera_init, logger_meshroom.info, logger_meshroom.warning)
 
     camera_init_path = next(cache_dir.glob("CameraInit/*/cameraInit.sfm"))
     write_pair_file(new_paths, camera_init_path, pair_file_path, window_radius=window_radius)
-    subprocess_stream_output(command, logger_meshroom.info, logger_meshroom.warning)
 
+    #run each node
+    for node in _nodes:
+        if node not in config_nodes:
+            continue
+        command_i = [*command.copy(), "--toNode", node]
+
+        start_time = time.perf_counter()
+        subprocess_stream_output(command_i, logger_meshroom.info, logger_meshroom.warning)
+        durations[node] = time.perf_counter() - start_time
+
+
+    #merge texturemaps
     output_dir_merged = temp_dir / "output_dir_merged"
     output_dir_merged.mkdir(parents=True, exist_ok=True)
 
@@ -371,7 +416,8 @@ def run_reconstruction(images: list[Path],
     }
 
     photoscan = Photoscan.from_dict(photoscan_dict)
-
+    if return_durations:
+        return photoscan, output_dir_merged, durations
     return photoscan, output_dir_merged
 
 def udim_to_tile(udim_str: str) -> Tuple[int, int]:
@@ -718,3 +764,27 @@ def preprocess_image_paths(paths: List[Path],
         raise ValueError(f"Invalid sort_by value '{sort_by}'. Use 'metadata' or 'filename'.")
 
     return paths[::sampling_rate]
+
+def get_meshroom_config_info(pipeline_path: str) -> Tuple[List[str], int]:
+    """
+    Extract the node names and downscale factor used in the DepthMap_1 node from a Meshroom pipeline.
+
+    Args:
+        pipeline_path (str): Path to the Meshroom pipeline JSON file.
+
+    Returns:
+        Tuple[List[str], int]: A list of node names in the pipeline, and the downscale factor.
+            - Returns 2 if the downscale is not explicitly set (Meshroom default).
+            - Returns -1 if the DepthMap_1 node is not present.
+    """
+    with open(pipeline_path) as f:
+        pipeline_graph = json.load(f)['graph']
+
+    nodes = list(pipeline_graph.keys())
+
+    downsample_factor = (
+        pipeline_graph['DepthMap_1']['inputs'].get('downscale', 2)
+        if 'DepthMap_1' in pipeline_graph else -1
+    )
+
+    return nodes, downsample_factor
