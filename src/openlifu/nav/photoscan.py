@@ -20,7 +20,7 @@ import OpenEXR
 import requests
 import trimesh
 import vtk
-from PIL import ExifTags, Image
+from PIL import Image
 from vtk.util.numpy_support import numpy_to_vtk
 
 from openlifu.util.annotations import OpenLIFUFieldData
@@ -665,16 +665,13 @@ def write_pair_file(image_paths: List[Path], camera_init_file: Path, output_path
 
 
 def _get_datetime_taken(image_path: Path) -> datetime.datetime | None:
-    """Get the data and time from image metadata."""
+    """Get the date and time from image metadata."""
     with Image.open(image_path) as img:
-        exif_data = img._getexif()
-        if not exif_data:
+        value = img.getexif().get(306, None)
+        if value is None:
             return None
-        for tag, value in exif_data.items():
-            tag_name = ExifTags.TAGS.get(tag)
-            if tag_name == 'DateTimeOriginal':
-                return datetime.datetime.strptime(value, '%Y:%m:%d %H:%M:%S')
-    return None
+        else:
+            return datetime.datetime.strptime(value, '%Y:%m:%d %H:%M:%S')
 
 def _extract_numbers(filename: str) -> List[int]:
     """Extracts all sub-strings of numbers as a list of ints."""
