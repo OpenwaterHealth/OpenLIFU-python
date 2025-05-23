@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import datetime
 import importlib
 import json
 import logging
+import re
 import shutil
 import tempfile
 import threading
@@ -18,7 +20,7 @@ import OpenEXR
 import requests
 import trimesh
 import vtk
-from PIL import Image
+from PIL import ExifTags, Image
 from vtk.util.numpy_support import numpy_to_vtk
 
 from openlifu.util.annotations import OpenLIFUFieldData
@@ -660,3 +662,62 @@ def write_pair_file(image_paths: List[Path], camera_init_file: Path, output_path
     with open(output_path, "w") as f:
         for row in rows:
             f.write(" ".join(map(str, row)) + "\n")
+
+
+def _get_datetime_taken(image_path: Path) -> datetime.datetime | None:
+    """Get the data and time from image metadata."""
+    with Image.open(image_path) as img:
+        exif_data = img._getexif()
+        if not exif_data:
+            return None
+        for tag, value in exif_data.items():
+            tag_name = ExifTags.TAGS.get(tag)
+            if tag_name == 'DateTimeOriginal':
+                return datetime.datetime.strptime(value, '%Y:%m:%d %H:%M:%S')
+    return None
+
+def _extract_numbers(filename: str) -> List[int]:
+    """Extracts all sub-strings of numbers as a list of ints."""
+    return list(map(int, re.findall(r'\d+', filename)))
+
+def preprocess_image_paths(paths: List[Path],
+                           sort_by: str = 'filename',
+                           sampling_rate: int = 1) -> List[Path]:
+    """
+    Sorts and sub-samples a list of image file paths.
+
+    Args:
+        paths (List[Path]): A list of image file paths to be processed.
+        sort_by (str): Method to sort the images. Options are:
+            - 'filename': Sort by numeric values extracted from filenames.
+            - 'metadata': Sort by the DateTimeOriginal field in EXIF metadata.
+        sampling_rate (int): Return every n-th image after sorting. Must be >= 1.
+
+    Returns:
+        List[Path]: A sorted and sub-sampled list of image paths.
+
+    Raises:
+        ValueError: If `sort_by` is not one of the valid options.
+        ValueError: If `sampling_rate` is less than 1.
+        ValueError: If sorting by metadata and no valid EXIF DateTimeOriginal is found.
+    """
+    if sampling_rate < 1:
+        raise ValueError("sampling_rate must be a positive integer.")
+
+    if sort_by == 'metadata':
+        dated = []
+
+        for path in paths:
+            dt = _get_datetime_taken(path)
+            if dt is None:
+                raise ValueError(f"Tried to sort by metadata, but no valid 'DateTimeOriginal' metadata was found in image: {path}")
+            dated.append((dt, path))
+
+        dated.sort(key=lambda x: x[0])
+        paths = [p for _, p in dated]
+    elif sort_by == 'filename':
+        paths = sorted(paths, key=lambda p: _extract_numbers(p.name))
+    else:
+        raise ValueError(f"Invalid sort_by value '{sort_by}'. Use 'metadata' or 'filename'.")
+
+    return paths[::sampling_rate]
