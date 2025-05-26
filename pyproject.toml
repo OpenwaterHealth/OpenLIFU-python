@@ -49,7 +49,7 @@ dependencies = [
   "OpenEXR",
   "scikit-image",
   "trimesh",
-  "onnxruntime==1.18.0",
+  "onnxruntime==1.20.1",
 ]
 
 [project.optional-dependencies]
