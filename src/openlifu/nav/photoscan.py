@@ -289,13 +289,15 @@ _nodes = [  "FeatureExtraction_1",
             "Texturing_1",
             "Publish_1" ]
 
-def run_reconstruction(images: list[Path],
-                       pipeline_name: str = "default_pipeline",
-                       input_resize_width: int = 3024,
-                       use_masks: bool = True,
-                       window_radius: int | None = None,
-                       return_durations: bool = False
-                       ) -> Tuple[Photoscan, Path] | Tuple[Photoscan, Path, Dict[str, float]]:
+def run_reconstruction(
+    images: list[Path],
+    pipeline_name: str = "default_pipeline",
+    input_resize_width: int = 3024,
+    use_masks: bool = True,
+    window_radius: int | None = None,
+    return_durations: bool = False,
+    progress_callback : Callable[[int,str],None] | None = None,
+) -> Tuple[Photoscan, Path] | Tuple[Photoscan, Path, Dict[str, float]]:
     """Run Meshroom with the given images and pipeline.
     Args:
         images (list[Path]): List of image file paths.
@@ -306,12 +308,21 @@ def run_reconstruction(images: list[Path],
         window_radius (Optional[int]): number of images forward and backward in the sequence to try and
             match with, if None match each images to all others.
         return_durations (bool): If True, also return a dictionary mapping node names to durations in seconds.
+        progress_callback: An optional function that will be called to report progress. The function should accept two arguments:
+            an integer progress value from 0 to 100 followed by a string message describing the step currently being worked on.
 
     Returns:
         Union[Tuple[Photoscan, Path], Tuple[Photoscan, Path, Dict[str, float]]]:
             - If return_durations is False: returns the Photoscan and the data directory path.
             - If return_durations is True: also returns a dictionary of node execution times.
     """
+
+    if progress_callback is None:
+        def progress_callback(progress_percent : int, step_description : str): # noqa: ARG001
+            pass # Define it to be a no-op if no progress_callback was provided.
+
+    progress_callback(0, "Starting reconstruction")
+
     durations = {}
 
     pipeline_dir = importlib.resources.files("openlifu.nav.meshroom_pipelines")
@@ -336,6 +347,7 @@ def run_reconstruction(images: list[Path],
     images_dir.mkdir(parents=True, exist_ok=True)
 
     #resize the images and store in tmp dir
+    progress_callback(0, "Resizing images")
     start_time = time.perf_counter()
     new_paths = []
     for image in images:
@@ -378,6 +390,7 @@ def run_reconstruction(images: list[Path],
     ]
 
     if use_masks:
+        progress_callback(3, "Generating image masks")
         start_time = time.perf_counter()
         masks_dir = temp_dir / "masks"
         masks_dir.mkdir(parents=True, exist_ok=True)
@@ -386,22 +399,32 @@ def run_reconstruction(images: list[Path],
         durations["MaskCreation"] = time.perf_counter() - start_time
 
     #run CameraInit node to set view ids
+    progress_callback(8, "Initializing camera IDs")
     command_camera_init = [*command.copy(), "--toNode", "CameraInit"]
     subprocess_stream_output(command_camera_init, logger_meshroom.info, logger_meshroom.warning)
 
     camera_init_path = next(cache_dir.glob("CameraInit/*/cameraInit.sfm"))
     write_pair_file(new_paths, camera_init_path, pair_file_path, window_radius=window_radius)
 
+    number_of_nodes = len([node for node in _nodes if node in config_nodes])
+    pipeline_progress_start = 10.0
+    pipeline_progress_end = 90.0
+    pipeline_progress_step = (pipeline_progress_end - pipeline_progress_start) / number_of_nodes
+
     #run each node
+    pipeline_progress = pipeline_progress_start
     for node in _nodes:
         if node not in config_nodes:
             continue
         command_i = [*command.copy(), "--toNode", node]
 
+        progress_callback(int(pipeline_progress),f"Meshroom: {node.strip('_1')}")
         start_time = time.perf_counter()
         subprocess_stream_output(command_i, logger_meshroom.info, logger_meshroom.warning)
         durations[node] = time.perf_counter() - start_time
+        pipeline_progress += pipeline_progress_step
 
+    progress_callback(pipeline_progress_end, "Merging texture maps")
 
     #merge texturemaps
     output_dir_merged = temp_dir / "output_dir_merged"
@@ -416,6 +439,7 @@ def run_reconstruction(images: list[Path],
     }
 
     photoscan = Photoscan.from_dict(photoscan_dict)
+    progress_callback(100, "Complete")
     if return_durations:
         return photoscan, output_dir_merged, durations
     return photoscan, output_dir_merged
