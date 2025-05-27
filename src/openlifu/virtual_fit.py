@@ -2,17 +2,28 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Annotated, Any, Dict, List, Sequence, Tuple
+from typing import (
+    Annotated,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Sequence,
+    Tuple,
+)
 
 import numpy as np
+import vtk
 
 from openlifu.geo import (
+    cartesian_to_spherical,
     cartesian_to_spherical_vectorized,
     spherical_coordinate_basis,
     spherical_to_cartesian,
     spherical_to_cartesian_vectorized,
 )
 from openlifu.seg.skinseg import (
+    apply_affine_to_polydata,
     compute_foreground_mask,
     create_closed_surface_from_labelmap,
     spherical_interpolator_from_mesh,
@@ -21,9 +32,6 @@ from openlifu.seg.skinseg import (
 from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
 from openlifu.util.units import getunitconversion
-
-if TYPE_CHECKING:
-    import vtk
 
 log = logging.getLogger("VirtualFit")
 
@@ -118,6 +126,53 @@ def compute_skin_mesh_from_volume(
     skin_mesh = create_closed_surface_from_labelmap(foreground_mask_vtk_image)
     return skin_mesh
 
+@dataclass
+class VirtualFitDebugInfo:
+    """Debugging information for the result of running `virtual_fit`."""
+    skin_mesh : vtk.vtkPolyData
+    """The skin mesh that was used for virtual fitting"""
+
+    spherically_interpolated_mesh : vtk.vtkPolyData
+    """A mesh representing the spherical interpolator that was used for virtual fitting"""
+
+    search_points : np.ndarray
+    """Array of shape (N,3) containing the coordinates of the points that were tried for virtual fitting"""
+
+    plane_normals : np.ndarray
+    """Array of shape (N,3) containing the normal vectors of the planes that were fitted at each of `search_points`"""
+
+    steering_dists : np.ndarray
+    """Array of shape (N,) containing the computed steering distance for each point in `search_points`"""
+
+    in_bounds : np.ndarray
+    """Boolean array of shape (N,) giving for each point in `search_points` whether the target was determined to be
+    in bounds for that candidate transducer placement."""
+
+
+def sphere_from_interpolator(
+        interpolator: Callable[[float, float], float],
+        theta_res:int = 50,
+        phi_res:int = 50,
+    ) -> vtk.vtkPolyData:
+    """Create a spherical mesh from a spherical interpolator, to help visualize how the interpolator works.
+    This is intended as a debugging utility."""
+    sphere_source = vtk.vtkSphereSource()
+    sphere_source.SetRadius(1.0)
+    sphere_source.SetThetaResolution(theta_res)
+    sphere_source.SetPhiResolution(phi_res)
+    sphere_source.Update()
+    sphere_polydata = sphere_source.GetOutput()
+    sphere_points = sphere_polydata.GetPoints()
+    for i in range(sphere_points.GetNumberOfPoints()):
+        point = np.array(sphere_points.GetPoint(i))
+        r, theta, phi = cartesian_to_spherical(*point)
+        r = interpolator(theta, phi)
+        sphere_points.SetPoint(i, r * point)
+    normals_filter = vtk.vtkPolyDataNormals()
+    normals_filter.SetInputData(sphere_polydata)
+    normals_filter.Update()
+    return normals_filter.GetOutput()
+
 def virtual_fit(
     units: str,
     target_RAS : Sequence[float],
@@ -126,7 +181,8 @@ def virtual_fit(
     volume_array : np.ndarray | None = None,
     volume_affine_RAS : np.ndarray | None = None,
     skin_mesh : vtk.vtkPolyData | None = None,
-) -> List[np.ndarray]:
+    include_debug_info : bool = False,
+) -> List[np.ndarray] | Tuple[List[np.ndarray], VirtualFitDebugInfo]:
     """Run patient-specific "virtual fitting" algorithm, suggesting a series of candidate transducer
     transforms for optimal sonicaiton of a given target.
 
@@ -145,6 +201,8 @@ def virtual_fit(
             `volume_affine_RAS` can be omitted. The provided skin mesh should be in RAS space, with units
             being the provided `units` arg. The function `compute_skin_mesh_from_volume` can be used to pre-compute
             a skin mesh.
+        include_debug_info: Whether to include debugging info in the return value. Disabled by default because some of the debugging
+            info takes some time to compute.
 
     Returns: A list of transducer transform candidates sorted starting from the best-scoring one. The transforms map transducer space
         into LPS space, and they are in the same units as the RAS space of `volume_affine_RAS` (aka the `units` argument).
@@ -203,9 +261,14 @@ def virtual_fit(
     thetas = theta_grid.reshape(num_search_points)
     phis = phi_grid.reshape(num_search_points)
 
+    # Things that will be computed over the search grid
     transducer_poses = np.empty((num_search_points,4,4), dtype=float)
     in_bounds = np.zeros(shape=num_search_points, dtype=bool)
     steering_dists = np.zeros(shape=num_search_points, dtype=float)
+
+    # Additional debugging info that will be computed over the search grid
+    points_asl = np.zeros((num_search_points,3), dtype=float) # search grid points in ASL coordinates
+    normals_asl = np.zeros((num_search_points,3), dtype=float) # normal vector of the plane that is fitted at each point, in ASL coordinates
 
     for i in range(num_search_points):
         theta_rad, phi_rad = thetas[i]*np.pi/180, phis[i]*np.pi/180
@@ -290,6 +353,8 @@ def virtual_fit(
         transducer_poses[i] = transducer_transform
         steering_dists[i] = steering_distance
         in_bounds[i] = target_in_bounds
+        points_asl[i] = point
+        normals_asl[i] = transducer_z
 
 
     sorted_transforms = [
@@ -297,5 +362,33 @@ def virtual_fit(
     ]
 
     log.info("Virtual fitting complete.")
+
+    if include_debug_info:
+        log.info("Generating debug meshes...")
+        interpolator_mesh : vtk.vtkPolyData = sphere_from_interpolator(skin_interpolator)
+
+        # A few things are in ASL coordinates, so we transform it to RAS space so that they are in the same coordinates as skin_mesh.
+        interpolator_mesh = apply_affine_to_polydata(interpolator2ras, interpolator_mesh)
+        points_asl_homogenized = np.concatenate([points_asl.T, np.ones((1,num_search_points))], axis=0) # shape (4,num_search_points)
+        points_ras = (interpolator2ras @ points_asl_homogenized)[:3].T # back to shape (num_search_points,3)
+        normals_ras = (asl2ras_3x3 @ (normals_asl.T)).T
+
+        # After transforming the interpolator_mesh, the normals can end up flipped, so we fix it just in case
+        normals_filter = vtk.vtkPolyDataNormals()
+        normals_filter.SetInputData(interpolator_mesh)
+        normals_filter.Update()
+        interpolator_mesh = normals_filter.GetOutput()
+
+        return (
+            sorted_transforms,
+            VirtualFitDebugInfo(
+                skin_mesh = skin_mesh,
+                spherically_interpolated_mesh = interpolator_mesh,
+                search_points = points_ras,
+                plane_normals = normals_ras,
+                steering_dists = steering_dists,
+                in_bounds = in_bounds,
+            ),
+        )
 
     return sorted_transforms
