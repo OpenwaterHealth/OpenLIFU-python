@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Annotated, Any, Dict, List, Sequence, Tuple
+from typing import TYPE_CHECKING, Annotated, Any, Dict, List, Sequence, Tuple
 
 import numpy as np
 
@@ -21,6 +21,9 @@ from openlifu.seg.skinseg import (
 from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
 from openlifu.util.units import getunitconversion
+
+if TYPE_CHECKING:
+    import vtk
 
 log = logging.getLogger("VirtualFit")
 
@@ -104,27 +107,44 @@ class VirtualFitOptions(DictMixin):
         parameter_dict["steering_limits"] = tuple(map(tuple,parameter_dict["steering_limits"]))
         return VirtualFitOptions(**parameter_dict)
 
-
-def virtual_fit(
+def compute_skin_mesh_from_volume(
     volume_array : np.ndarray,
     volume_affine_RAS : np.ndarray,
+) -> vtk.vtkPolyData:
+    log.info("Computing foreground mask...")
+    foreground_mask_array = compute_foreground_mask(volume_array)
+    foreground_mask_vtk_image = vtk_img_from_array_and_affine(foreground_mask_array, volume_affine_RAS)
+    log.info("Creating closed surface from labelmap...")
+    skin_mesh = create_closed_surface_from_labelmap(foreground_mask_vtk_image)
+    return skin_mesh
+
+def virtual_fit(
     units: str,
     target_RAS : Sequence[float],
     standoff_transform : np.ndarray,
     options : VirtualFitOptions,
+    volume_array : np.ndarray | None = None,
+    volume_affine_RAS : np.ndarray | None = None,
+    skin_mesh : vtk.vtkPolyData | None = None,
 ) -> List[np.ndarray]:
     """Run patient-specific "virtual fitting" algorithm, suggesting a series of candidate transducer
     transforms for optimal sonicaiton of a given target.
 
+    Provide either a `volume_array` and `volume_affine_RAS`, or a `skin_mesh`.
+
     Args:
-        volume_array: A 3D volume MRI
-        volume_affine_RAS: A 4x4 affine transform that maps `volume_array` into RAS space with certain units
         units: The spatial units of the RAS space into which volume_affine_RAS maps
         target_RAS: A 3D point, in the coordinates and units of `volume_affine_RAS` (the `units` argument)
         standoff_transform: See the documentation of `create_standoff_transform` or
             `Transducer.standoff_transform` for the meaning of this. Here it should be provided in the
             units `units`. The method `Transducer.get_standoff_transform_in_units` is useful for getting this.
         options : Virtual fitting algorithm configuration. See the `VirtualFitOptions` documentation.
+        volume_array: A 3D volume MRI
+        volume_affine_RAS: A 4x4 affine transform that maps `volume_array` into RAS space with certain units
+        skin_mesh: Optional pre-computed closed surface mesh. If provided, `volume_array` and
+            `volume_affine_RAS` can be omitted. The provided skin mesh should be in RAS space, with units
+            being the provided `units` arg. The function `compute_skin_mesh_from_volume` can be used to pre-compute
+            a skin mesh.
 
     Returns: A list of transducer transform candidates sorted starting from the best-scoring one. The transforms map transducer space
         into LPS space, and they are in the same units as the RAS space of `volume_affine_RAS` (aka the `units` argument).
@@ -143,11 +163,16 @@ def virtual_fit(
     planefit_dpitch_extent = options.planefit_dpitch_extent
     planefit_dpitch_step = options.planefit_dpitch_step
 
-    log.info("Computing foreground mask...")
-    foreground_mask_array = compute_foreground_mask(volume_array)
-    foreground_mask_vtk_image = vtk_img_from_array_and_affine(foreground_mask_array, volume_affine_RAS)
-    log.info("Creating closed surface from labelmap...")
-    skin_mesh = create_closed_surface_from_labelmap(foreground_mask_vtk_image)
+    if skin_mesh is None:
+        if volume_array is None or volume_affine_RAS is None:
+            raise ValueError("Both `volume_array` and `volume_affine_RAS` must be provided if `skin_mesh` is None.")
+
+        log.info("Computing skin mesh...")
+        skin_mesh = compute_skin_mesh_from_volume(volume_array, volume_affine_RAS)
+    else:
+        log.info("Using provided skin mesh.")
+
+
     log.info("Building skin interpolator...")
     skin_interpolator = spherical_interpolator_from_mesh(
         surface_mesh = skin_mesh,
