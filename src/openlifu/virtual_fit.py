@@ -182,6 +182,7 @@ def virtual_fit(
     volume_affine_RAS : np.ndarray | None = None,
     skin_mesh : vtk.vtkPolyData | None = None,
     include_debug_info : bool = False,
+    progress_callback : Callable[[int,str],None] | None = None,
 ) -> List[np.ndarray] | Tuple[List[np.ndarray], VirtualFitDebugInfo]:
     """Run patient-specific "virtual fitting" algorithm, suggesting a series of candidate transducer
     transforms for optimal sonicaiton of a given target.
@@ -203,10 +204,18 @@ def virtual_fit(
             a skin mesh.
         include_debug_info: Whether to include debugging info in the return value. Disabled by default because some of the debugging
             info takes some time to compute.
+        progress_callback: An optional function that will be called to report progress. The function should accept two arguments:
+            an integer progress value from 0 to 100 followed by a string message describing the step currently being worked on.
 
     Returns: A list of transducer transform candidates sorted starting from the best-scoring one. The transforms map transducer space
         into LPS space, and they are in the same units as the RAS space of `volume_affine_RAS` (aka the `units` argument).
     """
+
+    if progress_callback is None:
+        def progress_callback(progress_percent : int, step_description : str): # noqa: ARG001
+            pass # Define it to be a no-op if no progress_callback was provided.
+
+    progress_callback(0, "Starting virtual fit")
 
     # Express all virtual fit options in the units of volume_affine_RAS, i.e. the physical space of the volume
     options = options.to_units(units)
@@ -221,17 +230,20 @@ def virtual_fit(
     planefit_dpitch_extent = options.planefit_dpitch_extent
     planefit_dpitch_step = options.planefit_dpitch_step
 
+
     if skin_mesh is None:
         if volume_array is None or volume_affine_RAS is None:
             raise ValueError("Both `volume_array` and `volume_affine_RAS` must be provided if `skin_mesh` is None.")
 
         log.info("Computing skin mesh...")
+        progress_callback(0, "Computing skin mesh")
         skin_mesh = compute_skin_mesh_from_volume(volume_array, volume_affine_RAS)
     else:
         log.info("Using provided skin mesh.")
 
 
     log.info("Building skin interpolator...")
+    progress_callback(5, "Building skin interpolator")
     skin_interpolator = spherical_interpolator_from_mesh(
         surface_mesh = skin_mesh,
         origin = target_RAS,
@@ -251,6 +263,7 @@ def virtual_fit(
     steering_maxs = np.array([sl[1] for sl in steering_limits], dtype=float) # shape (3,). It is the lat,ele,ax steering max
 
     log.info("Searching through candidate transducer poses...")
+    progress_callback(50, "Searching through poses")
 
     # Construct search grid
     theta_sequence = np.arange(90 - yaw_range[-1], 90 - yaw_range[0], yaw_step)
@@ -365,6 +378,7 @@ def virtual_fit(
 
     if include_debug_info:
         log.info("Generating debug meshes...")
+        progress_callback(80, "Generating debug meshes")
         interpolator_mesh : vtk.vtkPolyData = sphere_from_interpolator(skin_interpolator)
 
         # A few things are in ASL coordinates, so we transform it to RAS space so that they are in the same coordinates as skin_mesh.
@@ -379,6 +393,7 @@ def virtual_fit(
         normals_filter.Update()
         interpolator_mesh = normals_filter.GetOutput()
 
+        progress_callback(100, "Complete")
         return (
             sorted_transforms,
             VirtualFitDebugInfo(
@@ -391,4 +406,5 @@ def virtual_fit(
             ),
         )
 
+    progress_callback(100, "Complete")
     return sorted_transforms
