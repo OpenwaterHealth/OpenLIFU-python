@@ -106,28 +106,32 @@ class VirtualFitOptions(DictMixin):
 
 
 def virtual_fit(
-    volume_array : np.ndarray,
-    volume_affine_RAS : np.ndarray,
     units: str,
     target_RAS : Sequence[float],
     standoff_transform : np.ndarray,
     options : VirtualFitOptions,
-) -> List[np.ndarray]:
+    volume_array: Optional[np.ndarray] = None,
+    volume_affine_RAS: Optional[np.ndarray] = None,
+    skin_mesh: Optional[vtkPolyData] = None,
+) -> Tuple[List[np.ndarray], vtkPolyData]:
     """Run patient-specific "virtual fitting" algorithm, suggesting a series of candidate transducer
     transforms for optimal sonicaiton of a given target.
 
     Args:
-        volume_array: A 3D volume MRI
-        volume_affine_RAS: A 4x4 affine transform that maps `volume_array` into RAS space with certain units
         units: The spatial units of the RAS space into which volume_affine_RAS maps
         target_RAS: A 3D point, in the coordinates and units of `volume_affine_RAS` (the `units` argument)
         standoff_transform: See the documentation of `create_standoff_transform` or
             `Transducer.standoff_transform` for the meaning of this. Here it should be provided in the
             units `units`. The method `Transducer.get_standoff_transform_in_units` is useful for getting this.
         options : Virtual fitting algorithm configuration. See the `VirtualFitOptions` documentation.
+        volume_array: Optional 3D volume MRI, needed if `skin_mesh` is not provided.
+        volume_affine_RAS: Optional 4x4 affine transform , needed if `skin_mesh` is not provided. This transform maps `volume_array` into RAS space with certain units
+        skin_mesh: Optional pre-computed closed surface mesh. If provided, `volume_array` and
+            `volume_affine_RAS` are not needed for mesh creation.
 
     Returns: A list of transducer transform candidates sorted starting from the best-scoring one. The transforms map transducer space
         into LPS space, and they are in the same units as the RAS space of `volume_affine_RAS` (aka the `units` argument).
+         - The skin mesh (vtkPolyData) used for the virtual fit.
     """
 
     # Express all virtual fit options in the units of volume_affine_RAS, i.e. the physical space of the volume
@@ -143,11 +147,18 @@ def virtual_fit(
     planefit_dpitch_extent = options.planefit_dpitch_extent
     planefit_dpitch_step = options.planefit_dpitch_step
 
-    log.info("Computing foreground mask...")
-    foreground_mask_array = compute_foreground_mask(volume_array)
-    foreground_mask_vtk_image = vtk_img_from_array_and_affine(foreground_mask_array, volume_affine_RAS)
-    log.info("Creating closed surface from labelmap...")
-    skin_mesh = create_closed_surface_from_labelmap(foreground_mask_vtk_image)
+    if skin_mesh is None:
+        if volume_array is None or volume_affine_RAS is None:
+            raise ValueError("Both 'volume_array' and 'volume_affine_RAS' must be provided if 'skin_mesh' is None.")
+
+        log.info("Computing foreground mask...")
+        foreground_mask_array = compute_foreground_mask(volume_array)
+        foreground_mask_vtk_image = vtk_img_from_array_and_affine(foreground_mask_array, volume_affine_RAS)
+        log.info("Creating closed surface from labelmap...")
+        skin_mesh = create_closed_surface_from_labelmap(foreground_mask_vtk_image)
+    else:
+        log.info("Using provided skin mesh.")
+
     log.info("Building skin interpolator...")
     skin_interpolator = spherical_interpolator_from_mesh(
         surface_mesh = skin_mesh,
@@ -273,4 +284,4 @@ def virtual_fit(
 
     log.info("Virtual fitting complete.")
 
-    return sorted_transforms
+    return sorted_transforms, skin_mesh
