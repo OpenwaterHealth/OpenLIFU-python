@@ -379,7 +379,7 @@ def virtual_fit(
     if include_debug_info:
         log.info("Generating debug meshes...")
         progress_callback(80, "Generating debug meshes")
-        interpolator_mesh : vtk.vtkPolyData = sphere_from_interpolator(skin_interpolator)
+        interpolator_mesh : vtk.vtkPolyData = sphere_from_interpolator(skin_interpolator, theta_res=100, phi_res=100)
 
         # A few things are in ASL coordinates, so we transform it to RAS space so that they are in the same coordinates as skin_mesh.
         interpolator_mesh = apply_affine_to_polydata(interpolator2ras, interpolator_mesh)
