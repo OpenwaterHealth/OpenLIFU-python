@@ -7,6 +7,7 @@ from typing import Annotated
 from openlifu.bf import focal_patterns
 from openlifu.geo import Point
 from openlifu.util.annotations import OpenLIFUFieldData
+from openlifu.util.units import getunittype
 
 
 @dataclass
@@ -20,6 +21,14 @@ class FocalPattern(ABC):
 
     units: Annotated[str, OpenLIFUFieldData("Pressure units", "Pressure units")] = "Pa"
     """Pressure units"""
+
+    def __post_init__(self):
+        if self.target_pressure <= 0:
+            raise ValueError("Target pressure must be greater than 0")
+        if not isinstance(self.units, str):
+            raise TypeError("Units must be a string")
+        if getunittype(self.units) != 'pressure':
+            raise ValueError(f"Units must be a pressure unit, got {self.units}")
 
     @abstractmethod
     def get_targets(self, target: Point):
