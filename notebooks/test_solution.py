@@ -20,7 +20,7 @@ import openlifu
 
 # -
 
-pulse = openlifu.Pulse(frequency=500e3, amplitude=1, duration=2e-5)
+pulse = openlifu.Pulse(frequency=500e3, duration=2e-5)
 pt = openlifu.Point(position=(0,0,30), units="mm")
 sequence = openlifu.Sequence(
     pulse_interval=0.1,
@@ -36,6 +36,7 @@ solution = openlifu.Solution(
     delays = np.zeros((1,64)),
     apodizations = np.ones((1,64)),
     pulse = pulse,
+    voltage=1.0,
     sequence = sequence,
     target=pt,
     foci=[pt],

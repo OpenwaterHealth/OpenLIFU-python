@@ -53,7 +53,7 @@ frequency = 400e3
 voltage = 12.0
 duration = 2e-5
 
-pulse = Pulse(frequency=frequency, amplitude=voltage, duration=duration)
+pulse = Pulse(frequency=frequency, duration=duration)
 pt = Point(position=(xInput,yInput,zInput), units="mm")
 sequence = Sequence(
     pulse_interval=0.1,
@@ -68,6 +68,7 @@ solution = Solution(
     delays = np.zeros((1,64)),
     apodizations = np.ones((1,64)),
     pulse = pulse,
+    voltage=voltage,
     sequence = sequence
 )
 

@@ -267,7 +267,7 @@ if not use_external_power_supply:
         logger.error("Failed to set High Voltage.")
         sys.exit(1)
 
-pulse = Pulse(frequency=frequency_kHz*1e3, amplitude=voltage, duration=duration_msec*1e-3)
+pulse = Pulse(frequency=frequency_kHz*1e3, duration=duration_msec*1e-3)
 pt = Point(position=(xInput,yInput,zInput), units="mm")
 arr = Transducer.from_file(R".\notebooks\pinmap.json")
 pin_order = np.argsort([el.pin for el in arr.elements])
@@ -300,6 +300,7 @@ solution = Solution(
     delays = delays,
     apodizations = apodizations,
     pulse = pulse,
+    voltage=voltage,
     sequence = sequence
 )
 

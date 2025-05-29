@@ -24,7 +24,7 @@ from openlifu.xdc import Transducer
 
 # +
 f0 = 400e3
-pulse = Pulse(frequency=f0, duration=10/f0, amplitude=1)
+pulse = Pulse(frequency=f0, duration=10/f0)
 sequence = Sequence(pulse_interval=0.1, pulse_count=9, pulse_train_interval=0, pulse_train_count=1)
 focal_pattern = focal_patterns.SinglePoint(target_pressure=1.2e6)
 focal_pattern = focal_patterns.Wheel(center=False, spoke_radius=5, num_spokes=3, target_pressure=1.2e6)

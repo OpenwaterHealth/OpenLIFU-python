@@ -31,6 +31,7 @@ PARAM_FORMATS = {
     "global_ispta_mWcm2": [None, "0.3f", "mW/cm^2", "Global I_SPTA"],
     "p0_MPa": ["max", "0.3f", "MPa", "Emitted Pressure"],
     "power_W": [None, "0.3f", "W", "Emitted Power"],
+    "voltage_V": [None, "0.3f", "V", "Voltage"],
     "TIC": [None, "0.3f", "", "TIC"],
     "MI": [None, "0.3f", "", "MI"]}
 
@@ -83,6 +84,9 @@ class SolutionAnalysis(DictMixin):
 
     power_W: Annotated[float | None, OpenLIFUFieldData("Emitted Power (W)", "Emitted power from the transducer face (W)")] = None
     """Emitted power from the transducer face (W)"""
+
+    voltage_V: Annotated[float | None, OpenLIFUFieldData("Voltage (V)", "Voltage applied to the transducer (V)")] = None
+    """Voltage applied to the transducer (V)"""
 
     MI: Annotated[float | None, OpenLIFUFieldData("Mechanical index (MI)", "Mechanical index (MI)")] = None
     """Mechanical index (MI)"""

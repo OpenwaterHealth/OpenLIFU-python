@@ -66,6 +66,9 @@ class Solution:
     pulse: Annotated[Pulse, OpenLIFUFieldData("Pulse", "Pulse to send to the transducer when running sonication")] = field(default_factory=Pulse)
     """Pulse to send to the transducer when running sonication"""
 
+    voltage: Annotated[float, OpenLIFUFieldData("Voltage", "Voltage to use when running sonication. This is the voltage that will be set on the HV power supply.")] = 1.0
+    """Voltage to use when running sonication. This is the voltage that will be set on the HV power supply."""
+
     sequence: Annotated[Sequence, OpenLIFUFieldData("Pulse sequence", "Pulse sequence to use when running sonication")] = field(default_factory=Sequence)
     """Pulse sequence to use when running sonication"""
 
@@ -120,7 +123,7 @@ class Solution:
 
         dt = 1 / (self.pulse.frequency * 20)
         t = self.pulse.calc_time(dt)
-        input_signal = self.pulse.calc_pulse(t)
+        input_signal_V = self.pulse.calc_pulse(t) * self.voltage
 
         pnp_MPa_all = rescale_data_arr(rescale_coords(self.simulation_result['p_min'], options.distance_units),"MPa")
         ipa_Wcm2_all = rescale_data_arr(rescale_coords(self.simulation_result['intensity'], options.distance_units), "W/cm^2")
@@ -151,13 +154,13 @@ class Solution:
             apodization = self.apodizations[focus_index]
             origin = transducer.get_effective_origin(apodizations=apodization, units=options.distance_units)
 
-            output_signal = []
-            output_signal = np.zeros((transducer.numelements(), len(input_signal)))
+            output_signal_Pa = []
+            output_signal_Pa = np.zeros((transducer.numelements(), len(input_signal_V)))
             for i in range(transducer.numelements()):
-                apod_signal = input_signal * self.apodizations[focus_index, i]
-                output_signal[i] = transducer.elements[i].calc_output(apod_signal, dt)
+                apod_signal_V = input_signal_V * self.apodizations[focus_index, i]
+                output_signal_Pa[i] = transducer.elements[i].calc_output(apod_signal_V, dt)
 
-            p0_Pa = np.max(output_signal, axis=1)
+            p0_Pa = np.max(output_signal_Pa, axis=1)
 
             # get focus region masks (for mainlobe, sidelobe and beamwidth)
             # mainlobe_mask = mask_focus(
@@ -222,6 +225,7 @@ class Solution:
             solution_analysis.p0_MPa += [1e-6*np.max(p0_Pa)]
         solution_analysis.TIC = np.mean(TIC)
         solution_analysis.power_W = np.mean(power_W)
+        solution_analysis.voltage_V = self.voltage
         solution_analysis.MI = (np.max(solution_analysis.mainlobe_pnp_MPa)/np.sqrt(self.pulse.frequency*1e-6))
         solution_analysis.global_ispta_mWcm2 = float((ita_mWcm2*z_mask).max())
         solution_analysis.param_constraints = param_constraints
@@ -251,7 +255,7 @@ class Solution:
             focal_pattern_pressure_in_MPa = focal_pattern.target_pressure * getunitconversion(focal_pattern.units, "MPa")
             scaling_factors[i] = focal_pattern_pressure_in_MPa / analysis.mainlobe_pnp_MPa[i]
         max_scaling = np.max(scaling_factors)
-        v0 = self.pulse.amplitude
+        v0 = self.voltage
         v1 = v0 * max_scaling
         apod_factors = scaling_factors / max_scaling
 
@@ -284,7 +288,7 @@ class Solution:
             self.simulation_result['p_max'][i].data *= scaling
             self.simulation_result['intensity'][i].data *= scaling**2
             self.apodizations[i] = self.apodizations[i]*apod_factors[i]
-        self.pulse.amplitude = v1
+        self.voltage = v1
 
     def get_pulsetrain_dutycycle(self) -> float:
         """
