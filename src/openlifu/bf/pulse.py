@@ -25,6 +25,14 @@ class Pulse(DictMixin):
     duration: Annotated[float, OpenLIFUFieldData("Duration (s)", "Duration of the pulse in s")] = 1.0  # s
     """Duration of the pulse in s"""
 
+    def __post_init__(self):
+        if self.frequency <= 0:
+            raise ValueError("Frequency must be greater than 0")
+        if self.amplitude < 0 or self.amplitude > 1:
+            raise ValueError("Amplitude must be between 0 and 1")
+        if self.duration <= 0:
+            raise ValueError("Duration must be greater than 0")
+
     def calc_pulse(self, t: np.array):
         """
         Calculate the pulse at the given times
