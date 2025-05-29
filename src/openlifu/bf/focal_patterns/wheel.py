@@ -25,7 +25,7 @@ class Wheel(FocalPattern):
     spoke_radius: Annotated[float, OpenLIFUFieldData("Spoke radius", "Radius of the spokes in the wheel pattern")] = 1.0  # mm
     """Radius of the spokes in the wheel pattern"""
 
-    units: Annotated[str, OpenLIFUFieldData("Units", "Units of the wheel pattern parameters")] = "mm"
+    distance_units: Annotated[str, OpenLIFUFieldData("Units", "Units of the wheel pattern parameters")] = "mm"
     """Units of the wheel pattern parameters"""
 
     def get_targets(self, target: Point):
@@ -49,7 +49,7 @@ class Wheel(FocalPattern):
             spoke = Point(id=f"{target.id}_{np.rad2deg(theta):.0f}deg",
                               name=f"{target.name} ({np.rad2deg(theta):.0f}°)",
                               position=position,
-                              units=self.units,
+                              units=self.distance_units,
                               radius=target.radius)
             targets.append(spoke)
         return targets
