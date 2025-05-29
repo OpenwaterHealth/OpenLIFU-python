@@ -17,6 +17,13 @@ class Direct(DelayMethod):
     c0: Annotated[float, OpenLIFUFieldData("Speed of Sound (m/s)", "Speed of sound in the medium (m/s)")] = 1480.0
     """Speed of sound in the medium (m/s)"""
 
+    def __post_init__(self):
+        if self.c0 <= 0:
+            raise ValueError("Speed of sound must be greater than 0")
+        if not isinstance(self.c0, (int, float)):
+            raise TypeError("Speed of sound must be a number")
+        self.c0 = float(self.c0)
+
     def calc_delays(self, arr: Transducer, target: Point, params: xa.Dataset | None=None, transform:np.ndarray | None=None):
         if params is None:
             c = self.c0
