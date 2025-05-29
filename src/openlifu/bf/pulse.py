@@ -19,8 +19,8 @@ class Pulse(DictMixin):
     frequency: Annotated[float, OpenLIFUFieldData("Frequency (Hz)", "Frequency of the pulse in Hz")] = 1.0  # Hz
     """Frequency of the pulse in Hz"""
 
-    amplitude: Annotated[float, OpenLIFUFieldData("Amplitude (V)", "Amplitude of the pulse in volts")] = 1.0  # V
-    """Amplitude of the pulse in volts"""
+    amplitude: Annotated[float, OpenLIFUFieldData("Amplitude (AU)", "Amplitude of the pulse (between 0 and 1). ")] = 1.0  # AU
+    """Amplitude of the pulse in arbitrary units (AU) between 0 and 1"""
 
     duration: Annotated[float, OpenLIFUFieldData("Duration (s)", "Duration of the pulse in s")] = 1.0  # s
     """Duration of the pulse in s"""
@@ -50,6 +50,6 @@ class Pulse(DictMixin):
         :returns: Pandas DataFrame of the pulse parameters
         """
         records = [{"Name": "Frequency", "Value": self.frequency, "Unit": "Hz"},
-                   {"Name": "Amplitude", "Value": self.amplitude, "Unit": "Pa"},
+                   {"Name": "Amplitude", "Value": self.amplitude, "Unit": "AU"},
                    {"Name": "Duration", "Value": self.duration, "Unit": "s"}]
         return pd.DataFrame.from_records(records)
