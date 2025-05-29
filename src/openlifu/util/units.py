@@ -27,7 +27,7 @@ def getunittype(unit):
     elif unit.endswith('hz'):
         return 'frequency'
     elif unit.endswith('pa'):
-        return 'pascal'
+        return 'pressure'
     elif unit.endswith('w'):
         return 'watt'
     else:
@@ -122,7 +122,7 @@ def getsiscale(unit, type):
     elif type == 'angle':
         idx = len(unit)
 
-    elif type == 'frequency' or type == "pascal":
+    elif type == 'frequency' or type == "pressure":
         idx = len(unit) - 2
 
     elif type == "watt":
