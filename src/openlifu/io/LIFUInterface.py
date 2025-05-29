@@ -133,8 +133,7 @@ class LIFUInterface:
             else:
                 solution_name = "Solution"
 
-            voltage = solution['pulse']['amplitude']
-
+            voltage = solution['voltage']
             logger.info("Loading %s...", solution_name)
             # Convert solution data and send to the device
             self.txdevice.set_solution(
