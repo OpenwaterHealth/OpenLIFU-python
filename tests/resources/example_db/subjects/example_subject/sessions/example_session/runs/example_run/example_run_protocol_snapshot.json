@@ -4,7 +4,7 @@
   "description": "Example protocol created 30-Jan-2024 09:16:02",
   "pulse": {
     "frequency": 500000,
-    "amplitude": 1,
+    "amplitude": 1.0,
     "duration": 2e-5,
     "class": "Pulse"
   },

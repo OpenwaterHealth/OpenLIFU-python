@@ -19,7 +19,8 @@ def example_solution() -> Solution:
         transducer_id="example_transducer",
         delays = np.zeros((1,64)),
         apodizations = np.ones((1,64)),
-        pulse = Pulse(frequency=500e3, amplitude=1, duration=2e-5),
+        pulse = Pulse(frequency=500e3, duration=2e-5),
+        voltage=1.0,
         sequence = Sequence(
             pulse_interval=0.1,
             pulse_count=10,

@@ -207,6 +207,7 @@ class Protocol:
         analysis_options: SolutionAnalysisOptions | None = None,
         on_pulse_mismatch: OnPulseMismatchAction = OnPulseMismatchAction.ERROR,
         use_gpu: bool | None = None,
+        voltage: float = 1.0
     ) -> Tuple[Solution, xa.DataArray, SolutionAnalysis]:
         """Calculate the solution and aggregated k-wave simulation outputs.
 
@@ -286,7 +287,7 @@ class Protocol:
                     dt=sim_options.dt,
                     t_end=sim_options.t_end,
                     cfl=sim_options.cfl,
-                    amplitude = self.pulse.amplitude,
+                    amplitude = self.pulse.amplitude * voltage,
                     gpu = use_gpu
                 )
             delays_to_stack.append(delays)
@@ -313,6 +314,7 @@ class Protocol:
             delays=np.stack(delays_to_stack, axis=0),
             apodizations=np.stack(apodizations_to_stack, axis=0),
             pulse=self.pulse,
+            voltage=voltage,
             sequence=self.sequence,
             foci=foci,
             target=target,

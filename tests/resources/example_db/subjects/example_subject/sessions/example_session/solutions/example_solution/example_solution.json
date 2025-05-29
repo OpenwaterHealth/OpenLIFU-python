@@ -39,9 +39,10 @@
   ],
   "pulse": {
     "frequency": 500000,
-    "amplitude": 2.3167290687561035,
+    "amplitude": 1.0,
     "duration": 2e-5
   },
+  "voltage": 2.3167290687561035,
   "sequence": {
     "pulse_interval": 0.1,
     "pulse_count": 10,

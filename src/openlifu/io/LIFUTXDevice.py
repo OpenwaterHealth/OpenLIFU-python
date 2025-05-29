@@ -1222,7 +1222,7 @@ class TxDevice:
         if n > 1:
             raise NotImplementedError("Multiple foci not supported yet")
         for profile in range(n):
-            duty_cycle=DEFAULT_PATTERN_DUTY_CYCLE * max(apodizations[profile,:])
+            duty_cycle=DEFAULT_PATTERN_DUTY_CYCLE * max(apodizations[profile,:]) * pulse["amplitude"]
             pulse_profile = Tx7332PulseProfile(
                 profile=profile+1,
                 frequency=pulse["frequency"],
