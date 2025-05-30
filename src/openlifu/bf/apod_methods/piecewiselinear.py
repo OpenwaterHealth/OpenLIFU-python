@@ -9,6 +9,7 @@ import xarray as xa
 from openlifu.bf.apod_methods import ApodizationMethod
 from openlifu.geo import Point
 from openlifu.util.annotations import OpenLIFUFieldData
+from openlifu.util.units import getunittype
 from openlifu.xdc import Transducer
 
 
@@ -22,6 +23,21 @@ class PiecewiseLinear(ApodizationMethod):
 
     units: Annotated[str, OpenLIFUFieldData("Angle units", "Angle units")] = "deg"
     """Angle units"""
+
+    def __post_init__(self):
+        if not isinstance(self.zero_angle, (int, float)):
+            raise TypeError(f"Zero angle must be a number, got {type(self.zero_angle).__name__}.")
+        if self.zero_angle < 0:
+            raise ValueError(f"Zero angle must be non-negative, got {self.zero_angle}.")
+        if not isinstance(self.rolloff_angle, (int, float)):
+            raise TypeError(f"Rolloff angle must be a number, got {type(self.rolloff_angle).__name__}.")
+        if self.rolloff_angle < 0:
+            raise ValueError(f"Rolloff angle must be non-negative, got {self.rolloff_angle}.")
+        if self.rolloff_angle >= self.zero_angle:
+            raise ValueError(f"Rolloff angle must be less than zero angle, got {self.rolloff_angle} >= {self.zero_angle}.")
+        if getunittype(self.units) != "angle":
+            raise ValueError(f"Units must be an angle type, got {self.units}.")
+        super().__post_init__()
 
     def calc_apodization(self, arr: Transducer, target: Point, params: xa.Dataset, transform:np.ndarray | None=None):
         target_pos = target.get_position(units="m")
