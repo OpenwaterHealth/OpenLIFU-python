@@ -173,7 +173,7 @@ def sphere_from_interpolator(
     normals_filter.Update()
     return normals_filter.GetOutput()
 
-def virtual_fit(
+def run_virtual_fit(
     units: str,
     target_RAS : Sequence[float],
     standoff_transform : np.ndarray,
