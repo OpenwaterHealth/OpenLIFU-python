@@ -23,6 +23,10 @@ class SegmentationMethod(ABC):
     def __post_init__(self):
         if self.materials is None:
             self.materials = MATERIALS.copy()
+        if not isinstance(self.materials, dict):
+            raise TypeError(f"Materials must be a dictionary, got {type(self.materials).__name__}.")
+        if not all(isinstance(m, Material) for m in self.materials.values()):
+            raise TypeError("All materials must be instances of Material class.")
         if self.ref_material not in self.materials:
             raise ValueError(f"Reference material {self.ref_material} not found.")
 

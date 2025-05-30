@@ -11,6 +11,7 @@ import xarray as xa
 from openlifu.plan.param_constraint import PARAM_STATUS_SYMBOLS, ParameterConstraint
 from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
+from openlifu.util.units import getunittype
 
 DEFAULT_ORIGIN = np.zeros(3)
 
@@ -213,6 +214,32 @@ class SolutionAnalysisOptions(DictMixin):
 
     param_constraints: Annotated[Dict[str, ParameterConstraint], OpenLIFUFieldData("Parameter constraints", None)] = field(default_factory=dict)
     """TODO: Add description"""
+
+    def __post_init__(self):
+        if self.standoff_sound_speed <= 0:
+            raise ValueError("Standoff sound speed must be greater than 0")
+        if self.standoff_density <= 0:
+            raise ValueError("Standoff density must be greater than 0")
+        if self.ref_sound_speed <= 0:
+            raise ValueError("Reference sound speed must be greater than 0")
+        if self.ref_density <= 0:
+            raise ValueError("Reference density must be greater than 0")
+        if not isinstance(self.mainlobe_aspect_ratio, tuple) or len(self.mainlobe_aspect_ratio) != 3:
+            raise TypeError("Mainlobe aspect ratio must be a tuple of three floats (lat, ele, ax)")
+        if not all(isinstance(x, (int, float)) for x in self.mainlobe_aspect_ratio):
+            raise TypeError("Mainlobe aspect ratio must contain only numbers")
+        if not isinstance(self.mainlobe_radius, (int, float)) or self.mainlobe_radius <= 0:
+            raise ValueError("Mainlobe radius must be a positive number")
+        if not isinstance(self.beamwidth_radius, (int, float)) or self.beamwidth_radius <= 0:
+            raise ValueError("Beamwidth radius must be a positive number")
+        if not isinstance(self.sidelobe_radius, (int, float)) or self.sidelobe_radius <= 0:
+            raise ValueError("Sidelobe radius must be a positive number")
+        if not isinstance(self.sidelobe_zmin, (int, float)) or self.sidelobe_zmin < 0:
+            raise ValueError("Sidelobe minimum z must be a non-negative number")
+        if not isinstance(self.distance_units, str):
+            raise TypeError("Distance units must be a string")
+        if getunittype(self.distance_units) != 'distance':
+            raise ValueError(f"Distance units must be a length unit, got {self.distance_units}")
 
     @classmethod
     def from_dict(cls: Type[SolutionAnalysisOptions], parameter_dict: Dict[str, Any]) -> SolutionAnalysisOptions:

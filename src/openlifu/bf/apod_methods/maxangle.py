@@ -9,6 +9,7 @@ import xarray as xa
 from openlifu.bf.apod_methods import ApodizationMethod
 from openlifu.geo import Point
 from openlifu.util.annotations import OpenLIFUFieldData
+from openlifu.util.units import getunittype
 from openlifu.xdc import Transducer
 
 
@@ -19,6 +20,15 @@ class MaxAngle(ApodizationMethod):
 
     units: Annotated[str, OpenLIFUFieldData("Angle units", "Angle units")] = "deg"
     """Angle units"""
+
+    def __post_init__(self):
+        if not isinstance(self.max_angle, (int, float)):
+            raise TypeError(f"Max angle must be a number, got {type(self.max_angle).__name__}.")
+        if self.max_angle < 0:
+            raise ValueError(f"Max angle must be non-negative, got {self.max_angle}.")
+        if getunittype(self.units) != "angle":
+            raise ValueError(f"Units must be an angle type, got {self.units}.")
+        super().__post_init__()
 
     def calc_apodization(self, arr: Transducer, target: Point, params: xa.Dataset, transform:np.ndarray | None=None):
         target_pos = target.get_position(units="m")
