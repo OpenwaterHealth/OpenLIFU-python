@@ -224,8 +224,9 @@ class SolutionAnalysisOptions(DictMixin):
             raise ValueError("Reference sound speed must be greater than 0")
         if self.ref_density <= 0:
             raise ValueError("Reference density must be greater than 0")
-        if not isinstance(self.mainlobe_aspect_ratio, tuple) or len(self.mainlobe_aspect_ratio) != 3:
-            raise TypeError("Mainlobe aspect ratio must be a tuple of three floats (lat, ele, ax)")
+        if not isinstance(self.mainlobe_aspect_ratio, (tuple, list)) or len(self.mainlobe_aspect_ratio) != 3:
+            raise TypeError("Mainlobe aspect ratio must be a tuple or list of three floats (lat, ele, ax)")
+        self.mainlobe_aspect_ratio = tuple(self.mainlobe_aspect_ratio)  # Ensure it's a tuple
         if not all(isinstance(x, (int, float)) for x in self.mainlobe_aspect_ratio):
             raise TypeError("Mainlobe aspect ratio must contain only numbers")
         if not isinstance(self.mainlobe_radius, (int, float)) or self.mainlobe_radius <= 0:
@@ -250,8 +251,6 @@ class SolutionAnalysisOptions(DictMixin):
             parameter_dict: dictionary of parameters to define the object
         Returns: new object
         """
-        parameter_dict["mainlobe_aspect_ratio"] = tuple(parameter_dict["mainlobe_aspect_ratio"]) \
-            if isinstance(parameter_dict.get("mainlobe_aspect_ratio"), list) else parameter_dict.get("mainlobe_aspect_ratio")
         parameter_dict["param_constraints"] = {
             k: ParameterConstraint.from_dict(v)
             for k, v in parameter_dict.get("param_constraints", {}).items()
