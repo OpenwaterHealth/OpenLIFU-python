@@ -18,10 +18,10 @@ class Direct(DelayMethod):
     """Speed of sound in the medium (m/s)"""
 
     def __post_init__(self):
-        if self.c0 <= 0:
-            raise ValueError("Speed of sound must be greater than 0")
         if not isinstance(self.c0, (int, float)):
             raise TypeError("Speed of sound must be a number")
+        if self.c0 <= 0:
+            raise ValueError("Speed of sound must be greater than 0")
         self.c0 = float(self.c0)
 
     def calc_delays(self, arr: Transducer, target: Point, params: xa.Dataset | None=None, transform:np.ndarray | None=None):
