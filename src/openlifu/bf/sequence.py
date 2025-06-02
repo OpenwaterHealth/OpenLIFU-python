@@ -52,3 +52,23 @@ class Sequence(DictMixin):
             {"Name": "Pulse Train Count", "Value": self.pulse_train_count, "Unit": ""}
         ]
         return pd.DataFrame.from_records(records)
+
+    def get_pulse_train_duration(self) -> float:
+        """
+        Get the duration of a single pulse train in seconds
+
+        :returns: Duration of a single pulse train in seconds
+        """
+        return self.pulse_interval * self.pulse_count
+
+    def get_sequence_duration(self) -> float:
+        """
+        Get the total duration of the sequence in seconds
+
+        :returns: Total duration of the sequence in seconds
+        """
+        if self.pulse_train_interval == 0:
+            interval = self.get_pulsetrain_duration()
+        else:
+            interval = self.pulse_train_interval
+        return interval * self.pulse_train_count
