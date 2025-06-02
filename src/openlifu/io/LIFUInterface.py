@@ -5,11 +5,25 @@ import logging
 from enum import Enum
 from typing import Dict
 
+import numpy as np
+import pandas as pd
+
 from openlifu.io.LIFUHVController import HVController
 from openlifu.io.LIFUSignal import LIFUSignal
 from openlifu.io.LIFUTXDevice import TxDevice
 from openlifu.io.LIFUUart import LIFUUart
 from openlifu.plan.solution import Solution
+
+REF_MAX_SEQUENCE_TIMES = [2*60, 5*60, 10*60]
+REF_MAX_DUTY_CYCLES = [0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
+MAX_VOLTAGE_BY_DUTY_CYCLE_AND_SEQUENCE_TIME = [
+    [65, 65, 65], # 0.05
+    [65, 65, 50], # 0.1
+    [50, 40, 35], # 0.2
+    [45, 35, 30], # 0.3
+    [35, 30, 25], # 0.4
+    [30, 25, 20] # 0.5
+    ]
 
 
 class LIFUInterfaceStatus(Enum):
@@ -108,6 +122,117 @@ class LIFUInterface:
         hv_connected = self.hvcontroller.is_connected()
         return tx_connected, hv_connected
 
+
+    def get_max_voltage(self, solution: Solution | Dict) -> float:
+        """
+        Get the maximum voltage for a given solution.
+
+        Args:
+            solution (Solution | Dict): The solution to check.
+
+        Returns:
+            float: The maximum voltage for the solution.
+        """
+        if isinstance(solution, Solution):
+            solution = solution.to_dict()
+
+        sequence_duty_cycle = self.get_sequence_duty_cycle(solution)
+        sequence_duration = self.get_sequence_duration(solution)
+
+        # Find the index of the duty cycle in the reference list
+        duty_cycles_limits = np.array(REF_MAX_DUTY_CYCLES)
+        duty_cycle_index = np.where(duty_cycles_limits >= sequence_duty_cycle)[0][0]
+
+        # Find the index of the duration in the reference list
+        duration_limits = np.array(REF_MAX_SEQUENCE_TIMES)
+        duration_index = np.where(duration_limits >= sequence_duration)[0][0]
+
+        # Return the maximum voltage for the given duty cycle and duration
+        return MAX_VOLTAGE_BY_DUTY_CYCLE_AND_SEQUENCE_TIME[duty_cycle_index][duration_index]
+
+    def get_max_voltage_table(self) -> pd.DataFrame:
+        """
+        Get a table of the maximum voltages for different duty cycles and sequence times.
+
+        Returns:
+            pd.DataFrame: A DataFrame containing the maximum voltages.
+        """
+        data = {
+            "Duty Cycle (%)": [f"<={100 * dc:0.1f}%" for dc in REF_MAX_DUTY_CYCLES],
+            }
+        for i, duration in enumerate(REF_MAX_SEQUENCE_TIMES):
+            col_name = f"<={duration // 60} min"
+            data[col_name] = [
+                MAX_VOLTAGE_BY_DUTY_CYCLE_AND_SEQUENCE_TIME[j][i] for j in range(len(REF_MAX_DUTY_CYCLES))
+            ]
+        max_voltage =  pd.DataFrame(data).set_index("Duty Cycle (%)")
+        max_voltage.Name = "Maximum Voltage (V)"
+        max_voltage.Description = "This table shows the maximum voltage for different duty cycles and sequence times."
+        return max_voltage
+
+    def check_solution(self, solution: Solution | Dict) -> None:
+        """
+        Check if the solution is valid.
+        Args:
+            solution (Solution | Dict): The solution to check.
+        Raises:
+            ValueError: If the solution is invalid.
+        """
+        if isinstance(solution, Solution):
+                solution = solution.to_dict()
+
+        sequence_duty_cycle = self.get_sequence_duty_cycle(solution)
+        duty_cycles_limits = np.array(REF_MAX_DUTY_CYCLES)
+        if sequence_duty_cycle > duty_cycles_limits.max():
+            raise ValueError(f"Sequence duty cycle ({100*sequence_duty_cycle:0.1f} %) exceeds maximum allowed duty cycle ({100*duty_cycles_limits.max():0.1f} %).")
+        duty_cycle_index = np.where(duty_cycles_limits >= sequence_duty_cycle)[0][0]
+
+        sequence_duration = self.get_sequence_duration(solution)
+        duration_limits = np.array(REF_MAX_SEQUENCE_TIMES)
+        if sequence_duration > duration_limits.max():
+            raise ValueError(f"Sequence duration ({sequence_duration:0.0f} s) exceeds maximum allowed duration ({duration_limits.max()} s).")
+        duration_index = np.where(duration_limits >= sequence_duration)[0][0]
+
+        max_voltage = MAX_VOLTAGE_BY_DUTY_CYCLE_AND_SEQUENCE_TIME[duty_cycle_index][duration_index]
+        if solution['voltage'] > max_voltage:
+            raise ValueError(f"Voltage ({solution['voltage']:0.1f}V) exceeds maximum allowed voltage ({max_voltage:0.1f}V) for duty cycle ({100*sequence_duty_cycle:0.1f} <= {100*duty_cycles_limits[duty_cycle_index]}%) and sequence time ({sequence_duration:0.0f} <= {duration_limits[duration_index]}s).")
+
+    def get_sequence_duty_cycle(self, solution: Solution | Dict) -> float:
+        """
+        Get the duty cycle of the sequence in the solution.
+
+        Args:
+            solution (Solution | Dict): The solution to check.
+
+        Returns:
+            float: The duty cycle of the sequence.
+        """
+        if isinstance(solution, Solution):
+            solution = solution.to_dict()
+
+        if solution['sequence']['pulse_train_interval'] == 0:
+            return solution['pulse']['duration'] / solution['sequence']['pulse_interval']
+        else:
+            return solution['pulse']['duration'] * solution['sequence']['pulse_count'] * solution['sequence']['pulse_train_interval']
+
+    def get_sequence_duration(self, solution: Solution | Dict) -> float:
+        """
+        Get the duration of the sequence in the solution.
+
+        Args:
+            solution (Solution | Dict): The solution to check.
+
+        Returns:
+            float: The duration of the sequence.
+        """
+        if isinstance(solution, Solution):
+            solution = solution.to_dict()
+
+        if solution['sequence']['pulse_train_interval'] == 0:
+            return solution['sequence']['pulse_interval'] * solution['sequence']['pulse_count'] * solution['sequence']['pulse_train_count']
+        else:
+            return solution['sequence']['pulse_train_interval'] * solution['sequence']['pulse_train_count']
+
     def set_solution(self,
                      solution: Solution | Dict,
                      profile_index:int=1,
@@ -126,6 +251,8 @@ class LIFUInterface:
 
             if isinstance(solution, Solution):
                 solution = solution.to_dict()
+
+            self.check_solution(solution)
 
             if "name" in solution:
                 solution_name = solution["name"]

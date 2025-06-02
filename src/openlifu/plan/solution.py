@@ -95,6 +95,37 @@ class Solution:
     """Approval state of this solution as a sonication plan. `True` means the user has provided some
     kind of confirmation that the solution is safe and acceptable to be executed."""
 
+    def __post_init__(self):
+        if self.delays is not None:
+            self.delays = np.array(self.delays, ndmin=2)
+        if self.apodizations is not None:
+            self.apodizations = np.array(self.apodizations, ndmin=2)
+
+        if self.pulse.frequency <= 0:
+            raise ValueError("Pulse frequency must be positive")
+        if self.voltage <= 0:
+            raise ValueError("Voltage must be positive")
+        if self.sequence.pulse_interval <= 0:
+            raise ValueError("Pulse interval must be positive")
+        if self.sequence.pulse_count <= 0:
+            raise ValueError("Pulse count must be positive")
+        if self.sequence.pulse_train_interval < 0:
+            raise ValueError("Pulse train interval must be non-negative")
+        elif (self.sequence.pulse_train_interval > 0) and (self.sequence.pulse_train_interval < (self.sequence.pulse_interval * self.sequence.pulse_count)):
+            raise ValueError("Pulse train interval must be greater than or equal to the total pulse interval")
+        if self.sequence.pulse_train_count <= 0:
+            raise ValueError("Pulse train count must be positive")
+        if len(self.foci)>0 and self.delays is not None and self.delays.shape[0] != len(self.foci):
+                raise ValueError(f"Delays number of foci ({self.delays.shape[0]}) does not match number of foci ({len(self.foci)})")
+        if len(self.foci)>0 and self.apodizations is not None and self.apodizations.shape[0] != len(self.foci):
+                raise ValueError(f"Apodizations number of foci ({self.apodizations.shape[0]}) does not match number of foci ({len(self.foci)})")
+        if self.delays is not None and self.apodizations is not None:
+            if self.apodizations.shape[0] != self.delays.shape[0]:
+                raise ValueError(f"Apodizations number of foci ({self.apodizations.shape[0]}) does not match delays number of foci ({self.delays.shape[0]})")
+            if self.apodizations.shape[1] != self.delays.shape[1]:
+                raise ValueError(f"Apodizations number of elements {self.apodizations.shape[1]} does not match delays shape ({self.delays.shape[1]})")
+
+
     def num_foci(self) -> int:
         """Get the number of foci"""
         return len(self.foci)
