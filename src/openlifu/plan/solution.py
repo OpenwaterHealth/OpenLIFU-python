@@ -116,9 +116,9 @@ class Solution:
         if self.sequence.pulse_train_count <= 0:
             raise ValueError("Pulse train count must be positive")
         if len(self.foci)>0 and self.delays is not None and self.delays.shape[0] != len(self.foci):
-                raise ValueError(f"Delays number of foci ({self.delays.shape[0]}) does not match number of foci ({len(self.foci)})")
+            raise ValueError(f"Delays number of foci ({self.delays.shape[0]}) does not match number of foci ({len(self.foci)})")
         if len(self.foci)>0 and self.apodizations is not None and self.apodizations.shape[0] != len(self.foci):
-                raise ValueError(f"Apodizations number of foci ({self.apodizations.shape[0]}) does not match number of foci ({len(self.foci)})")
+            raise ValueError(f"Apodizations number of foci ({self.apodizations.shape[0]}) does not match number of foci ({len(self.foci)})")
         if self.delays is not None and self.apodizations is not None:
             if self.apodizations.shape[0] != self.delays.shape[0]:
                 raise ValueError(f"Apodizations number of foci ({self.apodizations.shape[0]}) does not match delays number of foci ({self.delays.shape[0]})")
