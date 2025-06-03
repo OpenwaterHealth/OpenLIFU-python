@@ -179,7 +179,7 @@ class LIFUInterface:
             ValueError: If the solution is invalid.
         """
         if isinstance(solution, Solution):
-                solution = solution.to_dict()
+            solution = solution.to_dict()
 
         sequence_duty_cycle = self.get_sequence_duty_cycle(solution)
         duty_cycles_limits = np.array(REF_MAX_DUTY_CYCLES)
