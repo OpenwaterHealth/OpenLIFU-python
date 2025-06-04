@@ -213,7 +213,7 @@ class LIFUInterface:
         if solution['sequence']['pulse_train_interval'] == 0:
             return solution['pulse']['duration'] / solution['sequence']['pulse_interval']
         else:
-            return solution['pulse']['duration'] * solution['sequence']['pulse_count'] * solution['sequence']['pulse_train_interval']
+            return (solution['pulse']['duration'] * solution['sequence']['pulse_count']) / solution['sequence']['pulse_train_interval']
 
     def get_sequence_duration(self, solution: Solution | Dict) -> float:
         """
