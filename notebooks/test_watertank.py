@@ -70,6 +70,23 @@ rapid_temp_increase_per_second_shutoff_C = 3 # Rapid temperature climbing shutof
 
 peak_to_peak_voltage = voltage * 2 # Peak to peak voltage for the pulse
 
+arr = Transducer.from_file(R".\notebooks\pinmap.json")
+arr.sort_by_pin()
+
+pt = Point(position=(xInput,yInput,zInput), units="mm")
+focus = pt.get_position(units="mm")
+distances = np.sqrt(np.sum((focus - arr.get_positions(units="mm"))**2, 1))
+tof = distances*1e-3 / 1500
+delays = tof.max() - tof
+#delays = delays*0.0
+
+apodizations = np.ones(arr.numelements())
+#active_element = 25
+#active_element = np.arange(1,65)
+#apodizations = np.zeros(arr.numelements())
+#apodizations[active_element-1] = 1
+
+
 logger.info("Starting LIFU Test Script...")
 interface = LIFUInterface()
 tx_connected, hv_connected = interface.is_device_connected()
@@ -235,7 +252,6 @@ if not use_external_power_supply:
         logger.info(f"Console Firmware Version: {console_firmware_version}")
     except Exception as e:
         logger.error(f"Error querying console firmware version: {e}")
-
 try:
     tx_firmware_version = interface.txdevice.get_version()
     logger.info(f"TX Firmware Version: {tx_firmware_version}")
@@ -252,42 +268,10 @@ elif num_tx_devices == num_modules*2:
 else:
     raise Exception(f"Number of TX7332 devices found: {num_tx_devices} != 2x{num_modules}")
 
-logger.info("Get Trigger")
-trigger_setting = interface.txdevice.get_trigger_json()
-if trigger_setting:
-    logger.info(f"Trigger Setting: {trigger_setting}")
-else:
-    logger.error("Failed to set trigger setting.")
-    sys.exit(1)
-
-if not use_external_power_supply:
-    if interface.hvcontroller.set_voltage(voltage):
-        logger.info("High Voltage set successfully.")
-    else:
-        logger.error("Failed to set High Voltage.")
-        sys.exit(1)
-
-pulse = Pulse(frequency=frequency_kHz*1e3, duration=duration_msec*1e-3)
-pt = Point(position=(xInput,yInput,zInput), units="mm")
-arr = Transducer.from_file(R".\notebooks\pinmap.json")
-pin_order = np.argsort([el.pin for el in arr.elements])
-
-focus = pt.get_position(units="mm")
-#arr.elements = np.array(arr.elements)[np.argsort([el.pin for el in arr.elements])].tolist()
-distances = np.sqrt(np.sum((focus - arr.get_positions(units="mm"))**2, 1))
-tof = distances*1e-3 / 1500
-delays = tof.max() - tof
-apodizations = np.ones(arr.numelements())
-
-# Turn only single element ON
-#active_element = 25
-active_element = np.arange(1,65)
-
-#delays = delays*0.0
-apodizations = np.zeros(arr.numelements())
-apodizations[active_element-1] = 1
 logger.info(f'Apodizations: {apodizations}')
 logger.info(f'Delays: {delays}')
+
+pulse = Pulse(frequency=frequency_kHz*1e3, duration=duration_msec*1e-3)
 
 sequence = Sequence(
     pulse_interval=interval_msec*1e-3,
@@ -296,26 +280,52 @@ sequence = Sequence(
     pulse_train_count=1
 )
 
+pin_order = np.argsort([el.pin for el in arr.elements])
 solution = Solution(
-    delays = delays,
-    apodizations = apodizations,
+    delays = delays[pin_order],
+    apodizations = apodizations[pin_order],
     pulse = pulse,
     voltage=voltage,
     sequence = sequence
 )
-
-sol_dict = solution.to_dict()
 profile_index = 1
 profile_increment = True
-interface.txdevice.set_solution(
-    pulse = sol_dict['pulse'],
-    delays = sol_dict['delays'][pin_order],
-    apodizations= sol_dict['apodizations'][pin_order],
-    sequence= sol_dict['sequence'],
-    mode="continuous",
-    profile_index=profile_index,
-    profile_increment=profile_increment
-)
+trigger_mode = "continuous"
+
+if use_external_power_supply:
+    interface.check_solution(solution)
+    if interface.hvcontroller.set_voltage(voltage):
+        logger.info("High Voltage set successfully.")
+    else:
+        logger.error("Failed to set High Voltage.")
+        sys.exit(1)
+    sol_dict = solution.to_dict()
+    interface.txdevice.set_solution(
+        pulse = sol_dict['pulse'],
+        delays = sol_dict['delays'],
+        apodizations= sol_dict['apodizations'],
+        sequence= sol_dict['sequence'],
+        mode=trigger_mode,
+        profile_index=profile_index,
+        profile_increment=profile_increment
+    )
+    logger.info(f"Using external power supply. Ensure HV is turned on and set to {voltage}V before starting the trigger.")
+else:
+    interface.set_solution(
+        solution=solution,
+        profile_index=profile_index,
+        profile_increment=profile_increment,
+        trigger_mode=trigger_mode,
+        turn_hv_on=True)
+
+logger.info("Get Trigger")
+trigger_setting = interface.txdevice.get_trigger_json()
+if trigger_setting:
+    logger.info(f"Trigger Setting: {trigger_setting}")
+else:
+    logger.error("Failed to sgt trigger setting.")
+    sys.exit(1)
+
 
 duty_cycle = int((duration_msec/interval_msec) * 100)
 if duty_cycle > 50:
@@ -334,14 +344,6 @@ logger.info(f"User parameters set: \n\
 
 logger.info("Press enter to START trigger:")
 input()  # Wait for the user to press Enter
-
-if not use_external_power_supply:
-    logger.info("Enable  High Voltage")
-    if not interface.hvcontroller.turn_hv_on():
-        logger.error("Failed to turn on High Voltage.")
-        sys.exit(1)
-else:
-    logger.info("Using external power supply")
 
 def turn_off_console_and_tx():
     if not use_external_power_supply:
