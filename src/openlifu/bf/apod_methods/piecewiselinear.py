@@ -37,7 +37,6 @@ class PiecewiseLinear(ApodizationMethod):
             raise ValueError(f"Rolloff angle must be less than zero angle, got {self.rolloff_angle} >= {self.zero_angle}.")
         if getunittype(self.units) != "angle":
             raise ValueError(f"Units must be an angle type, got {self.units}.")
-        super().__post_init__()
 
     def calc_apodization(self, arr: Transducer, target: Point, params: xa.Dataset, transform:np.ndarray | None=None):
         target_pos = target.get_position(units="m")

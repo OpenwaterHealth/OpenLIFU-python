@@ -28,7 +28,6 @@ class MaxAngle(ApodizationMethod):
             raise ValueError(f"Max angle must be non-negative, got {self.max_angle}.")
         if getunittype(self.units) != "angle":
             raise ValueError(f"Units must be an angle type, got {self.units}.")
-        super().__post_init__()
 
     def calc_apodization(self, arr: Transducer, target: Point, params: xa.Dataset, transform:np.ndarray | None=None):
         target_pos = target.get_position(units="m")
