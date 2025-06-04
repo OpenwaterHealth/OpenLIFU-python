@@ -10,7 +10,7 @@ import pandas as pd
 
 from openlifu.io.LIFUHVController import HVController
 from openlifu.io.LIFUSignal import LIFUSignal
-from openlifu.io.LIFUTXDevice import TxDevice
+from openlifu.io.LIFUTXDevice import TriggerModeOpts, TxDevice
 from openlifu.io.LIFUUart import LIFUUart
 from openlifu.plan.solution import Solution
 
@@ -236,7 +236,10 @@ class LIFUInterface:
     def set_solution(self,
                      solution: Solution | Dict,
                      profile_index:int=1,
-                     profile_increment:bool=True) -> bool:
+                     profile_increment:bool=True,
+                     trigger_mode: TriggerModeOpts = "sequence",
+                     turn_hv_on: bool = True
+                     ) -> None:
         """
         Load a solution to the device.
 
@@ -244,43 +247,37 @@ class LIFUInterface:
             solution (Solution): The solution to load.
             profile_index (int): The profile index to load the solution to (defaults to 0)
             profile_increment (bool): Increment the profile index
+            trigger_mode (TriggerModeOpts): The trigger mode to use (defaults to "sequence")
         """
-        try:
-            #if self._test_mode:
-            #    return True
+        if isinstance(solution, Solution):
+            solution = solution.to_dict()
 
-            if isinstance(solution, Solution):
-                solution = solution.to_dict()
+        self.check_solution(solution)
 
-            self.check_solution(solution)
+        if "name" in solution:
+            solution_name = solution["name"]
+            solution_name = f'Solution "{solution_name}"'
+        else:
+            solution_name = "Solution"
 
-            if "name" in solution:
-                solution_name = solution["name"]
-                solution_name = f'Solution "{solution_name}"'
-            else:
-                solution_name = "Solution"
-
-            voltage = solution['voltage']
-            logger.info("Loading %s...", solution_name)
-            # Convert solution data and send to the device
-            self.txdevice.set_solution(
-                    pulse = solution['pulse'],
-                    delays = solution['delays'],
-                    apodizations= solution['apodizations'],
-                    sequence= solution['sequence'],
-                    profile_index=profile_index,
-                    profile_increment=profile_increment
-                )
-            self.hvcontroller.set_voltage(voltage)
-            logger.info("%s loaded successfully.", solution_name)
-            return True
-
-        except ValueError as v:
-            logger.error("ValueError: %s", v)
-            raise  # Re-raise the exception for the caller to handle
-        except Exception as e:
-            logger.error("Error loading %s: %s", solution_name, e)
-            raise
+        voltage = solution['voltage']
+        logger.info("Loading %s...", solution_name)
+        # Convert solution data and send to the device
+        self.txdevice.set_solution(
+                pulse = solution['pulse'],
+                delays = solution['delays'],
+                apodizations= solution['apodizations'],
+                sequence= solution['sequence'],
+                profile_index=profile_index,
+                profile_increment=profile_increment
+            )
+        logger.info(f"Setting HV to {voltage} V...")
+        self.hvcontroller.set_voltage(voltage)
+        if turn_hv_on:
+            logger.info("Turning HV ON...")
+            if not self.hvcontroller.turn_hv_on():
+                raise OSError("Failed to turn HV ON.")
+        logger.info("%s loaded successfully.", solution_name)
 
     def start_sonication(self) -> bool:
         """
