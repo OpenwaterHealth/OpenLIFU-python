@@ -11,7 +11,9 @@ from vtk import VTK_UNSIGNED_SHORT, vtkImageData, vtkPoints, vtkPolyData
 from openlifu.db.database import Database
 from openlifu.nav.photoscan import (
     Photoscan,
-    _make_pairs,
+    _make_pairs_sequential,
+    _make_pairs_sequential_loop,
+    _make_pairs_spatial,
     apply_exif_orientation_numpy,
     convert_between_ras_and_lps,
     convert_numpy_to_vtkimage,
@@ -182,19 +184,83 @@ def test_preprocess_image_modnet():
     assert preprocess_image_modnet(np.zeros((600, 700, 3))).shape == (1,3,512,576)
     assert preprocess_image_modnet(np.zeros((400, 300, 3))).shape == (1, 3, 672, 512)
 
-def test_make_pairs():
-    """Verify sequential matching _make_pairs works correctly"""
+def test_make_pairs_sequential_loop():
+    """Verify _make_pairs_sequential_loop works correctly"""
     expected_all_way_three = [['a', 'b', 'c'], ['b', 'c']]
     #no window_radius
-    assert _make_pairs(['a','b','c'], window_radius=None) == expected_all_way_three
+    assert _make_pairs_sequential_loop(['a','b','c'], window_radius=None) == expected_all_way_three
     #2*window_radius + 1 == list length
-    assert _make_pairs(['a','b','c'], window_radius=1) == expected_all_way_three
+    assert _make_pairs_sequential_loop(['a','b','c'], window_radius=1) == expected_all_way_three
     #2*window_radius + 1 > list length
-    assert _make_pairs(['a','b','c'], window_radius=2) == expected_all_way_three
+    assert _make_pairs_sequential_loop(['a','b','c'], window_radius=2) == expected_all_way_three
     #usual case
     expected = [['a', 'b', 'c', 'e', 'f'],
                 ['b', 'c', 'd', 'f'],
                 ['c', 'd', 'e'],
                 ['d', 'e', 'f'],
                 ['e', 'f']]
-    assert _make_pairs(['a','b','c','d','e','f'], window_radius=2) == expected
+    assert _make_pairs_sequential_loop(['a','b','c','d','e','f'], window_radius=2) == expected
+
+def test_make_pairs_sequential():
+    """Verify _make_pairs_sequential works correctly"""
+    rows = _make_pairs_sequential(['a', 'b', 'c', 'd'],window_radius=1)
+    expected = [['a', 'b'],
+                ['b', 'c'],
+                ['c', 'd']]
+    assert rows == expected
+    rows = _make_pairs_sequential(['a', 'b', 'c', 'd'],window_radius=2)
+    expected = [['a', 'b', 'c'],
+                ['b', 'c', 'd'],
+                ['c', 'd']]
+    assert rows == expected
+    expected_exhaustive = [['a', 'b', 'c', 'd'],
+                           ['b', 'c', 'd'],
+                           ['c', 'd']]
+    rows = _make_pairs_sequential(['a', 'b', 'c', 'd'],window_radius=3)
+    assert rows == expected_exhaustive
+    rows = _make_pairs_sequential(['a', 'b', 'c', 'd'],window_radius=5)
+    assert rows == expected_exhaustive
+
+def test_make_pairs_spatial():
+    """Verify _make_pairs_spatial works correctly"""
+    rows = _make_pairs_spatial(['a', 'b', 'c', 'd', 'e'],num_neighbors=1, locations=[(20,0,0),(10,0,0),(5,0,0),(2,0,0), (0,0,0)])
+    expected = [['a', 'b'],
+                ['b', 'c'],
+                ['c', 'd'],
+                ['d', 'e']]
+    assert rows == expected
+    rows = _make_pairs_spatial(['a', 'b', 'c', 'd', 'e'],num_neighbors=2, locations=[(20,0,0),(10,0,0),(5,0,0),(2,0,0), (0,0,0)])
+    expected = [['a', 'b', 'c'],
+                ['b', 'c', 'd'],
+                ['c', 'd', 'e'],
+                ['d', 'e']]
+    assert rows == expected
+    rows = _make_pairs_spatial(['a', 'b', 'c', 'd', 'e'],num_neighbors=3, locations=[(20,0,0),(10,0,0),(5,0,0),(2,0,0), (0,0,0)])
+    expected = [['a', 'b', 'c', 'd'],
+                ['b', 'c', 'd', 'e'],
+                ['c', 'd', 'e'],
+                ['d', 'e']]
+    assert rows == expected
+    rows = _make_pairs_spatial(['a', 'b', 'c', 'd', 'e'],num_neighbors=5, locations=[(20,0,0),(10,0,0),(5,0,0),(2,0,0), (0,0,0)])
+    expected = [['a', 'b', 'c', 'd', 'e'],
+                ['b', 'c', 'd', 'e'],
+                ['c', 'd', 'e'],
+                ['d', 'e']]
+    assert rows == expected
+
+    #test on circle
+    N = 8
+    angles = np.linspace(0, 2 * np.pi, N, endpoint=False)
+    x = np.cos(angles)
+    y = np.sin(angles)
+    z = np.zeros(N)
+    locations = list(zip(x, y, z))
+    rows = _make_pairs_spatial(['a', 'b', 'c', 'd', 'e', 'f','g', 'h'],num_neighbors=2, locations=locations)
+    expected = [['a', 'b', 'h'],
+                ['b', 'c'],
+                ['c', 'd'],
+                ['d', 'e'],
+                ['e', 'f'],
+                ['f', 'g'],
+                ['g', 'h']]
+    assert rows == expected

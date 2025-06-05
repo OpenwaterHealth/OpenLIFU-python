@@ -294,7 +294,10 @@ def run_reconstruction(
     pipeline_name: str = "default_pipeline",
     input_resize_width: int = 3024,
     use_masks: bool = True,
+    matching_mode: str = 'exhaustive',
     window_radius: int | None = None,
+    num_neighbors: int | None = None,
+    locations: List[Tuple[float, float, float]] | None = None,
     return_durations: bool = False,
     progress_callback : Callable[[int,str],None] | None = None,
 ) -> Tuple[Photoscan, Path] | Tuple[Photoscan, Path, Dict[str, float]]:
@@ -305,8 +308,17 @@ def run_reconstruction(
             See also `get_meshroom_pipeline_names`.
         input_resize_width (int): Width to which input images will be resized, in pixels.
         use_masks (bool): Whether to include a background removal step to filter the dense reconstruction.
-        window_radius (Optional[int]): number of images forward and backward in the sequence to try and
-            match with, if None match each images to all others.
+        matching_mode (str): Strategy for generating image pairs. One of:
+            - 'exhaustive': Match every image with every other image.
+            - 'sequential': Match each image with the previous and next `window_radius` images (no wrap-around).
+            - 'sequential_loop': Like 'sequential' but wraps around at the end of the sequence.
+            - 'spatial': Match each image with its `num_neighbors` nearest neighbors based on 3D location.
+        window_radius (int | None): Required for 'sequential' and 'sequential_loop' matching_mode. Number of
+            images forward and backward in the sequence to try and match with.
+        num_neighbors (int | None): Required for 'spatial' matching_mode. Number of nearest neighbors to match
+            based on 3D distance in `locations`.
+        locations (List[Tuple[float, float, float]]] | None): Required for 'spatial'. Must be the same length
+            as `images`. Provides 3D coordinates for spatial matching.
         return_durations (bool): If True, also return a dictionary mapping node names to durations in seconds.
         progress_callback: An optional function that will be called to report progress. The function should accept two arguments:
             an integer progress value from 0 to 100 followed by a string message describing the step currently being worked on.
@@ -316,6 +328,32 @@ def run_reconstruction(
             - If return_durations is False: returns the Photoscan and the data directory path.
             - If return_durations is True: also returns a dictionary of node execution times.
     """
+    image_indices = list(range(len(images)))
+    valid_modes = {'exhaustive', 'sequential', 'sequential_loop', 'spatial'}
+    if matching_mode == 'exhaustive':
+        pairs = _make_pairs_sequential(image_indices, len(image_indices))
+
+    elif matching_mode == 'sequential':
+        if window_radius is None:
+            raise ValueError(f"A window radius is required for matching mode: '{matching_mode}'.")
+        pairs = _make_pairs_sequential(image_indices, window_radius)
+
+    elif matching_mode == 'sequential_loop':
+        if window_radius is None:
+            raise ValueError(f"A window radius is required for matching mode: '{matching_mode}'.")
+        pairs = _make_pairs_sequential_loop(image_indices, window_radius)
+
+    elif matching_mode == 'spatial':
+        if locations is None:
+            raise ValueError("Spatial matching requires `locations`, but none were provided.")
+        if len(locations) != len(images):
+            raise ValueError("`locations` must be the same length as `images`.")
+        if num_neighbors is None:
+            raise ValueError("Spatial matching requires `num_neighbors`, but it was not provided.")
+        pairs = _make_pairs_spatial(image_indices, num_neighbors, locations)
+
+    else:
+        raise ValueError(f"Invalid matching mode: '{matching_mode}'. Must be one of {valid_modes}.")
 
     if progress_callback is None:
         def progress_callback(progress_percent : int, step_description : str): # noqa: ARG001
@@ -404,7 +442,7 @@ def run_reconstruction(
     subprocess_stream_output(command_camera_init, logger_meshroom.info, logger_meshroom.warning)
 
     camera_init_path = next(cache_dir.glob("CameraInit/*/cameraInit.sfm"))
-    write_pair_file(new_paths, camera_init_path, pair_file_path, window_radius=window_radius)
+    write_pair_file(new_paths, pairs, camera_init_path, pair_file_path)
 
     number_of_nodes = len([node for node in _nodes if node in config_nodes])
     pipeline_progress_start = 10.0
@@ -687,7 +725,7 @@ def _read_path_to_view_ids(input_path: Path) -> Dict[Path, str]:
     return basename_to_viewid
 
 
-def _make_pairs(view_ids: List[str], window_radius: int | None = None) -> List[List[str]]:
+def _make_pairs_sequential_loop(view_ids: List[Any], window_radius: int | None = None) -> List[List[Any]]:
     """
     Generate image match pairs from a list of view IDs. Assumes view_ids are sequential and
     wrap around. Each view is matched with the `window_radius` views before and after it.
@@ -715,20 +753,88 @@ def _make_pairs(view_ids: List[str], window_radius: int | None = None) -> List[L
                     rows[i].append(view_ids[k])
                 else:
                     rows[k % num_views].append(view_ids[i])
-
     rows = rows[:-1]
     return rows
 
-def write_pair_file(image_paths: List[Path], camera_init_file: Path, output_path: Path, window_radius: int | None=None) -> None:
+def _make_pairs_sequential(view_ids: List[Any], window_radius: int) -> List[List[Any]]:
     """
-    Write the imagePairsList file for Meshroom to perform sequential matching with wrap around.
-    Assumes that `image_paths` are ordered sequentially and wrap around.
+    Generate image match pairs from a list of view IDs using a fixed sliding window.
+    Each view is matched with the `window_radius` subsequent views, without wrapping
+    around at the end of the list.
+
+    Args:
+        view_ids (List[Any]): Ordered list of view identifiers.
+        window_radius (int): Number of forward neighbors to match for each view.
+
+    Returns:
+        List[List[Any]]: Each row is of the form [src, tgt1, tgt2, ...], meaning src
+                         is matched to tgt1, tgt2, etc.
+    """
+    num_views = len(view_ids)
+    rows = []
+    for i in range(num_views-1):
+        rows.append([view_ids[i]])
+        for j in range(i+1, min(i+window_radius+1, num_views)):
+            rows[i].append(view_ids[j])
+    return rows
+
+def _make_pairs_spatial(view_ids: List[Any], num_neighbors: int, locations: List[Tuple[float, float, float]]) -> List[List[Any]]:
+    """
+    Generate image match pairs from a list of view IDs based on spatial proximity.
+    Each view is matched with its `num_neighbors` nearest neighbors using 3D Euclidean
+    distance.
+
+    Args:
+        view_ids (List[Any]): List of view identifiers.
+        num_neighbors (int): Number of nearest neighbors to match each view with.
+        locations (List[Tuple[float, float, float]]): 3D coordinates corresponding to each view.
+
+    Returns:
+        List[List[Any]]: Each row is of the form [src, tgt1, tgt2, ...], where src is matched
+                         to tgt1, tgt2, etc.
+    """
+    assert len(view_ids) == len(locations)
+    num_views = len(view_ids)
+    locations = np.array(locations)
+    neighbors = [set() for _ in range(len(view_ids))]
+    for i in range(len(view_ids)):
+        dists = np.linalg.norm(locations - locations[i], axis=1)
+        dists[i] = np.inf
+        nearest = np.argsort(dists)[:min(num_neighbors, num_views-1)]
+        for j in nearest:
+            if j > i:
+                neighbors[i].add(j)
+            else:
+                neighbors[j].add(i)
+
+    #turn sets into list
+    rows = []
+    for i, neigh_set in enumerate(neighbors):
+        if neigh_set:
+            row = [view_ids[i]]
+            for j in sorted(neigh_set):
+                row.append(view_ids[j])
+            rows.append(row)
+    return rows
+
+
+def write_pair_file(images: List[Path],
+                    pairs: List[List[int]],
+                    camera_init_file: Path,
+                    output_path: Path) -> None:
+    """
+    Convert image index-based pairs to Meshroom internal view ID pairs using the provided
+    camera_init_file. Write the result to a Meshroom compatible file.
+
+    Args:
+        images: A list of image Paths (ordered by index).
+        pairs: A list of lists of indices into the `images` list.
+        camera_init_file: Path to Meshroom's cameraInit.sfm or similar file containing view IDs.
+        output_path: Path where the resulting pair file will be written.
     """
     path_to_viewid = _read_path_to_view_ids(camera_init_file)
-    view_ids = [path_to_viewid[im_path] for im_path in image_paths]
-
-    rows = _make_pairs(view_ids, window_radius)
-
+    #convert the image id to Meshrooms view id
+    rows = [[path_to_viewid[images[image_id]] for image_id in sublist] for sublist in pairs]
     with open(output_path, "w") as f:
         for row in rows:
             f.write(" ".join(map(str, row)) + "\n")
