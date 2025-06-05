@@ -80,10 +80,10 @@ tof = distances*1e-3 / 1500
 delays = tof.max() - tof
 #delays = delays*0.0
 
-apodizations = np.ones(1, arr.numelements())
+apodizations = np.ones((1, arr.numelements()))
 #active_element = 25
 #active_element = np.arange(1,65)
-#apodizations = np.zeros(1, arr.numelements())
+#apodizations = np.zeros((1, arr.numelements()))
 #apodizations[:, active_element-1] = 1
 
 
