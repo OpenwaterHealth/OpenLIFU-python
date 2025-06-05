@@ -73,18 +73,18 @@ peak_to_peak_voltage = voltage * 2 # Peak to peak voltage for the pulse
 arr = Transducer.from_file(R".\notebooks\pinmap.json")
 arr.sort_by_pin()
 
-pt = Point(position=(xInput,yInput,zInput), units="mm")
-focus = pt.get_position(units="mm")
-distances = np.sqrt(np.sum((focus - arr.get_positions(units="mm"))**2, 1))
+target = Point(position=(xInput,yInput,zInput), units="mm")
+focus = target.get_position(units="mm")
+distances = np.sqrt(np.sum((focus - arr.get_positions(units="mm"))**2, 1)).reshape(1,-1)
 tof = distances*1e-3 / 1500
 delays = tof.max() - tof
 #delays = delays*0.0
 
-apodizations = np.ones(arr.numelements())
+apodizations = np.ones(1, arr.numelements())
 #active_element = 25
 #active_element = np.arange(1,65)
-#apodizations = np.zeros(arr.numelements())
-#apodizations[active_element-1] = 1
+#apodizations = np.zeros(1, arr.numelements())
+#apodizations[:, active_element-1] = 1
 
 
 logger.info("Starting LIFU Test Script...")
@@ -282,8 +282,8 @@ sequence = Sequence(
 
 pin_order = np.argsort([el.pin for el in arr.elements])
 solution = Solution(
-    delays = delays[pin_order],
-    apodizations = apodizations[pin_order],
+    delays = delays[:, pin_order],
+    apodizations = apodizations[:, pin_order],
     pulse = pulse,
     voltage=voltage,
     sequence = sequence
