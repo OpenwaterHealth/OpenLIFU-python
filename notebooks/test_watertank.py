@@ -71,7 +71,8 @@ rapid_temp_increase_per_second_shutoff_C = 3 # Rapid temperature climbing shutof
 
 peak_to_peak_voltage = voltage * 2 # Peak to peak voltage for the pulse
 
-db = Database(R"C:\Users\Neuromod2\OpenLIFU-python\db_dvc")
+db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "db_dvc")
+db = Database(db_path)
 arr = db.load_transducer(f"openlifu_{num_modules}x400_evt1")
 arr.sort_by_pin()
 
