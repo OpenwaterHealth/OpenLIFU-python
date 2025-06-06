@@ -17,6 +17,7 @@ from openlifu.plan.param_constraint import ParameterConstraint
 from openlifu.plan.solution_analysis import (
     SolutionAnalysis,
     SolutionAnalysisOptions,
+    find_centroid,
     get_beamwidth,
     get_mask,
 )
@@ -172,8 +173,12 @@ class Solution:
         # xyz = np.stack(np.meshgrid(*coords, indexing="xy"), axis=-1)  #TODO: if fus.Axis is defined, coords.ndgrid(dim="ax")
         # z_mask = xyz[..., -1] >= options.sidelobe_zmin  #TODO: probably wrong here, should be z{1}>=options.sidelobe_zmin;
 
-        pulsetrain_dutycycle = self.get_pulsetrain_dutycycle()
-        treatment_dutycycle = self.get_treatment_dutycycle()
+        solution_analysis.duty_cycle_pulse_train_pct = self.get_pulsetrain_dutycycle()*100
+        solution_analysis.duty_cycle_sequence_pct = self.get_sequence_dutycycle()*100
+        if self.sequence.pulse_train_interval == 0:
+            solution_analysis.sequence_duration_s = float(self.sequence.pulse_interval * self.sequence.pulse_count * self.sequence.pulse_train_count)
+        else:
+            solution_analysis.sequence_duration_s = float(self.sequence.pulse_train_interval * self.sequence.pulse_train_count)
         ita_mWcm2 = rescale_coords(self.get_ita(units="mW/cm^2"), options.distance_units)
 
         power_W = np.zeros(self.num_foci())
@@ -182,6 +187,10 @@ class Solution:
             pnp_MPa = pnp_MPa_all.isel(focal_point_index=focus_index)
             ipa_Wcm2 = ipa_Wcm2_all.isel(focal_point_index=focus_index)
             focus = self.foci[focus_index].get_position(units=options.distance_units)
+            focus_mm = self.foci[focus_index].get_position(units="mm")
+            solution_analysis.target_position_lat_mm += [focus_mm[0]]
+            solution_analysis.target_position_ele_mm += [focus_mm[1]]
+            solution_analysis.target_position_ax_mm += [focus_mm[2]]  # TODO: this should be a list, not a single value
             apodization = self.apodizations[focus_index]
             origin = transducer.get_effective_origin(apodizations=apodization, units=options.distance_units)
 
@@ -192,16 +201,6 @@ class Solution:
                 output_signal_Pa[i] = transducer.elements[i].calc_output(apod_signal_V, dt)
 
             p0_Pa = np.max(output_signal_Pa, axis=1)
-
-            # get focus region masks (for mainlobe, sidelobe and beamwidth)
-            # mainlobe_mask = mask_focus(
-            #     self.simulation_result,
-            #     foc,
-            #     options.mainlobe_radius,
-            #     mask_op=MaskOp.LESS_EQUAL,
-            #     units=options.distance_units,
-            #     aspect_ratio=options.mainlobe_aspect_ratio
-            # )
 
             mainlobe_mask = get_mask(
                 pnp_MPa,
@@ -223,7 +222,13 @@ class Solution:
             z_mask = pnp_MPa.coords['ax'] > options.sidelobe_zmin
             sidelobe_mask = sidelobe_mask.where(z_mask, False)
 
-            pk = float(pnp_MPa.where(mainlobe_mask).max())
+            pnp_mainlobe = pnp_MPa.where(mainlobe_mask)
+            pk = float(pnp_mainlobe.max())
+            mainlobe_focus = find_centroid(pnp_mainlobe, pk*10**(-3/20), "mm")
+            solution_analysis.focal_centroid_lat_mm += [mainlobe_focus[0]]
+            solution_analysis.focal_centroid_ele_mm += [mainlobe_focus[1]]
+            solution_analysis.focal_centroid_ax_mm += [mainlobe_focus[2]]
+
             solution_analysis.mainlobe_pnp_MPa += [pk]
 
             for dim, scale in zip(pnp_MPa.dims, options.mainlobe_aspect_ratio):
@@ -250,15 +255,16 @@ class Solution:
             solution_analysis.global_pnp_MPa += [float(pnp_MPa.where(z_mask).max())]
             solution_analysis.global_isppa_Wcm2 += [float(ipa_Wcm2.where(z_mask).max())]
             i0_Wcm2 = (p0_Pa**2 / (2*standoff_Z)) * 1e-4
-            i0ta_Wcm2 = i0_Wcm2 * pulsetrain_dutycycle * treatment_dutycycle
+            i0ta_Wcm2 = i0_Wcm2 * solution_analysis.duty_cycle_sequence_pct/100
             power_W[focus_index] = np.mean(np.sum(i0ta_Wcm2 * ele_sizes_cm2 * self.apodizations[focus_index, :]))
             TIC[focus_index] = power_W[focus_index] / (d_eq_cm * c_tic)
             solution_analysis.p0_MPa += [1e-6*np.max(p0_Pa)]
-        solution_analysis.TIC = np.mean(TIC)
-        solution_analysis.power_W = np.mean(power_W)
-        solution_analysis.voltage_V = self.voltage
-        solution_analysis.MI = (np.max(solution_analysis.mainlobe_pnp_MPa)/np.sqrt(self.pulse.frequency*1e-6))
         solution_analysis.global_ispta_mWcm2 = float((ita_mWcm2*z_mask).max())
+        solution_analysis.MI = (np.max(solution_analysis.mainlobe_pnp_MPa)/np.sqrt(self.pulse.frequency*1e-6))
+        solution_analysis.TIC = np.mean(TIC)
+        solution_analysis.voltage_V = self.voltage
+        solution_analysis.power_W = np.mean(power_W)
+
         solution_analysis.param_constraints = param_constraints
         return solution_analysis
 
@@ -323,7 +329,7 @@ class Solution:
 
     def get_pulsetrain_dutycycle(self) -> float:
         """
-        Compute the pulsetrain dutycycle given a sequence.
+        Compute the pulse train dutycycle given a sequence.
 
         Returns:
             A float.
@@ -332,19 +338,19 @@ class Solution:
 
         return pulsetrain_dutycycle
 
-    def get_treatment_dutycycle(self) -> float:
+    def get_sequence_dutycycle(self) -> float:
         """
-        Compute the treatment dutycycle given a sequence.
+        Compute the overall sequence dutycycle given a sequence.
 
         Returns:
             A float.
         """
         if self.sequence.pulse_train_interval == 0:
-            treatment_dutycycle = 1
+            between_pulsetrain_duty_cycle = 1
         else:
-            treatment_dutycycle = (self.sequence.pulse_count * self.sequence.pulse_interval) / self.sequence.pulse_train_interval
-
-        return treatment_dutycycle
+            between_pulsetrain_duty_cycle = (self.sequence.pulse_count * self.sequence.pulse_interval) / self.sequence.pulse_train_interval
+        sequence_duty_cycle = self.get_pulsetrain_dutycycle() * between_pulsetrain_duty_cycle
+        return sequence_duty_cycle
 
     def get_ita(self, units: str = "mW/cm^2") -> xa.DataArray:
         """
@@ -360,7 +366,7 @@ class Solution:
         """
         intensity_scaled = rescale_data_arr(self.simulation_result['intensity'], units)
         pulsetrain_dutycycle = self.get_pulsetrain_dutycycle()
-        treatment_dutycycle = self.get_treatment_dutycycle()
+        treatment_dutycycle = self.get_sequence_dutycycle()
         pulse_seq = (np.arange(self.sequence.pulse_count) - 1) % self.num_foci() + 1
         counts = np.zeros((1, 1, 1, self.num_foci()))
         for i in range(self.num_foci()):

@@ -11,30 +11,39 @@ import xarray as xa
 from openlifu.plan.param_constraint import PARAM_STATUS_SYMBOLS, ParameterConstraint
 from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
-from openlifu.util.units import getunittype
+from openlifu.util.units import getunitconversion, getunittype
 
 DEFAULT_ORIGIN = np.zeros(3)
 
 PARAM_FORMATS = {
     "mainlobe_pnp_MPa": ["max", "0.3f", "MPa", "Mainlobe Peak Negative Pressure"],
-    "mainlobe_isppa_Wcm2": ["max", "0.3f", "W/cm^2", "Mainlobe I_SPPA"],
-    "mainlobe_ispta_mWcm2": ["mean", "0.3f", "mW/cm^2", "Mainlobe I_SPTA"],
-    "beamwidth_lat_3dB_mm": ["mean", "0.3f", "mm", "3dB Lateral Beamwidth"],
-    "beamwidth_ele_3dB_mm": ["mean", "0.3f", "mm", "3dB Elevational Beamwidth"],
-    "beamwidth_ax_3dB_mm": ["mean", "0.3f", "mm", "3dB Axial Beamwidth"],
-    "beamwidth_lat_6dB_mm": ["mean", "0.3f", "mm", "6dB Lateral Beamwidth"],
-    "beamwidth_ele_6dB_mm": ["mean", "0.3f", "mm", "6dB Elevational Beamwidth"],
-    "beamwidth_ax_6dB_mm": ["mean", "0.3f", "mm", "6dB Axial Beamwidth"],
+    "mainlobe_isppa_Wcm2": ["max", "0.1f", "W/cm^2", "Mainlobe I_SPPA"],
+    "mainlobe_ispta_mWcm2": ["mean", "0.1f", "mW/cm^2", "Mainlobe I_SPTA"],
+    "target_position_lat_mm": ["mean", "0.1f", "mm", "Target Position (Lateral)"],
+    "target_position_ele_mm": ["mean", "0.1f", "mm", "Target Position (Elevation)"],
+    "target_position_ax_mm": ["mean", "0.1f", "mm", "Target Position (Axial)"],
+    "focal_centroid_lat_mm": ["mean", "0.1f", "mm", "Focal Centroid (Lateral)"],
+    "focal_centroid_ele_mm": ["mean", "0.1f", "mm", "Focal Centroid (Elevation)"],
+    "focal_centroid_ax_mm": ["mean", "0.1f", "mm", "Focal Centroid (Axial)"],
+    "beamwidth_lat_3dB_mm": ["mean", "0.2f", "mm", "3dB Beamwidth (Lateral)"],
+    "beamwidth_ele_3dB_mm": ["mean", "0.2f", "mm", "3dB Beamwidth (Elevational)"],
+    "beamwidth_ax_3dB_mm": ["mean", "0.2f", "mm", "3dB Beamwidth (Axial)"],
+    "beamwidth_lat_6dB_mm": ["mean", "0.2f", "mm", "6dB Beamwidth (Lateral)"],
+    "beamwidth_ele_6dB_mm": ["mean", "0.2f", "mm", "6dB Beamwidth (Elevational)"],
+    "beamwidth_ax_6dB_mm": ["mean", "0.2f", "mm", "6dB Beamwidth (Axial)"],
     "sidelobe_pnp_MPa": ["max", "0.3f", "MPa", "Sidelobe Peak Negative Pressure"],
-    "sidelobe_isppa_Wcm2": ["max", "0.3f", "W/cm^2", "Sidelobe I_SPPA"],
+    "sidelobe_isppa_Wcm2": ["max", "0.1f", "W/cm^2", "Sidelobe I_SPPA"],
     "global_pnp_MPa": ["max", "0.3f", "MPa", "Global Peak Negative Pressure"],
-    "global_isppa_Wcm2": ["max", "0.3f", "W/cm^2", "Global I_SPPA"],
-    "global_ispta_mWcm2": [None, "0.3f", "mW/cm^2", "Global I_SPTA"],
+    "global_isppa_Wcm2": ["max", "0.1f", "W/cm^2", "Global I_SPPA"],
+    "global_ispta_mWcm2": [None, "0.1f", "mW/cm^2", "Global I_SPTA"],
+    "MI": [None, "0.2f", "", "MI"],
+    "TIC": [None, "0.2f", "", "TIC"],
+    "voltage_V": [None, "0.1f", "V", "Voltage"],
     "p0_MPa": ["max", "0.3f", "MPa", "Emitted Pressure"],
-    "power_W": [None, "0.3f", "W", "Emitted Power"],
-    "voltage_V": [None, "0.3f", "V", "Voltage"],
-    "TIC": [None, "0.3f", "", "TIC"],
-    "MI": [None, "0.3f", "", "MI"]}
+    "power_W": [None, "0.2f", "W", "Emitted Power"],
+    "duty_cycle_pulse_train_pct": [None, "0.1f", "%", "Pulse Train Duty Cycle"],
+    "duty_cycle_sequence_pct": [None, "0.1f", "%", "Sequence Duty Cycle"],
+    "sequence_duration_s": [None, "0.0f", "s", "Sequence Duration"],}
 
 @dataclass
 class SolutionAnalysis(DictMixin):
@@ -46,6 +55,24 @@ class SolutionAnalysis(DictMixin):
 
     mainlobe_ispta_mWcm2: Annotated[list[float], OpenLIFUFieldData("Mainlobe ISPTA", "Spatial peak time average intensity in the mainlobe, in mW/cm²")] = field(default_factory=list)
     """Spatial peak time average intensity in the mainlobe, in mW/cm²"""
+
+    target_position_lat_mm: Annotated[list[float], OpenLIFUFieldData("Target position lateral (mm)", "Lateral position of the target, in mm")] = field(default_factory=list)
+    """Lateral position of the target, in mm"""
+
+    target_position_ele_mm: Annotated[list[float], OpenLIFUFieldData("Target position elevation (mm)", "Elevation position of the target, in mm")] = field(default_factory=list)
+    """Elevation position of the target, in mm"""
+
+    target_position_ax_mm: Annotated[list[float], OpenLIFUFieldData("Target position axial (mm)", "Axial position of the target, in mm")] = field(default_factory=list)
+    """Axial position of the target, in mm"""
+
+    focal_centroid_lat_mm: Annotated[list[float], OpenLIFUFieldData("Focal centroid lateral (mm)", "Lateral centroid of the focus, in mm")] = field(default_factory=list)
+    """Lateral centroid of the focus, in mm"""
+
+    focal_centroid_ele_mm: Annotated[list[float], OpenLIFUFieldData("Focal centroid elevation (mm)", "Elevation centroid of the focus, in mm")] = field(default_factory=list)
+    """Elevation centroid of the focus, in mm"""
+
+    focal_centroid_ax_mm: Annotated[list[float], OpenLIFUFieldData("Focal centroid axial (mm)", "Axial centroid of the focus, in mm")] = field(default_factory=list)
+    """Axial centroid of the focus, in mm"""
 
     beamwidth_lat_3dB_mm: Annotated[list[float], OpenLIFUFieldData("3dB lateral beamwidth", "Lateral beamwidth at -3 dB, in mm")] = field(default_factory=list)
     """Lateral beamwidth at -3 dB, in mm"""
@@ -77,23 +104,33 @@ class SolutionAnalysis(DictMixin):
     global_isppa_Wcm2: Annotated[list[float], OpenLIFUFieldData("Global ISPPA", "Maximum spatial peak pulse average intensity in the entire field, in W/cm²")] = field(default_factory=list)
     """Maximum spatial peak pulse average intensity in the entire field, in W/cm²"""
 
-    p0_MPa: Annotated[list[float], OpenLIFUFieldData("Emitted pressure (MPa)", "Initial pressure values in the field, in MPa")] = field(default_factory=list)
-    """Initial pressure values in the field (MPa)"""
-
-    TIC: Annotated[float | None, OpenLIFUFieldData("Thermal index (TIC)", "Thermal index in cranium (TIC)")] = None
-    """Thermal index in cranium (TIC)"""
-
-    power_W: Annotated[float | None, OpenLIFUFieldData("Emitted Power (W)", "Emitted power from the transducer face (W)")] = None
-    """Emitted power from the transducer face (W)"""
-
-    voltage_V: Annotated[float | None, OpenLIFUFieldData("Voltage (V)", "Voltage applied to the transducer (V)")] = None
-    """Voltage applied to the transducer (V)"""
+    global_ispta_mWcm2: Annotated[float | None, OpenLIFUFieldData("Global ISPTA (mW/cm²)", "Global Intensity at Spatial-Peak, Time-Average (I_SPTA) (mW/cm²)")] = None
+    """Global Intensity at Spatial-Peak, Time-Average (I_SPTA) (mW/cm²)"""
 
     MI: Annotated[float | None, OpenLIFUFieldData("Mechanical index (MI)", "Mechanical index (MI)")] = None
     """Mechanical index (MI)"""
 
-    global_ispta_mWcm2: Annotated[float | None, OpenLIFUFieldData("Global ISPTA (mW/cm²)", "Global Intensity at Spatial-Peak, Time-Average (I_SPTA) (mW/cm²)")] = None
-    """Global Intensity at Spatial-Peak, Time-Average (I_SPTA) (mW/cm²)"""
+    TIC: Annotated[float | None, OpenLIFUFieldData("Thermal index (TIC)", "Thermal index in cranium (TIC)")] = None
+    """Thermal index in cranium (TIC)"""
+
+    voltage_V: Annotated[float | None, OpenLIFUFieldData("Voltage (V)", "Voltage applied to the transducer (V)")] = None
+    """Voltage applied to the transducer (V)"""
+
+    p0_MPa: Annotated[list[float], OpenLIFUFieldData("Emitted pressure (MPa)", "Initial pressure values in the field, in MPa")] = field(default_factory=list)
+    """Initial pressure values in the field (MPa)"""
+
+    power_W: Annotated[float | None, OpenLIFUFieldData("Emitted Power (W)", "Emitted power from the transducer face (W)")] = None
+    """Emitted power from the transducer face (W)"""
+
+    duty_cycle_pulse_train_pct: Annotated[float | None, OpenLIFUFieldData("Duty cycle pulse train", "Duty cycle within a pulse train (0-1)")] = None
+    """Duty cycle within a pulse train (0-1)"""
+
+    duty_cycle_sequence_pct: Annotated[float | None, OpenLIFUFieldData("Duty cycle sequence", "Duty cycle of the overall sequence (0-1)")] = None
+    """Duty cycle of the overall sequence (0-1)"""
+
+    sequence_duration_s: Annotated[float | None, OpenLIFUFieldData("Sequence duration (s)", "Total duration of the sequence (s)")] = None
+    """Total duration of the sequence (s)"""
+
 
     param_constraints: Annotated[Dict[str, ParameterConstraint], OpenLIFUFieldData("Parameter constraints", None)] = field(default_factory=dict)
     """TODO: Add description"""
@@ -258,12 +295,17 @@ class SolutionAnalysisOptions(DictMixin):
 
         return cls(**parameter_dict)
 
-def find_centroid(da: xa.DataArray, cutoff:float) -> np.ndarray:
+def find_centroid(da: xa.DataArray, cutoff:float, units:None) -> np.ndarray:
     """Find the centroid of a thresholded region of a DataArray"""
+    if units is not None and getunittype(units) != 'distance':
+        raise ValueError(f"Units must be a length unit, got {units}")
     da = da.where(da > cutoff, 0)
     dims = list(da.dims)
     coords = np.meshgrid(*[da.coords[coord] for coord in dims], indexing='ij')
     centroid = np.array([np.sum(da*coords[dims.index(dim)])/da.sum() for dim in da.dims])
+    if units is not None:
+        da_units = [da.coords[dim].attrs.get('units', None) for dim in dims]
+        centroid = np.array([getunitconversion(coord_units, units) * c for coord_units, c in zip(da_units, centroid)])
     return centroid
 
 def get_focus_matrix(focus, origin=[0,0,0]) -> np.ndarray:
