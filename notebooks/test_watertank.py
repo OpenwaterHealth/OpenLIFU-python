@@ -13,6 +13,7 @@ else:
 
 import numpy as np
 
+from openlifu.db import Database
 from openlifu.bf.pulse import Pulse
 from openlifu.bf.sequence import Sequence
 from openlifu.geo import Point
@@ -49,12 +50,12 @@ yInput = 0
 zInput = 50
 
 frequency_kHz = 400 # Frequency in kHz
-voltage = 50.0 # Voltage in Volts
+voltage = 10.0 # Voltage in Volts
 duration_msec = 5 # Pulse Duration in milliseconds
 interval_msec = 100 # Pulse Repetition Interval in milliseconds
-num_modules = 1 # Number of modules in the system
+num_modules = 2 # Number of modules in the system
 
-use_external_power_supply = False # Select whether to use console or power supply
+use_external_power_supply = True # Select whether to use console or power supply
 
 console_shutoff_temp_C = 70.0 # Console shutoff temperature in Celsius
 tx_shutoff_temp_C = 70.0 # TX device shutoff temperature in Celsius
@@ -70,7 +71,8 @@ rapid_temp_increase_per_second_shutoff_C = 3 # Rapid temperature climbing shutof
 
 peak_to_peak_voltage = voltage * 2 # Peak to peak voltage for the pulse
 
-arr = Transducer.from_file(R".\notebooks\pinmap.json")
+db = Database(R"C:\Users\Neuromod2\OpenLIFU-python\db_dvc")
+arr = db.load_transducer(f"openlifu_{num_modules}x400_evt1")
 arr.sort_by_pin()
 
 target = Point(position=(xInput,yInput,zInput), units="mm")
@@ -131,6 +133,8 @@ def log_temperature():
     # Create a file with the current timestamp in the name
     start = time.time()
     timestamp = time.strftime("%Y%m%d_%H%M%S")
+    logpath = "logs"
+    os.makedirs(logpath, exist_ok=True)
     filename = f"{timestamp}_{frequency_kHz}kHz_{voltage}V_{duration_msec}ms_Duration_{interval_msec}ms_Interval_Temperature_Readings.csv"
     shutdown = False
 
@@ -141,7 +145,7 @@ def log_temperature():
     if use_external_power_supply:
         con_temp = "N/A"
 
-    with open(filename, "w") as logfile:
+    with open(os.path.join(logpath, filename), "w") as logfile:
         # Create header for CSV file
         log_line = "Current Time,Frequency (kHz),Duration (ms),Interval (ms),Voltage (Per Rail),Voltage (Peak to Peak),Console Temperature (°C),Transmitter Temperature (°C),Ambient Temperature (°C)\n"
         logfile.write(log_line)
