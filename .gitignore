@@ -160,6 +160,7 @@ Thumbs.db
 *.swp
 .vscode
 /db_dvc
+/logs
 
 # ONNX checkpoints
 *.onnx
