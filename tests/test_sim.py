@@ -1,10 +1,20 @@
 from __future__ import annotations
 
+import sys
+
+import pytest
 import xarray
 
 import openlifu
 
 
+@pytest.mark.skipif(
+    sys.platform == 'darwin',
+    reason=(
+        "This test is skipped on macOS due to some unresolved known issues with kwave."
+        " See https://github.com/OpenwaterHealth/OpenLIFU-python/pull/259#issuecomment-2923230777"
+    )
+)
 def test_run_simulation_runs():
     """Test that run_simulation can run and outputs something of the correct type."""
 
