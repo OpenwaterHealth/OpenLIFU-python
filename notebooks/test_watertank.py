@@ -299,11 +299,6 @@ trigger_mode = "continuous"
 
 if use_external_power_supply:
     interface.check_solution(solution)
-    if interface.hvcontroller.set_voltage(voltage):
-        logger.info("High Voltage set successfully.")
-    else:
-        logger.error("Failed to set High Voltage.")
-        sys.exit(1)
     sol_dict = solution.to_dict()
     interface.txdevice.set_solution(
         pulse = sol_dict['pulse'],
