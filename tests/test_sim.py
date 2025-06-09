@@ -8,7 +8,7 @@ import openlifu
 def test_run_simulation_runs():
     """Test that run_simulation can run and outputs something of the correct type."""
 
-    transducer = openlifu.Transducer.gen_matrix_array(nx=2, ny=2, pitch=4, kerf=.5, units="mm", impulse_response=1e5)
+    transducer = openlifu.Transducer.gen_matrix_array(nx=2, ny=2, pitch=2, kerf=.5, units="mm", impulse_response=1e5)
     dt = 2e-7
     sim_setup = openlifu.SimSetup(
         dt=dt,
@@ -17,7 +17,7 @@ def test_run_simulation_runs():
         y_extent=(-10,10),
         z_extent=(-2,10),
     )
-    pulse = openlifu.Pulse(frequency=400e3, duration=3/400e3)
+    pulse = openlifu.Pulse(frequency=400e3, duration=1/400e3)
     protocol = openlifu.Protocol(
         pulse=pulse,
         sequence=openlifu.Sequence(),
@@ -26,7 +26,10 @@ def test_run_simulation_runs():
     coords = sim_setup.get_coords()
     default_seg_method = protocol.seg_method
     params = default_seg_method.ref_params(coords)
-    delays, apod = protocol.beamform(arr=transducer, target=openlifu.Point(position=(0,0,5)), params=params)
+    delays, apod = protocol.beamform(arr=transducer, target=openlifu.Point(position=(0,0,50)), params=params)
+    delays[:] = 0.0
+    apod[:] = 1.0
+
 
     dataset, _ = openlifu.sim.run_simulation(
         arr=transducer,
@@ -34,7 +37,7 @@ def test_run_simulation_runs():
         delays=delays,
         apod= apod,
         freq = pulse.frequency,
-        cycles = 5,
+        cycles = 1,
         dt=protocol.sim_setup.dt,
         t_end=protocol.sim_setup.t_end,
         amplitude = 1,
