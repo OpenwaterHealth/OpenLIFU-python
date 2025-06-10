@@ -407,10 +407,10 @@ def test_write_session_with_invalid_fit_results(
         subject_id=example_subject.id,
         targets=[Point(id="an_existing_target_id")],
         virtual_fit_results={
-            target_id : (
-                True,
-                [ArrayTransform(matrix=rng.random(size=(4,4)),units="mm") for _ in range(num_transforms)],
-            )
+            target_id : [
+                (True, ArrayTransform(matrix=rng.random(size=(4,4)),units="mm"))
+                for _ in range(num_transforms)
+            ]
             for target_id, num_transforms in zip(target_ids, numbers_of_transforms)
         },
     )
@@ -420,8 +420,8 @@ def test_write_session_with_invalid_fit_results(
 def test_session_arrays_read_correctly(example_session:Session):
     """Verify that session data that is supposed to be array type is actually array type after reading from json"""
     assert isinstance(example_session.array_transform.matrix, np.ndarray)
-    for _, (_, array_transforms) in example_session.virtual_fit_results.items():
-        for array_transform in array_transforms:
+    for _, list_of_transforms in example_session.virtual_fit_results.items():
+        for _ , array_transform in list_of_transforms:
             assert isinstance(array_transform.matrix, np.ndarray)
 
     for tt_result in example_session.transducer_tracking_results:
