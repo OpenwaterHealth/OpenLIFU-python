@@ -3,6 +3,9 @@ from __future__ import annotations
 import sys
 import time
 
+from openlifu.io.LIFUConfig import (
+    TRIGGER_MODE_SINGLE,
+)
 from openlifu.io.LIFUInterface import LIFUInterface
 
 # set PYTHONPATH=%cd%\src;%PYTHONPATH%
@@ -62,19 +65,26 @@ def main():
         print("❌ Failed comms with txdevice.")
         sys.exit(1)
 
+    version = interface.txdevice.get_version()
+    print(f"Version: {version}")
+
     while True:
         params = get_user_input()
         if params is None:
             print("Exiting...")
+            if interface.txdevice.is_connected:
+                print("Disconnecting TX device...")
+                interface.txdevice.close()
+
             break
 
         json_trigger_data = {
             "TriggerFrequencyHz": params["freq"],
-            "TriggerPulseCount": 1,
+            "TriggerPulseCount": 5,
             "TriggerPulseWidthUsec": params["pulse_width"],
-            "TriggerPulseTrainInterval": 0,
-            "TriggerPulseTrainCount": 0,
-            "TriggerMode": 1,
+            "TriggerPulseTrainInterval": 150000,
+            "TriggerPulseTrainCount": 2,
+            "TriggerMode": TRIGGER_MODE_SINGLE, # Change to TRIGGER_MODE_CONTINUOUS or TRIGGER_MODE_SEQUENCE or TRIGGER_MODE_SINGLE as needed
             "ProfileIndex": 0,
             "ProfileIncrement": 0
         }

@@ -178,6 +178,13 @@ class TxDevice:
             return self.uart.is_connected()
         return False
 
+    def close(self):
+        """
+        Close Uart
+        """
+        if self.uart and self.uart.is_connected():
+            self.uart.disconnect()
+
     def ping(self) -> bool:
         """
         Send a ping command to the TX device to verify connectivity.
