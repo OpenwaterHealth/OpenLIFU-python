@@ -80,7 +80,7 @@ def main():
 
         json_trigger_data = {
             "TriggerFrequencyHz": params["freq"],
-            "TriggerPulseCount": 5,
+            "TriggerPulseCount": 1,
             "TriggerPulseWidthUsec": params["pulse_width"],
             "TriggerPulseTrainInterval": 150000,
             "TriggerPulseTrainCount": 2,
@@ -99,6 +99,8 @@ def main():
 
         if interface.txdevice.start_trigger():
             print("Trigger Running. Press Enter to STOP:")
+            trigger_status = interface.txdevice.get_trigger_json()
+            print (f"Trigger Status: {trigger_status}")
             input()  # Wait for the user to press Enter
             if interface.txdevice.stop_trigger():
                 print("Trigger stopped successfully.")
