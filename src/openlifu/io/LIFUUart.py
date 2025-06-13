@@ -9,7 +9,7 @@ import time
 import serial
 import serial.tools.list_ports
 
-from openlifu.io.LIFUConfig import OW_ACK, OW_CMD_NOP, OW_ERROR, OW_RESP
+from openlifu.io.LIFUConfig import OW_ACK, OW_CMD_NOP, OW_DATA, OW_ERROR, OW_RESP
 from openlifu.io.LIFUSignal import LIFUSignal
 
 # Packet structure constants
@@ -19,9 +19,11 @@ ID_COUNTER = 0  # Initializing the ID counter
 
 # Set up logging
 log = logging.getLogger("UART")
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.ERROR)
+log.propagate = False
+
 handler = logging.StreamHandler()
-handler.setLevel(logging.DEBUG)
+handler.setLevel(logging.ERROR)
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s") # Format output with timestamp
 handler.setFormatter(formatter)
 log.addHandler(handler)
@@ -309,7 +311,7 @@ class LIFUUart:
                 if self.serial.in_waiting > 0:
                     data = self.serial.read(self.serial.in_waiting)
                     self.read_buffer.extend(data)
-                    log.info("Data received on %s: %s", self.descriptor, data)
+                    log.debug("Data received on %s: %s", self.descriptor, data)
                     # Attempt to parse a complete packet from read_buffer.
                     try:
                         # Note: Depending on your protocol, you might need to check for start/end bytes
@@ -325,8 +327,8 @@ class LIFUUart:
                                     self.response_queues[packet.id].put(packet)
                                 else:
                                     log.warning("Received an unsolicited packet with ID %d", packet.id)
-                        else:
-                            self.signal_data_received.emit(self.descriptor, packet)
+                        elif packet.packet_type == OW_DATA:
+                            self.signal_data_received.emit(self.descriptor, OW_DATA)
 
                     except ValueError as ve:
                         log.error("Error parsing packet: %s", ve)

@@ -132,7 +132,16 @@ from openlifu.io.LIFUConfig import (
 if TYPE_CHECKING:
     pass
 
-logger = logging.getLogger(__name__)
+
+logger = logging.getLogger("TXDevice")
+logger.setLevel(logging.DEBUG)
+logger.propagate = False
+
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 class TxDevice:
     def __init__(self, uart: LIFUUart):
@@ -482,13 +491,23 @@ class TxDevice:
         else:
             raise ValueError("Invalid trigger mode")
 
+        logger.debug(f"Setting trigger with parameters: "
+                        f"pulse_interval={pulse_interval}, "
+                        f"pulse_count={pulse_count}, "
+                        f"pulse_width={pulse_width}, "
+                        f"pulse_train_interval={pulse_train_interval}, "
+                        f"pulse_train_count={pulse_train_count}, "
+                        f"mode={mode}")
+
         trigger_json = {
             "TriggerFrequencyHz": 1/pulse_interval,
             "TriggerPulseCount": pulse_count,
             "TriggerPulseWidthUsec": pulse_width,
-            "TriggerPulseTrainInterval": pulse_train_interval,
+            "TriggerPulseTrainInterval": pulse_train_interval * 1000000,
             "TriggerPulseTrainCount": pulse_train_count,
-            "TriggerMode": trigger_mode
+            "TriggerMode": trigger_mode,
+            "ProfileIndex": 0,
+            "ProfileIncrement": 0
         }
         return self.set_trigger_json(data=trigger_json)
 

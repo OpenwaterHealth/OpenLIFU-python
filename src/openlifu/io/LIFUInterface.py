@@ -271,6 +271,8 @@ class LIFUInterface:
                     profile_index=profile_index,
                     profile_increment=profile_increment
                 )
+            logger.info("Solution data sent to the device.")
+            logger.info("Setting voltage to %s V", voltage)
             self.hvcontroller.set_voltage(voltage)
             logger.info("%s loaded successfully.", solution_name)
             return True
