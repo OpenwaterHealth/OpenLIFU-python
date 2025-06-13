@@ -241,7 +241,7 @@ def log_temperature():
             time.sleep(log_interval)
     minutes, seconds = divmod(int(time.time() - start), 60)
     logger.info(f"Temperature logging stopped after {minutes}:{seconds:02d}.")
-    logger.info(f"Data saved to \"{logfile}\".")
+    logger.info(f"Data saved to \"{os.path.relpath(logfile.name)}\".")
     sys.exit(0)
 
 # Verify communication with the devices
