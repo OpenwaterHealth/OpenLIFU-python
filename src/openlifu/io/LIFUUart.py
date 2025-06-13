@@ -325,6 +325,9 @@ class LIFUUart:
                                 # Check if a queue is waiting for this packet ID.
                                 if packet.id in self.response_queues:
                                     self.response_queues[packet.id].put(packet)
+                                elif packet.packet_type == OW_DATA and packet.id == 0:
+                                    text = packet.data.decode('utf-8', errors='replace')
+                                    self.signal_data_received.emit(self.descriptor, text)
                                 else:
                                     log.warning("Received an unsolicited packet with ID %d", packet.id)
                         elif packet.packet_type == OW_DATA:
