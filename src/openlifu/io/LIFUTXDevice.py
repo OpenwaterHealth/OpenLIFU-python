@@ -67,14 +67,16 @@ DELAY_ORDER = [[32, 30],
                [11, 9],
                [7, 5],
                [3, 1]]
+DELAY_ORDER_REVERSED = [[33 - c for c in row] for row in DELAY_ORDER]
 DELAY_CHANNEL_MAP = {}
-for row, channels in enumerate(DELAY_ORDER):
+for row, channels in enumerate(DELAY_ORDER_REVERSED):
     for i, channel in enumerate(channels):
         DELAY_CHANNEL_MAP[channel] = {'row': row, 'lsb': 16*(1-i)}
 DELAY_PROFILE_OFFSET = 16
 VALID_DELAY_PROFILES = list(range(1, 17))
 DELAY_WIDTH = 13
 APODIZATION_CHANNEL_ORDER = [17, 19, 21, 23, 25, 27, 29, 31, 18, 20, 22, 24, 26, 28, 30, 32, 1, 3, 5, 7, 9, 11, 13, 15, 2, 4, 6, 8, 10, 12, 14, 16]
+APODIZATION_CHANNEL_ORDER_REVERSED = [33 - c for c in APODIZATION_CHANNEL_ORDER]
 DEFAULT_PATTERN_DUTY_CYCLE = 0.66
 PATTERN_PROFILE_OFFSET = 4
 NUM_PATTERN_PROFILES = 32
@@ -1675,7 +1677,7 @@ class Tx7332Registers:
         delay_profile = self.get_delay_profile(profile)
         apod_register = 0
         for i, apod in enumerate(delay_profile.apodizations):
-            apod_register = set_register_value(apod_register, 1-apod, lsb=APODIZATION_CHANNEL_ORDER.index(i+1), width=1)
+            apod_register = set_register_value(apod_register, 1-apod, lsb=APODIZATION_CHANNEL_ORDER_REVERSED.index(i+1), width=1)
         delay_sel_register = 0
         delay_sel_register = set_register_value(delay_sel_register, delay_profile.profile-1, lsb=12, width=4)
         delay_sel_register = set_register_value(delay_sel_register, delay_profile.profile-1, lsb=28, width=4)
@@ -1865,7 +1867,9 @@ class TxDeviceRegisters:
         if activate:
             self.active_delay_profile = delay_profile.profile
         for i, tx in enumerate(self.transmitters):
-            start_channel = i*NUM_CHANNELS
+            module = i // 2
+            chip = (i+1) % 2
+            start_channel = module*NUM_CHANNELS*2 + chip*NUM_CHANNELS
             profiles = np.arange(start_channel, start_channel+NUM_CHANNELS, dtype=int)
             tx_delays = np.array(delay_profile.delays)[profiles].tolist()
             tx_apodizations = np.array(delay_profile.apodizations)[profiles].tolist()

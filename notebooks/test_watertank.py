@@ -5,6 +5,7 @@ import os
 import sys
 import threading
 import time
+from pathlib import Path
 
 if os.name == 'nt':
     import msvcrt
@@ -13,13 +14,12 @@ else:
 
 import numpy as np
 
-from openlifu.db import Database
 from openlifu.bf.pulse import Pulse
 from openlifu.bf.sequence import Sequence
+from openlifu.db import Database
 from openlifu.geo import Point
 from openlifu.io.LIFUInterface import LIFUInterface
 from openlifu.plan.solution import Solution
-from openlifu.xdc import Transducer
 
 # set PYTHONPATH=%cd%\src;%PYTHONPATH%
 # python notebooks/test_watertank.py
@@ -71,7 +71,8 @@ rapid_temp_increase_per_second_shutoff_C = 3 # Rapid temperature climbing shutof
 
 peak_to_peak_voltage = voltage * 2 # Peak to peak voltage for the pulse
 
-db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "db_dvc")
+here = Path(__file__).parent.resolve()
+db_path = here / ".." / "db_dvc"
 db = Database(db_path)
 arr = db.load_transducer(f"openlifu_{num_modules}x400_evt1")
 arr.sort_by_pin()
@@ -134,9 +135,10 @@ def log_temperature():
     # Create a file with the current timestamp in the name
     start = time.time()
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    logpath = "logs"
-    os.makedirs(logpath, exist_ok=True)
-    filename = f"{timestamp}_{frequency_kHz}kHz_{voltage}V_{duration_msec}ms_Duration_{interval_msec}ms_Interval_Temperature_Readings.csv"
+    logpath = here / ".." / "logs"
+    if not logpath.exists():
+        logpath.mkdir(parents=True)
+    logfile = logpath / f"{timestamp}_{frequency_kHz}kHz_{voltage}V_{duration_msec}ms_Duration_{interval_msec}ms_Interval_Temperature_Readings.csv"
     shutdown = False
 
     prev_tx_temp = None
@@ -146,7 +148,7 @@ def log_temperature():
     if use_external_power_supply:
         con_temp = "N/A"
 
-    with open(os.path.join(logpath, filename), "w") as logfile:
+    with open(logfile, "w") as logfile:
         # Create header for CSV file
         log_line = "Current Time,Frequency (kHz),Duration (ms),Interval (ms),Voltage (Per Rail),Voltage (Peak to Peak),Console Temperature (°C),Transmitter Temperature (°C),Ambient Temperature (°C)\n"
         logfile.write(log_line)
@@ -239,7 +241,7 @@ def log_temperature():
             time.sleep(log_interval)
     minutes, seconds = divmod(int(time.time() - start), 60)
     logger.info(f"Temperature logging stopped after {minutes}:{seconds:02d}.")
-    logger.info(f"Data saved to \"{filename}\".")
+    logger.info(f"Data saved to \"{logfile}\".")
     sys.exit(0)
 
 # Verify communication with the devices
