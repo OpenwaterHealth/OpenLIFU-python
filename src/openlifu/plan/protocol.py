@@ -114,7 +114,7 @@ class Protocol:
             "apod_method": self.apod_method.to_dict(),
             "seg_method": self.seg_method.to_dict(),
             "param_constraints": {id: pc.to_dict() for id, pc in self.param_constraints.items()},
-            "target_constraints": self.target_constraints,
+            "target_constraints": [tc.to_dict() for tc in self.target_constraints],
             "virtual_fit_options": self.virtual_fit_options.to_dict(),
             "analysis_options": self.analysis_options.to_dict(),
         }
