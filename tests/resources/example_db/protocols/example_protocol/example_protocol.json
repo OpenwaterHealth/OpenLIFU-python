@@ -88,7 +88,15 @@
   "param_constraints": {
     "MI": { "operator": "<", "error_value": 1.9 }
   },
-  "target_constraints": [],
+  "target_constraints": [
+    {
+      "dim": "x",
+      "name": "Lateral",
+      "units": "mm",
+      "min": -100,
+      "max": 100
+    }
+  ],
   "virtual_fit_options": {
     "units": "mm",
     "transducer_steering_center_distance": 50.0,
