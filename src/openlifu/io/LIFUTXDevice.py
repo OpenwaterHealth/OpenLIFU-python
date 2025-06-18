@@ -482,11 +482,12 @@ class TxDevice:
             profile_index (int): The pulse profile to use.
             profile_increment (bool): Whether to increment the pulse profile.
         """
-        if mode == "sequence":
+
+        if mode == "Sequence":
             trigger_mode = TRIGGER_MODE_SEQUENCE
-        elif mode == "continuous":
+        elif mode == "Continuous":
             trigger_mode = TRIGGER_MODE_CONTINUOUS
-        elif mode == "single":
+        elif mode == "Single":
             trigger_mode = TRIGGER_MODE_SINGLE
         else:
             raise ValueError("Invalid trigger mode")
@@ -497,7 +498,7 @@ class TxDevice:
                         f"pulse_width={pulse_width}, "
                         f"pulse_train_interval={pulse_train_interval}, "
                         f"pulse_train_count={pulse_train_count}, "
-                        f"mode={mode}")
+                        f"mode={trigger_mode}")
 
         trigger_json = {
             "TriggerFrequencyHz": 1/pulse_interval,

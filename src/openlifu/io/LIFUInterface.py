@@ -10,7 +10,7 @@ import pandas as pd
 
 from openlifu.io.LIFUHVController import HVController
 from openlifu.io.LIFUSignal import LIFUSignal
-from openlifu.io.LIFUTXDevice import TxDevice
+from openlifu.io.LIFUTXDevice import TriggerModeOpts, TxDevice
 from openlifu.io.LIFUUart import LIFUUart
 from openlifu.plan.solution import Solution
 
@@ -236,7 +236,9 @@ class LIFUInterface:
     def set_solution(self,
                      solution: Solution | Dict,
                      profile_index:int=1,
-                     profile_increment:bool=True) -> bool:
+                     profile_increment:bool=True,
+                     trigger_mode: TriggerModeOpts = "sequence"
+                     ) -> bool:
         """
         Load a solution to the device.
 
@@ -266,10 +268,11 @@ class LIFUInterface:
             self.txdevice.set_solution(
                     pulse = solution['pulse'],
                     delays = solution['delays'],
-                    apodizations= solution['apodizations'],
-                    sequence= solution['sequence'],
-                    profile_index=profile_index,
-                    profile_increment=profile_increment
+                    apodizations = solution['apodizations'],
+                    sequence = solution['sequence'],
+                    profile_index = profile_index,
+                    profile_increment = profile_increment,
+                    mode = trigger_mode
                 )
             logger.info("Solution data sent to the device.")
             logger.info("Setting voltage to %s V", voltage)
