@@ -269,7 +269,8 @@ class LIFUInterface:
                 apodizations= solution['apodizations'],
                 sequence= solution['sequence'],
                 profile_index=profile_index,
-                profile_increment=profile_increment
+                profile_increment=profile_increment,
+                trigger_mode=trigger_mode
             )
         logger.info(f"Setting HV to {voltage} V...")
         self.hvcontroller.set_voltage(voltage)
