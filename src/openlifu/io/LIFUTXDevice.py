@@ -105,6 +105,7 @@ TRIGGER_MODE_SINGLE = 2
 DEFAULT_PULSE_WIDTH_US = 20000
 
 from openlifu.io.LIFUConfig import (
+    OW_CMD_ASYNC,
     OW_CMD_DFU,
     OW_CMD_ECHO,
     OW_CMD_GET_AMBIENT,
@@ -133,7 +134,16 @@ from openlifu.io.LIFUConfig import (
 if TYPE_CHECKING:
     pass
 
-logger = logging.getLogger(__name__)
+
+logger = logging.getLogger("TXDevice")
+logger.setLevel(logging.DEBUG)
+logger.propagate = False
+
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 class TxDevice:
     def __init__(self, uart: LIFUUart):
@@ -179,6 +189,13 @@ class TxDevice:
         if self.uart:
             return self.uart.is_connected()
         return False
+
+    def close(self):
+        """
+        Close Uart
+        """
+        if self.uart and self.uart.is_connected():
+            self.uart.disconnect()
 
     def ping(self) -> bool:
         """
@@ -467,6 +484,8 @@ class TxDevice:
             profile_index (int): The pulse profile to use.
             profile_increment (bool): Whether to increment the pulse profile.
         """
+
+        mode = mode.lower()
         if mode == "sequence":
             trigger_mode = TRIGGER_MODE_SEQUENCE
         elif mode == "continuous":
@@ -476,13 +495,23 @@ class TxDevice:
         else:
             raise ValueError("Invalid trigger mode")
 
+        logger.debug(f"Setting trigger with parameters: "
+                        f"pulse_interval={pulse_interval}, "
+                        f"pulse_count={pulse_count}, "
+                        f"pulse_width={pulse_width}, "
+                        f"pulse_train_interval={pulse_train_interval}, "
+                        f"pulse_train_count={pulse_train_count}, "
+                        f"mode={trigger_mode}")
+
         trigger_json = {
             "TriggerFrequencyHz": 1/pulse_interval,
             "TriggerPulseCount": pulse_count,
             "TriggerPulseWidthUsec": pulse_width,
-            "TriggerPulseTrainInterval": pulse_train_interval,
+            "TriggerPulseTrainInterval": pulse_train_interval * 1000000,
             "TriggerPulseTrainCount": pulse_train_count,
-            "TriggerMode": trigger_mode
+            "TriggerMode": trigger_mode,
+            "ProfileIndex": 0,
+            "ProfileIncrement": 0
         }
         return self.set_trigger_json(data=trigger_json)
 
@@ -759,6 +788,48 @@ class TxDevice:
         except Exception as e:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
+
+    def async_mode(self, enable: bool | None = None) -> bool:
+        """
+        Enable or disable asynchronous mode for the TX device.
+
+        Args:
+            enable (bool | None): If True, enable async mode; if False, disable it; if None read the current state.
+
+        Returns:
+            bool: True if async mode is enabled, False otherwise.
+
+        Raises:
+            ValueError: If the UART is not connected.
+            Exception: If an error occurs while setting async mode.
+        """
+        try:
+            if self.uart.demo_mode:
+                return True
+
+            if not self.uart.is_connected():
+                raise ValueError("TX Device not connected")
+
+            if enable is not None:
+                if enable:
+                    payload = struct.pack('<B', 1)
+                else:
+                    payload = struct.pack('<B', 0)
+            else:
+                payload = None
+
+            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_ASYNC, data=payload)
+            self.uart.clear_buffer()
+            # r.print_packet()
+            if r.packet_type == OW_ERROR:
+                logger.error("Error running async mode command for device")
+                raise Exception("Error running async mode command for device")
+            else:
+                return r.reserved == 1  # reserved field indicates async mode status
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise
 
     def enum_tx7332_devices(self, num_devices: int | None = None) -> int:
         """
