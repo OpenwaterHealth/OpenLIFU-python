@@ -364,6 +364,6 @@ class LIFUInterface:
     def __exit__(self, exc_type, exc_value, traceback):
         self.stop_monitoring()
         if self.txdevice:
-            self.txdevice.disconnect()
+            self.txdevice.close()
         if self.hvcontroller:
-            self.hvcontroller.disconnect()
+            self.hvcontroller.close()
