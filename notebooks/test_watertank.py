@@ -307,7 +307,7 @@ if use_external_power_supply:
         delays = sol_dict['delays'],
         apodizations= sol_dict['apodizations'],
         sequence= sol_dict['sequence'],
-        mode=trigger_mode,
+        trigger_mode=trigger_mode,
         profile_index=profile_index,
         profile_increment=profile_increment
     )

@@ -468,7 +468,7 @@ class TxDevice:
                     pulse_width: int = DEFAULT_PULSE_WIDTH_US,
                     pulse_train_interval: float = 0.0,
                     pulse_train_count: int = 1,
-                    mode: TriggerModeOpts = "sequence",
+                    trigger_mode: TriggerModeOpts = "sequence",
                     profile_index: int = 0,
                     profile_increment: bool = True) -> dict:
         """
@@ -485,12 +485,12 @@ class TxDevice:
             profile_increment (bool): Whether to increment the pulse profile.
         """
 
-        mode = mode.lower()
-        if mode == "sequence":
+        trigger_mode = trigger_mode.lower()
+        if trigger_mode == "sequence":
             trigger_mode = TRIGGER_MODE_SEQUENCE
-        elif mode == "continuous":
+        elif trigger_mode == "continuous":
             trigger_mode = TRIGGER_MODE_CONTINUOUS
-        elif mode == "single":
+        elif trigger_mode == "single":
             trigger_mode = TRIGGER_MODE_SINGLE
         else:
             raise ValueError("Invalid trigger mode")
@@ -501,7 +501,7 @@ class TxDevice:
                         f"pulse_width={pulse_width}, "
                         f"pulse_train_interval={pulse_train_interval}, "
                         f"pulse_train_count={pulse_train_count}, "
-                        f"mode={trigger_mode}")
+                        f"trigger_mode={trigger_mode}")
 
         trigger_json = {
             "TriggerFrequencyHz": 1/pulse_interval,
@@ -1264,7 +1264,7 @@ class TxDevice:
                         delays: np.ndarray,
                         apodizations: np.ndarray,
                         sequence: Dict,
-                        mode: TriggerModeOpts = "sequence",
+                        trigger_mode: TriggerModeOpts = "sequence",
                         profile_index: int = 1,
                         profile_increment: bool = True):
         """
@@ -1314,7 +1314,7 @@ class TxDevice:
             pulse_count=sequence["pulse_count"],
             pulse_train_interval=sequence["pulse_train_interval"],
             pulse_train_count=sequence["pulse_train_count"],
-            mode=mode,
+            trigger_mode=trigger_mode,
             profile_index=profile_index,
             profile_increment=profile_increment
         )
