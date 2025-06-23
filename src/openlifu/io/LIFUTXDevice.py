@@ -487,11 +487,11 @@ class TxDevice:
 
         trigger_mode = trigger_mode.lower()
         if trigger_mode == "sequence":
-            trigger_mode = TRIGGER_MODE_SEQUENCE
+            trigger_mode_int = TRIGGER_MODE_SEQUENCE
         elif trigger_mode == "continuous":
-            trigger_mode = TRIGGER_MODE_CONTINUOUS
+            trigger_mode_int = TRIGGER_MODE_CONTINUOUS
         elif trigger_mode == "single":
-            trigger_mode = TRIGGER_MODE_SINGLE
+            trigger_mode_int = TRIGGER_MODE_SINGLE
         else:
             raise ValueError("Invalid trigger mode")
 
@@ -509,7 +509,7 @@ class TxDevice:
             "TriggerPulseWidthUsec": pulse_width,
             "TriggerPulseTrainInterval": pulse_train_interval * 1000000,
             "TriggerPulseTrainCount": pulse_train_count,
-            "TriggerMode": trigger_mode,
+            "TriggerMode": trigger_mode_int,
             "ProfileIndex": 0,
             "ProfileIncrement": 0
         }
