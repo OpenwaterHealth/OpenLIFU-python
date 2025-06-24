@@ -14,7 +14,7 @@ from openlifu.io.LIFUTXDevice import TriggerModeOpts, TxDevice
 from openlifu.io.LIFUUart import LIFUUart
 from openlifu.plan.solution import Solution
 
-REF_MAX_SEQUENCE_TIMES = [2*60, 5*60, 10*60]
+REF_MAX_SEQUENCE_TIMES = [2*60, 5*60, 20*60]
 REF_MAX_DUTY_CYCLES = [0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
 MAX_VOLTAGE_BY_DUTY_CYCLE_AND_SEQUENCE_TIME = [
     [65, 65, 65], # 0.05
