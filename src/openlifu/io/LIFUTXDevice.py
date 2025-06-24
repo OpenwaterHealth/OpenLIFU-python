@@ -102,7 +102,7 @@ TriggerModeOpts = Literal['sequence', 'continuous','single']
 TRIGGER_MODE_SEQUENCE = 0
 TRIGGER_MODE_CONTINUOUS = 1
 TRIGGER_MODE_SINGLE = 2
-DEFAULT_PULSE_WIDTH_US = 20000
+DEFAULT_PULSE_WIDTH_US = 20
 
 from openlifu.io.LIFUConfig import (
     OW_CMD_ASYNC,
