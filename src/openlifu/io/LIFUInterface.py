@@ -70,6 +70,7 @@ class LIFUInterface:
         self._async_mode = run_async
         self._tx_uart = None
         self._hv_uart = None
+        self.status = LIFUInterfaceStatus.STATUS_SYS_OFF
 
         # Create a TXDevice instance as part of the interface
         logger.debug("Initializing TX Module of LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", vid, tx_pid, baudrate, timeout)
@@ -312,7 +313,17 @@ class LIFUInterface:
             logger.error("Error Starting sonication: %s", e)
             raise e
 
-    def get_status(self):
+    def set_status(self, status: LIFUInterfaceStatus) -> None:
+        """
+        Set the device status.
+
+        Args:
+            status (LIFUInterfaceStatus): The status to set.
+        """
+        logger.info("Setting device status to %s", status.name)
+        self.status = status
+
+    def get_status(self) -> LIFUInterfaceStatus:
         """
         Query the device status.
 
@@ -322,8 +333,7 @@ class LIFUInterface:
         if self._test_mode:
             return LIFUInterfaceStatus.STATUS_READY
 
-        status = LIFUInterfaceStatus.STATUS_ERROR
-        return status
+        return self.status
 
     def stop_sonication(self) -> bool:
         """
