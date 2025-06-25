@@ -97,6 +97,7 @@ MAX_REPEAT = 2**5-1
 MAX_ELASTIC_REPEAT = 2**16-1
 DEFAULT_TAIL_COUNT = 29
 DEFAULT_CLK_FREQ = 10e6
+ELASTIC_MODE_PULSE_LENGTH_ADJUST = 125e-6
 ProfileOpts = Literal['active', 'configured', 'all']
 TriggerModeOpts = Literal['sequence', 'continuous','single']
 TRIGGER_MODE_SEQUENCE = 0
@@ -1768,7 +1769,7 @@ class Tx7332Registers:
         cycles = int(profile_index.cycles)
         if cycles > (MAX_REPEAT+1):
             # Use elastic repeat
-            pulse_duration_samples = cycles * self.bf_clk / profile_index.frequency
+            pulse_duration_samples = self.bf_clk * ((cycles  / profile_index.frequency) + ELASTIC_MODE_PULSE_LENGTH_ADJUST)
             repeat = 0
             elastic_repeat = int(pulse_duration_samples / 16)
             period_samples = int(clk_n / profile_index.frequency)
