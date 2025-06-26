@@ -100,9 +100,6 @@ DEFAULT_CLK_FREQ = 10e6
 ELASTIC_MODE_PULSE_LENGTH_ADJUST = 125e-6
 ProfileOpts = Literal['active', 'configured', 'all']
 TriggerModeOpts = Literal['sequence', 'continuous','single']
-TRIGGER_MODE_SEQUENCE = 0
-TRIGGER_MODE_CONTINUOUS = 1
-TRIGGER_MODE_SINGLE = 2
 DEFAULT_PULSE_WIDTH_US = 20
 
 from openlifu.io.LIFUConfig import (
@@ -130,6 +127,9 @@ from openlifu.io.LIFUConfig import (
     OW_TX7332_VWREG,
     OW_TX7332_WBLOCK,
     OW_TX7332_WREG,
+    TRIGGER_MODE_CONTINUOUS,
+    TRIGGER_MODE_SEQUENCE,
+    TRIGGER_MODE_SINGLE,
 )
 
 if TYPE_CHECKING:
