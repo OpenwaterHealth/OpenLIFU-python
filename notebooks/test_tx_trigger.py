@@ -3,6 +3,10 @@ from __future__ import annotations
 import sys
 import time
 
+from openlifu.io.LIFUConfig import (
+    TRIGGER_MODE_SEQUENCE,
+    TRIGGER_MODE_SINGLE,
+)
 from openlifu.io.LIFUInterface import LIFUInterface
 
 # set PYTHONPATH=%cd%\src;%PYTHONPATH%
@@ -62,19 +66,26 @@ def main():
         print("❌ Failed comms with txdevice.")
         sys.exit(1)
 
+    version = interface.txdevice.get_version()
+    print(f"Version: {version}")
+
     while True:
         params = get_user_input()
         if params is None:
             print("Exiting...")
+            if interface.txdevice.is_connected:
+                print("Disconnecting TX device...")
+                interface.txdevice.close()
+
             break
 
         json_trigger_data = {
             "TriggerFrequencyHz": params["freq"],
-            "TriggerPulseCount": 1,
+            "TriggerPulseCount": 10,
             "TriggerPulseWidthUsec": params["pulse_width"],
-            "TriggerPulseTrainInterval": 0,
-            "TriggerPulseTrainCount": 0,
-            "TriggerMode": 1,
+            "TriggerPulseTrainInterval": 300000,
+            "TriggerPulseTrainCount": 10,
+            "TriggerMode": TRIGGER_MODE_SEQUENCE, # Change to TRIGGER_MODE_CONTINUOUS or TRIGGER_MODE_SEQUENCE or TRIGGER_MODE_SINGLE as needed
             "ProfileIndex": 0,
             "ProfileIncrement": 0
         }
@@ -87,8 +98,38 @@ def main():
             print("Failed to set trigger setting.")
             continue
 
-        if interface.txdevice.start_trigger():
-            print("Trigger Running. Press Enter to STOP:")
+        if trigger_setting["TriggerMode"]  == TRIGGER_MODE_SINGLE:
+            print("Trigger Mode set to SINGLE. Press Enter to START:")
+            if interface.txdevice.start_trigger():
+                print("Trigger started successfully.")
+            else:
+                print("Failed to start trigger.")
+
+        elif trigger_setting["TriggerMode"]  == TRIGGER_MODE_SEQUENCE:
+            print("Trigger Mode set to SEQUENCE")
+            if interface.txdevice.start_trigger():
+                print("Trigger started successfully.")
+            else:
+                print("Failed to start trigger.")
+            while True:
+                trigger_status = interface.txdevice.get_trigger_json()
+                if trigger_status is None:
+                    print("Failed to get trigger status! Fatal Error.")
+                    break
+
+                if trigger_status["TriggerStatus"] == "STOPPED":
+                    print("Run Complete.")
+                    break
+
+                time.sleep(.5)
+        else:
+            print("Trigger Running Continuous Mode. Press Enter to STOP:")
+
+            if interface.txdevice.start_trigger():
+                print("Trigger started successfully.")
+            else:
+                print("Failed to start trigger.")
+
             input()  # Wait for the user to press Enter
             if interface.txdevice.stop_trigger():
                 print("Trigger stopped successfully.")

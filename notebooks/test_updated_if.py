@@ -139,7 +139,7 @@ interface.txdevice.set_solution(
     delays = sol_dict['delays'],
     apodizations= sol_dict['apodizations'],
     sequence= sol_dict['sequence'],
-    mode = "continuous",
+    trigger_mode = "continuous",
     profile_index=profile_index,
     profile_increment=profile_increment
 )

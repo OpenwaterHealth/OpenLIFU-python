@@ -63,6 +63,13 @@ class HVController:
         if self.uart:
             return self.uart.is_connected()
 
+    def close(self):
+        """
+        Close Uart
+        """
+        if self.uart and self.uart.is_connected():
+            self.uart.disconnect()
+
     def ping(self) -> bool:
         """
         Send a ping command to the Console device to verify connectivity.

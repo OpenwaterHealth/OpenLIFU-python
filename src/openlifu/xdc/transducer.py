@@ -205,6 +205,16 @@ class Transducer:
                 element.rescale(units)
             self.units = units
 
+    def sort_by_index(self):
+        """Sort the elements of the transducer by their element number."""
+        element_order = np.argsort([element.index for element in self.elements])
+        self.elements = [self.elements[i] for i in element_order]
+
+    def sort_by_pin(self):
+        """Sort the elements of the transducer by their pin number."""
+        element_order = np.argsort([element.pin for element in self.elements])
+        self.elements = [self.elements[i] for i in element_order]
+
     def to_dict(self):
         d = self.__dict__.copy()
         d["elements"] = [element.to_dict() for element in d["elements"]]

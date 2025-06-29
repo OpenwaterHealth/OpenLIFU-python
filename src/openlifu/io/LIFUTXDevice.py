@@ -67,14 +67,16 @@ DELAY_ORDER = [[32, 30],
                [11, 9],
                [7, 5],
                [3, 1]]
+DELAY_ORDER_REVERSED = [[33 - c for c in row] for row in DELAY_ORDER]
 DELAY_CHANNEL_MAP = {}
-for row, channels in enumerate(DELAY_ORDER):
+for row, channels in enumerate(DELAY_ORDER_REVERSED):
     for i, channel in enumerate(channels):
         DELAY_CHANNEL_MAP[channel] = {'row': row, 'lsb': 16*(1-i)}
 DELAY_PROFILE_OFFSET = 16
 VALID_DELAY_PROFILES = list(range(1, 17))
 DELAY_WIDTH = 13
 APODIZATION_CHANNEL_ORDER = [17, 19, 21, 23, 25, 27, 29, 31, 18, 20, 22, 24, 26, 28, 30, 32, 1, 3, 5, 7, 9, 11, 13, 15, 2, 4, 6, 8, 10, 12, 14, 16]
+APODIZATION_CHANNEL_ORDER_REVERSED = [33 - c for c in APODIZATION_CHANNEL_ORDER]
 DEFAULT_PATTERN_DUTY_CYCLE = 0.66
 PATTERN_PROFILE_OFFSET = 4
 NUM_PATTERN_PROFILES = 32
@@ -95,14 +97,13 @@ MAX_REPEAT = 2**5-1
 MAX_ELASTIC_REPEAT = 2**16-1
 DEFAULT_TAIL_COUNT = 29
 DEFAULT_CLK_FREQ = 10e6
+ELASTIC_MODE_PULSE_LENGTH_ADJUST = 125e-6
 ProfileOpts = Literal['active', 'configured', 'all']
 TriggerModeOpts = Literal['sequence', 'continuous','single']
-TRIGGER_MODE_SEQUENCE = 0
-TRIGGER_MODE_CONTINUOUS = 1
-TRIGGER_MODE_SINGLE = 2
-DEFAULT_PULSE_WIDTH_US = 20000
+DEFAULT_PULSE_WIDTH_US = 20
 
 from openlifu.io.LIFUConfig import (
+    OW_CMD_ASYNC,
     OW_CMD_DFU,
     OW_CMD_ECHO,
     OW_CMD_GET_AMBIENT,
@@ -126,12 +127,24 @@ from openlifu.io.LIFUConfig import (
     OW_TX7332_VWREG,
     OW_TX7332_WBLOCK,
     OW_TX7332_WREG,
+    TRIGGER_MODE_CONTINUOUS,
+    TRIGGER_MODE_SEQUENCE,
+    TRIGGER_MODE_SINGLE,
 )
 
 if TYPE_CHECKING:
     pass
 
-logger = logging.getLogger(__name__)
+
+logger = logging.getLogger("TXDevice")
+logger.setLevel(logging.INFO)
+logger.propagate = False
+
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 class TxDevice:
     def __init__(self, uart: LIFUUart):
@@ -177,6 +190,13 @@ class TxDevice:
         if self.uart:
             return self.uart.is_connected()
         return False
+
+    def close(self):
+        """
+        Close Uart
+        """
+        if self.uart and self.uart.is_connected():
+            self.uart.disconnect()
 
     def ping(self) -> bool:
         """
@@ -449,7 +469,7 @@ class TxDevice:
                     pulse_width: int = DEFAULT_PULSE_WIDTH_US,
                     pulse_train_interval: float = 0.0,
                     pulse_train_count: int = 1,
-                    mode: TriggerModeOpts = "sequence",
+                    trigger_mode: TriggerModeOpts = "sequence",
                     profile_index: int = 0,
                     profile_increment: bool = True) -> dict:
         """
@@ -465,22 +485,34 @@ class TxDevice:
             profile_index (int): The pulse profile to use.
             profile_increment (bool): Whether to increment the pulse profile.
         """
-        if mode == "sequence":
-            trigger_mode = TRIGGER_MODE_SEQUENCE
-        elif mode == "continuous":
-            trigger_mode = TRIGGER_MODE_CONTINUOUS
-        elif mode == "single":
-            trigger_mode = TRIGGER_MODE_SINGLE
+
+        trigger_mode = trigger_mode.lower()
+        if trigger_mode == "sequence":
+            trigger_mode_int = TRIGGER_MODE_SEQUENCE
+        elif trigger_mode == "continuous":
+            trigger_mode_int = TRIGGER_MODE_CONTINUOUS
+        elif trigger_mode == "single":
+            trigger_mode_int = TRIGGER_MODE_SINGLE
         else:
             raise ValueError("Invalid trigger mode")
+
+        logger.info(f"Setting trigger with parameters: "
+                        f"pulse_interval={pulse_interval}, "
+                        f"pulse_count={pulse_count}, "
+                        f"pulse_width={pulse_width}, "
+                        f"pulse_train_interval={pulse_train_interval}, "
+                        f"pulse_train_count={pulse_train_count}, "
+                        f"trigger_mode={trigger_mode}")
 
         trigger_json = {
             "TriggerFrequencyHz": 1/pulse_interval,
             "TriggerPulseCount": pulse_count,
             "TriggerPulseWidthUsec": pulse_width,
-            "TriggerPulseTrainInterval": pulse_train_interval,
+            "TriggerPulseTrainInterval": pulse_train_interval * 1000000,
             "TriggerPulseTrainCount": pulse_train_count,
-            "TriggerMode": trigger_mode
+            "TriggerMode": trigger_mode_int,
+            "ProfileIndex": 0,
+            "ProfileIncrement": 0
         }
         return self.set_trigger_json(data=trigger_json)
 
@@ -758,6 +790,47 @@ class TxDevice:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
+    def async_mode(self, enable: bool | None = None) -> bool:
+        """
+        Enable or disable asynchronous mode for the TX device.
+
+        Args:
+            enable (bool | None): If True, enable async mode; if False, disable it; if None read the current state.
+
+        Returns:
+            bool: True if async mode is enabled, False otherwise.
+
+        Raises:
+            ValueError: If the UART is not connected.
+            Exception: If an error occurs while setting async mode.
+        """
+        try:
+            if self.uart.demo_mode:
+                return True
+
+            if not self.uart.is_connected():
+                raise ValueError("TX Device not connected")
+
+            if enable is not None:
+                if enable:
+                    payload = struct.pack('<B', 1)
+                else:
+                    payload = struct.pack('<B', 0)
+            else:
+                payload = None
+
+            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_ASYNC, data=payload)
+            self.uart.clear_buffer()
+            # r.print_packet()
+            if r.packet_type == OW_ERROR:
+                raise RuntimeError("Error running async mode command for device")
+            else:
+                return r.reserved == 1  # reserved field indicates async mode status
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise
+
     def enum_tx7332_devices(self, num_devices: int | None = None) -> int:
         """
         Enumerate TX7332 devices connected to the TX device.
@@ -1000,7 +1073,7 @@ class TxDevice:
             # Configure chunking for large blocks
             max_regs_per_block = 62  # Maximum registers per block due to payload size
             num_chunks = (len(reg_values) + max_regs_per_block - 1) // max_regs_per_block
-            logger.info(f"Write Block: Total chunks = {num_chunks}")
+            logger.debug(f"Write Block: Total chunks = {num_chunks}")
 
             # Write each chunk
             for i in range(num_chunks):
@@ -1033,7 +1106,7 @@ class TxDevice:
                     logger.error(f"Error writing TX block at chunk {i}")
                     return False
 
-            logger.info("Block write successful")
+            logger.debug("Block write successful")
             return True
 
         except ValueError as v:
@@ -1175,7 +1248,7 @@ class TxDevice:
                     logger.error(f"Error verifying writing TX block at chunk {i}")
                     return False
 
-            logger.info("Block write successful")
+            logger.debug("Block write successful")
             return True
 
         except ValueError as v:
@@ -1191,7 +1264,7 @@ class TxDevice:
                         delays: np.ndarray,
                         apodizations: np.ndarray,
                         sequence: Dict,
-                        mode: TriggerModeOpts = "sequence",
+                        trigger_mode: TriggerModeOpts = "sequence",
                         profile_index: int = 1,
                         profile_increment: bool = True):
         """
@@ -1241,7 +1314,7 @@ class TxDevice:
             pulse_count=sequence["pulse_count"],
             pulse_train_interval=sequence["pulse_train_interval"],
             pulse_train_count=sequence["pulse_train_count"],
-            mode=mode,
+            trigger_mode=trigger_mode,
             profile_index=profile_index,
             profile_increment=profile_increment
         )
@@ -1675,7 +1748,7 @@ class Tx7332Registers:
         delay_profile = self.get_delay_profile(profile)
         apod_register = 0
         for i, apod in enumerate(delay_profile.apodizations):
-            apod_register = set_register_value(apod_register, 1-apod, lsb=APODIZATION_CHANNEL_ORDER.index(i+1), width=1)
+            apod_register = set_register_value(apod_register, 1-apod, lsb=APODIZATION_CHANNEL_ORDER_REVERSED.index(i+1), width=1)
         delay_sel_register = 0
         delay_sel_register = set_register_value(delay_sel_register, delay_profile.profile-1, lsb=12, width=4)
         delay_sel_register = set_register_value(delay_sel_register, delay_profile.profile-1, lsb=28, width=4)
@@ -1695,7 +1768,7 @@ class Tx7332Registers:
         cycles = int(profile_index.cycles)
         if cycles > (MAX_REPEAT+1):
             # Use elastic repeat
-            pulse_duration_samples = cycles * self.bf_clk / profile_index.frequency
+            pulse_duration_samples = self.bf_clk * ((cycles  / profile_index.frequency) + ELASTIC_MODE_PULSE_LENGTH_ADJUST)
             repeat = 0
             elastic_repeat = int(pulse_duration_samples / 16)
             period_samples = int(clk_n / profile_index.frequency)
@@ -1865,7 +1938,9 @@ class TxDeviceRegisters:
         if activate:
             self.active_delay_profile = delay_profile.profile
         for i, tx in enumerate(self.transmitters):
-            start_channel = i*NUM_CHANNELS
+            module = i // 2
+            chip = (i+1) % 2
+            start_channel = module*NUM_CHANNELS*2 + chip*NUM_CHANNELS
             profiles = np.arange(start_channel, start_channel+NUM_CHANNELS, dtype=int)
             tx_delays = np.array(delay_profile.delays)[profiles].tolist()
             tx_apodizations = np.array(delay_profile.apodizations)[profiles].tolist()
