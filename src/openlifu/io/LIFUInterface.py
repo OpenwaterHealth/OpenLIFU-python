@@ -255,6 +255,8 @@ class LIFUInterface:
 
         self.check_solution(solution)
 
+        self.set_status(LIFUInterfaceStatus.STATUS_PROGRAMMING)
+
         if "name" in solution:
             solution_name = solution["name"]
             solution_name = f'Solution "{solution_name}"'
@@ -273,6 +275,8 @@ class LIFUInterface:
                 profile_increment=profile_increment,
                 trigger_mode=trigger_mode
             )
+        self.set_status(LIFUInterfaceStatus.STATUS_READY)
+
         logger.info(f"Setting HV to {voltage} V...")
         self.hvcontroller.set_voltage(voltage)
         if turn_hv_on:
@@ -300,6 +304,9 @@ class LIFUInterface:
 
             if bTriggerOn and bHvOn:
                 logger.info("Sonication started successfully.")
+                self.set_status(LIFUInterfaceStatus.STATUS_RUNNING)
+                # TODO: if self._async_mode:
+                #     self.txdevice.async_mode(True)
                 return True
             else:
                 logger.error("Failed to start sonication.")
@@ -351,6 +358,8 @@ class LIFUInterface:
             bHvOff = self.hvcontroller.turn_hv_off()
 
             if bTriggerOff and bHvOff:
+                #TODO: # if self._async_mode:
+                #     self.txdevice.async_mode(False)
                 logger.info("Sonication stopped successfully.")
                 return True
             else:
