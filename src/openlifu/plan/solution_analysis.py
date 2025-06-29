@@ -33,6 +33,8 @@ PARAM_FORMATS = {
     "beamwidth_ax_6dB_mm": ["mean", "0.2f", "mm", "6dB Beamwidth (Axial)"],
     "sidelobe_pnp_MPa": ["max", "0.3f", "MPa", "Sidelobe Peak Negative Pressure"],
     "sidelobe_isppa_Wcm2": ["max", "0.1f", "W/cm^2", "Sidelobe I_SPPA"],
+    "mainlobe_to_sidelobe_pressure_ratio": ["mean", "0.2f", "", "Mainlobe/Sidelobe Pressure Ratio"],
+    "mainlobe_to_sidelobe_intensity_ratio": ["mean", "0.2f", "", "Mainlobe/Sidelobe Intensity Ratio"],
     "global_pnp_MPa": ["max", "0.3f", "MPa", "Global Peak Negative Pressure"],
     "global_isppa_Wcm2": ["max", "0.1f", "W/cm^2", "Global I_SPPA"],
     "global_ispta_mWcm2": [None, "0.1f", "mW/cm^2", "Global I_SPTA"],
@@ -97,6 +99,12 @@ class SolutionAnalysis(DictMixin):
 
     sidelobe_isppa_Wcm2: Annotated[list[float], OpenLIFUFieldData("Sidelobe ISPPA", "Spatial peak pulse average intensity in the sidelobes, in W/cm²")] = field(default_factory=list)
     """Spatial peak pulse average intensity in the sidelobes, in W/cm²"""
+
+    mainlobe_to_sidelobe_pressure_ratio: Annotated[list[float], OpenLIFUFieldData("Mainlobe/Sidelobe Pressure Ratio", "Ratio of mainlobe peak negative pressure to sidelobe peak negative pressure")] = field(default_factory=list)
+    """Ratio of mainlobe peak negative pressure to sidelobe peak negative pressure"""
+
+    mainlobe_to_sidelobe_intensity_ratio: Annotated[list[float], OpenLIFUFieldData("Mainlobe/Sidelobe Intensity Ratio", "Ratio of mainlobe spatial peak pulse average intensity to sidelobe spatial peak pulse average intensity")] = field(default_factory=list)
+    """Ratio of mainlobe spatial peak pulse average intensity to sidelobe spatial peak pulse average intensity"""
 
     global_pnp_MPa: Annotated[list[float], OpenLIFUFieldData("Global PNP", "Maximum peak negative pressure in the entire field, in MPa")] = field(default_factory=list)
     """Maximum peak negative pressure in the entire field, in MPa"""
