@@ -220,46 +220,40 @@ def test_solution_analyze_ratios(example_solution: Solution, example_transducer:
     # Check Case 1
     # Expected mainlobe pnp = 1.0 MPa (from p_min_data[0,1,0,1] = 1e6 Pa)
     # Expected sidelobe pnp = 0.5 MPa (from p_min_data[0,2,0,2] = 0.5e6 Pa)
-    # Expected pressure ratio = 1.0 / 0.5 = 2.0
+    # Expected pressure ratio = 0.5 / 1.0 = 0.5
 
     # Expected mainlobe isppa = 10 W/cm^2
     # Expected sidelobe isppa = 2 W/cm^2
-    # Expected intensity ratio = 10.0 / 2.0 = 5.0
+    # Expected intensity ratio = 2.0 / 10.0 = 0.2
 
     # Due to potential small variations from interpolation/masking, use approx
     assert np.isclose(analysis.mainlobe_pnp_MPa[0], 1.0), f"Mainlobe PNP was {analysis.mainlobe_pnp_MPa[0]}"
-    # The sidelobe selection is tricky. The mask is `dist > options.sidelobe_radius`.
-    # The voxel at (0.01, 0, 0.06) is sqrt(0.01^2 + 0.01^2) = sqrt(0.0002) approx 0.014m from focus (0,0,0.05)
-    # This should be greater than sidelobe_radius (0.005m).
-    # The voxel at (0,0,0.04) is 0.01m away.
-    # The voxel at (0,0,0.06) is 0.01m away.
-    # The voxel at (-0.01,0,0.04) is sqrt(0.01^2 + (-0.01)^2) = 0.014m away.
-    # It is possible that another zero-value point gets selected as sidelobe max if the intended one is not picked.
-    # For this test to be robust, we need to ensure the sidelobe value is indeed picked.
-    # If sidelobe_pnp_MPa is 0, then the ratio will be inf.
-    assert analysis.sidelobe_pnp_MPa[0] > 0, "Sidelobe PNP was zero, check mask/data."
-    assert np.isclose(analysis.mainlobe_to_sidelobe_pressure_ratio[0], 1.0 / analysis.sidelobe_pnp_MPa[0]), \
-        f"Pressure ratio calculation error. Got {analysis.mainlobe_to_sidelobe_pressure_ratio[0]}"
+    assert analysis.sidelobe_pnp_MPa[0] > 0, "Sidelobe PNP was zero, check mask/data for Case 1." # Ensure it's not zero
+    # Using the actual found sidelobe value for ratio assertion robustness
+    expected_pressure_ratio_case1 = analysis.sidelobe_pnp_MPa[0] / analysis.mainlobe_pnp_MPa[0]
+    assert np.isclose(analysis.sidelobe_to_mainlobe_pressure_ratio[0], expected_pressure_ratio_case1), \
+        f"Pressure ratio calculation error. Got {analysis.sidelobe_to_mainlobe_pressure_ratio[0]}, expected {expected_pressure_ratio_case1}"
 
     assert np.isclose(analysis.mainlobe_isppa_Wcm2[0], 10.0), f"Mainlobe ISPPA was {analysis.mainlobe_isppa_Wcm2[0]}"
-    assert analysis.sidelobe_isppa_Wcm2[0] > 0, "Sidelobe ISPPA was zero, check mask/data."
-    assert np.isclose(analysis.mainlobe_to_sidelobe_intensity_ratio[0], 10.0 / analysis.sidelobe_isppa_Wcm2[0]), \
-        f"Intensity ratio calculation error. Got {analysis.mainlobe_to_sidelobe_intensity_ratio[0]}"
+    assert analysis.sidelobe_isppa_Wcm2[0] > 0, "Sidelobe ISPPA was zero, check mask/data for Case 1." # Ensure it's not zero
+    expected_intensity_ratio_case1 = analysis.sidelobe_isppa_Wcm2[0] / analysis.mainlobe_isppa_Wcm2[0]
+    assert np.isclose(analysis.sidelobe_to_mainlobe_intensity_ratio[0], expected_intensity_ratio_case1), \
+        f"Intensity ratio calculation error. Got {analysis.sidelobe_to_mainlobe_intensity_ratio[0]}, expected {expected_intensity_ratio_case1}"
 
 
-    # Case 2: Sidelobe pressure is zero
+    # Case 2: Sidelobe pressure is zero, Mainlobe is non-zero
     p_min_data_case2 = np.zeros((1, 3, 1, 3))
     p_min_data_case2[0, 1, 0, 1] = 1.0e6  # Mainlobe pressure = 1 MPa
     p_min_data_case2[0, 2, 0, 2] = 0.0    # Sidelobe pressure = 0 MPa
     solution.simulation_result['p_min'].data = p_min_data_case2
-    solution.simulation_result['intensity'].data = intensity_data # Keep intensity same for this sub-case
+    solution.simulation_result['intensity'].data = intensity_data # Keep intensity same
 
     analysis_case2 = solution.analyze(example_transducer, options=options)
     assert analysis_case2.mainlobe_pnp_MPa[0] == 1.0
     assert analysis_case2.sidelobe_pnp_MPa[0] == 0.0
-    assert analysis_case2.mainlobe_to_sidelobe_pressure_ratio[0] == np.inf
+    assert analysis_case2.sidelobe_to_mainlobe_pressure_ratio[0] == 0.0 # 0 / 1.0 == 0.0
 
-    # Case 3: Sidelobe intensity is zero
+    # Case 3: Sidelobe intensity is zero, Mainlobe is non-zero
     intensity_data_case3 = np.zeros((1,3,1,3))
     intensity_data_case3[0, 1, 0, 1] = 10.0  # Mainlobe intensity = 10 W/cm^2
     intensity_data_case3[0, 2, 0, 2] = 0.0   # Sidelobe intensity = 0 W/cm^2
@@ -269,57 +263,47 @@ def test_solution_analyze_ratios(example_solution: Solution, example_transducer:
     analysis_case3 = solution.analyze(example_transducer, options=options)
     assert analysis_case3.mainlobe_isppa_Wcm2[0] == 10.0
     assert analysis_case3.sidelobe_isppa_Wcm2[0] == 0.0
-    assert analysis_case3.mainlobe_to_sidelobe_intensity_ratio[0] == np.inf
+    assert analysis_case3.sidelobe_to_mainlobe_intensity_ratio[0] == 0.0 # 0 / 10.0 == 0.0
 
-    # Case 4: Mainlobe and Sidelobe pressure are zero
+    # Case 4: Mainlobe pressure is zero, Sidelobe is non-zero
     p_min_data_case4 = np.zeros((1, 3, 1, 3))
-    # p_min_data_case4[0, 1, 0, 1] = 0.0 # Mainlobe pressure = 0 MPa (implicit zero)
-    # p_min_data_case4[0, 2, 0, 2] = 0.0 # Sidelobe pressure = 0 MPa (implicit zero)
+    p_min_data_case4[0, 1, 0, 1] = 0.0    # Mainlobe pressure = 0 MPa
+    p_min_data_case4[0, 2, 0, 2] = 0.5e6  # Sidelobe pressure = 0.5 MPa
     solution.simulation_result['p_min'].data = p_min_data_case4
     solution.simulation_result['intensity'].data = intensity_data # Keep intensity same
 
     analysis_case4 = solution.analyze(example_transducer, options=options)
     assert analysis_case4.mainlobe_pnp_MPa[0] == 0.0
-    # Sidelobe might pick up another zero if the specific target voxel is not masked as sidelobe
-    # This depends heavily on mask behavior with all-zero data.
-    # If mainlobe is 0 and sidelobe is 0, ratio is nan.
-    # If mainlobe is 0 and sidelobe is also reported as 0 (max of zeros), then ratio is nan.
-    assert np.isnan(analysis_case4.mainlobe_to_sidelobe_pressure_ratio[0])
+    # Ensure sidelobe is picked up as non-zero
+    assert analysis_case4.sidelobe_pnp_MPa[0] > 0, "Sidelobe PNP was zero for Case 4, expected non-zero."
+    assert analysis_case4.sidelobe_to_mainlobe_pressure_ratio[0] == np.inf # 0.5 / 0 == inf
 
-
-    # Case 5: Mainlobe and Sidelobe intensity are zero
+    # Case 5: Mainlobe intensity is zero, Sidelobe is non-zero
     intensity_data_case5 = np.zeros((1,3,1,3))
+    intensity_data_case5[0, 1, 0, 1] = 0.0   # Mainlobe intensity = 0 W/cm^2
+    intensity_data_case5[0, 2, 0, 2] = 2.0  # Sidelobe intensity = 2 W/cm^2
     solution.simulation_result['p_min'].data = p_min_data # Reset p_min
     solution.simulation_result['intensity'].data = intensity_data_case5
     analysis_case5 = solution.analyze(example_transducer, options=options)
     assert analysis_case5.mainlobe_isppa_Wcm2[0] == 0.0
-    assert np.isnan(analysis_case5.mainlobe_to_sidelobe_intensity_ratio[0])
+    assert analysis_case5.sidelobe_isppa_Wcm2[0] > 0, "Sidelobe ISPPA was zero for Case 5, expected non-zero."
+    assert analysis_case5.sidelobe_to_mainlobe_intensity_ratio[0] == np.inf # 2.0 / 0 == inf
 
-    # Case 6: Mainlobe pressure is zero, sidelobe is non-zero
+    # Case 6: Mainlobe and Sidelobe pressure are zero
     p_min_data_case6 = np.zeros((1, 3, 1, 3))
-    p_min_data_case6[0, 1, 0, 1] = 0.0    # Mainlobe pressure = 0 MPa
-    p_min_data_case6[0, 2, 0, 2] = 0.5e6  # Sidelobe pressure = 0.5 MPa
     solution.simulation_result['p_min'].data = p_min_data_case6
     solution.simulation_result['intensity'].data = intensity_data # Keep intensity same
 
     analysis_case6 = solution.analyze(example_transducer, options=options)
     assert analysis_case6.mainlobe_pnp_MPa[0] == 0.0
-    if analysis_case6.sidelobe_pnp_MPa[0] > 0: # Ensure sidelobe was picked up
-        assert analysis_case6.mainlobe_to_sidelobe_pressure_ratio[0] == 0.0
-    else:
-        # If sidelobe also became 0 (e.g. masking issues), then ratio is NaN
-        assert np.isnan(analysis_case6.mainlobe_to_sidelobe_pressure_ratio[0])
+    assert analysis_case6.sidelobe_pnp_MPa[0] == 0.0
+    assert np.isnan(analysis_case6.sidelobe_to_mainlobe_pressure_ratio[0]) # 0 / 0 == nan
 
-    # Case 7: Mainlobe intensity is zero, sidelobe is non-zero
+    # Case 7: Mainlobe and Sidelobe intensity are zero
     intensity_data_case7 = np.zeros((1,3,1,3))
-    intensity_data_case7[0, 1, 0, 1] = 0.0   # Mainlobe intensity = 0 W/cm^2
-    intensity_data_case7[0, 2, 0, 2] = 2.0  # Sidelobe intensity = 2 W/cm^2
     solution.simulation_result['p_min'].data = p_min_data # Reset p_min
     solution.simulation_result['intensity'].data = intensity_data_case7
-
     analysis_case7 = solution.analyze(example_transducer, options=options)
     assert analysis_case7.mainlobe_isppa_Wcm2[0] == 0.0
-    if analysis_case7.sidelobe_isppa_Wcm2[0] > 0: # Ensure sidelobe was picked up
-        assert analysis_case7.mainlobe_to_sidelobe_intensity_ratio[0] == 0.0
-    else:
-        assert np.isnan(analysis_case7.mainlobe_to_sidelobe_intensity_ratio[0])
+    assert analysis_case7.sidelobe_isppa_Wcm2[0] == 0.0
+    assert np.isnan(analysis_case7.sidelobe_to_mainlobe_intensity_ratio[0]) # 0 / 0 == nan

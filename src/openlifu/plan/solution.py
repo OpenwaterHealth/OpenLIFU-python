@@ -257,18 +257,21 @@ class Solution:
             solution_analysis.sidelobe_pnp_MPa += [sidelobe_pnp]
             solution_analysis.sidelobe_isppa_Wcm2 += [sidelobe_isppa]
 
-            # Calculate and store ratios
-            if sidelobe_pnp == 0:
-                pressure_ratio = np.inf if solution_analysis.mainlobe_pnp_MPa[-1] != 0 else np.nan
-            else:
-                pressure_ratio = solution_analysis.mainlobe_pnp_MPa[-1] / sidelobe_pnp
-            solution_analysis.mainlobe_to_sidelobe_pressure_ratio += [pressure_ratio]
+            # Calculate and store ratios (sidelobe / mainlobe)
+            mainlobe_pnp = solution_analysis.mainlobe_pnp_MPa[-1]
+            mainlobe_isppa = solution_analysis.mainlobe_isppa_Wcm2[-1]
 
-            if sidelobe_isppa == 0:
-                intensity_ratio = np.inf if solution_analysis.mainlobe_isppa_Wcm2[-1] != 0 else np.nan
+            if mainlobe_pnp == 0:
+                pressure_ratio = np.inf if sidelobe_pnp != 0 else np.nan
             else:
-                intensity_ratio = solution_analysis.mainlobe_isppa_Wcm2[-1] / sidelobe_isppa
-            solution_analysis.mainlobe_to_sidelobe_intensity_ratio += [intensity_ratio]
+                pressure_ratio = sidelobe_pnp / mainlobe_pnp
+            solution_analysis.sidelobe_to_mainlobe_pressure_ratio += [pressure_ratio]
+
+            if mainlobe_isppa == 0:
+                intensity_ratio = np.inf if sidelobe_isppa != 0 else np.nan
+            else:
+                intensity_ratio = sidelobe_isppa / mainlobe_isppa
+            solution_analysis.sidelobe_to_mainlobe_intensity_ratio += [intensity_ratio]
 
             solution_analysis.global_pnp_MPa += [float(pnp_MPa.where(z_mask).max())]
             solution_analysis.global_isppa_Wcm2 += [float(ipa_Wcm2.where(z_mask).max())]
