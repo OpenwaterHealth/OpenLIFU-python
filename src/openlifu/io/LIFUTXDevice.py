@@ -823,8 +823,7 @@ class TxDevice:
             self.uart.clear_buffer()
             # r.print_packet()
             if r.packet_type == OW_ERROR:
-                logger.error("Error running async mode command for device")
-                raise Exception("Error running async mode command for device")
+                raise RuntimeError("Error running async mode command for device")
             else:
                 return r.reserved == 1  # reserved field indicates async mode status
 
@@ -1074,7 +1073,7 @@ class TxDevice:
             # Configure chunking for large blocks
             max_regs_per_block = 62  # Maximum registers per block due to payload size
             num_chunks = (len(reg_values) + max_regs_per_block - 1) // max_regs_per_block
-            logger.info(f"Write Block: Total chunks = {num_chunks}")
+            logger.debug(f"Write Block: Total chunks = {num_chunks}")
 
             # Write each chunk
             for i in range(num_chunks):
