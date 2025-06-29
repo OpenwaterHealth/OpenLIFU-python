@@ -137,7 +137,7 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger("TXDevice")
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 logger.propagate = False
 
 if not logger.handlers:
@@ -496,7 +496,7 @@ class TxDevice:
         else:
             raise ValueError("Invalid trigger mode")
 
-        logger.debug(f"Setting trigger with parameters: "
+        logger.info(f"Setting trigger with parameters: "
                         f"pulse_interval={pulse_interval}, "
                         f"pulse_count={pulse_count}, "
                         f"pulse_width={pulse_width}, "
@@ -1106,7 +1106,7 @@ class TxDevice:
                     logger.error(f"Error writing TX block at chunk {i}")
                     return False
 
-            logger.info("Block write successful")
+            logger.debug("Block write successful")
             return True
 
         except ValueError as v:
@@ -1248,7 +1248,7 @@ class TxDevice:
                     logger.error(f"Error verifying writing TX block at chunk {i}")
                     return False
 
-            logger.info("Block write successful")
+            logger.debug("Block write successful")
             return True
 
         except ValueError as v:
