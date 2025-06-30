@@ -10,11 +10,11 @@ import pandas as pd
 
 from openlifu.io.LIFUHVController import HVController
 from openlifu.io.LIFUSignal import LIFUSignal
-from openlifu.io.LIFUTXDevice import TxDevice
+from openlifu.io.LIFUTXDevice import TriggerModeOpts, TxDevice
 from openlifu.io.LIFUUart import LIFUUart
 from openlifu.plan.solution import Solution
 
-REF_MAX_SEQUENCE_TIMES = [2*60, 5*60, 10*60]
+REF_MAX_SEQUENCE_TIMES = [2*60, 5*60, 20*60]
 REF_MAX_DUTY_CYCLES = [0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
 MAX_VOLTAGE_BY_DUTY_CYCLE_AND_SEQUENCE_TIME = [
     [65, 65, 65], # 0.05
@@ -70,6 +70,7 @@ class LIFUInterface:
         self._async_mode = run_async
         self._tx_uart = None
         self._hv_uart = None
+        self.status = LIFUInterfaceStatus.STATUS_SYS_OFF
 
         # Create a TXDevice instance as part of the interface
         logger.debug("Initializing TX Module of LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", vid, tx_pid, baudrate, timeout)
@@ -236,7 +237,10 @@ class LIFUInterface:
     def set_solution(self,
                      solution: Solution | Dict,
                      profile_index:int=1,
-                     profile_increment:bool=True) -> bool:
+                     profile_increment:bool=True,
+                     trigger_mode: TriggerModeOpts = "sequence",
+                     turn_hv_on: bool = True
+                     ) -> None:
         """
         Load a solution to the device.
 
@@ -244,43 +248,39 @@ class LIFUInterface:
             solution (Solution): The solution to load.
             profile_index (int): The profile index to load the solution to (defaults to 0)
             profile_increment (bool): Increment the profile index
+            trigger_mode (TriggerModeOpts): The trigger mode to use (defaults to "sequence")
         """
-        try:
-            #if self._test_mode:
-            #    return True
+        if isinstance(solution, Solution):
+            solution = solution.to_dict()
 
-            if isinstance(solution, Solution):
-                solution = solution.to_dict()
+        self.check_solution(solution)
 
-            self.check_solution(solution)
+        self.set_status(LIFUInterfaceStatus.STATUS_PROGRAMMING)
 
-            if "name" in solution:
-                solution_name = solution["name"]
-                solution_name = f'Solution "{solution_name}"'
-            else:
-                solution_name = "Solution"
+        if "name" in solution:
+            solution_name = solution["name"]
+            solution_name = f'Solution "{solution_name}"'
+        else:
+            solution_name = "Solution"
 
-            voltage = solution['voltage']
-            logger.info("Loading %s...", solution_name)
-            # Convert solution data and send to the device
-            self.txdevice.set_solution(
-                    pulse = solution['pulse'],
-                    delays = solution['delays'],
-                    apodizations= solution['apodizations'],
-                    sequence= solution['sequence'],
-                    profile_index=profile_index,
-                    profile_increment=profile_increment
-                )
-            self.hvcontroller.set_voltage(voltage)
-            logger.info("%s loaded successfully.", solution_name)
-            return True
+        voltage = solution['voltage']
+        logger.info("Loading %s...", solution_name)
+        # Convert solution data and send to the device
+        self.txdevice.set_solution(
+                pulse = solution['pulse'],
+                delays = solution['delays'],
+                apodizations= solution['apodizations'],
+                sequence= solution['sequence'],
+                profile_index=profile_index,
+                profile_increment=profile_increment,
+                trigger_mode=trigger_mode
+            )
+        self.set_status(LIFUInterfaceStatus.STATUS_READY)
 
-        except ValueError as v:
-            logger.error("ValueError: %s", v)
-            raise  # Re-raise the exception for the caller to handle
-        except Exception as e:
-            logger.error("Error loading %s: %s", solution_name, e)
-            raise
+        logger.info(f"Setting HV to {voltage} V...")
+        self.hvcontroller.set_voltage(voltage)
+
+        logger.info("%s loaded successfully.", solution_name)
 
     def start_sonication(self) -> bool:
         """
@@ -295,12 +295,16 @@ class LIFUInterface:
             logger.info("Turn ON HV")
             bHvOn = self.hvcontroller.turn_hv_on()
 
+            if self._async_mode:
+                self.txdevice.async_mode(True)
+
             logger.info("Start Sonication")
             # Send the solution data to the device
             bTriggerOn = self.txdevice.start_trigger()
 
             if bTriggerOn and bHvOn:
                 logger.info("Sonication started successfully.")
+                self.set_status(LIFUInterfaceStatus.STATUS_RUNNING)
                 return True
             else:
                 logger.error("Failed to start sonication.")
@@ -314,7 +318,17 @@ class LIFUInterface:
             logger.error("Error Starting sonication: %s", e)
             raise e
 
-    def get_status(self):
+    def set_status(self, status: LIFUInterfaceStatus) -> None:
+        """
+        Set the device status.
+
+        Args:
+            status (LIFUInterfaceStatus): The status to set.
+        """
+        logger.info("Setting device status to %s", status.name)
+        self.status = status
+
+    def get_status(self) -> LIFUInterfaceStatus:
         """
         Query the device status.
 
@@ -324,8 +338,7 @@ class LIFUInterface:
         if self._test_mode:
             return LIFUInterfaceStatus.STATUS_READY
 
-        status = LIFUInterfaceStatus.STATUS_ERROR
-        return status
+        return self.status
 
     def stop_sonication(self) -> bool:
         """
@@ -341,6 +354,8 @@ class LIFUInterface:
             # Send the solution data to the device
             bTriggerOff = self.txdevice.stop_trigger()
             bHvOff = self.hvcontroller.turn_hv_off()
+            if self._async_mode:
+                self.txdevice.async_mode(False)
 
             if bTriggerOff and bHvOff:
                 logger.info("Sonication stopped successfully.")
@@ -366,6 +381,6 @@ class LIFUInterface:
     def __exit__(self, exc_type, exc_value, traceback):
         self.stop_monitoring()
         if self.txdevice:
-            self.txdevice.disconnect()
+            self.txdevice.close()
         if self.hvcontroller:
-            self.hvcontroller.disconnect()
+            self.hvcontroller.close()

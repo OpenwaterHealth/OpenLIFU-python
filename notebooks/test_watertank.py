@@ -5,6 +5,7 @@ import os
 import sys
 import threading
 import time
+from pathlib import Path
 
 if os.name == 'nt':
     import msvcrt
@@ -15,10 +16,10 @@ import numpy as np
 
 from openlifu.bf.pulse import Pulse
 from openlifu.bf.sequence import Sequence
+from openlifu.db import Database
 from openlifu.geo import Point
 from openlifu.io.LIFUInterface import LIFUInterface
 from openlifu.plan.solution import Solution
-from openlifu.xdc import Transducer
 
 # set PYTHONPATH=%cd%\src;%PYTHONPATH%
 # python notebooks/test_watertank.py
@@ -49,12 +50,12 @@ yInput = 0
 zInput = 50
 
 frequency_kHz = 400 # Frequency in kHz
-voltage = 50.0 # Voltage in Volts
+voltage = 10.0 # Voltage in Volts
 duration_msec = 5 # Pulse Duration in milliseconds
 interval_msec = 100 # Pulse Repetition Interval in milliseconds
-num_modules = 1 # Number of modules in the system
+num_modules = 2 # Number of modules in the system
 
-use_external_power_supply = False # Select whether to use console or power supply
+use_external_power_supply = True # Select whether to use console or power supply
 
 console_shutoff_temp_C = 70.0 # Console shutoff temperature in Celsius
 tx_shutoff_temp_C = 70.0 # TX device shutoff temperature in Celsius
@@ -69,6 +70,26 @@ rapid_temp_shutoff_seconds = 5 # Time in seconds to reach rapid temperature shut
 rapid_temp_increase_per_second_shutoff_C = 3 # Rapid temperature climbing shutoff in Celsius
 
 peak_to_peak_voltage = voltage * 2 # Peak to peak voltage for the pulse
+
+here = Path(__file__).parent.resolve()
+db_path = here / ".." / "db_dvc"
+db = Database(db_path)
+arr = db.load_transducer(f"openlifu_{num_modules}x400_evt1")
+arr.sort_by_pin()
+
+target = Point(position=(xInput,yInput,zInput), units="mm")
+focus = target.get_position(units="mm")
+distances = np.sqrt(np.sum((focus - arr.get_positions(units="mm"))**2, 1)).reshape(1,-1)
+tof = distances*1e-3 / 1500
+delays = tof.max() - tof
+#delays = delays*0.0
+
+apodizations = np.ones((1, arr.numelements()))
+#active_element = 25
+#active_element = np.arange(1,65)
+#apodizations = np.zeros((1, arr.numelements()))
+#apodizations[:, active_element-1] = 1
+
 
 logger.info("Starting LIFU Test Script...")
 interface = LIFUInterface()
@@ -114,7 +135,10 @@ def log_temperature():
     # Create a file with the current timestamp in the name
     start = time.time()
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    filename = f"{timestamp}_{frequency_kHz}kHz_{voltage}V_{duration_msec}ms_Duration_{interval_msec}ms_Interval_Temperature_Readings.csv"
+    logpath = here / ".." / "logs"
+    if not logpath.exists():
+        logpath.mkdir(parents=True)
+    logfile = logpath / f"{timestamp}_{frequency_kHz}kHz_{voltage}V_{duration_msec}ms_Duration_{interval_msec}ms_Interval_Temperature_Readings.csv"
     shutdown = False
 
     prev_tx_temp = None
@@ -124,7 +148,7 @@ def log_temperature():
     if use_external_power_supply:
         con_temp = "N/A"
 
-    with open(filename, "w") as logfile:
+    with open(logfile, "w") as logfile:
         # Create header for CSV file
         log_line = "Current Time,Frequency (kHz),Duration (ms),Interval (ms),Voltage (Per Rail),Voltage (Peak to Peak),Console Temperature (°C),Transmitter Temperature (°C),Ambient Temperature (°C)\n"
         logfile.write(log_line)
@@ -217,7 +241,7 @@ def log_temperature():
             time.sleep(log_interval)
     minutes, seconds = divmod(int(time.time() - start), 60)
     logger.info(f"Temperature logging stopped after {minutes}:{seconds:02d}.")
-    logger.info(f"Data saved to \"{filename}\".")
+    logger.info(f"Data saved to \"{os.path.relpath(logfile.name)}\".")
     sys.exit(0)
 
 # Verify communication with the devices
@@ -235,7 +259,6 @@ if not use_external_power_supply:
         logger.info(f"Console Firmware Version: {console_firmware_version}")
     except Exception as e:
         logger.error(f"Error querying console firmware version: {e}")
-
 try:
     tx_firmware_version = interface.txdevice.get_version()
     logger.info(f"TX Firmware Version: {tx_firmware_version}")
@@ -252,42 +275,10 @@ elif num_tx_devices == num_modules*2:
 else:
     raise Exception(f"Number of TX7332 devices found: {num_tx_devices} != 2x{num_modules}")
 
-logger.info("Get Trigger")
-trigger_setting = interface.txdevice.get_trigger_json()
-if trigger_setting:
-    logger.info(f"Trigger Setting: {trigger_setting}")
-else:
-    logger.error("Failed to set trigger setting.")
-    sys.exit(1)
-
-if not use_external_power_supply:
-    if interface.hvcontroller.set_voltage(voltage):
-        logger.info("High Voltage set successfully.")
-    else:
-        logger.error("Failed to set High Voltage.")
-        sys.exit(1)
-
-pulse = Pulse(frequency=frequency_kHz*1e3, duration=duration_msec*1e-3)
-pt = Point(position=(xInput,yInput,zInput), units="mm")
-arr = Transducer.from_file(R".\notebooks\pinmap.json")
-pin_order = np.argsort([el.pin for el in arr.elements])
-
-focus = pt.get_position(units="mm")
-#arr.elements = np.array(arr.elements)[np.argsort([el.pin for el in arr.elements])].tolist()
-distances = np.sqrt(np.sum((focus - arr.get_positions(units="mm"))**2, 1))
-tof = distances*1e-3 / 1500
-delays = tof.max() - tof
-apodizations = np.ones(arr.numelements())
-
-# Turn only single element ON
-#active_element = 25
-active_element = np.arange(1,65)
-
-#delays = delays*0.0
-apodizations = np.zeros(arr.numelements())
-apodizations[active_element-1] = 1
 logger.info(f'Apodizations: {apodizations}')
 logger.info(f'Delays: {delays}')
+
+pulse = Pulse(frequency=frequency_kHz*1e3, duration=duration_msec*1e-3)
 
 sequence = Sequence(
     pulse_interval=interval_msec*1e-3,
@@ -296,26 +287,47 @@ sequence = Sequence(
     pulse_train_count=1
 )
 
+pin_order = np.argsort([el.pin for el in arr.elements])
 solution = Solution(
-    delays = delays,
-    apodizations = apodizations,
+    delays = delays[:, pin_order],
+    apodizations = apodizations[:, pin_order],
     pulse = pulse,
     voltage=voltage,
     sequence = sequence
 )
-
-sol_dict = solution.to_dict()
 profile_index = 1
 profile_increment = True
-interface.txdevice.set_solution(
-    pulse = sol_dict['pulse'],
-    delays = sol_dict['delays'][pin_order],
-    apodizations= sol_dict['apodizations'][pin_order],
-    sequence= sol_dict['sequence'],
-    mode="continuous",
-    profile_index=profile_index,
-    profile_increment=profile_increment
-)
+trigger_mode = "continuous"
+
+if use_external_power_supply:
+    interface.check_solution(solution)
+    sol_dict = solution.to_dict()
+    interface.txdevice.set_solution(
+        pulse = sol_dict['pulse'],
+        delays = sol_dict['delays'],
+        apodizations= sol_dict['apodizations'],
+        sequence= sol_dict['sequence'],
+        trigger_mode=trigger_mode,
+        profile_index=profile_index,
+        profile_increment=profile_increment
+    )
+    logger.info(f"Using external power supply. Ensure HV is turned on and set to {voltage}V before starting the trigger.")
+else:
+    interface.set_solution(
+        solution=solution,
+        profile_index=profile_index,
+        profile_increment=profile_increment,
+        trigger_mode=trigger_mode,
+        turn_hv_on=True)
+
+logger.info("Get Trigger")
+trigger_setting = interface.txdevice.get_trigger_json()
+if trigger_setting:
+    logger.info(f"Trigger Setting: {trigger_setting}")
+else:
+    logger.error("Failed to sgt trigger setting.")
+    sys.exit(1)
+
 
 duty_cycle = int((duration_msec/interval_msec) * 100)
 if duty_cycle > 50:
@@ -334,14 +346,6 @@ logger.info(f"User parameters set: \n\
 
 logger.info("Press enter to START trigger:")
 input()  # Wait for the user to press Enter
-
-if not use_external_power_supply:
-    logger.info("Enable  High Voltage")
-    if not interface.hvcontroller.turn_hv_on():
-        logger.error("Failed to turn on High Voltage.")
-        sys.exit(1)
-else:
-    logger.info("Using external power supply")
 
 def turn_off_console_and_tx():
     if not use_external_power_supply:
