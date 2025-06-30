@@ -279,10 +279,7 @@ class LIFUInterface:
 
         logger.info(f"Setting HV to {voltage} V...")
         self.hvcontroller.set_voltage(voltage)
-        if turn_hv_on:
-            logger.info("Turning HV ON...")
-            if not self.hvcontroller.turn_hv_on():
-                raise OSError("Failed to turn HV ON.")
+
         logger.info("%s loaded successfully.", solution_name)
 
     def start_sonication(self) -> bool:
@@ -298,6 +295,9 @@ class LIFUInterface:
             logger.info("Turn ON HV")
             bHvOn = self.hvcontroller.turn_hv_on()
 
+            if self._async_mode:
+                self.txdevice.async_mode(True)
+
             logger.info("Start Sonication")
             # Send the solution data to the device
             bTriggerOn = self.txdevice.start_trigger()
@@ -305,8 +305,6 @@ class LIFUInterface:
             if bTriggerOn and bHvOn:
                 logger.info("Sonication started successfully.")
                 self.set_status(LIFUInterfaceStatus.STATUS_RUNNING)
-                # TODO: if self._async_mode:
-                #     self.txdevice.async_mode(True)
                 return True
             else:
                 logger.error("Failed to start sonication.")
@@ -356,10 +354,10 @@ class LIFUInterface:
             # Send the solution data to the device
             bTriggerOff = self.txdevice.stop_trigger()
             bHvOff = self.hvcontroller.turn_hv_off()
+            if self._async_mode:
+                self.txdevice.async_mode(False)
 
             if bTriggerOff and bHvOff:
-                #TODO: # if self._async_mode:
-                #     self.txdevice.async_mode(False)
                 logger.info("Sonication stopped successfully.")
                 return True
             else:
