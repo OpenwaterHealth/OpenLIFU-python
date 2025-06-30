@@ -5,7 +5,7 @@ import sys
 from openlifu.io.LIFUInterface import LIFUInterface
 
 # set PYTHONPATH=%cd%\src;%PYTHONPATH%
-# python notebooks/test_update_firmware.py
+# python notebooks/test_console_dfu.py
 """
 Test script to automate:
 1. Connect to the device.
