@@ -21,6 +21,8 @@ def example_solution_analysis() -> SolutionAnalysis:
         beamwidth_ax_6dB_mm=[3.5, 3.6],
         sidelobe_pnp_MPa=[0.5, 0.6],
         sidelobe_isppa_Wcm2=[5.0, 5.5],
+        sidelobe_to_mainlobe_pressure_ratio=[0.5/1.1, 0.6/1.2], # approx 0.45, 0.5
+        sidelobe_to_mainlobe_intensity_ratio=[5.0/10.0, 5.5/12.0], # 0.5, approx 0.458
         global_pnp_MPa=[1.3],
         global_isppa_Wcm2=[13.0],
         p0_MPa=[1.0, 1.1],
