@@ -337,10 +337,10 @@ class Protocol:
 
         if simulate:
             # Finally the resulting pressure is max-aggregated and intensity is mean-aggregated, over all focus points .
-            pnp_aggregated = solution.simulation_result['p_min'].max(dim="focal_point_index")
-            ppp_aggregated = solution.simulation_result['p_max'].max(dim="focal_point_index")
+            pnp_aggregated = solution.simulation_result['p_min'].max(dim="focal_point_index", keep_attrs=True)
+            ppp_aggregated = solution.simulation_result['p_max'].max(dim="focal_point_index", keep_attrs=True)
             # TODO: Ensure this mean is weighted by the number of times each point is focused on, once openlifu supports hitting points different numbers of times
-            intensity_aggregated = solution.simulation_result['intensity'].mean(dim="focal_point_index")
+            intensity_aggregated = solution.simulation_result['intensity'].mean(dim="focal_point_index", keep_attrs=True)
             simulation_result_aggregated = deepcopy(solution.simulation_result)
             simulation_result_aggregated = simulation_result_aggregated.drop_dims("focal_point_index")
             simulation_result_aggregated['p_min'] = pnp_aggregated
