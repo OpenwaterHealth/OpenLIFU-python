@@ -1,3 +1,9 @@
+Great — based on the latest full `LIFUHVController.py` you provided, here's the
+**updated and complete API documentation** formatted to match your current
+style:
+
+---
+
 # HVController API Documentation
 
 The `HVController` class provides an interface to control and monitor a
@@ -13,6 +19,7 @@ from openlifu.io.LIFUUart import LIFUUart
 
 interface = LIFUInterface(TX_test_mode=False)
 tx_connected, hv_connected = interface.is_device_connected()
+
 if tx_connected and hv_connected:
     print("LIFU Device Fully connected.")
 else:
@@ -36,8 +43,10 @@ if not hv_connected:
 | `get_version()`     | Returns firmware version as `vX.Y.Z`            |
 | `get_hardware_id()` | Returns the 16-byte hardware ID as a hex string |
 | `echo(data: bytes)` | Echoes back sent data, useful for testing       |
+| `toggle_led()`      | Toggles onboard LED                             |
 | `soft_reset()`      | Sends a soft reset to the device                |
-| `enter_dfu()`       | Put the device into DFU mode                    |
+| `enter_dfu()`       | Puts the device into DFU (firmware update) mode |
+| `close()`           | Disconnects UART if connected                   |
 
 ---
 
@@ -90,25 +99,30 @@ if not hv_connected:
 
 ### Advanced Control
 
-| Method                         | Description                               |
-| ------------------------------ | ----------------------------------------- |
-| `set_dacs(hvp, hvm, hrp, hrm)` | Sets DAC outputs for high voltage control |
+| Method                         | Description                                            |
+| ------------------------------ | ------------------------------------------------------ |
+| `set_dacs(hvp, hvm, hrp, hrm)` | Sets DAC outputs (0–4095) for fine voltage calibration |
 
 ---
 
 ## Notes
 
 - Most methods raise `ValueError` if UART is not connected.
-- All operations clear the UART buffer after use.
-- Demo mode behavior returns mocked values.
+- Demo mode returns default values without sending real commands.
+- All commands clear the UART buffer after execution.
 
 ---
 
 ## Example
 
 ```python
-interface.hvcontroller.turn_12v_on()
-interface.hvcontroller.set_voltage(60.0)
-print(f"Output Voltage: {interface.hvcontroller.get_voltage()} V")
-interface.hvcontroller.turn_hv_on()
+hv = interface.hvcontroller
+
+hv.turn_12v_on()
+hv.set_voltage(60.0)
+print(f"Output Voltage: {hv.get_voltage()} V")
+hv.turn_hv_on()
+hv.set_rgb_led(2)  # Set LED to BLUE
+fan_speed = hv.get_fan_speed(0)
+print(f"Bottom fan is running at {fan_speed}%")
 ```
