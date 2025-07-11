@@ -1,3 +1,9 @@
+Based on the latest version of `LIFUTXDevice.py` you provided, here is the
+**updated and accurate TxDevice API documentation**, following the same format
+as the HVController doc.
+
+---
+
 # TxDevice API Documentation
 
 The `TxDevice` class provides a high-level interface for communicating with and
@@ -9,15 +15,11 @@ backend.
 ## Initialization
 
 ```python
-from openlifu.io.LIFUHVController import HVController
-from openlifu.io.LIFUUart import LIFUUart
+from openlifu.io.LIFUTXDevice import TxDevice
+from openlifu.io.LIFUInterface import LIFUInterface
 
 interface = LIFUInterface(TX_test_mode=False)
 tx_connected, hv_connected = interface.is_device_connected()
-if tx_connected and hv_connected:
-    print("LIFU Device Fully connected.")
-else:
-    print(f"LIFU Device NOT Fully Connected. TX: {tx_connected}, HV: {hv_connected}")
 
 if not tx_connected:
     print("TX Device not connected.")
@@ -35,65 +37,77 @@ if not tx_connected:
 | `is_connected()`    | Check if the TX device is connected                |
 | `ping()`            | Send a ping command to check connectivity          |
 | `get_version()`     | Get the firmware version (e.g., `v0.1.1`)          |
-| `echo(data: bytes)` | Send and receive echo data to verify communication |
-| `toggle_led()`      | Toggle the device onboard LED                      |
 | `get_hardware_id()` | Return the 16-byte hardware ID in hex format       |
-| `soft_reset()`      | Perform a software reset on the device             |
+| `echo(data: bytes)` | Send and receive echo data to verify communication |
+| `toggle_led()`      | Toggle the onboard status LED                      |
+| `soft_reset()`      | Perform a software reset on the TX device          |
 | `enter_dfu()`       | Put the device into DFU mode                       |
+| `close()`           | Close the UART connection                          |
 
 ---
 
 ### Trigger Configuration
 
-| Method                               | Description                                 |
-| ------------------------------------ | ------------------------------------------- |
-| `set_trigger(...)`                   | Configure triggering with manual parameters |
-| `set_trigger_json(data: dict)`       | Set trigger via JSON dictionary             |
-| `get_trigger()`                      | Return current trigger config as a dict     |
-| `get_trigger_json()`                 | Retrieve raw JSON trigger data              |
-| `start_trigger()` / `stop_trigger()` | Begin or halt triggering                    |
+| Method                               | Description                                |
+| ------------------------------------ | ------------------------------------------ |
+| `set_trigger(...)`                   | Configure trigger with parameters directly |
+| `set_trigger_json(data: dict)`       | Set trigger using JSON config              |
+| `get_trigger()`                      | Return current trigger config (parsed)     |
+| `get_trigger_json()`                 | Return raw JSON config from device         |
+| `start_trigger()` / `stop_trigger()` | Begin or halt the trigger sequence         |
 
 ---
 
 ### Register Operations
 
-| Method                                        | Description                      |
-| --------------------------------------------- | -------------------------------- |
-| `write_register(identifier, addr, value)`     | Write to a single register       |
-| `write_register_verify(addr, value)`          | Write and verify a register      |
-| `read_register(addr)`                         | Read a register value            |
-| `write_block(identifier, start_addr, values)` | Write a block of register values |
-| `write_block_verify(start_addr, values)`      | Verified block write             |
+| Method                                        | Description                                 |
+| --------------------------------------------- | ------------------------------------------- |
+| `read_register(addr)`                         | Read a 16-bit register value                |
+| `write_register(identifier, addr, value)`     | Write a value to a specific register        |
+| `write_register_verify(addr, value)`          | Write and verify value to a register        |
+| `write_block(identifier, start_addr, values)` | Write a block of register values to a chip  |
+| `write_block_verify(start_addr, values)`      | Write and verify a block of register values |
 
 ---
 
-### Device Setup
+### Device Setup & Control
 
-| Method                                   | Description                               |
-| ---------------------------------------- | ----------------------------------------- |
-| `enum_tx7332_devices(num)`               | Scan for TX7332 devices                   |
-| `demo_tx7332(identifier)`                | Set test waveform to TX7332               |
-| `apply_all_registers()`                  | Apply all configured profiles to hardware |
-| `write_ti_config_to_tx_device(path, id)` | Load and apply config from TI text file   |
-| `print`                                  | Print TX interface info                   |
+| Method                                   | Description                                    |
+| ---------------------------------------- | ---------------------------------------------- |
+| `enum_tx7332_devices(num)`               | Enumerate and initialize TX7332 devices        |
+| `demo_tx7332(identifier)`                | Set demo waveform to a TX7332 chip             |
+| `apply_all_registers()`                  | Push all defined register sets to hardware     |
+| `write_ti_config_to_tx_device(path, id)` | Load TI register config from `.txt` and apply  |
+| `print()`                                | Print internal TX state (overridden `__str__`) |
 
 ---
 
 ### Pulse/Delay Profiles
 
-| Method                                         | Description                         |
-| ---------------------------------------------- | ----------------------------------- |
-| `set_solution(pulse, delays, apods, seq, ...)` | Apply full beamforming config       |
-| `add_pulse_profile(profile)`                   | Add pulse shape settings            |
-| `add_delay_profile(profile)`                   | Add delay+apodization configuration |
+| Method                                         | Description                                |
+| ---------------------------------------------- | ------------------------------------------ |
+| `set_solution(pulse, delays, apods, seq, ...)` | Apply full beamforming config and sequence |
+| `add_pulse_profile(profile)`                   | Add or replace pulse waveform config       |
+| `add_delay_profile(profile)`                   | Add or replace delay + apodization profile |
 
 ---
 
 ## Data Classes
 
-- `Tx7332PulseProfile`: Defines frequency, cycles, duty cycle, inversion, etc.
-- `Tx7332DelayProfile`: Defines delays and apodization for each channel
-- `TxDeviceRegisters`: Holds and manages TX chip register blocks per transmitter
+- `Tx7332PulseProfile`: Defines TX waveform: frequency, duration, duty cycle,
+  inversion, etc.
+- `Tx7332DelayProfile`: Defines delay + apodization per channel (32 channels
+  supported)
+- `TxDeviceRegisters`: Holds per-chip register maps and manages write blocks
+
+---
+
+## Notes
+
+- Each register block is managed per TX chip and may need verification.
+- Profiles assume 32-channel TX chip configurations.
+- Delay units are in seconds, apodization values from 0–1.
+- Trigger configuration must be set before `start_trigger()`.
 
 ---
 
@@ -101,8 +115,8 @@ if not tx_connected:
 
 ```python
 pulse = {"frequency": 3e6, "duration": 2e-6}
-delays = [0] * 32
-apods = [1] * 32
+delays = [0.0] * 32
+apods = [1.0] * 32
 sequence = {
     "pulse_interval": 0.01,
     "pulse_count": 1,
@@ -110,16 +124,7 @@ sequence = {
     "pulse_train_count": 1,
 }
 
-# Apply configuration
 if tx.is_connected():
     tx.set_solution(pulse, delays, apods, sequence)
     tx.start_trigger()
 ```
-
----
-
-## Notes
-
-- Profile management assumes 32 transmit channels per chip.
-- Delay units default to seconds unless specified.
-- Device must be enumerated before applying register values.
