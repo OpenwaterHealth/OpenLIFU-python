@@ -189,8 +189,24 @@ class Transducer:
         return matrix
 
     @staticmethod
-    def merge(list_of_transducers:List[Transducer]) -> Transducer:
+    def merge(list_of_transducers:List[Transducer],
+              id=None,
+              name=None,
+              registration_surface_filename=None,
+              transducer_body_filename=None,
+              standoff_transform=None) -> Transducer:
+
         merged_array = list_of_transducers[0].copy()
+        if id is not None:
+            merged_array.id = id
+        if name is not None:
+            merged_array.name = name
+        if registration_surface_filename is not None:
+            merged_array.registration_surface_filename = registration_surface_filename
+        if transducer_body_filename is not None:
+            merged_array.transduce_body_filename = transducer_body_filename
+        if standoff_transform is not None:
+            merged_array.standoff_transform = standoff_transform
         for arr in list_of_transducers[1:]:
             xform_array = arr.copy()
             merged_array.elements += xform_array.elements
@@ -292,12 +308,14 @@ class Transducer:
         """
         N = nx * ny
         xpos = (np.arange(nx) - (nx - 1) / 2) * pitch # x positions, centered about x=0
-        ypos = (np.arange(ny) - (ny - 1) / 2) * pitch # y positions, centered about y=0
+        ypos = -(np.arange(ny) - (ny - 1) / 2) * pitch # y positions, centered about y=0
         elements = []
         for i in range(N):
             x = xpos[i % nx] # inner loop through x positions
             y = ypos[i // nx] # outer loop through y positions
             elements.append(Element(
+                index=i+1,
+                pin=i+1,
                 x=x,
                 y=y,
                 z=0,
@@ -313,3 +331,92 @@ class Transducer:
         if attrs is None:
             attrs = {}
         return Transducer(elements=elements, id=id, name=name, attrs=attrs)
+
+def get_angle_from_gap(width, gap, roc):
+    """
+    Calculate the angle between the normal vectors of two arrays, whose edges are separated by a gap.
+
+    Args:
+        width (float): Width of the transducer array.
+        gap (float): Gap between the array edges.
+        roc (float): Radius of curvature.
+
+    Returns:
+        float: Angle in radians.
+    """
+    a = roc
+    b = width/2
+    c = gap/2
+    mag = np.sqrt(a**2 + b**2)
+    A = a/mag
+    B = b/mag
+    dth = np.arcsin(c/mag) + np.arcsin(B)
+    return dth if A >= 0 else -dth
+
+def get_roc_from_angle(width, gap, dth):
+    """
+    Calculate the radius of curvature given the angle between two arrays, their width, and the gap between them.
+
+    Args:
+        width (float): Width of the transducer array.
+        gap (float): Gap between the array edges.
+        dth (float): Angle in radians.
+    Returns:
+        float: Radius of curvature.
+    """
+    return (0.5*gap + (0.5 * width * np.cos(dth))) / np.sin(dth)
+
+
+def get_multi_arrays(trans, rows=1, cols=1, width=40, gap=0, dth=None, roc=np.inf, units="mm"):
+    """
+    Generate multiple transducer arrays, arranged along a concave curve.
+
+    Args:
+        trans (Transducer): The base transducer to replicate.
+        rows (int): Number of rows of transducers.
+        cols (int): Number of columns of transducers.
+        width (float): Width of each transducer element.
+        gap (float): Gap between adjacent transducers.
+        dth (float, optional): Angle between the normal vectors of adjacent transducers. If None, it is calculated from gap and width.
+        roc (float, optional): Radius of curvature. If np.inf, the arrays are arranged in a straight line.
+        units (str): Units for the transducer dimensions.
+
+    Returns:
+        List    [Transducer]: List of transducer arrays.
+        List    [np.ndarray]: List of transformation matrices for each transducer.
+    """
+    transducers = []
+    matrices = []
+    if roc == np.inf:
+        for i in range(rows):
+            y = (width+gap)*(i-(rows-1)/2)
+            for j in range(cols):
+                dx = (width+gap)*(j-(cols-1)/2)
+                M = np.array([[1,0,0,dx], [0,1,0,y], [0,0,1,0], [0,0,0,1]])
+                trans_new = trans.copy()
+                trans_new.transform(np.linalg.inv(M), units=units)
+                transducers.append(trans_new)
+                matrices.append(M)
+    else:
+        if dth is None:
+            dth = get_angle_from_gap(width, gap, roc)
+        elif roc is None and dth is not None and gap is not None:
+            roc = get_roc_from_angle(width, gap, dth)
+        for i in range(rows):
+            y = (width+gap)*(i-(rows-1)/2)
+            for j in range(cols):
+                th = dth*2*(j-(cols-1)/2)
+                x = roc*np.sin(th)
+                z = roc*(1-np.cos(th))
+                M = np.array([[np.cos(th),0,-np.sin(th),x],
+                              [0,1,0,y],
+                              [np.sin(th),0,np.cos(th),z],
+                              [0,0,0,1]])
+                trans_new = trans.copy()
+                for el in trans_new.elements:
+                    el.pin = el.pin + trans.numelements()*(j + i*cols)
+                    el.index = el.index + trans.numelements()*(j + i*cols)
+                trans_new.transform(np.linalg.inv(M), units=units)
+                transducers.append(trans_new)
+                matrices.append(M)
+    return transducers, matrices
