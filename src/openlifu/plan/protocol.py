@@ -277,19 +277,21 @@ class Protocol:
             simulation_output_xarray = None
             if simulate:
                 self.logger.info(f"Simulate for focus {focus}...")
-                simulation_output_xarray, _ = run_simulation(
-                    arr=transducer,
-                    params=params,
-                    delays=delays,
-                    apod= apodization,
-                    freq = self.pulse.frequency,
-                    cycles = simulation_cycles,
-                    dt=sim_options.dt,
-                    t_end=sim_options.t_end,
-                    cfl=sim_options.cfl,
-                    amplitude = self.pulse.amplitude * voltage,
-                    gpu = use_gpu
-                )
+                sim_input = {
+                    "arr": transducer,
+                    "params": params,
+                    "delays": delays,
+                    "apod": apodization,
+                    "freq": self.pulse.frequency,
+                    "cycles": simulation_cycles,
+                    "dt": sim_options.dt,
+                    "t_end": sim_options.t_end,
+                    "cfl": sim_options.cfl,
+                    "amplitude": self.pulse.amplitude * voltage,
+                    "gpu": use_gpu
+                }
+                sim_input.update(sim_options.options)
+                simulation_output_xarray, _ = run_simulation(**sim_input)
             delays_to_stack.append(delays)
             apodizations_to_stack.append(apodization)
             simulation_outputs_to_stack.append(simulation_output_xarray)
