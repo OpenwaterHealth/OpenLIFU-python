@@ -44,5 +44,6 @@ class MaxAngle(ApodizationMethod):
         :returns: Pandas DataFrame of the apodization method parameters
         """
         import pandas as pd
-        records = [{"Name": "Max Angle", "Value": self.max_angle, "Unit": self.units}]
+        records = [{"Name": "Type", "Value": "Max Angle", "Unit": ""},
+                   {"Name": "Max Angle", "Value": self.max_angle, "Unit": self.units}]
         return pd.DataFrame.from_records(records)

@@ -176,26 +176,25 @@ class Protocol:
             6             Sequence    Pulse Interval   0.005      s
         """
         records = [
-            {"Protocol Parameter": "ID", "Value": self.id, "Units": ""},
-            {"Protocol Parameter": "Name", "Value": self.name, "Units": ""},
-            {"Protocol Parameter": "Description", "Value": self.description, "Units": ""},
+            {"Category":"", "Name": "ID", "Value": self.id, "Unit": ""},
+            {"Category":"", "Name": "Name", "Value": self.name, "Unit": ""},
+            {"Category":"", "Name": "Description", "Value": self.description, "Unit": ""},
         ]
-        df = pd.DataFrame.from_records(records)
+        table = pd.DataFrame.from_records(records)
 
-        def _append_subtable(param_name, sub_df):
-            sub_df = sub_df.rename(columns={'Name': 'Value', 'Value': 'Units', 'Unit': 'u'})
-            sub_df.insert(0, 'Protocol Parameter', param_name)
-            return pd.concat([df, sub_df], ignore_index=True)
+        def _append_subtable(category_name, sub_df):
+            sub_df.insert(0, 'Category', category_name)
+            return pd.concat([table, sub_df], ignore_index=True)
 
-        df = _append_subtable("Pulse", self.pulse.get_table())
-        df = _append_subtable("Sequence", self.sequence.get_table())
-        df = _append_subtable("Focal Pattern", self.focal_pattern.get_table())
-        df = _append_subtable("Delay Method", self.delay_method.get_table())
-        df = _append_subtable("Apodization Method", self.apod_method.get_table())
-        df = _append_subtable("Segmentation Method", self.seg_method.get_table())
-        df = _append_subtable("Simulation Setup", self.sim_setup.get_table())
+        table = _append_subtable("Pulse", self.pulse.get_table())
+        table = _append_subtable("Sequence", self.sequence.get_table())
+        table = _append_subtable("Focal Pattern", self.focal_pattern.get_table())
+        table = _append_subtable("Delay Method", self.delay_method.get_table())
+        table = _append_subtable("Apodization Method", self.apod_method.get_table())
+        table = _append_subtable("Segmentation Method", self.seg_method.get_table())
+        table = _append_subtable("Simulation Setup", self.sim_setup.get_table())
 
-        return df
+        return table
 
 
     def check_target(self, target: Point):

@@ -43,5 +43,6 @@ class Direct(DelayMethod):
         :returns: Pandas DataFrame of the delay method parameters
         """
         import pandas as pd
-        records = [{"Name": "Speed of Sound", "Value": self.c0, "Unit": "m/s"}]
+        records = [{"Name": "Type", "Value": "Direct", "Unit": ""},
+                   {"Name": "Default Sound Speed", "Value": self.c0, "Unit": "m/s"}]
         return pd.DataFrame.from_records(records)

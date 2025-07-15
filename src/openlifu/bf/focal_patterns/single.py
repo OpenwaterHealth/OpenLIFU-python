@@ -37,5 +37,6 @@ class SinglePoint(FocalPattern):
         :returns: Pandas DataFrame of the focal pattern parameters
         """
         import pandas as pd
-        records = [{"Name": "Target Pressure", "Value": self.target_pressure, "Unit": self.units}]
+        records = [{"Name": "Type", "Value": "Single Point", "Unit": ""},
+                   {"Name": "Target Pressure", "Value": self.target_pressure, "Unit": self.units}]
         return pd.DataFrame.from_records(records)

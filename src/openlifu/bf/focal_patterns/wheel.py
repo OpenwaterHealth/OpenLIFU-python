@@ -79,6 +79,7 @@ class Wheel(FocalPattern):
         """
         import pandas as pd
         records = [
+            {"Name": "Type", "Value": "Wheel", "Unit": ""},
             {"Name": "Target Pressure", "Value": self.target_pressure, "Unit": self.units},
             {"Name": "Center", "Value": self.center, "Unit": ""},
             {"Name": "Number of Spokes", "Value": self.num_spokes, "Unit": ""},
