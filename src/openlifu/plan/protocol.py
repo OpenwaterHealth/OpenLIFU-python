@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Annotated, Any, Dict, List, Tuple
 
 import numpy as np
+import pandas as pd
 import xarray as xa
 
 from openlifu import bf, geo, seg, sim, xdc
@@ -159,6 +160,42 @@ class Protocol:
         Path(filename).parent.mkdir(exist_ok=True)
         with open(filename, 'w') as file:
             file.write(self.to_json(compact=False))
+
+    def to_table(self) -> pd.DataFrame:
+        """
+        Return a table of the most important protocol parameters
+
+        Example output:
+            Protocol Parameter           Value  Units
+            0                   ID      example_protocol
+            1                 Name      Example Protocol
+            2          Description  An example protocol for testing.
+            3                Pulse         Frequency   1e6.0     Hz
+            4                Pulse         Amplitude     1.0     AU
+            5                Pulse          Duration   0.001      s
+            6             Sequence    Pulse Interval   0.005      s
+        """
+        records = [
+            {"Protocol Parameter": "ID", "Value": self.id, "Units": ""},
+            {"Protocol Parameter": "Name", "Value": self.name, "Units": ""},
+            {"Protocol Parameter": "Description", "Value": self.description, "Units": ""},
+        ]
+        df = pd.DataFrame.from_records(records)
+
+        def _append_subtable(param_name, sub_df):
+            sub_df = sub_df.rename(columns={'Name': 'Value', 'Value': 'Units', 'Unit': 'u'})
+            sub_df.insert(0, 'Protocol Parameter', param_name)
+            return pd.concat([df, sub_df], ignore_index=True)
+
+        df = _append_subtable("Pulse", self.pulse.get_table())
+        df = _append_subtable("Sequence", self.sequence.get_table())
+        df = _append_subtable("Focal Pattern", self.focal_pattern.get_table())
+        df = _append_subtable("Delay Method", self.delay_method.get_table())
+        df = _append_subtable("Apodization Method", self.apod_method.get_table())
+        df = _append_subtable("Segmentation Method", self.seg_method.get_table())
+        df = _append_subtable("Simulation Setup", self.sim_setup.get_table())
+
+        return df
 
 
     def check_target(self, target: Point):

@@ -70,3 +70,18 @@ class Wheel(FocalPattern):
         :returns: Number of foci
         """
         return int(self.center) + self.num_spokes
+
+    def get_table(self):
+        """
+        Get a table of the focal pattern parameters
+
+        :returns: Pandas DataFrame of the focal pattern parameters
+        """
+        import pandas as pd
+        records = [
+            {"Name": "Target Pressure", "Value": self.target_pressure, "Unit": self.units},
+            {"Name": "Center", "Value": self.center, "Unit": ""},
+            {"Name": "Number of Spokes", "Value": self.num_spokes, "Unit": ""},
+            {"Name": "Spoke Radius", "Value": self.spoke_radius, "Unit": self.distance_units},
+        ]
+        return pd.DataFrame.from_records(records)

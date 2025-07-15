@@ -35,3 +35,13 @@ class Direct(DelayMethod):
         tof = dists / c
         delays = max(tof) - tof
         return delays
+
+    def get_table(self):
+        """
+        Get a table of the delay method parameters
+
+        :returns: Pandas DataFrame of the delay method parameters
+        """
+        import pandas as pd
+        records = [{"Name": "Speed of Sound", "Value": self.c0, "Unit": "m/s"}]
+        return pd.DataFrame.from_records(records)

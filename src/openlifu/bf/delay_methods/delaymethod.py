@@ -29,3 +29,12 @@ class DelayMethod(ABC):
         module_dict = delay_methods.__dict__
         class_constructor = module_dict[short_classname]
         return class_constructor(**d)
+
+    @abstractmethod
+    def get_table(self):
+        """
+        Get a table of the delay method parameters
+
+        :returns: Pandas DataFrame of the delay method parameters
+        """
+        pass

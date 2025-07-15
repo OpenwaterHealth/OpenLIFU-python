@@ -29,3 +29,13 @@ class SinglePoint(FocalPattern):
         :returns: Number of foci (1)
         """
         return 1
+
+    def get_table(self):
+        """
+        Get a table of the focal pattern parameters
+
+        :returns: Pandas DataFrame of the focal pattern parameters
+        """
+        import pandas as pd
+        records = [{"Name": "Target Pressure", "Value": self.target_pressure, "Unit": self.units}]
+        return pd.DataFrame.from_records(records)

@@ -19,3 +19,13 @@ class Uniform(ApodizationMethod):
 
     def calc_apodization(self, arr: Transducer, target: Point, params: xa.Dataset, transform:np.ndarray | None=None):
         return np.full(arr.numelements(), self.value)
+
+    def get_table(self):
+        """
+        Get a table of the apodization method parameters
+
+        :returns: Pandas DataFrame of the apodization method parameters
+        """
+        import pandas as pd
+        records = [{"Name": "Value", "Value": self.value, "Unit": ""}]
+        return pd.DataFrame.from_records(records)

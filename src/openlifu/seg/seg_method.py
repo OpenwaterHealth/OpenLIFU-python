@@ -99,3 +99,12 @@ class SegmentationMethod(ABC):
         sz = list(coords.sizes.values())
         seg = xa.DataArray(np.full(sz, m_idx, dtype=int), coords=coords)
         return seg
+
+    @abstractmethod
+    def get_table(self):
+        """
+        Get a table of the segmentation method parameters
+
+        :returns: Pandas DataFrame of the segmentation method parameters
+        """
+        pass

@@ -44,6 +44,15 @@ def test_default_protocol():
     """Ensure it is possible to construct a default protocol"""
     Protocol()
 
+def test_to_table(example_protocol: Protocol):
+    """Ensure that the protocol can be correctly converted to a table."""
+    df = example_protocol.to_table()
+    assert df is not None
+    assert "Protocol Parameter" in df.columns
+    assert "Value" in df.columns
+    assert "Units" in df.columns
+    assert df[df["Protocol Parameter"] == "ID"]["Value"].iloc[0] == "example_protocol"
+
 @pytest.mark.parametrize(
     "target_constraints",
     [

@@ -193,3 +193,22 @@ class SimSetup(DictMixin):
             params = seg_method.seg_params(volume)
 
         return params
+
+    def get_table(self):
+        """
+        Get a table of the simulation setup parameters
+
+        :returns: Pandas DataFrame of the simulation setup parameters
+        """
+        import pandas as pd
+        records = [
+            {"Name": "Spacing", "Value": self.spacing, "Unit": self.units},
+            {"Name": "X Extent", "Value": f"{self.x_extent[0]} to {self.x_extent[1]}", "Unit": self.units},
+            {"Name": "Y Extent", "Value": f"{self.y_extent[0]} to {self.y_extent[1]}", "Unit": self.units},
+            {"Name": "Z Extent", "Value": f"{self.z_extent[0]} to {self.z_extent[1]}", "Unit": self.units},
+            {"Name": "Time Step", "Value": self.dt, "Unit": "s"},
+            {"Name": "End Time", "Value": self.t_end, "Unit": "s"},
+            {"Name": "Speed of Sound", "Value": self.c0, "Unit": "m/s"},
+            {"Name": "CFL", "Value": self.cfl, "Unit": ""},
+        ]
+        return pd.DataFrame.from_records(records)
