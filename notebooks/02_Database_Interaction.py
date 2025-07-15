@@ -24,8 +24,10 @@
 # The OpenLIFU repository usually includes a `db_dvc/` directory which serves as an example or default database. We will assume such a structure for this notebook.
 
 # +
-import os
+from __future__ import annotations
+
 from pathlib import Path
+
 from openlifu.db import Database
 
 # Attempt to find the database directory
@@ -41,11 +43,9 @@ paths_to_check = [
 ]
 
 for path_check in paths_to_check:
-    if path_check.exists() and path_check.is_dir():
-        # Check for a typical file/folder inside db_dvc to be more certain
-        if (path_check / "transducers").exists() or (path_check / "protocols").exists():
-            db_path_found = path_check.resolve()
-            break
+    if path_check.exists() and path_check.is_dir() and ((path_check / "transducers").exists() or (path_check / "protocols").exists()):
+        db_path_found = path_check.resolve()
+        break
 
 if db_path_found:
     print(f"Found database directory at: {db_path_found}")
@@ -85,7 +85,6 @@ else:
 #
 # You can load a specific transducer by its ID using the `load_transducer()` method. This returns a `Transducer` object.
 
-# +
 if db and available_transducers:
     # Let's try to load one of the available transducers.
     # Replace 'openlifu_2x400_evt1' with an ID from your list if it's different.
@@ -113,7 +112,7 @@ if db and available_transducers:
         # It sorts the elements based on their pin numbers.
         # Let's check if pin numbers are defined for the first few elements
         print("\nElement pin numbers (first 5, before sorting):")
-        for i, el in enumerate(my_transducer.elements[:5]):
+        for el in my_transducer.elements[:5]:
             print(f"  Element {el.id}: Pin {el.pin if el.pin is not None else 'N/A'}")
 
         # If you plan to use this transducer with hardware, sorting by pin might be necessary
@@ -130,7 +129,6 @@ if db and available_transducers:
 else:
     print("Database not loaded or no transducers available. Cannot load transducer.")
     my_transducer = None
-# -
 
 # ## Transducer Properties
 #
@@ -166,7 +164,6 @@ if my_transducer:
 #
 # The database can also store `Protocol` definitions.
 
-# +
 if db:
     available_protocols = db.list_protocols()
     if available_protocols:
@@ -196,7 +193,6 @@ if db:
         print("\nNo protocols found in the database.")
 else:
     print("Database not loaded. Cannot list or load protocols.")
-# -
 
 # ## Next Steps
 #

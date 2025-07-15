@@ -7,7 +7,7 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.16.4
 #   kernelspec:
-#     display_name: python3
+#     display_name: env
 #     language: python
 #     name: python3
 # ---
@@ -30,12 +30,15 @@
 # *   **`Solution`**: The calculated set of parameters (delays, apodizations, voltage) to be sent to the hardware to achieve a desired sonication, typically derived from a `Protocol` and `Target`.
 
 # Let's start by importing the necessary classes.
+from __future__ import annotations
+
 import numpy as np
-from openlifu.geo import Point
+
 from openlifu.bf import Pulse, Sequence, focal_patterns
+from openlifu.geo import Point
 from openlifu.plan import Protocol
 from openlifu.sim import SimSetup
-from openlifu.xdc import Transducer # We'll briefly touch on this
+from openlifu.xdc import Transducer  # We'll briefly touch on this
 
 # ## 1. `Point`
 #
@@ -50,27 +53,25 @@ print(f"Target Point: {target_point}")
 # Create a spherical target with a radius
 spherical_target = Point(position=np.array([10, 5, 40]), units="mm", radius=2.0)
 print(f"Spherical Target: {spherical_target}")
+
+
 # -
 
 # ## 2. `Pulse`
 #
 # The `Pulse` object defines the acoustic properties of a single ultrasound pulse.
 # Key parameters include `frequency` (in Hz) and `duration` (in seconds).
-# You can also specify `amplitude` (voltage, context-dependent) or `num_cycles`.
+# Nominal amplitude can also be set with `amplitude` (arbitrary units)
 
 # +
 # A 500 kHz pulse with a duration of 20 microseconds
 pulse1 = Pulse(frequency=500e3, duration=20e-6)
-print(f"Pulse 1: {pulse1}")
-
-# A 1 MHz pulse defined by 10 cycles
-# The duration will be automatically calculated (num_cycles / frequency)
-pulse2 = Pulse(frequency=1e6, num_cycles=10)
-print(f"Pulse 2: {pulse2}, Duration: {pulse2.duration:.2e} s")
+print(f"Pulse 1:\n{pulse1.get_table()}")
 
 # A pulse with a specific amplitude (e.g., for simulation input or target)
-pulse3 = Pulse(frequency=400e3, duration=50e-6, amplitude=1.0) # Amplitude here is normalized or a reference
-print(f"Pulse 3: {pulse3}")
+pulse2 = Pulse(frequency=400e3, duration=50e-6, amplitude=0.5) # Amplitude here is normalized or a reference
+print(f"Pulse 2:\n{pulse2.get_table()}")
+
 # -
 
 # ## 3. `Sequence`
@@ -109,7 +110,6 @@ print(f"Sequence 2: {sequence2}")
 # A `Transducer` object holds all information about the ultrasound array, including element positions, dimensions, and potentially electromechanical properties.
 # These are often loaded from a database (see Notebook 02). For now, we can see how one might be generated programmatically (though this is less common for standard OpenLIFU hardware).
 
-# +
 # This is an example of generating a generic transducer.
 # In practice, you'll usually load a predefined one from the database.
 try:
@@ -127,7 +127,6 @@ try:
 except Exception as e:
     print(f"Could not create generic transducer, possibly due to missing default parameters: {e}")
     print("Transducer definition will be covered in detail in Notebook 02 using database loading.")
-# -
 
 # ## 5. `FocalPattern`
 #
@@ -159,7 +158,7 @@ sim_setup_example = SimSetup(
     x_extent=(-20, 20), # mm
     y_extent=(-20, 20), # mm
     z_extent=(0, 70),   # mm
-    resolution=1        # 1 mm grid resolution
+    spacing=1        # 1 mm grid resolution
 )
 print(f"Simulation Setup: {sim_setup_example}")
 
@@ -172,7 +171,7 @@ print(f"Simulation Setup: {sim_setup_example}")
 from openlifu.bf import apod_methods
 
 # Define an apodization method (e.g., limit active elements by angle from focus)
-apod_method_example = apod_methods.MaxAngle(max_angle_deg=30)
+apod_method_example = apod_methods.MaxAngle(max_angle=30)
 print(f"Apodization Method: {apod_method_example}")
 
 # Create a protocol
@@ -182,14 +181,14 @@ protocol1 = Protocol(
     name='My First Test Protocol',
     pulse=pulse1,
     sequence=sequence1,
-    focal_pattern_type=focal_patterns.SinglePoint, # Type of pattern
+    focal_pattern=focal_patterns.SinglePoint, # Type of pattern
     apod_method=apod_method_example,
     sim_setup=sim_setup_example
 )
 print(f"\nProtocol 1: {protocol1}")
 print(f"Protocol Pulse: {protocol1.pulse}")
 print(f"Protocol Sequence: {protocol1.sequence}")
-print(f"Protocol Focal Pattern Type: {protocol1.focal_pattern_type}")
+print(f"Protocol Focal Pattern Type: {protocol1.focal_pattern}")
 
 # You can also create a protocol with a specific focal pattern instance
 protocol2 = Protocol(
@@ -198,7 +197,7 @@ protocol2 = Protocol(
     pulse=pulse2,
     sequence=sequence2,
     focal_pattern=focal_pattern_wheel, # Instance of a pattern
-    apod_method=apod_methods.NoneApod(), # No apodization
+    apod_method=apod_methods.Uniform(), # No apodization
     sim_setup=sim_setup_example
 )
 print(f"\nProtocol 2: {protocol2}")
