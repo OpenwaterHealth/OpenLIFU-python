@@ -78,3 +78,17 @@ class ParameterConstraint(DictMixin):
 
     def get_status_symbol(self, value: float) -> str:
         return PARAM_STATUS_SYMBOLS[self.get_status(value)]
+
+    def get_table(self):
+        """Convert the parameter constraint to a table format."""
+        import pandas as pd
+        records = []
+        if self.operator in ['<', '<=', '>', '>='] or self.operator in ['within', 'inside', 'outside', 'outside_inclusive']:
+            value_template = f"value {self.operator} {{value}}"
+        else:
+            raise ValueError(f"Unsupported operator: {self.operator}")
+        if self.warning_value is not None:
+            records.append({"Name": "Warn if not", "Value": value_template.format(value=self.warning_value), "Unit": ""})
+        if self.error_value is not None:
+            records.append({"Name": "Error if not", "Value": value_template.format(value=self.error_value), "Unit": ""})
+        return pd.DataFrame.from_records(records)

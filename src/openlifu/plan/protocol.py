@@ -193,7 +193,12 @@ class Protocol:
         table = _append_subtable("Apodization Method", self.apod_method.get_table())
         table = _append_subtable("Segmentation Method", self.seg_method.get_table())
         table = _append_subtable("Simulation Setup", self.sim_setup.get_table())
-
+        for tc in self.target_constraints:
+            table = _append_subtable("Target Constraints", tc.to_table())
+        for param_id, param_constraint in self.param_constraints.items():
+            tp = param_constraint.get_table()
+            tp["Value"] = tp["Value"].str.replace("value", param_id)
+            table = _append_subtable("Parameter Constraints", tp)
         return table
 
 

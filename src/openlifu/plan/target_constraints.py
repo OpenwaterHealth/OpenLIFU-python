@@ -64,6 +64,6 @@ class TargetConstraints(DictMixin):
         """
         import pandas as pd
         records = [
-            {"Name": self.name, "Value": f"{self.min} - {self.max}", "Unit": self.units},
+            {"Name": self.name, "Value": f"({self.min},{self.max})", "Unit": self.units},
         ]
         return pd.DataFrame.from_records(records)
