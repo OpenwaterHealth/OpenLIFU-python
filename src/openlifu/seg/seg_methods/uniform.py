@@ -37,6 +37,12 @@ class UniformTissue(UniformSegmentation):
         records = [{"Name": "Type", "Value": "Uniform Tissue", "Unit": ""}]
         return pd.DataFrame.from_records(records)
 
+    def to_dict(self):
+        d = super().to_dict()
+        d.pop("ref_material")
+        return d
+
+
 class UniformWater(UniformSegmentation):
     """ Assigns the water material to all voxels in the volume. """
     def __init__(self, materials: dict[str, Material] | None = None):
@@ -52,3 +58,8 @@ class UniformWater(UniformSegmentation):
         """
         records = [{"Name": "Type", "Value": "Uniform Water", "Unit": ""}]
         return pd.DataFrame.from_records(records)
+
+    def to_dict(self):
+        d = super().to_dict()
+        d.pop("ref_material")
+        return d
