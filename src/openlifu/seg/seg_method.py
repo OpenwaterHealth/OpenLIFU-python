@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import copy
+import inspect
+import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -42,7 +44,7 @@ class SegmentationMethod(ABC):
         return d
 
     @staticmethod
-    def from_dict(d: dict) -> SegmentationMethod:
+    def from_dict(d: dict, on_keyword_mismatch: Literal['warn', 'raise', 'ignore'] = 'warn') -> SegmentationMethod:
         from openlifu.seg import seg_methods
         if not isinstance(d, dict):  # previous implementations might pass str
             raise TypeError(f"Expected dict for from_dict, got {type(d).__name__}")
@@ -58,10 +60,21 @@ class SegmentationMethod(ABC):
                 for k, v in materials_dict.items()
             }
 
-        # Ignore ref_material if class is `UniformWater` or `UniformTissue`
-        if short_classname in ["UniformWater", "UniformTissue"]:
-            d.pop("ref_material")
         class_constructor = getattr(seg_methods, short_classname)
+
+        # Filter out unexpected keywords
+        sig = inspect.signature(class_constructor)
+        expected_keywords = [p.name for p in sig.parameters.values() if p.kind == p.POSITIONAL_OR_KEYWORD]
+        unexpected_keywords = [k for k in d if k not in expected_keywords]
+
+        if unexpected_keywords:
+            if on_keyword_mismatch == 'raise':
+                raise TypeError(f"Unexpected keyword arguments for {short_classname}: {unexpected_keywords}")
+            elif on_keyword_mismatch == 'warn':
+                warnings.warn(f"Ignoring unexpected keyword arguments for {short_classname}: {unexpected_keywords}", stacklevel=2)
+            for k in unexpected_keywords:
+                d.pop(k)
+
         return class_constructor(**d)
 
     def _material_indices(self, materials: dict | None = None):
