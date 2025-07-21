@@ -39,7 +39,7 @@ class Sequence(DictMixin):
         if self.pulse_train_count <= 0:
             raise ValueError("Pulse train count must be positive")
 
-    def get_table(self) -> pd.DataFrame:
+    def to_table(self) -> pd.DataFrame:
         """
         Get a table of the sequence parameters
 

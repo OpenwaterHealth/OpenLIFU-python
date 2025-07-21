@@ -46,3 +46,17 @@ class PiecewiseLinear(ApodizationMethod):
         f = ((self.zero_angle - angles) / (self.zero_angle - self.rolloff_angle))
         apod = np.maximum(0, np.minimum(1, f))
         return apod
+
+    def to_table(self):
+        """
+        Get a table of the apodization method parameters
+
+        :returns: Pandas DataFrame of the apodization method parameters
+        """
+        import pandas as pd
+        records = [
+            {"Name": "Type", "Value": "Piecewise-Linear", "Unit": ""},
+            {"Name": "Zero Angle", "Value": self.zero_angle, "Unit": self.units},
+            {"Name": "Rolloff Angle", "Value": self.rolloff_angle, "Unit": self.units},
+        ]
+        return pd.DataFrame.from_records(records)

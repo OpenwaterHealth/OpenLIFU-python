@@ -36,3 +36,14 @@ class MaxAngle(ApodizationMethod):
         apod = np.zeros(arr.numelements())
         apod[angles <= self.max_angle] = 1
         return apod
+
+    def to_table(self):
+        """
+        Get a table of the apodization method parameters
+
+        :returns: Pandas DataFrame of the apodization method parameters
+        """
+        import pandas as pd
+        records = [{"Name": "Type", "Value": "Max Angle", "Unit": ""},
+                   {"Name": "Max Angle", "Value": self.max_angle, "Unit": self.units}]
+        return pd.DataFrame.from_records(records)
