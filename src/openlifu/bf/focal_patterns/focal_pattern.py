@@ -74,7 +74,7 @@ class FocalPattern(ABC):
         return class_constructor(**d)
 
     @abstractmethod
-    def get_table(self):
+    def to_table(self):
         """
         Get a table of the focal pattern parameters
 

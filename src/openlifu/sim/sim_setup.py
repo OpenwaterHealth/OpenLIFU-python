@@ -194,7 +194,7 @@ class SimSetup(DictMixin):
 
         return params
 
-    def get_table(self):
+    def to_table(self):
         """
         Get a table of the simulation setup parameters
 

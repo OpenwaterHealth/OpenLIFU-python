@@ -71,7 +71,7 @@ class Wheel(FocalPattern):
         """
         return int(self.center) + self.num_spokes
 
-    def get_table(self):
+    def to_table(self):
         """
         Get a table of the focal pattern parameters
 

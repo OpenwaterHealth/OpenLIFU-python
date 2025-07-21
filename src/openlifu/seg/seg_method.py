@@ -101,7 +101,7 @@ class SegmentationMethod(ABC):
         return seg
 
     @abstractmethod
-    def get_table(self):
+    def to_table(self):
         """
         Get a table of the segmentation method parameters
 

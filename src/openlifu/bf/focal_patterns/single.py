@@ -30,7 +30,7 @@ class SinglePoint(FocalPattern):
         """
         return 1
 
-    def get_table(self):
+    def to_table(self):
         """
         Get a table of the focal pattern parameters
 

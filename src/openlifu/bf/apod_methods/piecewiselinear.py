@@ -47,7 +47,7 @@ class PiecewiseLinear(ApodizationMethod):
         apod = np.maximum(0, np.minimum(1, f))
         return apod
 
-    def get_table(self):
+    def to_table(self):
         """
         Get a table of the apodization method parameters
 

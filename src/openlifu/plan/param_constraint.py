@@ -79,7 +79,7 @@ class ParameterConstraint(DictMixin):
     def get_status_symbol(self, value: float) -> str:
         return PARAM_STATUS_SYMBOLS[self.get_status(value)]
 
-    def get_table(self):
+    def to_table(self):
         """Convert the parameter constraint to a table format."""
         import pandas as pd
         records = []

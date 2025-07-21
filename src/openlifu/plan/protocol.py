@@ -186,17 +186,17 @@ class Protocol:
             sub_df.insert(0, 'Category', category_name)
             return pd.concat([table, sub_df], ignore_index=True)
 
-        table = _append_subtable("Pulse", self.pulse.get_table())
-        table = _append_subtable("Sequence", self.sequence.get_table())
-        table = _append_subtable("Focal Pattern", self.focal_pattern.get_table())
-        table = _append_subtable("Delay Method", self.delay_method.get_table())
-        table = _append_subtable("Apodization Method", self.apod_method.get_table())
-        table = _append_subtable("Segmentation Method", self.seg_method.get_table())
-        table = _append_subtable("Simulation Setup", self.sim_setup.get_table())
+        table = _append_subtable("Pulse", self.pulse.to_table())
+        table = _append_subtable("Sequence", self.sequence.to_table())
+        table = _append_subtable("Focal Pattern", self.focal_pattern.to_table())
+        table = _append_subtable("Delay Method", self.delay_method.to_table())
+        table = _append_subtable("Apodization Method", self.apod_method.to_table())
+        table = _append_subtable("Segmentation Method", self.seg_method.to_table())
+        table = _append_subtable("Simulation Setup", self.sim_setup.to_table())
         for tc in self.target_constraints:
             table = _append_subtable("Target Constraints", tc.to_table())
         for param_id, param_constraint in self.param_constraints.items():
-            tp = param_constraint.get_table()
+            tp = param_constraint.to_table()
             tp["Value"] = tp["Value"].str.replace("value", param_id)
             table = _append_subtable("Parameter Constraints", tp)
         return table

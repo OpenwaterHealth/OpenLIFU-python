@@ -51,7 +51,7 @@ class Pulse(DictMixin):
         """
         return np.arange(0, self.duration, dt)
 
-    def get_table(self):
+    def to_table(self):
         """
         Get a table of the pulse parameters
 

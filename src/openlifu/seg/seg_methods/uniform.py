@@ -10,7 +10,7 @@ class UniformSegmentation(SegmentationMethod):
     def _segment(self, volume: xa.DataArray):
         return self._ref_segment(volume.coords)
 
-    def get_table(self):
+    def to_table(self):
         """
         Get a table of the segmentation method parameters
 
@@ -28,7 +28,7 @@ class UniformTissue(UniformSegmentation):
             materials = MATERIALS.copy()
         super().__init__(materials=materials, ref_material="tissue")
 
-    def get_table(self):
+    def to_table(self):
         """
         Get a table of the segmentation method parameters
 
@@ -45,7 +45,7 @@ class UniformWater(UniformSegmentation):
             materials = MATERIALS.copy()
         super().__init__(materials=materials, ref_material="water")
 
-    def get_table(self):
+    def to_table(self):
         """
         Get a table of the segmentation method parameters
 

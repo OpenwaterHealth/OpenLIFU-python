@@ -36,7 +36,7 @@ class Direct(DelayMethod):
         delays = max(tof) - tof
         return delays
 
-    def get_table(self):
+    def to_table(self):
         """
         Get a table of the delay method parameters
 

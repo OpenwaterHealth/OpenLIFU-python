@@ -37,7 +37,7 @@ class MaxAngle(ApodizationMethod):
         apod[angles <= self.max_angle] = 1
         return apod
 
-    def get_table(self):
+    def to_table(self):
         """
         Get a table of the apodization method parameters
 
