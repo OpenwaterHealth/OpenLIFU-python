@@ -17,9 +17,20 @@ class UniformTissue(UniformSegmentation):
             materials = MATERIALS.copy()
         super().__init__(materials=materials, ref_material="tissue")
 
+    def to_dict(self):
+        d = super().to_dict()
+        d.pop("ref_material")
+        return d
+
+
 class UniformWater(UniformSegmentation):
     """ Assigns the water material to all voxels in the volume. """
     def __init__(self, materials: dict[str, Material] | None = None):
         if materials is None:
             materials = MATERIALS.copy()
         super().__init__(materials=materials, ref_material="water")
+
+    def to_dict(self):
+        d = super().to_dict()
+        d.pop("ref_material")
+        return d
