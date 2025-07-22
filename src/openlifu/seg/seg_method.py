@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 import inspect
-import warnings
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Annotated, Any, Literal
@@ -71,7 +71,7 @@ class SegmentationMethod(ABC):
             if on_keyword_mismatch == 'raise':
                 raise TypeError(f"Unexpected keyword arguments for {short_classname}: {unexpected_keywords}")
             elif on_keyword_mismatch == 'warn':
-                warnings.warn(f"Ignoring unexpected keyword arguments for {short_classname}: {unexpected_keywords}", stacklevel=2)
+                logging.warning(f"Ignoring unexpected keyword arguments for {short_classname}: {unexpected_keywords}")
             for k in unexpected_keywords:
                 d.pop(k)
 

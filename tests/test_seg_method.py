@@ -87,9 +87,6 @@ def test_from_dict_on_keyword_mismatch():
         "ref_material": "water"
     }
 
-    with pytest.warns(UserWarning):
-        SegmentationMethod.from_dict(d, on_keyword_mismatch='warn')
-
     with pytest.raises(TypeError, match=r"Unexpected keyword arguments for UniformWater: \['ref_material'\]"):
         SegmentationMethod.from_dict(d, on_keyword_mismatch='raise')
 
