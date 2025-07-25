@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Annotated, Tuple
+from typing import Annotated, Literal, Tuple
 
 import numpy as np
 import pandas as pd
@@ -204,3 +204,27 @@ class SimSetup(DictMixin):
             {"Name": "CFL", "Value": self.cfl, "Unit": ""},
         ]
         return pd.DataFrame.from_records(records)
+
+    @staticmethod
+    def from_dict(d: dict, on_keyword_mismatch: Literal['warn', 'raise', 'ignore'] = 'warn') -> SimSetup:
+        """Create a SimSetup instance from a dictionary."""
+        if not isinstance(d, dict):
+            raise TypeError("Input must be a dictionary.")
+
+        expected_keywords = [
+            'spacing', 'units', 'x_extent', 'y_extent', 'z_extent',
+            'dt', 't_end', 'c0', 'cfl', 'options'
+        ]
+
+        input_args = {
+            k: v for k, v in d.items() if k in expected_keywords
+        }
+        unexpected_keywords = [k for k in d if k not in expected_keywords]
+
+        if unexpected_keywords:
+            if on_keyword_mismatch == 'raise':
+                raise TypeError(f"Unexpected keyword arguments for SimSetup: {unexpected_keywords}")
+            elif on_keyword_mismatch == 'warn':
+                logging.warning(f"Ignoring unexpected keyword arguments for SimSetup: {unexpected_keywords}")
+
+        return SimSetup(**input_args)
