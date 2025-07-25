@@ -15,14 +15,11 @@ from openlifu.util.dict_conversion import DictMixin
 from openlifu.util.units import getunitconversion, getunittype
 from openlifu.xdc import Transducer
 
+COORD_DIMS = ("x", "y", "z")
+COORD_NAMES = ("Lateral", "Elevation", "Axial")
 
 @dataclass
 class SimSetup(DictMixin):
-    dims: Annotated[Tuple[str, str, str], OpenLIFUFieldData("Dimension keys", "Codenames of the axes in the coordinate system being used")] = ("x", "y", "z")
-    """Names of the axes in the coordinate system being used"""
-
-    names: Annotated[Tuple[str, str, str], OpenLIFUFieldData("Dimension names", "Human readable names of the axes in the coordinate system being used")] = ("Lateral", "Elevation", "Axial")
-    """"Human readable names of the axes in the coordinate system being used"""
 
     spacing: Annotated[float, OpenLIFUFieldData("Spacing", "Simulation grid spacing")] = 1.0
     """Simulation grid spacing"""
@@ -55,10 +52,6 @@ class SimSetup(DictMixin):
     """Additional simulation options"""
 
     def __post_init__(self):
-        if len(self.dims) != 3:
-            raise ValueError("dims must have length 3.")
-        if len(self.names) != 3:
-            raise ValueError("names must have length 3.")
         if len(self.x_extent) != 2:
             raise ValueError("x_extent must have length 2.")
         if self.x_extent[0] >= self.x_extent[1]:
@@ -95,8 +88,6 @@ class SimSetup(DictMixin):
             raise TypeError("t_end must be a number.")
         if self.t_end < 0:
             raise ValueError("t_end must be a non-negative number.")
-        self.dims = tuple(self.dims)
-        self.names = tuple(self.names)
         nx = np.diff(self.x_extent)/self.spacing
         x_extent = tuple(np.arange(2)*np.round(nx)*self.spacing + self.x_extent[0])
         if ((0.5-np.abs((nx % 1) - 0.5))/ np.round(nx)) > 1e-3:
@@ -114,17 +105,17 @@ class SimSetup(DictMixin):
         self.z_extent = z_extent
 
     def get_coords(self, dims=None, units: str | None = None):
-        dims = self.dims if dims is None else dims
+        dims = COORD_DIMS if dims is None else dims
         units = self.units if units is None else units
         sizes = self.get_size(dims)
         extents = self.get_extent(dims, units)
         coords = xa.Coordinates({dim: np.linspace(extents[i][0], extents[i][1], sizes[i]) for i, dim in enumerate(dims)})
-        for i, dim in enumerate(dims):
+        for dim in dims:
             coords[dim].attrs['units'] = units
-            coords[dim].attrs['long_name'] = self.names[i]
+            coords[dim].attrs['long_name'] = COORD_NAMES[COORD_DIMS.index(dim)]
         return coords
 
-    def get_corners(self, id: str = "corners", units: str | None = None):
+    def get_corners(self, units: str | None = None):
         units = self.units if units is None else units
         scl = getunitconversion(self.units, units)
         xyz = np.array(np.meshgrid(self.x_extent, self.y_extent, self.z_extent, indexing='ij'))
@@ -132,11 +123,11 @@ class SimSetup(DictMixin):
         return corners*scl
 
     def get_extent(self, dims: str | None=None, units: str | None = None):
-        dims = self.dims if dims is None else dims
+        dims = COORD_DIMS if dims is None else dims
         units = self.units if units is None else units
         scl = getunitconversion(self.units, units)
         extents = [self.x_extent, self.y_extent, self.z_extent]
-        return np.array([extents[self.dims.index(dim)] for dim in dims])*scl
+        return np.array([extents[COORD_DIMS.index(dim)] for dim in dims])*scl
 
     def get_max_cycle_offset(self, arr:Transducer, frequency: float | None = None, delays: np.ndarray | None=None, zmin: float =10e-3):
         frequency = arr.frequency if frequency is None else frequency
@@ -159,9 +150,9 @@ class SimSetup(DictMixin):
         return max_distance
 
     def get_size(self, dims: str | None=None):
-        dims = self.dims if dims is None else dims
+        dims = COORD_DIMS if dims is None else dims
         n = [int((np.round(np.diff(ext)/self.spacing)).item())+1 for ext in [self.x_extent, self.y_extent, self.z_extent]]
-        return np.array([n[self.dims.index(dim)] for dim in dims]).squeeze()
+        return np.array([n[COORD_DIMS.index(dim)] for dim in dims]).squeeze()
 
     def get_spacing(self, units: str | None = None):
         units = self.units if units is None else units

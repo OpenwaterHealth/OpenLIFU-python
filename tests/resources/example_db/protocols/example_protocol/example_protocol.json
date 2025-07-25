@@ -74,8 +74,6 @@
     "ref_material": "water"
   },
   "sim_setup": {
-    "dims": ["x", "y", "z"],
-    "names": ["Lateral", "Elevation", "Axial"],
     "spacing": 1,
     "units": "mm",
     "x_extent": [-30, 30],
