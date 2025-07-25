@@ -21,7 +21,10 @@ from openlifu.util.units import getunitconversion
 
 
 def get_kgrid(coords: xa.Coordinates, t_end = 0, dt = 0, sound_speed_ref=1500, cfl=0.5):
-    scl = getunitconversion(coords['lat'].attrs['units'], 'm')
+    units = [coords[dim].attrs['units'] for dim in coords.dims]
+    if not all(unit == units[0] for unit in units):
+        raise ValueError("All coordinates must have the same units")
+    scl = getunitconversion(units[0], 'm')
     sz = [len(coord) for coord in coords.values()]
     dx = [np.diff(coord)[0]*scl for coord in coords.values()]
     kgrid = kWaveGrid(sz, dx)
@@ -98,8 +101,10 @@ def run_simulation(arr: xdc.Transducer,
     t = np.arange(0, cycles / freq, kgrid.dt)
     input_signal = amplitude * np.sin(2 * np.pi * freq * t)
     source_mat = arr.calc_output(input_signal, kgrid.dt, delays, apod)
-    pcoords = params.coords['lat'].attrs['units']
-    scl = getunitconversion(pcoords, 'm')
+    units = [params[dim].attrs['units'] for dim in params.dims]
+    if not all(unit == units[0] for unit in units):
+        raise ValueError("All dimensions must have the same units")
+    scl = getunitconversion(units[0], 'm')
     array_offset =[-float(coord.mean())*scl for coord in params.coords.values()]
     karray = get_karray(arr,
                         translation=array_offset,

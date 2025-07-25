@@ -15,7 +15,7 @@ class OpenLIFUFieldData(NamedTuple):
         dim_names: Annotated[
             Tuple[str, str, str],
             OpenLIFUFieldData("Dimensions", "The name of the dimensions of the graph."),
-        ] = ("lat", "ele", "ax")
+        ] = ("x", "y", "z")
     ```
 
     Annotated[] does not interfere with runtime behavior or type compatibility.

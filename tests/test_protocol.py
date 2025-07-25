@@ -122,14 +122,14 @@ def test_calc_solution_use_gpu(
     """Test that the correct value of use_gpu is passed to the simulation runner"""
     example_simulation_output = xa.Dataset(
         {
-            'p_min': xa.DataArray(data=np.empty((3, 2, 3)), dims=["lat", "ele", "ax"], attrs={'units': "Pa"}),
-            'p_max': xa.DataArray(data=np.empty((3, 2, 3)),dims=["lat", "ele", "ax"],attrs={'units': "Pa"}),
-            'intensity': xa.DataArray(data=np.empty((3, 2, 3)),dims=["lat", "ele", "ax"],attrs={'units': "W/cm^2"}),
+            'p_min': xa.DataArray(data=np.empty((3, 2, 3)), dims=["x", "y", "z"], attrs={'units': "Pa"}),
+            'p_max': xa.DataArray(data=np.empty((3, 2, 3)),dims=["x", "y", "z"],attrs={'units': "Pa"}),
+            'intensity': xa.DataArray(data=np.empty((3, 2, 3)),dims=["x", "y", "z"],attrs={'units': "W/cm^2"}),
         },
         coords={
-            'lat': xa.DataArray(dims=["lat"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
-            'ele': xa.DataArray(dims=["ele"], data=np.linspace(0, 1, 2), attrs={'units': "m"}),
-            'ax': xa.DataArray(dims=["ax"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
+            'x': xa.DataArray(dims=["x"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
+            'y': xa.DataArray(dims=["y"], data=np.linspace(0, 1, 2), attrs={'units': "m"}),
+            'z': xa.DataArray(dims=["z"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
         },
     )
     mocker.patch(

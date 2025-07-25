@@ -216,11 +216,12 @@ class Protocol:
 
         # check if target position is within target_constraints defined bounds.
         for target_constraint in self.target_constraints:
-            pos = target.get_position(
-                dim=target_constraint.dim,
-                units=target_constraint.units
-            )
-            target_constraint.check_bounds(pos)
+            if target_constraint.dim in target.dims:
+                pos = target.get_position(
+                    dim=target_constraint.dim,
+                    units=target_constraint.units
+                )
+                target_constraint.check_bounds(pos)
 
     def fix_pulse_mismatch(self, on_pulse_mismatch: OnPulseMismatchAction, foci: List[Point]):
         """Fix the protocol sequence pulse count in-place given a pulse_mismatch action."""
