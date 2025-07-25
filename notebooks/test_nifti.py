@@ -87,7 +87,8 @@ trans_matrix = np.array(
      [0, .05,  np.sqrt(1-.05**2), -105],
      [0, np.sqrt(1-.05**2),  -.05, 5],
      [0, 0,  0, 1]])
-da = ds['p_max'].interp({'lat':np.arange(-30, 30.1, 0.5),'ele':np.arange(-30, 30.1, 0.5), 'ax': np.arange(-4,70.1,0.5)})
+dims = ds['p_max'].dims
+da = ds['p_max'].interp({dims[0]:np.arange(-30, 30.1, 0.5),dims[1]:np.arange(-30, 30.1, 0.5), dims[2]: np.arange(-4,70.1,0.5)})
 origin_local = [float(val[0]) for dim, val in da.coords.items()]
 dx = [float(val[1]-val[0]) for dim, val in da.coords.items()]
 affine = np.array([-1,-1,1,1]).reshape(4,1)*np.concatenate([trans_matrix[:,:3], trans_matrix @ np.array([*origin_local, 1]).reshape([4,1])], axis=1)*np.array([*dx, 1]).reshape([1,4])

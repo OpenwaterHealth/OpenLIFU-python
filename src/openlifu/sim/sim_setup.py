@@ -18,7 +18,7 @@ from openlifu.xdc import Transducer
 
 @dataclass
 class SimSetup(DictMixin):
-    dims: Annotated[Tuple[str, str, str], OpenLIFUFieldData("Dimension keys", "Codenames of the axes in the coordinate system being used")] = ("lat", "ele", "ax")
+    dims: Annotated[Tuple[str, str, str], OpenLIFUFieldData("Dimension keys", "Codenames of the axes in the coordinate system being used")] = ("x", "y", "z")
     """Names of the axes in the coordinate system being used"""
 
     names: Annotated[Tuple[str, str, str], OpenLIFUFieldData("Dimension names", "Human readable names of the axes in the coordinate system being used")] = ("Lateral", "Elevation", "Axial")
@@ -142,7 +142,8 @@ class SimSetup(DictMixin):
         frequency = arr.frequency if frequency is None else frequency
         delays = np.zeros(arr.numelements()) if delays is None else delays
         coords = self.get_coords(units="m")
-        cvals = [coords['lat'], coords['ele'], coords['ax'].sel(ax=slice(zmin, None))]
+        dims = coords.dims
+        cvals = [coords[dims[0]], coords[dims[1]], coords[dims[2]].sel(ax=slice(zmin, None))]
         ndg = np.meshgrid(*cvals)
         dists = [np.sqrt((ndg[0]-pos[0])**2 + (ndg[1]-pos[1])**2 + (ndg[2]-pos[2])**2) for pos in arr.get_positions(units="m")]
         tof = [dist/self.c0 + delays[i] for i, dist in enumerate(dists)]

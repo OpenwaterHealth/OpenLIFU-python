@@ -56,24 +56,24 @@ def example_solution() -> Solution:
             {
                 'p_min': xa.DataArray(
                     data=rng.random((1, 3, 2, 3)),
-                    dims=["focal_point_index", "lat", "ele", "ax"],
+                    dims=["focal_point_index", "x", "y", "z"],
                     attrs={'units': "Pa"}
                 ),
                 'p_max': xa.DataArray(
                     data=rng.random((1, 3, 2, 3)),
-                    dims=["focal_point_index", "lat", "ele", "ax"],
+                    dims=["focal_point_index", "x", "y", "z"],
                     attrs={'units': "Pa"}
                 ),
                 'intensity': xa.DataArray(
                     data=rng.random((1, 3, 2, 3)),
-                    dims=["focal_point_index", "lat", "ele", "ax"],
+                    dims=["focal_point_index", "x", "y", "z"],
                     attrs={'units': "W/cm^2"}
                 )
             },
             coords={
-                'lat': xa.DataArray(dims=["lat"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
-                'ele': xa.DataArray(dims=["ele"], data=np.linspace(0, 1, 2), attrs={'units': "m"}),
-                'ax': xa.DataArray(dims=["ax"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
+                'x': xa.DataArray(dims=["x"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
+                'y': xa.DataArray(dims=["y"], data=np.linspace(0, 1, 2), attrs={'units': "m"}),
+                'z': xa.DataArray(dims=["z"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
                 'focal_point_index': [0]
             }
         )
@@ -187,14 +187,14 @@ def test_solution_analyze_ratios(example_solution: Solution, example_transducer:
 
     solution.simulation_result = xa.Dataset(
         {
-            'p_min': xa.DataArray(data=p_min_data, dims=["focal_point_index", "lat", "ele", "ax"], attrs={'units': "Pa"}),
-            'p_max': xa.DataArray(data=p_min_data, dims=["focal_point_index", "lat", "ele", "ax"], attrs={'units': "Pa"}), # Keep p_max same for simplicity
-            'intensity': xa.DataArray(data=intensity_data, dims=["focal_point_index", "lat", "ele", "ax"], attrs={'units': "W/cm^2"})
+            'p_min': xa.DataArray(data=p_min_data, dims=["focal_point_index", "x", "y", "z"], attrs={'units': "Pa"}),
+            'p_max': xa.DataArray(data=p_min_data, dims=["focal_point_index", "x", "y", "z"], attrs={'units': "Pa"}), # Keep p_max same for simplicity
+            'intensity': xa.DataArray(data=intensity_data, dims=["focal_point_index", "x", "y", "z"], attrs={'units': "W/cm^2"})
         },
         coords={
-            'lat': xa.DataArray(dims=["lat"], data=lat_coords, attrs={'units': "m"}),
-            'ele': xa.DataArray(dims=["ele"], data=ele_coords, attrs={'units': "m"}),
-            'ax': xa.DataArray(dims=["ax"], data=ax_coords, attrs={'units': "m"}),
+            'x': xa.DataArray(dims=["x"], data=lat_coords, attrs={'units': "m"}),
+            'y': xa.DataArray(dims=["y"], data=ele_coords, attrs={'units': "m"}),
+            'z': xa.DataArray(dims=["z"], data=ax_coords, attrs={'units': "m"}),
             'focal_point_index': [0]
         }
     )
