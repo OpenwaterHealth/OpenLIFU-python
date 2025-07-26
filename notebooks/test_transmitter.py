@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import sys
+import time
+
 from openlifu.io.LIFUInterface import LIFUInterface
 
 # set PYTHONPATH=%cd%\src;%PYTHONPATH%
@@ -18,11 +21,47 @@ if tx_connected and hv_connected:
 else:
     print(f'LIFU Device NOT Fully Connected. TX: {tx_connected}, HV: {hv_connected}')
 
-print("Ping the device")
-interface.txdevice.ping()
+# print("Ping the device")
+# interface.txdevice.ping()
+
+num_modules = interface.txdevice.enum_tx7332_devices() / 2
+print(f"Number of modules found: {num_modules}")
+if not interface.txdevice.is_connected():
+    raise Exception("TX7332 device not connected.")
+
+tx_device = 1
+
+print("Module 1:\n")
+
+hw_id = interface.txdevice.get_hardware_id(module=tx_device)
+print(f"Hardware ID: {hw_id}")
+
+version = interface.txdevice.get_version(tx_device)
+print(f"Version: {version}")
+
+print(f"Toggling LED on module {tx_device}")
+interface.txdevice.toggle_led(tx_device)
+
+time.sleep(1)  # Wait for a second to see the LED toggle effect
+tx_device = 2
+
+print("Module 2:\n")
+
+hw_id = interface.txdevice.get_hardware_id(module=tx_device)
+print(f"Hardware ID: {hw_id}")
+
+version = interface.txdevice.get_version(tx_device)
+print(f"Version: {version}")
+
+# print(f"toggling LED on module {tx_device}")
+interface.txdevice.toggle_led(tx_device)
+time.sleep(1)
+
+sys.exit()
+
 
 print("Get Temperature")
-temperature = interface.txdevice.get_temperature()
+temperature = interface.txdevice.get_temperature(0)
 print(f"Temperature: {temperature} °C")
 
 print("Enumerate TX7332 chips")
@@ -31,6 +70,8 @@ if num_tx_devices > 0:
     print(f"Number of TX7332 devices found: {num_tx_devices}")
 else:
     raise Exception("No TX7332 devices found.")
+
+# exit(0)  # Exit early for testing purposes
 
 print("Set TX7332 Demo Waveform")
 if interface.txdevice.demo_tx7332():

@@ -19,11 +19,11 @@ ID_COUNTER = 0  # Initializing the ID counter
 
 # Set up logging
 log = logging.getLogger("UART")
-log.setLevel(logging.ERROR)
+log.setLevel(logging.INFO)
 log.propagate = False
 
 handler = logging.StreamHandler()
-handler.setLevel(logging.ERROR)
+handler.setLevel(logging.INFO)
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s") # Format output with timestamp
 handler.setFormatter(formatter)
 log.addHandler(handler)

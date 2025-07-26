@@ -232,7 +232,7 @@ class TxDevice:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def get_version(self) -> str:
+    def get_version(self, module:int = 1) -> str:
         """
         Retrieve the firmware version of the TX device.
 
@@ -251,9 +251,9 @@ class TxDevice:
                 logger.error("TX Device not connected")
                 return 'v0.0.0'
 
-            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_VERSION)
+            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_VERSION, addr=module)
             self.uart.clear_buffer()
-            # r.print_packet()
+            r.print_packet()
             if r.data_len == 3:
                 ver = f'v{r.data[0]}.{r.data[1]}.{r.data[2]}'
             else:
@@ -316,7 +316,7 @@ class TxDevice:
             logger.error("Unexpected error during echo process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def toggle_led(self) -> bool:
+    def toggle_led(self, module:int) -> bool:
         """
         Toggle the LED on the TX device.
 
@@ -332,9 +332,9 @@ class TxDevice:
                 logger.error("TX Device not connected")
                 return False
 
-            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_TOGGLE_LED)
+            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_TOGGLE_LED, addr=module)
             self.uart.clear_buffer()
-            # r.print_packet()
+            r.print_packet()
             return True
 
         except ValueError as v:
@@ -345,7 +345,7 @@ class TxDevice:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def get_hardware_id(self) -> str:
+    def get_hardware_id(self, module:int) -> str:
         """
         Retrieve the hardware ID of the TX device.
 
@@ -364,9 +364,9 @@ class TxDevice:
                 logger.error("TX Device not connected")
                 return None
 
-            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_HWID)
+            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_HWID, addr=module)
             self.uart.clear_buffer()
-            # r.print_packet()
+            r.print_packet()
             if r.data_len == 16:
                 return r.data.hex()
             else:
@@ -379,7 +379,7 @@ class TxDevice:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def get_temperature(self) -> float:
+    def get_temperature(self, module:int) -> float:
         """
         Retrieve the temperature reading from the TX device.
 
@@ -399,11 +399,12 @@ class TxDevice:
                 return 0
 
             # Send the GET_TEMP command
-            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_GET_TEMP)
+            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_GET_TEMP, addr=module)
             self.uart.clear_buffer()
-            # r.print_packet()
+            r.print_packet()
 
             # Check if the data length matches a float (4 bytes)
+
             if r.data_len == 4:
                 # Unpack the float value from the received data (assuming little-endian)
                 temperature = struct.unpack('<f', r.data)[0]
@@ -894,7 +895,7 @@ class TxDevice:
 
             r = self.uart.send_packet(id=None, addr=identifier, packetType=OW_TX7332, command=OW_TX7332_DEMO)
             self.uart.clear_buffer()
-            # r.print_packet()
+            r.print_packet()
             if r.packet_type == OW_ERROR:
                 logger.error("Error demoing TX devices")
                 return False
@@ -970,7 +971,7 @@ class TxDevice:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def read_register(self, address: int) -> int:
+    def read_register(self, identifier: int, address: int) -> int:
         """
         Read a register value from the TX device.
 
@@ -992,7 +993,7 @@ class TxDevice:
                 raise ValueError("TX Device not connected")
 
             # Validate the identifier
-            if self.identifier < 0:
+            if address < 0:
                 raise ValueError("TX Chip address NOT SET")
 
             # Pack the address into the required format
@@ -1007,7 +1008,8 @@ class TxDevice:
                 id=None,
                 packetType=OW_TX7332,
                 command=OW_TX7332_RREG,
-                addr=self.identifier,
+                reserved=identifier,
+                addr=address,
                 data=data
             )
 
@@ -1100,7 +1102,7 @@ class TxDevice:
 
                 # Clear the UART buffer after sending
                 self.uart.clear_buffer()
-
+                r.print_packet()
                 # Check for errors in the response
                 if r.packet_type == OW_ERROR:
                     logger.error(f"Error writing TX block at chunk {i}")
@@ -1142,7 +1144,7 @@ class TxDevice:
                 raise ValueError("TX Device not connected")
 
             # Validate the identifier
-            if self.identifier < 0:
+            if address < 0:
                 raise ValueError("TX Chip address NOT SET")
 
             # Pack the address and value into the required format
@@ -1157,7 +1159,7 @@ class TxDevice:
                 id=None,
                 packetType=OW_TX7332,
                 command=OW_TX7332_VWREG,
-                addr=self.identifier,
+                addr=address,
                 data=data
             )
 
@@ -1340,6 +1342,7 @@ class TxDevice:
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
             registers = self.tx_registers.get_registers(pack=True, pack_single=True)
+            print(f"tx device registers: {registers}")  # noqa: T201
             for txi, txregs in enumerate(registers):
                 for addr, reg_values in txregs.items():
                     if not self.write_block(identifier=txi, start_address=addr, reg_values=reg_values):
