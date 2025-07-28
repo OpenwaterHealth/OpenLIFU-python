@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import Annotated, Tuple
 
 import numpy as np
+import pandas as pd
 import xarray as xa
 
 from openlifu.geo import Point
@@ -193,3 +194,21 @@ class SimSetup(DictMixin):
             params = seg_method.seg_params(volume)
 
         return params
+
+    def to_table(self) -> pd.DataFrame:
+        """
+        Get a table of the simulation setup parameters
+
+        :returns: Pandas DataFrame of the simulation setup parameters
+        """
+        records = [
+            {"Name": "Spacing", "Value": self.spacing, "Unit": self.units},
+            {"Name": "X Extent", "Value": f"{self.x_extent[0]} to {self.x_extent[1]}", "Unit": self.units},
+            {"Name": "Y Extent", "Value": f"{self.y_extent[0]} to {self.y_extent[1]}", "Unit": self.units},
+            {"Name": "Z Extent", "Value": f"{self.z_extent[0]} to {self.z_extent[1]}", "Unit": self.units},
+            {"Name": "Time Step", "Value": self.dt, "Unit": "s"},
+            {"Name": "End Time", "Value": self.t_end, "Unit": "s"},
+            {"Name": "Speed of Sound", "Value": self.c0, "Unit": "m/s"},
+            {"Name": "CFL", "Value": self.cfl, "Unit": ""},
+        ]
+        return pd.DataFrame.from_records(records)

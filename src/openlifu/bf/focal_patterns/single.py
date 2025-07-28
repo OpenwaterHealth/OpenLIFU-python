@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import pandas as pd
+
 from openlifu.bf.focal_patterns import FocalPattern
 from openlifu.geo import Point
 
@@ -29,3 +31,13 @@ class SinglePoint(FocalPattern):
         :returns: Number of foci (1)
         """
         return 1
+
+    def to_table(self) -> pd.DataFrame:
+        """
+        Get a table of the focal pattern parameters
+
+        :returns: Pandas DataFrame of the focal pattern parameters
+        """
+        records = [{"Name": "Type", "Value": "Single Point", "Unit": ""},
+                   {"Name": "Target Pressure", "Value": self.target_pressure, "Unit": self.units}]
+        return pd.DataFrame.from_records(records)

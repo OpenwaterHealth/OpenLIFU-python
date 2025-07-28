@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Annotated
 
 import numpy as np
+import pandas as pd
 import xarray as xa
 
 from openlifu.bf.apod_methods import ApodizationMethod
@@ -19,3 +20,13 @@ class Uniform(ApodizationMethod):
 
     def calc_apodization(self, arr: Transducer, target: Point, params: xa.Dataset, transform:np.ndarray | None=None):
         return np.full(arr.numelements(), self.value)
+
+    def to_table(self):
+        """
+        Get a table of the apodization method parameters
+
+        :returns: Pandas DataFrame of the apodization method parameters
+        """
+        records = [{"Name": "Type", "Value": "Uniform", "Unit": ""},
+                   {"Name": "Value", "Value": self.value, "Unit": ""}]
+        return pd.DataFrame.from_records(records)
