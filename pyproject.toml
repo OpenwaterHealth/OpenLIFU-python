@@ -94,8 +94,7 @@ addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
 xfail_strict = true
 filterwarnings = [
   "error",
-  "ignore:Unsupported Windows version.*ONNX Runtime supports Windows 10 and above, only.:UserWarning",
-  "ignore:Ignoring unexpected keyword arguments for UniformWater.*:UserWarning",
+  "ignore:Unsupported Windows version.*ONNX Runtime supports Windows 10 and above, only.:UserWarning"
 ]
 log_cli_level = "INFO"
 testpaths = [
