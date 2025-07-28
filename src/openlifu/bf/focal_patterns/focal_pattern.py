@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Annotated
 
+import pandas as pd
+
 from openlifu.bf import focal_patterns
 from openlifu.geo import Point
 from openlifu.util.annotations import OpenLIFUFieldData
@@ -74,7 +76,7 @@ class FocalPattern(ABC):
         return class_constructor(**d)
 
     @abstractmethod
-    def to_table(self):
+    def to_table(self) -> pd.DataFrame:
         """
         Get a table of the focal pattern parameters
 

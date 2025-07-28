@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 import numpy as np
+import pandas as pd
 import xarray as xa
 
 from openlifu.bf import delay_methods
@@ -31,7 +32,7 @@ class DelayMethod(ABC):
         return class_constructor(**d)
 
     @abstractmethod
-    def to_table(self):
+    def to_table(self) -> pd.DataFrame:
         """
         Get a table of the delay method parameters
 

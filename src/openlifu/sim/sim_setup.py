@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import Annotated, Tuple
 
 import numpy as np
+import pandas as pd
 import xarray as xa
 
 from openlifu.geo import Point
@@ -194,13 +195,12 @@ class SimSetup(DictMixin):
 
         return params
 
-    def to_table(self):
+    def to_table(self) -> pd.DataFrame:
         """
         Get a table of the simulation setup parameters
 
         :returns: Pandas DataFrame of the simulation setup parameters
         """
-        import pandas as pd
         records = [
             {"Name": "Spacing", "Value": self.spacing, "Unit": self.units},
             {"Name": "X Extent", "Value": f"{self.x_extent[0]} to {self.x_extent[1]}", "Unit": self.units},

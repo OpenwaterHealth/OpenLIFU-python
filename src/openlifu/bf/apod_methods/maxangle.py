@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Annotated
 
 import numpy as np
+import pandas as pd
 import xarray as xa
 
 from openlifu.bf.apod_methods import ApodizationMethod
@@ -37,13 +38,12 @@ class MaxAngle(ApodizationMethod):
         apod[angles <= self.max_angle] = 1
         return apod
 
-    def to_table(self):
+    def to_table(self) -> pd.DataFrame:
         """
         Get a table of the apodization method parameters
 
         :returns: Pandas DataFrame of the apodization method parameters
         """
-        import pandas as pd
         records = [{"Name": "Type", "Value": "Max Angle", "Unit": ""},
                    {"Name": "Max Angle", "Value": self.max_angle, "Unit": self.units}]
         return pd.DataFrame.from_records(records)

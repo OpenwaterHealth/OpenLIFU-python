@@ -4,6 +4,8 @@ import logging
 from dataclasses import dataclass
 from typing import Annotated
 
+import pandas as pd
+
 from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
 from openlifu.util.units import getunittype
@@ -57,12 +59,12 @@ class TargetConstraints(DictMixin):
             logging.error(msg=f"The position {pos} at dimension {self.name} is not within bounds [{self.min}, {self.max}]!")
             raise ValueError(f"The position {pos} at dimension {self.name} is not within bounds [{self.min}, {self.max}]!")
 
-    def to_table(self):
+    def to_table(self) -> pd.DataFrame:
         """
         Get a table of the target constraints parameters.
+
         :returns: Pandas DataFrame of the target constraints parameters
         """
-        import pandas as pd
         records = [
             {"Name": self.name, "Value": f"({self.min},{self.max})", "Unit": self.units},
         ]

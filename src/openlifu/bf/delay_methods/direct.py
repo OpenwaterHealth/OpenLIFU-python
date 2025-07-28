@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Annotated
 
 import numpy as np
+import pandas as pd
 import xarray as xa
 
 from openlifu.bf.delay_methods import DelayMethod
@@ -36,13 +37,12 @@ class Direct(DelayMethod):
         delays = max(tof) - tof
         return delays
 
-    def to_table(self):
+    def to_table(self) -> pd.DataFrame:
         """
         Get a table of the delay method parameters
 
         :returns: Pandas DataFrame of the delay method parameters
         """
-        import pandas as pd
         records = [{"Name": "Type", "Value": "Direct", "Unit": ""},
                    {"Name": "Default Sound Speed", "Value": self.c0, "Unit": "m/s"}]
         return pd.DataFrame.from_records(records)

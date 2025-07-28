@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Annotated, Any
 
 import numpy as np
+import pandas as pd
 import xarray as xa
 
 from openlifu.seg.material import MATERIALS, PARAM_INFO, Material
@@ -101,7 +102,7 @@ class SegmentationMethod(ABC):
         return seg
 
     @abstractmethod
-    def to_table(self):
+    def to_table(self) -> pd.DataFrame:
         """
         Get a table of the segmentation method parameters
 

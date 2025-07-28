@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pandas as pd
 import xarray as xa
 
 from openlifu.seg.material import MATERIALS, Material
@@ -10,13 +11,12 @@ class UniformSegmentation(SegmentationMethod):
     def _segment(self, volume: xa.DataArray):
         return self._ref_segment(volume.coords)
 
-    def to_table(self):
+    def to_table(self) -> pd.DataFrame:
         """
         Get a table of the segmentation method parameters
 
         :returns: Pandas DataFrame of the segmentation method parameters
         """
-        import pandas as pd
         records = [{"Name": "Type", "Value": "Uniform Tissue", "Unit": ""},
                    {"Name": "Reference Material", "Value": self._ref_material, "Unit": ""}]
         return pd.DataFrame.from_records(records)
@@ -28,13 +28,12 @@ class UniformTissue(UniformSegmentation):
             materials = MATERIALS.copy()
         super().__init__(materials=materials, ref_material="tissue")
 
-    def to_table(self):
+    def to_table(self) -> pd.DataFrame:
         """
         Get a table of the segmentation method parameters
 
         :returns: Pandas DataFrame of the segmentation method parameters
         """
-        import pandas as pd
         records = [{"Name": "Type", "Value": "Uniform Tissue", "Unit": ""}]
         return pd.DataFrame.from_records(records)
 
@@ -45,12 +44,11 @@ class UniformWater(UniformSegmentation):
             materials = MATERIALS.copy()
         super().__init__(materials=materials, ref_material="water")
 
-    def to_table(self):
+    def to_table(self) -> pd.DataFrame:
         """
         Get a table of the segmentation method parameters
 
         :returns: Pandas DataFrame of the segmentation method parameters
         """
-        import pandas as pd
         records = [{"Name": "Type", "Value": "Uniform Water", "Unit": ""}]
         return pd.DataFrame.from_records(records)

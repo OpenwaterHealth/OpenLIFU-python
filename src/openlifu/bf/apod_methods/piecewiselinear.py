@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Annotated
 
 import numpy as np
+import pandas as pd
 import xarray as xa
 
 from openlifu.bf.apod_methods import ApodizationMethod
@@ -47,13 +48,12 @@ class PiecewiseLinear(ApodizationMethod):
         apod = np.maximum(0, np.minimum(1, f))
         return apod
 
-    def to_table(self):
+    def to_table(self) -> pd.DataFrame:
         """
         Get a table of the apodization method parameters
 
         :returns: Pandas DataFrame of the apodization method parameters
         """
-        import pandas as pd
         records = [
             {"Name": "Type", "Value": "Piecewise-Linear", "Unit": ""},
             {"Name": "Zero Angle", "Value": self.zero_angle, "Unit": self.units},
