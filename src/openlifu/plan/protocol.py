@@ -166,14 +166,16 @@ class Protocol:
         Return a table of the most important protocol parameters
 
         Example output:
-            Protocol Parameter           Value  Units
-            0                   ID      example_protocol
-            1                 Name      Example Protocol
-            2          Description  An example protocol for testing.
-            3                Pulse         Frequency   1e6.0     Hz
-            4                Pulse         Amplitude     1.0     AU
-            5                Pulse          Duration   0.001      s
-            6             Sequence    Pulse Interval   0.005      s
+            ```
+            Category      Name            Value Unit
+            0              ID             example_protocol
+            1            Name             Example protocol
+            2           Description  Example protocol created 30-Jan-2024 09:16:02
+            3       Pulse       Frequency               500000.0   Hz
+            4       Pulse       Amplitude              1.0   AU
+            5       Pulse        Duration          0.00002    s
+            6    Sequence  Pulse Interval              0.1    s
+            ```
         """
         records = [
             {"Category":"", "Name": "ID", "Value": self.id, "Unit": ""},
