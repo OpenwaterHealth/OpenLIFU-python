@@ -18,7 +18,7 @@ class UniformSegmentation(SegmentationMethod):
         :returns: Pandas DataFrame of the segmentation method parameters
         """
         records = [{"Name": "Type", "Value": "Uniform Tissue", "Unit": ""},
-                   {"Name": "Reference Material", "Value": self._ref_material, "Unit": ""}]
+                   {"Name": "Reference Material", "Value": self.ref_material, "Unit": ""}]
         return pd.DataFrame.from_records(records)
 
 class UniformTissue(UniformSegmentation):
