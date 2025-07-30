@@ -101,6 +101,8 @@ ELASTIC_MODE_PULSE_LENGTH_ADJUST = 125e-6
 ProfileOpts = Literal['active', 'configured', 'all']
 TriggerModeOpts = Literal['sequence', 'continuous','single']
 DEFAULT_PULSE_WIDTH_US = 20
+HW_ID_DATA_LENGTH = 12
+TEMPERATURE_DATA_LENGTH = 4
 
 from openlifu.io.LIFUConfig import (
     OW_CMD_ASYNC,
@@ -198,7 +200,7 @@ class TxDevice:
         if self.uart and self.uart.is_connected():
             self.uart.disconnect()
 
-    def ping(self) -> bool:
+    def ping(self, module:int=1) -> bool:
         """
         Send a ping command to the TX device to verify connectivity.
 
@@ -216,7 +218,7 @@ class TxDevice:
 
             logger.info("Send Ping to Device.")
 
-            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_PING)
+            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_PING, addr=module)
             self.uart.clear_buffer()
 
             if r.packet_type == OW_ERROR:
@@ -232,7 +234,7 @@ class TxDevice:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def get_version(self, module:int = 1) -> str:
+    def get_version(self, module:int=1) -> str:
         """
         Retrieve the firmware version of the TX device.
 
@@ -316,7 +318,7 @@ class TxDevice:
             logger.error("Unexpected error during echo process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def toggle_led(self, module:int) -> bool:
+    def toggle_led(self, module:int=1) -> bool:
         """
         Toggle the LED on the TX device.
 
@@ -345,7 +347,7 @@ class TxDevice:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def get_hardware_id(self, module:int) -> str:
+    def get_hardware_id(self, module:int=1) -> str:
         """
         Retrieve the hardware ID of the TX device.
 
@@ -367,7 +369,7 @@ class TxDevice:
             r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_HWID, addr=module)
             self.uart.clear_buffer()
             r.print_packet()
-            if r.data_len == 16:
+            if r.data_len == HW_ID_DATA_LENGTH:
                 return r.data.hex()
             else:
                 return None
@@ -379,7 +381,7 @@ class TxDevice:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def get_temperature(self, module:int) -> float:
+    def get_temperature(self, module:int=1) -> float:
         """
         Retrieve the temperature reading from the TX device.
 
@@ -405,7 +407,7 @@ class TxDevice:
 
             # Check if the data length matches a float (4 bytes)
 
-            if r.data_len == 4:
+            if r.data_len == TEMPERATURE_DATA_LENGTH:
                 # Unpack the float value from the received data (assuming little-endian)
                 temperature = struct.unpack('<f', r.data)[0]
                 # Truncate the temperature to 2 decimal places
@@ -421,7 +423,7 @@ class TxDevice:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def get_ambient_temperature(self) -> float:
+    def get_ambient_temperature(self, module:int=1) -> float:
         """
         Retrieve the ambient temperature reading from the TX device.
 
@@ -441,12 +443,12 @@ class TxDevice:
                 return 0
 
             # Send the GET_TEMP command
-            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_GET_AMBIENT)
+            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_GET_AMBIENT, addr=module)
             self.uart.clear_buffer()
             # r.print_packet()
 
             # Check if the data length matches a float (4 bytes)
-            if r.data_len == 4:
+            if r.data_len == TEMPERATURE_DATA_LENGTH:
                 # Unpack the float value from the received data (assuming little-endian)
                 temperature = struct.unpack('<f', r.data)[0]
                 # Truncate the temperature to 2 decimal places
@@ -723,7 +725,7 @@ class TxDevice:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def soft_reset(self) -> bool:
+    def soft_reset(self, module:int=1) -> bool:
         """
         Perform a soft reset on the TX device.
 
@@ -741,7 +743,7 @@ class TxDevice:
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
 
-            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_RESET)
+            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_RESET, addr=module)
             self.uart.clear_buffer()
             # r.print_packet()
             if r.packet_type == OW_ERROR:
@@ -757,7 +759,7 @@ class TxDevice:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def enter_dfu(self) -> bool:
+    def enter_dfu(self, module:int=1) -> bool:
         """
         Perform a soft reset to enter DFU mode on TX device.
 
@@ -775,7 +777,7 @@ class TxDevice:
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
 
-            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_DFU)
+            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_DFU, addr=module)
             self.uart.clear_buffer()
             # r.print_packet()
             if r.packet_type == OW_ERROR:
@@ -1102,7 +1104,7 @@ class TxDevice:
 
                 # Clear the UART buffer after sending
                 self.uart.clear_buffer()
-                r.print_packet()
+                # r.print_packet()
                 # Check for errors in the response
                 if r.packet_type == OW_ERROR:
                     logger.error(f"Error writing TX block at chunk {i}")
