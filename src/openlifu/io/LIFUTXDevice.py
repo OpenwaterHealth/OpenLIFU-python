@@ -935,7 +935,7 @@ class TxDevice:
                 raise ValueError("TX Device not connected")
 
             # Validate the identifier
-            if self.identifier < 0:
+            if identifier < 0:
                 raise ValueError("TX Chip address NOT SET")
 
             # Pack the address and value into the required format
