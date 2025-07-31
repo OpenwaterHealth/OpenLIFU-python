@@ -935,7 +935,7 @@ class TxDevice:
                 raise ValueError("TX Device not connected")
 
             # Validate the identifier
-            if identifier < 0:
+            if self.identifier < 0:
                 raise ValueError("TX Chip address NOT SET")
 
             # Pack the address and value into the required format
@@ -973,7 +973,7 @@ class TxDevice:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
-    def read_register(self, identifier: int, address: int) -> int:
+    def read_register(self, address: int) -> int:
         """
         Read a register value from the TX device.
 
@@ -995,7 +995,7 @@ class TxDevice:
                 raise ValueError("TX Device not connected")
 
             # Validate the identifier
-            if address < 0:
+            if self.identifier < 0:
                 raise ValueError("TX Chip address NOT SET")
 
             # Pack the address into the required format
@@ -1010,8 +1010,7 @@ class TxDevice:
                 id=None,
                 packetType=OW_TX7332,
                 command=OW_TX7332_RREG,
-                reserved=identifier,
-                addr=address,
+                addr=self.identifier,
                 data=data
             )
 
@@ -1146,7 +1145,7 @@ class TxDevice:
                 raise ValueError("TX Device not connected")
 
             # Validate the identifier
-            if address < 0:
+            if self.identifier < 0:
                 raise ValueError("TX Chip address NOT SET")
 
             # Pack the address and value into the required format
@@ -1161,7 +1160,7 @@ class TxDevice:
                 id=None,
                 packetType=OW_TX7332,
                 command=OW_TX7332_VWREG,
-                addr=address,
+                addr=self.identifier,
                 data=data
             )
 
