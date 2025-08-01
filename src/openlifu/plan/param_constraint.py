@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Annotated, Literal, Tuple
 
+import pandas as pd
+
 from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.dict_conversion import DictMixin
 
@@ -78,3 +80,16 @@ class ParameterConstraint(DictMixin):
 
     def get_status_symbol(self, value: float) -> str:
         return PARAM_STATUS_SYMBOLS[self.get_status(value)]
+
+    def to_table(self) -> pd.DataFrame:
+        """Convert the parameter constraint to a table format."""
+        records = []
+        if self.operator in ['<', '<=', '>', '>='] or self.operator in ['within', 'inside', 'outside', 'outside_inclusive']:
+            value_template = f"value {self.operator} {{value}}"
+        else:
+            raise ValueError(f"Unsupported operator: {self.operator}")
+        if self.warning_value is not None:
+            records.append({"Name": "Warn if not", "Value": value_template.format(value=self.warning_value), "Unit": ""})
+        if self.error_value is not None:
+            records.append({"Name": "Error if not", "Value": value_template.format(value=self.error_value), "Unit": ""})
+        return pd.DataFrame.from_records(records)

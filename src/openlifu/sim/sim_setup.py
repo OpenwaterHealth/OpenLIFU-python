@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Annotated, Tuple
+from typing import Annotated, Literal, Tuple
 
 import numpy as np
+import pandas as pd
 import xarray as xa
 
 from openlifu.geo import Point
@@ -14,14 +15,11 @@ from openlifu.util.dict_conversion import DictMixin
 from openlifu.util.units import getunitconversion, getunittype
 from openlifu.xdc import Transducer
 
+COORD_DIMS = ("x", "y", "z")
+COORD_NAMES = ("Lateral", "Elevation", "Axial")
 
 @dataclass
 class SimSetup(DictMixin):
-    dims: Annotated[Tuple[str, str, str], OpenLIFUFieldData("Dimension keys", "Codenames of the axes in the coordinate system being used")] = ("lat", "ele", "ax")
-    """Names of the axes in the coordinate system being used"""
-
-    names: Annotated[Tuple[str, str, str], OpenLIFUFieldData("Dimension names", "Human readable names of the axes in the coordinate system being used")] = ("Lateral", "Elevation", "Axial")
-    """"Human readable names of the axes in the coordinate system being used"""
 
     spacing: Annotated[float, OpenLIFUFieldData("Spacing", "Simulation grid spacing")] = 1.0
     """Simulation grid spacing"""
@@ -54,10 +52,6 @@ class SimSetup(DictMixin):
     """Additional simulation options"""
 
     def __post_init__(self):
-        if len(self.dims) != 3:
-            raise ValueError("dims must have length 3.")
-        if len(self.names) != 3:
-            raise ValueError("names must have length 3.")
         if len(self.x_extent) != 2:
             raise ValueError("x_extent must have length 2.")
         if self.x_extent[0] >= self.x_extent[1]:
@@ -94,8 +88,6 @@ class SimSetup(DictMixin):
             raise TypeError("t_end must be a number.")
         if self.t_end < 0:
             raise ValueError("t_end must be a non-negative number.")
-        self.dims = tuple(self.dims)
-        self.names = tuple(self.names)
         nx = np.diff(self.x_extent)/self.spacing
         x_extent = tuple(np.arange(2)*np.round(nx)*self.spacing + self.x_extent[0])
         if ((0.5-np.abs((nx % 1) - 0.5))/ np.round(nx)) > 1e-3:
@@ -113,17 +105,17 @@ class SimSetup(DictMixin):
         self.z_extent = z_extent
 
     def get_coords(self, dims=None, units: str | None = None):
-        dims = self.dims if dims is None else dims
+        dims = COORD_DIMS if dims is None else dims
         units = self.units if units is None else units
         sizes = self.get_size(dims)
         extents = self.get_extent(dims, units)
         coords = xa.Coordinates({dim: np.linspace(extents[i][0], extents[i][1], sizes[i]) for i, dim in enumerate(dims)})
-        for i, dim in enumerate(dims):
+        for dim in dims:
             coords[dim].attrs['units'] = units
-            coords[dim].attrs['long_name'] = self.names[i]
+            coords[dim].attrs['long_name'] = COORD_NAMES[COORD_DIMS.index(dim)]
         return coords
 
-    def get_corners(self, id: str = "corners", units: str | None = None):
+    def get_corners(self, units: str | None = None):
         units = self.units if units is None else units
         scl = getunitconversion(self.units, units)
         xyz = np.array(np.meshgrid(self.x_extent, self.y_extent, self.z_extent, indexing='ij'))
@@ -131,17 +123,18 @@ class SimSetup(DictMixin):
         return corners*scl
 
     def get_extent(self, dims: str | None=None, units: str | None = None):
-        dims = self.dims if dims is None else dims
+        dims = COORD_DIMS if dims is None else dims
         units = self.units if units is None else units
         scl = getunitconversion(self.units, units)
         extents = [self.x_extent, self.y_extent, self.z_extent]
-        return np.array([extents[self.dims.index(dim)] for dim in dims])*scl
+        return np.array([extents[COORD_DIMS.index(dim)] for dim in dims])*scl
 
     def get_max_cycle_offset(self, arr:Transducer, frequency: float | None = None, delays: np.ndarray | None=None, zmin: float =10e-3):
         frequency = arr.frequency if frequency is None else frequency
         delays = np.zeros(arr.numelements()) if delays is None else delays
         coords = self.get_coords(units="m")
-        cvals = [coords['lat'], coords['ele'], coords['ax'].sel(ax=slice(zmin, None))]
+        dims = coords.dims
+        cvals = [coords[dims[0]], coords[dims[1]], coords[dims[2]].sel(ax=slice(zmin, None))]
         ndg = np.meshgrid(*cvals)
         dists = [np.sqrt((ndg[0]-pos[0])**2 + (ndg[1]-pos[1])**2 + (ndg[2]-pos[2])**2) for pos in arr.get_positions(units="m")]
         tof = [dist/self.c0 + delays[i] for i, dist in enumerate(dists)]
@@ -157,9 +150,9 @@ class SimSetup(DictMixin):
         return max_distance
 
     def get_size(self, dims: str | None=None):
-        dims = self.dims if dims is None else dims
+        dims = COORD_DIMS if dims is None else dims
         n = [int((np.round(np.diff(ext)/self.spacing)).item())+1 for ext in [self.x_extent, self.y_extent, self.z_extent]]
-        return np.array([n[self.dims.index(dim)] for dim in dims]).squeeze()
+        return np.array([n[COORD_DIMS.index(dim)] for dim in dims]).squeeze()
 
     def get_spacing(self, units: str | None = None):
         units = self.units if units is None else units
@@ -193,3 +186,45 @@ class SimSetup(DictMixin):
             params = seg_method.seg_params(volume)
 
         return params
+
+    def to_table(self) -> pd.DataFrame:
+        """
+        Get a table of the simulation setup parameters
+
+        :returns: Pandas DataFrame of the simulation setup parameters
+        """
+        records = [
+            {"Name": "Spacing", "Value": self.spacing, "Unit": self.units},
+            {"Name": "X Extent", "Value": f"{self.x_extent[0]} to {self.x_extent[1]}", "Unit": self.units},
+            {"Name": "Y Extent", "Value": f"{self.y_extent[0]} to {self.y_extent[1]}", "Unit": self.units},
+            {"Name": "Z Extent", "Value": f"{self.z_extent[0]} to {self.z_extent[1]}", "Unit": self.units},
+            {"Name": "Time Step", "Value": self.dt, "Unit": "s"},
+            {"Name": "End Time", "Value": self.t_end, "Unit": "s"},
+            {"Name": "Speed of Sound", "Value": self.c0, "Unit": "m/s"},
+            {"Name": "CFL", "Value": self.cfl, "Unit": ""},
+        ]
+        return pd.DataFrame.from_records(records)
+
+    @staticmethod
+    def from_dict(d: dict, on_keyword_mismatch: Literal['warn', 'raise', 'ignore'] = 'warn') -> SimSetup:
+        """Create a SimSetup instance from a dictionary."""
+        if not isinstance(d, dict):
+            raise TypeError("Input must be a dictionary.")
+
+        expected_keywords = [
+            'spacing', 'units', 'x_extent', 'y_extent', 'z_extent',
+            'dt', 't_end', 'c0', 'cfl', 'options'
+        ]
+
+        input_args = {
+            k: v for k, v in d.items() if k in expected_keywords
+        }
+        unexpected_keywords = [k for k in d if k not in expected_keywords]
+
+        if unexpected_keywords:
+            if on_keyword_mismatch == 'raise':
+                raise TypeError(f"Unexpected keyword arguments for SimSetup: {unexpected_keywords}")
+            elif on_keyword_mismatch == 'warn':
+                logging.warning(f"Ignoring unexpected keyword arguments for SimSetup: {unexpected_keywords}")
+
+        return SimSetup(**input_args)

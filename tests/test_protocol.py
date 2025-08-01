@@ -44,6 +44,19 @@ def test_default_protocol():
     """Ensure it is possible to construct a default protocol"""
     Protocol()
 
+def test_to_table(example_protocol: Protocol):
+    """Ensure that the protocol can be correctly converted to a table."""
+    t = example_protocol.to_table()
+    assert t is not None
+    assert "Category" in t.columns
+    assert "Name" in t.columns
+    assert "Value" in t.columns
+    assert "Unit" in t.columns
+    tm =t.set_index(["Category", "Name"])
+    assert tm.loc["","ID"]["Value"] == example_protocol.id
+    assert tm.loc["Delay Method", "Default Sound Speed"]["Value"] == 1540.0
+    assert tm.loc["Delay Method", "Default Sound Speed"]["Unit"] == "m/s"
+
 @pytest.mark.parametrize(
     "target_constraints",
     [
@@ -109,14 +122,14 @@ def test_calc_solution_use_gpu(
     """Test that the correct value of use_gpu is passed to the simulation runner"""
     example_simulation_output = xa.Dataset(
         {
-            'p_min': xa.DataArray(data=np.empty((3, 2, 3)), dims=["lat", "ele", "ax"], attrs={'units': "Pa"}),
-            'p_max': xa.DataArray(data=np.empty((3, 2, 3)),dims=["lat", "ele", "ax"],attrs={'units': "Pa"}),
-            'intensity': xa.DataArray(data=np.empty((3, 2, 3)),dims=["lat", "ele", "ax"],attrs={'units': "W/cm^2"}),
+            'p_min': xa.DataArray(data=np.empty((3, 2, 3)), dims=["x", "y", "z"], attrs={'units': "Pa"}),
+            'p_max': xa.DataArray(data=np.empty((3, 2, 3)),dims=["x", "y", "z"],attrs={'units': "Pa"}),
+            'intensity': xa.DataArray(data=np.empty((3, 2, 3)),dims=["x", "y", "z"],attrs={'units': "W/cm^2"}),
         },
         coords={
-            'lat': xa.DataArray(dims=["lat"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
-            'ele': xa.DataArray(dims=["ele"], data=np.linspace(0, 1, 2), attrs={'units': "m"}),
-            'ax': xa.DataArray(dims=["ax"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
+            'x': xa.DataArray(dims=["x"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
+            'y': xa.DataArray(dims=["y"], data=np.linspace(0, 1, 2), attrs={'units': "m"}),
+            'z': xa.DataArray(dims=["z"], data=np.linspace(0, 1, 3), attrs={'units': "m"}),
         },
     )
     mocker.patch(

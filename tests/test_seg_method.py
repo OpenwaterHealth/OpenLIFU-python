@@ -70,3 +70,25 @@ def test_uniformwater_errors_when_specify_ref_material():
 def test_materials_as_none_gets_default_materials():
     seg_method = seg_methods.UniformSegmentation(materials=None)  # pyright: ignore[reportArgumentType]
     assert seg_method.materials == MATERIALS.copy()
+
+def test_from_dict_on_keyword_mismatch():
+    d = {
+        "class": "UniformWater",
+        "materials": {
+            "water": {
+                "name": "water",
+                "sound_speed": 1500,
+                "density": 1000,
+                "attenuation": 0.0022,
+                "specific_heat": 4182,
+                "thermal_conductivity": 0.598
+            }
+        },
+        "ref_material": "water"
+    }
+
+    with pytest.raises(TypeError, match=r"Unexpected keyword arguments for UniformWater: \['ref_material'\]"):
+        SegmentationMethod.from_dict(d, on_keyword_mismatch='raise')
+
+    # This should not raise any warning or exception
+    SegmentationMethod.from_dict(d, on_keyword_mismatch='ignore')

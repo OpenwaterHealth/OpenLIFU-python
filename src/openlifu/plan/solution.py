@@ -170,7 +170,7 @@ class Solution:
         d_eq_cm = np.sqrt(4*A_cm / np.pi)
         ele_sizes_cm2 = np.array([elem.get_area("cm") for elem in transducer.elements])
 
-        # xyz = np.stack(np.meshgrid(*coords, indexing="xy"), axis=-1)  #TODO: if fus.Axis is defined, coords.ndgrid(dim="ax")
+        # xyz = np.stack(np.meshgrid(*coords, indexing="xy"), axis=-1)  #TODO: if fus.Axis is defined, coords.ndgrid(dim="z")
         # z_mask = xyz[..., -1] >= options.sidelobe_zmin  #TODO: probably wrong here, should be z{1}>=options.sidelobe_zmin;
 
         solution_analysis.duty_cycle_pulse_train_pct = self.get_pulsetrain_dutycycle()*100
@@ -219,7 +219,8 @@ class Solution:
                 operator = '>',
                 aspect_ratio=options.mainlobe_aspect_ratio
             )
-            z_mask = pnp_MPa.coords['ax'] > options.sidelobe_zmin
+            z_dim = pnp_MPa.dims[2]
+            z_mask = pnp_MPa.coords[z_dim] > options.sidelobe_zmin
             sidelobe_mask = sidelobe_mask.where(z_mask, False)
 
             pnp_mainlobe = pnp_MPa.where(mainlobe_mask)
@@ -231,9 +232,9 @@ class Solution:
 
             solution_analysis.mainlobe_pnp_MPa += [pk]
 
-            for dim, scale in zip(pnp_MPa.dims, options.mainlobe_aspect_ratio):
+            for dim, named_dim, scale in zip(pnp_MPa.dims, ("lat","ele","ax"), options.mainlobe_aspect_ratio):
                 for threshdB in [3, 6]:
-                    attr_name = f'beamwidth_{dim}_{threshdB}dB_mm'
+                    attr_name = f'beamwidth_{named_dim}_{threshdB}dB_mm'
                     bw0 = getattr(solution_analysis, attr_name)
                     cutoff = pk*10**(-threshdB / 20)
                     bw = get_beamwidth(
@@ -250,8 +251,29 @@ class Solution:
 
             solution_analysis.mainlobe_isppa_Wcm2 += [float(ipa_Wcm2.where(mainlobe_mask).max())]
             solution_analysis.mainlobe_ispta_mWcm2 += [float(ita_mWcm2.where(mainlobe_mask).max())]
-            solution_analysis.sidelobe_pnp_MPa += [float(pnp_MPa.where(sidelobe_mask).max())]
-            solution_analysis.sidelobe_isppa_Wcm2 += [float(ipa_Wcm2.where(sidelobe_mask).max())]
+
+            sidelobe_pnp = float(pnp_MPa.where(sidelobe_mask).max())
+            sidelobe_isppa = float(ipa_Wcm2.where(sidelobe_mask).max())
+
+            solution_analysis.sidelobe_pnp_MPa += [sidelobe_pnp]
+            solution_analysis.sidelobe_isppa_Wcm2 += [sidelobe_isppa]
+
+            # Calculate and store ratios (sidelobe / mainlobe)
+            mainlobe_pnp = solution_analysis.mainlobe_pnp_MPa[-1]
+            mainlobe_isppa = solution_analysis.mainlobe_isppa_Wcm2[-1]
+
+            if mainlobe_pnp == 0:
+                pressure_ratio = np.inf if sidelobe_pnp != 0 else np.nan
+            else:
+                pressure_ratio = sidelobe_pnp / mainlobe_pnp
+            solution_analysis.sidelobe_to_mainlobe_pressure_ratio += [pressure_ratio]
+
+            if mainlobe_isppa == 0:
+                intensity_ratio = np.inf if sidelobe_isppa != 0 else np.nan
+            else:
+                intensity_ratio = sidelobe_isppa / mainlobe_isppa
+            solution_analysis.sidelobe_to_mainlobe_intensity_ratio += [intensity_ratio]
+
             solution_analysis.global_pnp_MPa += [float(pnp_MPa.where(z_mask).max())]
             solution_analysis.global_isppa_Wcm2 += [float(ipa_Wcm2.where(z_mask).max())]
             i0_Wcm2 = (p0_Pa**2 / (2*standoff_Z)) * 1e-4

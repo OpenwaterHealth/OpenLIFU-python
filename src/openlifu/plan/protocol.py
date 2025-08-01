@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Annotated, Any, Dict, List, Tuple
 
 import numpy as np
+import pandas as pd
 import xarray as xa
 
 from openlifu import bf, geo, seg, sim, xdc
@@ -160,6 +161,48 @@ class Protocol:
         with open(filename, 'w') as file:
             file.write(self.to_json(compact=False))
 
+    def to_table(self) -> pd.DataFrame:
+        """
+        Return a table of the most important protocol parameters
+
+        Example output:
+            ```
+            Category      Name            Value Unit
+            0              ID             example_protocol
+            1            Name             Example protocol
+            2           Description  Example protocol created 30-Jan-2024 09:16:02
+            3       Pulse       Frequency               500000.0   Hz
+            4       Pulse       Amplitude              1.0   AU
+            5       Pulse        Duration          0.00002    s
+            6    Sequence  Pulse Interval              0.1    s
+            ```
+        """
+        records = [
+            {"Category":"", "Name": "ID", "Value": self.id, "Unit": ""},
+            {"Category":"", "Name": "Name", "Value": self.name, "Unit": ""},
+            {"Category":"", "Name": "Description", "Value": self.description, "Unit": ""},
+        ]
+        table = pd.DataFrame.from_records(records)
+
+        def _append_subtable(category_name, sub_df):
+            sub_df.insert(0, 'Category', category_name)
+            return pd.concat([table, sub_df], ignore_index=True)
+
+        table = _append_subtable("Pulse", self.pulse.to_table())
+        table = _append_subtable("Sequence", self.sequence.to_table())
+        table = _append_subtable("Focal Pattern", self.focal_pattern.to_table())
+        table = _append_subtable("Delay Method", self.delay_method.to_table())
+        table = _append_subtable("Apodization Method", self.apod_method.to_table())
+        table = _append_subtable("Segmentation Method", self.seg_method.to_table())
+        table = _append_subtable("Simulation Setup", self.sim_setup.to_table())
+        for tc in self.target_constraints:
+            table = _append_subtable("Target Constraints", tc.to_table())
+        for param_id, param_constraint in self.param_constraints.items():
+            tp = param_constraint.to_table()
+            tp["Value"] = tp["Value"].str.replace("value", param_id)
+            table = _append_subtable("Parameter Constraints", tp)
+        return table
+
 
     def check_target(self, target: Point):
         """
@@ -173,11 +216,12 @@ class Protocol:
 
         # check if target position is within target_constraints defined bounds.
         for target_constraint in self.target_constraints:
-            pos = target.get_position(
-                dim=target_constraint.dim,
-                units=target_constraint.units
-            )
-            target_constraint.check_bounds(pos)
+            if target_constraint.dim in target.dims:
+                pos = target.get_position(
+                    dim=target_constraint.dim,
+                    units=target_constraint.units
+                )
+                target_constraint.check_bounds(pos)
 
     def fix_pulse_mismatch(self, on_pulse_mismatch: OnPulseMismatchAction, foci: List[Point]):
         """Fix the protocol sequence pulse count in-place given a pulse_mismatch action."""

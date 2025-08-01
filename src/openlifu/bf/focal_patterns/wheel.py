@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Annotated
 
 import numpy as np
+import pandas as pd
 
 from openlifu.bf.focal_patterns import FocalPattern
 from openlifu.geo import Point
@@ -70,3 +71,18 @@ class Wheel(FocalPattern):
         :returns: Number of foci
         """
         return int(self.center) + self.num_spokes
+
+    def to_table(self) -> pd.DataFrame:
+        """
+        Get a table of the focal pattern parameters
+
+        :returns: Pandas DataFrame of the focal pattern parameters
+        """
+        records = [
+            {"Name": "Type", "Value": "Wheel", "Unit": ""},
+            {"Name": "Target Pressure", "Value": self.target_pressure, "Unit": self.units},
+            {"Name": "Center", "Value": self.center, "Unit": ""},
+            {"Name": "Number of Spokes", "Value": self.num_spokes, "Unit": ""},
+            {"Name": "Spoke Radius", "Value": self.spoke_radius, "Unit": self.distance_units},
+        ]
+        return pd.DataFrame.from_records(records)

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
+import pandas as pd
 import xarray as xa
 
 from openlifu.bf import apod_methods
@@ -30,3 +31,12 @@ class ApodizationMethod(ABC):
         module_dict = apod_methods.__dict__
         class_constructor = module_dict[short_classname]
         return class_constructor(**d)
+
+    @abstractmethod
+    def to_table(self) -> pd.DataFrame:
+        """
+        Get a table of the apodization method parameters
+
+        :returns: Pandas DataFrame of the apodization method parameters
+        """
+        pass
