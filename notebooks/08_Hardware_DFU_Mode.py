@@ -24,17 +24,16 @@
 # *   Only proceed if you intend to update firmware or understand the implications.
 
 # ## 1. Imports
+from __future__ import annotations
 
-# +
 import time
+
 from openlifu.io.LIFUInterface import LIFUInterface
-# -
 
 # ## 2. Connect to Hardware
 #
 # Initialize `LIFUInterface`. We'll need it to send the DFU command.
 
-# +
 interface = None
 try:
     print("Initializing LIFUInterface...")
@@ -45,7 +44,6 @@ except Exception as e:
     print(f"Error initializing LIFUInterface: {e}")
     print("Hardware might not be connected or powered.")
 
-# -
 
 # ## 3. HV Controller (Console) - Enter DFU Mode
 #
@@ -111,7 +109,6 @@ else:
 # ### 4.1. Check TX Device Connection and Ping
 # The TX device might need 12V power from the HV Controller.
 
-# +
 if interface:
     tx_connected, hv_connected = interface.is_device_connected() # Re-check
     print(f"\nInitial TX connection status for DFU section: {tx_connected}")
@@ -151,7 +148,6 @@ if interface:
         print("Cannot command TX Device to DFU mode.")
 else:
     print("LIFUInterface not initialized.")
-# -
 
 # ### 4.2. Command TX Device to DFU Mode
 #

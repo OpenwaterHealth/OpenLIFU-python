@@ -23,11 +23,9 @@
 # *   Enumerating TX7332 driver chips (important for multi-module systems).
 
 # ## 1. Imports
+from __future__ import annotations
 
-# +
-import time
 from openlifu.io.LIFUInterface import LIFUInterface
-# -
 
 # ## 2. Connect to Hardware and Verify TX Device
 #

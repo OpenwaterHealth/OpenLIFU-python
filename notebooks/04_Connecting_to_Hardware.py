@@ -21,11 +21,11 @@
 # ## 1. Imports and `LIFUInterface`
 #
 # The primary class for interacting with the hardware is `LIFUInterface` from `openlifu.io`.
+from __future__ import annotations
 
-# +
 import time
+
 from openlifu.io.LIFUInterface import LIFUInterface
-# -
 
 # ### Instantiating `LIFUInterface`
 #

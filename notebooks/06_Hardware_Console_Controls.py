@@ -23,12 +23,13 @@
 # *   **Monitor system temperatures, especially during prolonged operation.**
 
 # ## 1. Imports
+from __future__ import annotations
 
-# +
 import time
-import base58 # For decoding hardware IDs from the console
+
+import base58  # For decoding hardware IDs from the console
+
 from openlifu.io.LIFUInterface import LIFUInterface
-# -
 
 # ## 2. Connect to Hardware and Verify HV Controller
 #

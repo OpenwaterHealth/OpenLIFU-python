@@ -12,7 +12,7 @@
 #     name: python3
 # ---
 
-# # 12: Asynchronous Operations and Callbacks
+# # 11: Asynchronous Operations and Callbacks
 #
 # This notebook demonstrates how to use `LIFUInterface` in an asynchronous manner. This allows your program to monitor hardware connection status and receive data in the background without blocking the main execution thread. This is particularly useful for:
 # *   Graphical User Interfaces (GUIs) that need to remain responsive.
@@ -24,12 +24,15 @@
 # ## 1. Imports
 
 # +
+from __future__ import annotations
+
 import asyncio
+import logging
 import threading
 import time
-import logging
 
 from openlifu.io.LIFUInterface import LIFUInterface
+
 # -
 
 # ## 2. Logging and Global State
@@ -112,7 +115,7 @@ try:
     logger.info("LIFUInterface initialized and callbacks bound (if devices available).")
 
 except Exception as e:
-    logger.error(f"Error initializing LIFUInterface: {e}", exc_info=True)
+    logger.exception(f"Error initializing LIFUInterface: {e}")
     lifu_interface_async = None
 # -
 
@@ -121,7 +124,7 @@ except Exception as e:
 # The `interface.start_monitoring()` method is an `async` function. To run it in the background from a synchronous environment like a Jupyter notebook, we'll execute it within an `asyncio.run()` call inside a separate thread.
 
 # +
-def async_monitoring_loop(interface: LIFUInterface, stop_event: threading.Event):
+def async_monitoring_loop(interface: LIFUInterface):
     """Target function for the monitoring thread."""
     thread_name = threading.current_thread().name
     logger.info(f"Async monitoring thread '{thread_name}' started.")
@@ -141,7 +144,7 @@ def async_monitoring_loop(interface: LIFUInterface, stop_event: threading.Event)
     except asyncio.CancelledError:
         logger.info(f"Monitoring task in '{thread_name}' was cancelled.")
     except Exception as e:
-        logger.error(f"Exception in async monitoring thread '{thread_name}': {e}", exc_info=True)
+        logger.exception(f"Exception in async monitoring thread '{thread_name}': {e}")
     finally:
         if loop and not loop.is_closed(): # Ensure loop is closed
             loop.close()
@@ -162,7 +165,7 @@ if lifu_interface_async:
     # Give it a moment to start up and potentially detect initial connections
     time.sleep(2)
 else:
-    logger.error("LIFUInterface not initialized. Cannot start monitoring.")
+    logger.exception("LIFUInterface not initialized. Cannot start monitoring.")
 # -
 
 # ## 6. Interacting While Monitoring
@@ -183,17 +186,23 @@ if lifu_interface_async and monitor_thread_async and monitor_thread_async.is_ali
     if hv_conn and lifu_interface_async.hvcontroller:
         logger.info("Pinging HV controller from main thread...")
         try:
-            if lifu_interface_async.hvcontroller.ping(): logger.info("  HV Ping successful.")
-            else: logger.info("  HV Ping failed.")
-        except Exception as e: logger.error(f"  HV Ping error: {e}")
+            if lifu_interface_async.hvcontroller.ping():
+                logger.info("  HV Ping successful.")
+            else:
+                logger.info("  HV Ping failed.")
+        except Exception as e:
+            logger.exception(f"  HV Ping error: {e}")
 
     # Try pinging if TX is connected
     if tx_conn and lifu_interface_async.txdevice:
         logger.info("Pinging TX device from main thread...")
         try:
-            if lifu_interface_async.txdevice.ping(): logger.info("  TX Ping successful.")
-            else: logger.info("  TX Ping failed.")
-        except Exception as e: logger.error(f"  TX Ping error: {e}")
+            if lifu_interface_async.txdevice.ping():
+                logger.info("  TX Ping successful.")
+            else:
+                logger.info("  TX Ping failed.")
+        except Exception as e:
+            logger.exception(f"  TX Ping error: {e}")
 
     logger.info("\n--- Test Device Connection/Disconnection ---")
     logger.info("Try physically disconnecting and reconnecting one of the OpenLIFU USB devices.")
@@ -218,7 +227,7 @@ if lifu_interface_async and monitor_thread_async and monitor_thread_async.is_ali
                 logger.info("Attempted to re-bind TX callbacks after 12V on.")
 
         except Exception as e:
-            logger.error(f"Error during 12V power on for TX test: {e}")
+            logger.exception(f"Error during 12V power on for TX test: {e}")
 
 
     # Keep this cell running for a bit to observe events
@@ -288,4 +297,4 @@ else:
 # *   The final planned notebook is `13_NIFTI_Integration_for_Targeting.py` (if `test_nifti.py` is suitable).
 # *   Consider how this async pattern could be integrated into a larger application (e.g., a PyQt or Kivy GUI).
 
-# End of Notebook 12
+# End of Notebook 11

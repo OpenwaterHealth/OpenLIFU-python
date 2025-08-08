@@ -164,3 +164,4 @@ Thumbs.db
 
 # ONNX checkpoints
 *.onnx
+notebooks/12_Exporting_Simulation_to_NIFTI_pnp_output.nii.gz

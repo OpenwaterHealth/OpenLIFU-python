@@ -21,17 +21,20 @@
 # ## 1. Imports
 
 # +
-import numpy as np
-import time
+from __future__ import annotations
 
-from openlifu.io.LIFUInterface import LIFUInterface
-from openlifu.plan.solution import Solution
+import time
+from pathlib import Path
+
+import numpy as np
+
 from openlifu.bf.pulse import Pulse
 from openlifu.bf.sequence import Sequence
+from openlifu.db import Database  # For loading a transducer
 from openlifu.geo import Point
-from openlifu.xdc import Transducer # For getting numelements
-from openlifu.db import Database    # For loading a transducer
-from pathlib import Path
+from openlifu.io.LIFUInterface import LIFUInterface
+from openlifu.plan.solution import Solution
+
 # -
 
 # ## 2. Create or Load a Transducer (to determine num_elements)
@@ -121,7 +124,6 @@ print(f"  Voltage: {my_solution.voltage}")
 
 # ## 4. Connect to Hardware
 
-# +
 interface = None
 try:
     print("\nInitializing LIFUInterface...")
@@ -133,7 +135,6 @@ try:
     # HV connection is also important for power, will be checked before sonication.
 except Exception as e:
     print(f"Error initializing LIFUInterface or devices not connected: {e}")
-# -
 
 # ## 5. CRITICAL: High Voltage (HV) Power Prerequisite
 #
@@ -275,13 +276,14 @@ if interface and interface.txdevice.is_connected() and my_solution:
         s = my_solution.sequence
         one_train_duration = s.pulse_count * s.pulse_interval
         sonication_duration_sec = s.pulse_train_count * (one_train_duration + s.pulse_train_interval) - s.pulse_train_interval
-        if sonication_duration_sec <=0: sonication_duration_sec = one_train_duration # single train case
+        if sonication_duration_sec <= 0:
+            sonication_duration_sec = one_train_duration # single train case
         print(f"\nSonication in '{trigger_mode_setting}' mode. Expected duration: ~{sonication_duration_sec:.2f} seconds.")
     else: # continuous
         sonication_duration_sec = 2.0 # Arbitrary duration for continuous example
         print(f"\nSonication in '{trigger_mode_setting}' mode. Will run for {sonication_duration_sec:.2f} seconds in this example.")
 
-    input(f"Press Enter to START sonication (ensure safety precautions)...")
+    input("Press Enter to START sonication (ensure safety precautions)...")
 
     try:
         print("  Starting trigger...")

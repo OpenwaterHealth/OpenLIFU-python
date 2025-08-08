@@ -33,11 +33,13 @@
 # ## 1. Imports
 
 # +
+from __future__ import annotations
+
 import logging
-import os
 import threading
 import time
 from pathlib import Path
+
 import numpy as np
 
 from openlifu.bf.pulse import Pulse
@@ -134,7 +136,7 @@ try:
     # Example: list transducers to verify
     # logger.debug(f"Available transducers: {lifu_db.list_transducers()}")
 except Exception as e:
-    logger.error(f"Failed to connect to OpenLIFU database at {db_path}: {e}", exc_info=True)
+    logger.exception(f"Failed to connect to OpenLIFU database at {db_path}: {e}")
     lifu_db = None
 # -
 
@@ -206,12 +208,12 @@ if lifu_db:
         logger.info(f"Solution object created: {solution.name}")
 
     except Exception as e:
-        logger.error(f"Error during transducer loading or solution definition: {e}", exc_info=True)
+        logger.exception(f"Error during transducer loading or solution definition: {e}")
         transducer = None # Ensure it's None if setup fails
         solution = None
 
 else:
-    logger.error("Database not available. Cannot proceed with transducer/solution setup.")
+    logger.exception("Database not available. Cannot proceed with transducer/solution setup.")
 
 # These will be used by the threads and main control logic
 # Global variables to hold interface and thread objects
@@ -224,7 +226,6 @@ operation_shutdown_event_global = threading.Event() # Signaled by temp logger on
 # ## 6. Temperature Logging Thread Function
 # This function runs in a separate thread to monitor and log temperatures, and trigger safety shutdowns.
 
-# +
 def temperature_logging_thread_func(
     interface: LIFUInterface,
     stop_event: threading.Event,
@@ -251,21 +252,18 @@ def temperature_logging_thread_func(
     prev_ambient_temp = None
     prev_console_temp = None # Only if not using external power supply
 
-    csv_file = None
-    if csv_filepath:
-        try:
-            csv_file = open(csv_filepath, "w", buffering=1) # Line buffered
-            header = ("Timestamp (ISO),Elapsed Time (s),"
-                      "Frequency (kHz),Pulse Duration (ms),Pulse Interval (ms),Solution Voltage (V),"
-                      "Console Temp (C),TX Temp (C),Ambient Temp (C),HV Setpoint (V), HV Output (V), Status\n")
-            csv_file.write(header)
-            logger.info(f"Logging temperatures to CSV: {csv_filepath}")
-        except Exception as e:
-            logger.error(f"Failed to open CSV log file {csv_filepath}: {e}", exc_info=True)
-            csv_file = None # Disable CSV logging if open fails
+    if not csv_filepath:
+        logger.info("CSV logging disabled.")
+        return
 
-    loop_count = 0
-    try:
+    with open(csv_filepath, "w") as csv_file:
+        header = ("Timestamp (ISO),Elapsed Time (s),"
+                  "Frequency (kHz),Pulse Duration (ms),Pulse Interval (ms),Solution Voltage (V),"
+                  "Console Temp (C),TX Temp (C),Ambient Temp (C),HV Setpoint (V), HV Output (V), Status\n")
+        csv_file.write(header)
+        logger.info(f"Logging temperatures to CSV: {csv_filepath}")
+
+        loop_count = 0
         while not (stop_event.is_set() or shutdown_event.is_set()):
             loop_start_ns = time.monotonic_ns()
             current_timestamp_iso = time.strftime("%Y-%m-%dT%H:%M:%S")
@@ -292,29 +290,28 @@ def temperature_logging_thread_func(
             within_initial_time_threshold = elapsed_seconds < params['rapid_temp_shutoff_seconds']
 
             # Check for too high of a temperature increase between readings
-            if prev_console_temp is not None and console_temp_C != "N/A" and not params['use_external_power_supply']:
-                if (console_temp_C - prev_console_temp) > params['rapid_temp_increase_per_second_shutoff_C']:
+            if prev_console_temp is not None and console_temp_C != "N/A" and not params['use_external_power_supply'] and (console_temp_C - prev_console_temp) > params['rapid_temp_increase_per_second_shutoff_C']:
                     msg = f"Console temp rapidly increased: {prev_console_temp:.1f}C to {console_temp_C:.1f}C"
                     logger.critical(f"SHUTDOWN: {msg}")
                     status_message = f"CRITICAL_CONSOLE_TEMP_RISE;{msg}"
                     shutdown_event.set()
-            if console_temp_C != "N/A": prev_console_temp = console_temp_C
-
-            if prev_tx_temp is not None and tx_temp_C != "N/A":
-                if (tx_temp_C - prev_tx_temp) > params['rapid_temp_increase_per_second_shutoff_C']:
+            if console_temp_C != "N/A":
+                prev_console_temp = console_temp_C
+            if prev_tx_temp is not None and tx_temp_C != "N/A" and (tx_temp_C - prev_tx_temp) > params['rapid_temp_increase_per_second_shutoff_C']:
                     msg = f"TX temp rapidly increased: {prev_tx_temp:.1f}C to {tx_temp_C:.1f}C"
                     logger.critical(f"SHUTDOWN: {msg}")
                     status_message = f"CRITICAL_TX_TEMP_RISE;{msg}"
                     shutdown_event.set()
-            if tx_temp_C != "N/A": prev_tx_temp = tx_temp_C
+            if tx_temp_C != "N/A":
+                prev_tx_temp = tx_temp_C
 
-            if prev_ambient_temp is not None and ambient_temp_C != "N/A":
-                if (ambient_temp_C - prev_ambient_temp) > params['rapid_temp_increase_per_second_shutoff_C']:
+            if prev_ambient_temp is not None and ambient_temp_C != "N/A" and (ambient_temp_C - prev_ambient_temp) > params['rapid_temp_increase_per_second_shutoff_C']:
                     msg = f"Ambient temp rapidly increased: {prev_ambient_temp:.1f}C to {ambient_temp_C:.1f}C"
                     logger.critical(f"SHUTDOWN: {msg}")
                     status_message = f"CRITICAL_AMBIENT_TEMP_RISE;{msg}"
                     shutdown_event.set()
-            if ambient_temp_C != "N/A": prev_ambient_temp = ambient_temp_C
+            if ambient_temp_C != "N/A":
+                prev_ambient_temp = ambient_temp_C
 
 
             # Initial period rapid rise absolute limit
@@ -356,9 +353,12 @@ def temperature_logging_thread_func(
             log_msg_console = (f"Elapsed: {elapsed_seconds:6.1f}s | "
                                f"Console: {console_temp_C}°C | TX: {tx_temp_C}°C | Ambient: {ambient_temp_C}°C | "
                                f"HV: {hv_set_V}V (Set), {hv_out_V}V (Out) | Status: {status_message}")
-            if shutdown_event.is_set(): logger.critical(log_msg_console)
-            elif loop_count % 5 == 0 : logger.info(log_msg_console) # Log to console less frequently
-            else: logger.debug(log_msg_console)
+            if shutdown_event.is_set():
+                logger.critical(log_msg_console)
+            elif loop_count % 5 == 0 :
+                logger.info(log_msg_console) # Log to console less frequently
+            else:
+                logger.debug(log_msg_console)
 
 
             # Log to CSV
@@ -370,17 +370,17 @@ def temperature_logging_thread_func(
                                 f"{hv_set_V},{hv_out_V},{status_message}\n")
                     csv_file.write(csv_line)
                 except Exception as e:
-                    logger.error(f"Failed to write to CSV log: {e}")
+                    logger.exception(f"Failed to write to CSV log: {e}")
                     # Consider closing file or stopping CSV logging if errors persist
 
             if shutdown_event.is_set():
-                logger.info(f"Shutdown event detected by logging thread. Stopping sonication.")
+                logger.info("Shutdown event detected by logging thread. Stopping sonication.")
                 try:
                     if interface.txdevice.is_trigger_active(): # Check if trigger is active before stopping
                          interface.txdevice.stop_trigger()
                          logger.info("TX trigger stopped by logging thread due to safety event.")
                 except Exception as e:
-                    logger.error(f"Error stopping TX trigger from logging thread: {e}", exc_info=True)
+                    logger.exception(f"Error stopping TX trigger from logging thread: {e}")
                 break # Exit loop
 
             # Wait for the next log interval
@@ -391,28 +391,23 @@ def temperature_logging_thread_func(
             if stop_event.wait(timeout=sleep_duration_s): # Wait with timeout, checking stop_event
                  logger.info("Stop event received during sleep, exiting logging loop.")
                  break
-            loop_count +=1
-
-    except Exception as e:
-        logger.error(f"Unhandled exception in temperature logging thread: {e}", exc_info=True)
-        shutdown_event.set() # Signal main thread about critical error
-    finally:
-        if csv_file:
-            csv_file.close()
-            logger.info(f"CSV log file {csv_filepath} closed.")
+            loop_count += 1
         logger.info(f"Temperature logging thread '{thread_name}' finished.")
-# -
 
 # ## 7. Hardware Setup, Connection, and Solution Programming
 # This cell initializes the LIFUInterface, connects to hardware, sets up power (if not external), and programs the solution.
 
-# +
 can_run_experiment = False
 if transducer and solution and lifu_db: # Ensure previous cell ran successfully
     logger.info("--- Initiating Hardware Setup ---")
 
     # Store config in a dict to pass to thread
-    thread_params = {k: v for k, v in globals().items() if k.endswith('_C') or k.endswith('_sec') or k.endswith('_seconds') or k.endswith('_kHz') or k.endswith('_msec') or k.endswith('_voltage') or k.startswith('use_') or k.startswith('log_') or k.startswith('rapid_')}
+    thread_params = {'console_shutoff_temp_C': console_shutoff_temp_C,
+                    'tx_shutoff_temp_C': tx_shutoff_temp_C,
+                    'ambient_shutoff_temp_C': ambient_shutoff_temp_C,
+                    'rapid_temp_shutoff_C': rapid_temp_shutoff_C,
+                    'rapid_temp_shutoff_seconds': rapid_temp_shutoff_seconds,
+                    'rapid_temp_increase_per_second_shutoff_C': rapid_temp_increase_per_second_shutoff_C}
     thread_params['frequency_kHz'] = frequency_kHz
     thread_params['pulse_duration_msec'] = pulse_duration_msec
     thread_params['pulse_interval_msec'] = pulse_interval_msec
@@ -444,10 +439,12 @@ if transducer and solution and lifu_db: # Ensure previous cell ran successfully
             raise ConnectionError("HV Controller (Console) is NOT connected, but internal power supply is selected. Cannot proceed.")
 
         logger.info("Performing basic hardware checks (ping, version)...")
-        if not lifu_interface_global.txdevice.ping(): raise RuntimeError("TX device ping failed.")
+        if not lifu_interface_global.txdevice.ping():
+            raise RuntimeError("TX device ping failed.")
         logger.info(f"TX Firmware: {lifu_interface_global.txdevice.get_version()}")
         if not use_external_power_supply:
-            if not lifu_interface_global.hvcontroller.ping(): raise RuntimeError("HV controller ping failed.")
+            if not lifu_interface_global.hvcontroller.ping():
+                raise RuntimeError("HV controller ping failed.")
             logger.info(f"HV Firmware: {lifu_interface_global.hvcontroller.get_version()}")
 
         num_tx_chips = lifu_interface_global.txdevice.enum_tx7332_devices()
@@ -503,7 +500,7 @@ if transducer and solution and lifu_db: # Ensure previous cell ran successfully
         can_run_experiment = True
 
     except Exception as e:
-        logger.error(f"Error during hardware setup: {e}", exc_info=True)
+        logger.exception(f"Error during hardware setup: {e}")
         if lifu_interface_global and not use_external_power_supply and lifu_interface_global.hvcontroller.is_connected():
             logger.info("Attempting to turn off HV and 12V due to setup error...")
             lifu_interface_global.hvcontroller.turn_hv_off()
@@ -511,9 +508,8 @@ if transducer and solution and lifu_db: # Ensure previous cell ran successfully
         lifu_interface_global = None # Invalidate on error
         can_run_experiment = False
 else:
-    logger.error("Prerequisites for hardware setup (transducer, solution, DB) not met. Please run previous cells successfully.")
+    logger.exception("Prerequisites for hardware setup (transducer, solution, DB) not met. Please run previous cells successfully.")
     can_run_experiment = False
-# -
 
 # ## 8. Experiment Operation Control
 #
@@ -572,9 +568,9 @@ if can_run_experiment and lifu_interface_global:
             # display(Markdown(f"**Experiment active! Monitoring temperatures.**"))
             # display(Markdown(f"Timeout in: {experiment_timeout_minutes} minutes. Logging to console and CSV (if enabled)."))
             # display(Markdown(f"To stop manually: Interrupt Kernel OR run 'Manual Stop' cell if available."))
-            print(f"Experiment active! Monitoring temperatures.")
+            print("Experiment active! Monitoring temperatures.")
             print(f"Timeout in: {experiment_timeout_minutes} minutes. Logging to console and CSV (if enabled).")
-            print(f"To stop manually: Interrupt Kernel.")
+            print("To stop manually: Interrupt Kernel.")
 
 
             # Main experiment loop: waits for shutdown event or timeout
@@ -593,18 +589,18 @@ if can_run_experiment and lifu_interface_global:
                  logger.info("Shutdown event was set (temperature limit, error, timeout, or manual stop).")
 
         else:
-            logger.error("❌ Failed to start ultrasound trigger.")
+            logger.exception("❌ Failed to start ultrasound trigger.")
             operation_shutdown_event_global.set() # Signal threads to stop
 
     except Exception as e:
-        logger.error(f"Exception during experiment operation: {e}", exc_info=True)
+        logger.exception(f"Exception during experiment operation: {e}")
         operation_shutdown_event_global.set() # Signal threads to stop
     finally:
         experiment_active = False
         logger.info("--- Experiment Main Loop Ended ---")
         # Cleanup will be handled in the next dedicated cell.
 else:
-    logger.error("Cannot start experiment: Hardware setup not complete or interface not available.")
+    logger.exception("Cannot start experiment: Hardware setup not complete or interface not available.")
 # -
 
 # ### 8.2. Manual Stop (Informational)
@@ -649,9 +645,9 @@ if lifu_interface_global:
                 lifu_interface_global.txdevice.stop_trigger()
                 logger.info("Attempted to stop TX trigger (is_trigger_active not available).")
         except Exception as e_stop:
-            logger.error(f"Error trying to stop trigger during cleanup: {e_stop}")
+            logger.exception(f"Error trying to stop trigger during cleanup: {e_stop}")
     except Exception as e:
-        logger.error(f"Error during TX trigger stop in cleanup: {e}", exc_info=True)
+        logger.exception(f"Error during TX trigger stop in cleanup: {e}")
 
     # Wait for temperature logging thread to finish
     if temperature_thread_global and temperature_thread_global.is_alive():
@@ -673,7 +669,7 @@ if lifu_interface_global:
                 lifu_interface_global.hvcontroller.turn_12v_off()
                 logger.info("12V power turned OFF.")
         except Exception as e:
-            logger.error(f"Error turning off console power: {e}", exc_info=True)
+            logger.exception(f"Error turning off console power: {e}")
 
     # Clean up interface
     logger.info("Stopping LIFUInterface monitoring and deleting instance...")
