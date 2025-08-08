@@ -4,6 +4,7 @@ import json
 import logging
 import re
 import struct
+import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Annotated, Dict, List, Literal
 
@@ -114,7 +115,9 @@ from openlifu.io.LIFUConfig import (
     OW_CMD_TOGGLE_LED,
     OW_CMD_VERSION,
     OW_CONTROLLER,
+    OW_CTRL_GET_PROFILE,
     OW_CTRL_GET_SWTRIG,
+    OW_CTRL_SET_PROFILE,
     OW_CTRL_SET_SWTRIG,
     OW_CTRL_START_SWTRIG,
     OW_CTRL_STOP_SWTRIG,
@@ -511,10 +514,107 @@ class TxDevice:
             "TriggerPulseTrainInterval": pulse_train_interval * 1000000,
             "TriggerPulseTrainCount": pulse_train_count,
             "TriggerMode": trigger_mode_int,
-            "ProfileIndex": 0,
-            "ProfileIncrement": 0
+            "ProfileIndex": profile_index,
+            "ProfileIncrement": profile_increment
         }
         return self.set_trigger_json(data=trigger_json)
+
+    def set_tx_profile(self, profile_number:int) -> None:
+        """
+        Set a TX profile on the TX device.
+
+        Args:
+            profile_number (int): An int containing which profile to select.
+
+        Returns:
+            None
+
+        Raises:
+            ValueError: If `data` is None or the UART is not connected.
+            Exception: If an error occurs while setting the trigger.
+        """
+        try:
+            if self.uart.demo_mode:
+                return
+
+            # Ensure data is not None and is a valid dictionary
+            if profile_number is None:
+                logger.error("Data cannot be None.")
+                return
+
+            if not self.uart.is_connected():
+                raise ValueError("TX Device not connected")
+
+            try:
+                payload = struct.pack('<B', profile_number)
+            except struct.error as e:
+                logger.error(f"Error packing address and value: {e}")
+                raise ValueError("Invalid address or value format") from e
+
+            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CTRL_SET_PROFILE, data=payload)
+            self.uart.clear_buffer()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error setting TX profile")
+                return
+            else:
+                logger.info(f"TX profile set to {profile_number}")
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+    def get_tx_profile(self, txchip: int) -> int:
+        """
+        Set a TX profile on the TX device.
+
+        Args:
+            profile_number (int): An int containing which profile to select.
+
+        Returns:
+            None
+
+        Raises:
+            ValueError: If `data` is None or the UART is not connected.
+            Exception: If an error occurs while setting the trigger.
+        """
+        try:
+            if self.uart.demo_mode:
+                return None
+
+            # Ensure data is not None and is a valid dictionary
+            if txchip is None:
+                logger.error("Data cannot be None.")
+                return None
+
+            if not self.uart.is_connected():
+                raise ValueError("TX Device not connected")
+
+            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CTRL_GET_PROFILE)
+            self.uart.clear_buffer()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error getting TX profile")
+                return None
+            elif r.data_len == 1:
+                try:
+                    return struct.unpack('<B', r.data)[0]
+                except struct.error as e:
+                    logger.error(f"Error unpacking register value: {e}")
+                    return 0
+            else:
+                logger.error(f"Unexpected data length: {r.data_len}")
+                return 0
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def set_trigger_json(self, data=None) -> dict:
         """
@@ -1292,10 +1392,10 @@ class TxDevice:
 
         if n != apodizations.shape[0]:
             raise ValueError("Delays and apodizations must have the same number of rows")
-        if n > 1:
-            raise NotImplementedError("Multiple foci not supported yet")
-        for profile in range(n):
-            duty_cycle=DEFAULT_PATTERN_DUTY_CYCLE * max(apodizations[profile,:]) * pulse["amplitude"]
+        # if n > 1:
+        #     raise NotImplementedError("Multiple foci not supported yet")
+        for profile in range(len(profile_index)):
+            duty_cycle=DEFAULT_PATTERN_DUTY_CYCLE * max(apodizations[0,:]) * pulse["amplitude"]
             pulse_profile = Tx7332PulseProfile(
                 profile=profile+1,
                 frequency=pulse["frequency"],
@@ -1305,10 +1405,11 @@ class TxDevice:
             self.tx_registers.add_pulse_profile(pulse_profile)
             delay_profile = Tx7332DelayProfile(
                 profile=profile+1,
-                delays=delays[profile,:],
-                apodizations=apodizations[profile, :]
+                delays=delays[0,:],
+                apodizations=apodizations[0, :]
             )
             self.tx_registers.add_delay_profile(delay_profile)
+
         self.set_trigger(
             pulse_interval=sequence["pulse_interval"],
             pulse_count=sequence["pulse_count"],
@@ -1324,6 +1425,8 @@ class TxDevice:
         delay_control_registers = {profile:self.tx_registers.get_delay_control_registers(profile) for profile in self.tx_registers.configured_delay_profiles()}
         pulse_control_registers = {profile:self.tx_registers.get_pulse_control_registers(profile) for profile in self.tx_registers.configured_pulse_profiles()}
 
+        # print(f"TX Device Delay Profiles: {self.tx_registers.configured_delay_profiles()}")
+        # print(f"TX Device Pulse Profiles: {self.tx_registers.configured_pulse_profiles()}")
 
 
     def apply_all_registers(self):
@@ -1340,11 +1443,14 @@ class TxDevice:
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
             registers = self.tx_registers.get_registers(pack=True, pack_single=True)
+            start = time.time()
             for txi, txregs in enumerate(registers):
                 for addr, reg_values in txregs.items():
                     if not self.write_block(identifier=txi, start_address=addr, reg_values=reg_values):
                         logger.error(f"Error applying TX CHIP ID: {i} registers")
                         return False
+            end = time.time() - start
+            # print(f"time elapsed in seconds: {end}")
             return True
 
         except Exception as e:
