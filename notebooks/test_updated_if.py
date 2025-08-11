@@ -151,24 +151,16 @@ if trigger_setting:
 else:
     print("Failed to get trigger setting.")
 
-
-
-print("Turn HV ON")
-interface.hvcontroller.turn_hv_on()
-
 print("Starting Trigger...")
-if interface.txdevice.start_trigger():
+if interface.start_sonication():
     print("Trigger Running Press enter to STOP:")
     input()  # Wait for the user to press Enter
-    if interface.txdevice.stop_trigger():
+    if interface.stop_sonication():
         print("Trigger stopped successfully.")
     else:
         print("Failed to stop trigger.")
 else:
     print("Failed to get trigger setting.")
-
-print("Turn HV OFF")
-interface.hvcontroller.turn_hv_off()
 
 print("Reset Device:")
 # Ask the user for confirmation

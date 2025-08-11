@@ -282,7 +282,7 @@ class LIFUInterface:
 
         logger.info("%s loaded successfully.", solution_name)
 
-    def start_sonication(self) -> bool:
+    def start_sonication(self, use_external_power_supply:bool=False) -> bool:
         """
         Start sonication.
 
@@ -292,8 +292,12 @@ class LIFUInterface:
             if self._test_mode:
                 return True
 
-            logger.info("Turn ON HV")
-            bHvOn = self.hvcontroller.turn_hv_on()
+            if not use_external_power_supply:
+                logger.info("Turn ON HV")
+                bHvOn = self.hvcontroller.turn_hv_on()
+            else:
+                logger.info("Using external power supply, HV will not be turned ON.")
+                bHvOn = True
 
             if self._async_mode:
                 self.txdevice.async_mode(True)
@@ -340,7 +344,7 @@ class LIFUInterface:
 
         return self.status
 
-    def stop_sonication(self) -> bool:
+    def stop_sonication(self, use_external_power_supply:bool=False) -> bool:
         """
         Stop sonication.
 
@@ -353,7 +357,14 @@ class LIFUInterface:
             logger.info("Stop Sonication")
             # Send the solution data to the device
             bTriggerOff = self.txdevice.stop_trigger()
-            bHvOff = self.hvcontroller.turn_hv_off()
+
+            if not use_external_power_supply:
+                logger.info("Turn OFF HV")
+                bHvOff = self.hvcontroller.turn_hv_off()
+            else:
+                logger.info("Using external power supply, HV will not be turned OFF.")
+                bHvOff = True
+
             if self._async_mode:
                 self.txdevice.async_mode(False)
 
