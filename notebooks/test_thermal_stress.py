@@ -41,7 +41,7 @@ if not logger.hasHandlers():
 log_interval = 1  # seconds; you can adjust this variable as needed
 
 frequency_kHz = 400 # Frequency in kHz
-voltage = 50.0 # Voltage in Volts
+voltage = 10.0 # Voltage in Volts
 duration_msec = 5 # Pulse Duration in milliseconds
 interval_msec = 100 # Pulse Repetition Interval in milliseconds
 num_modules = 1 # Number of modules in the system
@@ -347,7 +347,7 @@ t = threading.Thread(target=log_temperature)
 user_input = threading.Thread(target=input_wrapper)
 
 logger.info("Starting Trigger...")
-if interface.txdevice.start_trigger():
+if interface.start_sonication():
     logger.info("Trigger Running...")
     logger.info("Press enter to STOP trigger:")
 
@@ -370,7 +370,7 @@ if interface.txdevice.start_trigger():
     user_input.join()
 
     time.sleep(0.5)  # Give the logging thread time to finish
-    if interface.txdevice.stop_trigger():
+    if interface.stop_sonication():
         logger.info("Trigger stopped successfully.")
     else:
         logger.error("Failed to stop trigger.")

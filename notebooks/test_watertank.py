@@ -385,7 +385,7 @@ t = threading.Thread(target=log_temperature)
 user_input = threading.Thread(target=input_wrapper)
 
 logger.info("Starting Trigger...")
-if interface.txdevice.start_trigger():
+if interface.start_sonication(use_external_power_supply):
     logger.info("Trigger Running...")
     logger.info("Press enter to STOP trigger:")
 
@@ -408,7 +408,7 @@ if interface.txdevice.start_trigger():
     user_input.join()
 
     time.sleep(0.5)  # Give the logging thread time to finish
-    if interface.txdevice.stop_trigger():
+    if interface.stop_sonication(use_external_power_supply):
         logger.info("Trigger stopped successfully.")
     else:
         logger.error("Failed to stop trigger.")

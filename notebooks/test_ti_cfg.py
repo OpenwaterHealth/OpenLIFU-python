@@ -63,10 +63,10 @@ else:
 print("Press enter to START trigger:")
 input()  # Wait for the user to press Enter
 print("Starting Trigger...")
-if interface.txdevice.start_trigger():
+if interface.start_sonication():
     print("Trigger Running Press enter to STOP:")
     input()  # Wait for the user to press Enter
-    if interface.txdevice.stop_trigger():
+    if interface.stop_sonication():
         print("Trigger stopped successfully.")
     else:
         print("Failed to stop trigger.")
