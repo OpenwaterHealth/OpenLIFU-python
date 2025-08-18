@@ -18,13 +18,14 @@ from typing import Callable, List, Tuple
 import numpy as np
 import skimage.filters
 import skimage.measure
+import trimesh
 import vtk
 from packaging.version import parse
 from scipy.interpolate import LinearNDInterpolator
 from scipy.ndimage import distance_transform_edt
-from vtk.util.numpy_support import numpy_to_vtk
+from vtk.util.numpy_support import numpy_to_vtk, vtk_to_numpy
 
-from openlifu.geo import cartesian_to_spherical
+from openlifu.geo import cartesian_to_spherical, spherical_to_cartesian_vectorized
 
 
 def apply_affine_to_polydata(affine:np.ndarray, polydata:vtk.vtkPolyData) -> vtk.vtkPolyData:
@@ -282,8 +283,9 @@ def spherical_interpolator_from_mesh(
     surface_mesh: vtk.vtkPolyData,
     origin: Tuple[float, float, float] = (0.,0.,0.),
     xyz_direction_columns: np.ndarray | None = None,
-    dist_tolerance: float = 0.0001
-) -> Callable[[float, float], float]:
+    use_embree: bool|None = None,
+    dist_tolerance: float = 0.0001,
+) -> Callable:
     """Create a spherical interpolator from a vtkPolyData.
 
     Here a "spherical interpolator" is a function that maps angles from a spherical coordinate system
@@ -300,10 +302,12 @@ def spherical_interpolator_from_mesh(
             of how the spherical angles relate to the x, y, and z axes. If not provided, the xyz_direction_columns will
             be an identity matrix, which means that the coordinates in which surface_mesh is given will directly be
             interpreted as the x,y,z upon which a spherical coordinate system will be based.
+        use_embree: Use an alternative algorithm that uses embree CPU raytracing. Defaults to True only if embree is available;
+            it requires x86 architecture.
         dist_tolerance: A vertex of the surface_mesh will only be included if it is the furthest point from the origin
             that is on the mesh along the ray emanating from the origin and passing through the vertex. The
             dist_tolerance is the threshold for determining whether an intersection of the ray with the mesh
-            counts as being a distinct further out point from the vertex.
+            counts as being a distinct further out point from the vertex. This parameter only matters if use_embree is off.
 
     Returns:
         A spherical interpolator, which is a callable that maps (theta,phi) pairs of spherical coordinates (phi being azimuthal)
@@ -329,6 +333,9 @@ def spherical_interpolator_from_mesh(
     if xyz_direction_columns is None:
         xyz_direction_columns = np.eye(3, dtype=float)
 
+    if use_embree is None:
+        use_embree = trimesh.ray.has_embree
+
     xyz_affine = np.eye(4)
     xyz_affine[:3,:3] = xyz_direction_columns
     xyz_affine[:3,3] = origin
@@ -342,12 +349,21 @@ def spherical_interpolator_from_mesh(
     transform_filter = vtk.vtkTransformPolyDataFilter()
     transform_filter.SetTransform(xyz_inverse_transform)
     transform_filter.SetInputData(surface_mesh)
-    transform_filter.Update()
-    surface_mesh_transformed = transform_filter.GetOutput()
+    triangle_filter = vtk.vtkTriangleFilter()
+    triangle_filter.SetInputConnection(transform_filter.GetOutputPort())
+    triangle_filter.Update()
+    surface_mesh_transformed = triangle_filter.GetOutput()
+
+    if use_embree:
+        return _spherical_interpolator_from_mesh_embree(surface_mesh_transformed)
+    else:
+        return _spherical_interpolator_from_mesh_cell_locator(surface_mesh_transformed, dist_tolerance)
+
+def _spherical_interpolator_from_mesh_cell_locator(surface_mesh : vtk.vtkPolyData, dist_tolerance:float) -> Callable:
 
     spherical_coords_on_mesh : List[Tuple[float,float,float]] = []
 
-    points = surface_mesh_transformed.GetPoints()
+    points = surface_mesh.GetPoints()
 
     # The farthest point from the origin is this far out:
     r_max = np.max([np.sqrt(np.sum(np.array(points.GetPoint(i))**2)) for i in range(points.GetNumberOfPoints())])
@@ -355,7 +371,7 @@ def spherical_interpolator_from_mesh(
     sqdist_tolerance = dist_tolerance**2
 
     locator = vtk.vtkCellLocator() # Tried vtkOBBTree and it seems vtkCellLocator is much faster for this application
-    locator.SetDataSet(surface_mesh_transformed)
+    locator.SetDataSet(surface_mesh)
     locator.BuildLocator()
 
     for i in range(points.GetNumberOfPoints()):
@@ -420,5 +436,47 @@ def spherical_interpolator_from_mesh(
         points = spherical_coords_on_mesh[:,[1,2]], # The (theta, phi) spherical coordinates
         values = spherical_coords_on_mesh[:,0], # The r spherical coordinates
     )
+
+    return interpolator
+
+def _spherical_interpolator_from_mesh_embree(surface_mesh : vtk.vtkPolyData) -> Callable:
+    vtk_points = surface_mesh.GetPoints()
+    points_np = vtk_to_numpy(vtk_points.GetData()).astype(np.float64) # (N,3)
+    polys = surface_mesh.GetPolys()
+    polys_np = vtk_to_numpy(polys.GetData()) # flat array [3,i0,i1,i2,3,i0,i1,i2,...]
+    if polys_np.size == 0:
+        raise RuntimeError("Input mesh has no polygons after transformation/triangulation.")
+    polys_np = polys_np.reshape(-1, 4) # (M, 4)
+    faces_np = polys_np[:, 1:4].astype(np.int64) # (M, 3)
+
+    r_squared = np.sum(points_np**2, axis=1)
+
+    # The farthest point from the origin is this far out:
+    r_max = float(np.sqrt(r_squared.max()))
+
+    tm = trimesh.Trimesh(vertices=points_np, faces=faces_np, process=False)
+    intersector = trimesh.ray.ray_pyembree.RayMeshIntersector(tm)
+
+    def interpolator(*args):
+        if len(args)==2:
+            arr = np.array(args)
+        elif len(args)==1 and isinstance(args[0], np.ndarray):
+            arr = args[0] # expected shape (...,2)
+            if arr.shape[-1] != 2:
+                msg = f"Interpolator expects array of shape (...,2). Got shape {arr.shape}"
+                raise ValueError(msg)
+        else:
+            raise ValueError("Interpolator expects either two args (theta, phi) or a single numpy array arg shaped (...,2)")
+
+        origins = spherical_to_cartesian_vectorized(
+            np.concatenate([np.full(arr.shape[:-1] + (1,), r_max+1),arr], axis=-1) # add r coordinate, giving shape (...,3)
+        )
+
+        # intersects_id will expect shape (N,3), but we want to support (...,3), so reshape if needed:
+        batch_shape = origins.shape[:-1]
+        origins = origins.reshape((-1,3))
+
+        _, _, hit_locations = intersector.intersects_id(origins, -origins, multiple_hits=False, return_locations=True)
+        return np.linalg.norm(hit_locations, axis=-1).reshape(batch_shape)
 
     return interpolator
