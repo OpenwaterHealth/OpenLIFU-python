@@ -308,6 +308,8 @@ def spherical_interpolator_from_mesh(
     Returns:
         A spherical interpolator, which is a callable that maps (theta,phi) pairs of spherical coordinates (phi being azimuthal)
         to r values (radial spherical coordinate values). The angles are in radians.
+        A spherical interpolator can also run in batch mode, operating on a numpy array of shape (...,2) consisting
+        of theta,phi pairs in the last axis.
 
     Summary of the algorithm:
         - Transform the input mesh based on the desired origin and orientation of the spherical coordinate system.
