@@ -111,7 +111,8 @@ def test_create_closed_surface_from_labelmap():
     # isn't supposed to add a colormap or anything like that
     assert surface.GetPointData().GetScalars() is None
 
-def test_spherical_interpolator_from_mesh():
+@pytest.mark.parametrize("use_embree", [True, False])
+def test_spherical_interpolator_from_mesh(use_embree):
     """Check using a torus that the spherical interpolator behaves reasonably"""
     parametric_torus = vtk.vtkParametricTorus()
     parametric_torus.SetRingRadius(12.)
@@ -131,6 +132,7 @@ def test_spherical_interpolator_from_mesh():
         surface_mesh = torus_polydata,
         origin = origin,
         xyz_direction_columns = xyz_direction_columns,
+        use_embree=use_embree
     )
 
     sphere_source = vtk.vtkSphereSource()
