@@ -1,6 +1,6 @@
-**API Documentation** for the high-level interface
-`LIFUInterface` based on the contents of `LIFUInterface.py`,
-`LIFUHVController.py`, and `LIFUTXDevice.py`.
+**API Documentation** for the High-Level LIFU interface `LIFUInterface` based on
+the contents of `LIFUInterface.py`, `LIFUHVController.py`, and
+`LIFUTXDevice.py`.
 
 ---
 
