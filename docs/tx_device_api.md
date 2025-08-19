@@ -1,6 +1,4 @@
-Based on the latest version of `LIFUTXDevice.py` you provided, here is the
-**updated and accurate TxDevice API documentation**, following the same format
-as the HVController doc.
+**API Documentation** for the Transmitter Device Controller
 
 ---
 

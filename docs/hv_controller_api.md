@@ -1,8 +1,4 @@
-Great — based on the latest full `LIFUHVController.py` you provided, here's the
-**updated and complete API documentation** formatted to match your current
-style:
-
----
+## **API Documentation** for the High Voltage Controller
 
 # HVController API Documentation
 
