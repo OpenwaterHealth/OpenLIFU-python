@@ -1,4 +1,4 @@
-Here is the updated **API Documentation** for the high-level interface
+**API Documentation** for the high-level interface
 `LIFUInterface` based on the contents of `LIFUInterface.py`,
 `LIFUHVController.py`, and `LIFUTXDevice.py`.
 
