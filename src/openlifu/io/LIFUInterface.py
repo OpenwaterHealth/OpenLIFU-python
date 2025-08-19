@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from enum import Enum
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 import pandas as pd
@@ -236,6 +236,7 @@ class LIFUInterface:
 
     def set_solution(self,
                      solution: Solution | Dict,
+                     profile_list:List,
                      profile_index:int=1,
                      profile_increment:bool=True,
                      trigger_mode: TriggerModeOpts = "sequence",
@@ -272,6 +273,7 @@ class LIFUInterface:
                 apodizations= solution['apodizations'],
                 sequence= solution['sequence'],
                 profile_index=profile_index,
+                profile_list=profile_list,
                 profile_increment=profile_increment,
                 trigger_mode=trigger_mode
             )

@@ -19,6 +19,7 @@ from openlifu.bf.sequence import Sequence
 from openlifu.db import Database
 from openlifu.geo import Point
 from openlifu.io.LIFUInterface import LIFUInterface
+from openlifu.io.LIFUTXDevice import Tx7332DelayProfile, Tx7332PulseProfile
 from openlifu.plan.solution import Solution
 
 # set PYTHONPATH=%cd%\src;%PYTHONPATH%
@@ -53,9 +54,9 @@ frequency_kHz = 400 # Frequency in kHz
 voltage = 10.0 # Voltage in Volts
 duration_msec = 5 # Pulse Duration in milliseconds
 interval_msec = 100 # Pulse Repetition Interval in milliseconds
-num_modules = 2 # Number of modules in the system
+num_modules = 1 # Number of modules in the system
 
-use_external_power_supply = True # Select whether to use console or power supply
+use_external_power_supply = False # Select whether to use console or power supply
 
 console_shutoff_temp_C = 70.0 # Console shutoff temperature in Celsius
 tx_shutoff_temp_C = 70.0 # TX device shutoff temperature in Celsius
@@ -295,9 +296,51 @@ solution = Solution(
     voltage=voltage,
     sequence = sequence
 )
-profile_index = 1
+number_of_profiles = 5 # this is just choosing the profile we are not currently writing the profile
+profile_list = []
+
+# interface.txdevice.tx_registers.add_pulse_profile()
+duty_cycle = int((duration_msec/interval_msec) * 100)
+
+print(f"Adding {number_of_profiles} pulse profiles")
+for profile in range(1, number_of_profiles+1):
+# for profile in profile_list:
+    # duty_cycle=DEFAULT_PATTERN_DUTY_CYCLE * max(apodizations[0,:]) * pulse["amplitude"]
+    pulse_profile = Tx7332PulseProfile(
+        profile=profile,
+        frequency=pulse.frequency,
+        cycles=int(pulse.duration * pulse.frequency),
+        duty_cycle=duty_cycle
+    )
+    # profile_list.append([pulse_profile)
+    interface.txdevice.tx_registers.add_pulse_profile(profile_index=pulse_profile)
+    delay_profile = Tx7332DelayProfile(
+        profile=profile,
+        delays=delays[0,:],
+        apodizations=apodizations[0, :]
+    )
+    profile_list.append([pulse_profile, delay_profile])
+    interface.txdevice.tx_registers.add_delay_profile(delay_profile)
+
+# print(f"profile_list: {profile_list}")
+
+# print("Pulse and delay profiles added successfully.")
+# print("Printing out pulse and delay profiles:")
+# for profile in range(1, number_of_profiles+1):
+# # for profile in profile_list:
+#     pulse_profile = interface.txdevice.tx_registers.get_pulse_profile(profile)
+#     delay_profile = interface.txdevice.tx_registers.get_delay_profile(profile)
+#     print(f"Pulse Profile {profile}: {pulse_profile}")
+#     print(f"Delay Profile {profile}: {delay_profile}")
+
+
+
 profile_increment = True
 trigger_mode = "continuous"
+
+
+profile_index = 1
+
 
 if use_external_power_supply:
     interface.check_solution(solution)
@@ -308,7 +351,7 @@ if use_external_power_supply:
         apodizations= sol_dict['apodizations'],
         sequence= sol_dict['sequence'],
         trigger_mode=trigger_mode,
-        profile_index=profile_index,
+        profile_index=number_of_profiles,
         profile_increment=profile_increment
     )
     logger.info(f"Using external power supply. Ensure HV is turned on and set to {voltage}V before starting the trigger.")
@@ -316,6 +359,7 @@ else:
     interface.set_solution(
         solution=solution,
         profile_index=profile_index,
+        profile_list=profile_list,
         profile_increment=profile_increment,
         trigger_mode=trigger_mode,
         turn_hv_on=True)
@@ -328,8 +372,12 @@ else:
     logger.error("Failed to sgt trigger setting.")
     sys.exit(1)
 
-
-duty_cycle = int((duration_msec/interval_msec) * 100)
+profile_select_to_write = 63
+tx_chip = 1
+print(f"Setting TX profile index to {profile_select_to_write} on tx_chip {tx_chip}")
+print(interface.txdevice.set_tx_profile(identifier=tx_chip, profile_number=profile_select_to_write))
+print("reading active profile index:")
+print(interface.txdevice.get_tx_profile(identifier=1))
 if duty_cycle > 50:
     logger.warning("❗❗ Duty cycle is above 50% ❗❗")
 
