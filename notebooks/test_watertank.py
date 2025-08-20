@@ -300,7 +300,7 @@ number_of_profiles = 5 # this is just choosing the profile we are not currently 
 profile_list = []
 
 # interface.txdevice.tx_registers.add_pulse_profile()
-duty_cycle = int((duration_msec/interval_msec) * 100)
+duty_cycle = round(((duration_msec/interval_msec) * 100), 2)
 
 print(f"Adding {number_of_profiles} pulse profiles")
 for profile in range(1, number_of_profiles+1):
