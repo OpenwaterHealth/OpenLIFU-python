@@ -106,8 +106,10 @@ def run_simulation(arr: xdc.Transducer,
     kgrid = get_kgrid(params.coords, dt=dt, t_end=t_end, cfl=cfl)
     t = np.arange(0, cycles / freq, kgrid.dt)
     input_signal = amplitude * np.sin(2 * np.pi * freq * t)
-    pcoords = params.coords['lat'].attrs['units']
-    scl = getunitconversion(pcoords, 'm')
+    units = [params[dim].attrs['units'] for dim in params.dims]
+    if not all(unit == units[0] for unit in units):
+        raise ValueError("All dimensions must have the same units")
+    scl = getunitconversion(units[0], 'm')
     array_offset =[-float(coord.mean())*scl for coord in params.coords.values()]
     karray = get_karray(arr,
                         translation=array_offset,
