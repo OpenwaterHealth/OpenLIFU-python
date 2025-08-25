@@ -157,6 +157,13 @@ def run_simulation(arr: xdc.Transducer,
                          coords=params.coords,
                          name='I',
                          attrs={'units':'W/cm^2', 'long_name':'Intensity'})
+        elif record == 'p':
+            pcoords = params.coords.copy()
+            pcoords['t'] = np.arange(0, output['Nt']*kgrid.dt, kgrid.dt)
+            ds_dict['p'] = xa.DataArray(output['p'].reshape([output['Nt'], *sz], order='F'),
+                         coords=[pcoords[dim] for dim in ['t','x','y','z']],
+                         attrs={'units':'Pa', 'long_name':'Pressure'})
+
     ds = xa.Dataset(ds_dict)
     if return_kwave_outputs and return_kwave_inputs:
         return ds, output, inputs
