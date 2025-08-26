@@ -4,16 +4,17 @@ import copy
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Annotated, Any, Dict, List
+from typing import Annotated, Any, Dict, List, Literal
 
 import numpy as np
 import vtk
 
 from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.units import getunitconversion
+from openlifu.xdc.element import Element
 
-from .element import Element
-
+DIMS = ['x', 'y', 'z']
+LDIMS = Literal['x','y','z']
 
 @dataclass
 class Transducer:
@@ -54,19 +55,58 @@ class Transducer:
     The units of this transform are assumed to be the native units of the transducer, the `Transducer.units` field.
     """
 
+    impulse_response: Annotated[np.ndarray, OpenLIFUFieldData("Impulse response", "Impulse response of the elements")] = field(repr=False, default_factory=lambda: np.array([1]))
+    """Impulse response of the element, can be a single value or an array of values. If an array, `impulse_dt` must be set to the time step of the impulse response. Is convolved with the input voltage signal with a time base in seconds to get pressure in Pa. If an impulse response is specified per element, those will also be applied."""
+
+    impulse_dt: Annotated[float, OpenLIFUFieldData("Impulse response timestep", """Impulse response timestep""")] = field(repr=False, default=1)
+    """Impulse response timestep. If `impulse_response` is an array, this is the time step of the impulse response."""
+
+    module_invert: Annotated[List[bool], OpenLIFUFieldData("Invert polarity", "Whether to invert the polarity of the transducer output, per module")] = field(default_factory=lambda: [False])
+    """Whether to invert the polarity of the transducer output"""
+
     def __post_init__(self):
         logging.info("Initializing transducer array")
         if self.name == "":
             self.name = self.id
         for element in self.elements:
             element.rescale(self.units)
+        if self.impulse_response is not None:
+            if isinstance(self.impulse_response, (int, float)):
+                self.impulse_response = np.array([self.impulse_response])
+            self.impulse_response = np.array(self.impulse_response, dtype=np.float64)
+            if self.impulse_response.ndim != 1:
+                raise ValueError("Impulse response must be a 1-dimensional array.")
+            if len(self.impulse_response)>1 and self.impulse_dt is None:
+                raise ValueError("Impulse response timestep must be set if impulse response is an array.")
+
+
+
+    def interp_impulse_response(self, dt=None):
+        if dt is None:
+            dt = self.impulse_dt
+        n0 = len(self.impulse_response)
+        if n0 == 1:
+            impulse_response= self.impulse_response
+        else:
+            t0 = self.impulse_dt * np.arange(n0)
+            t1 = np.arange(0, t0[-1] + dt, dt)
+            impulse_response = np.interp(t1, t0, self.impulse_response)
+        impulse_t = np.arange(len(impulse_response)) * dt
+        impulse_t = impulse_t - np.mean(impulse_t)
+        return impulse_response, impulse_t
 
     def calc_output(self, input_signal, dt, delays: np.ndarray = None, apod: np.ndarray = None):
         if delays is None:
             delays = np.zeros(self.numelements())
         if apod is None:
             apod = np.ones(self.numelements())
-        outputs = [np.concatenate([np.zeros(int(delay/dt)), a*element.calc_output(input_signal, dt)],axis=0) for element, delay, a, in zip(self.elements, delays, apod)]
+
+        if len(self.impulse_response) == 1:
+            filtered_input_signal = input_signal * self.impulse_response
+        else:
+            impulse = self.interp_impulse_response(dt)
+            filtered_input_signal = np.convolve(input_signal, impulse, mode='full')
+        outputs = [np.concatenate([np.zeros(int(delay/dt)), a*element.calc_output(filtered_input_signal, dt)],axis=0) for element, delay, a, in zip(self.elements, delays, apod)]
         max_len = max([len(o) for o in outputs])
         output_signal = np.zeros([self.numelements(), max_len])
         for i, o in enumerate(outputs):
@@ -189,11 +229,20 @@ class Transducer:
         return matrix
 
     @staticmethod
-    def merge(list_of_transducers:List[Transducer]) -> Transducer:
+    def merge(list_of_transducers:List[Transducer], offset_pins:bool=False, offset_indices:bool=False, merged_attrs:dict={}) -> Transducer:
         merged_array = list_of_transducers[0].copy()
         for arr in list_of_transducers[1:]:
             xform_array = arr.copy()
+            if offset_pins:
+                for el in xform_array.elements:
+                    el.pin = el.pin + merged_array.numelements()
+            if offset_indices:
+                for el in xform_array.elements:
+                    el.index = el.index + merged_array.numelements()
             merged_array.elements += xform_array.elements
+            merged_array.module_invert += xform_array.module_invert
+        for k, v in merged_attrs.items():
+            merged_array.__setattr__(k, v)
         return merged_array
 
     def numelements(self):
@@ -218,6 +267,7 @@ class Transducer:
     def to_dict(self):
         d = self.__dict__.copy()
         d["elements"] = [element.to_dict() for element in d["elements"]]
+        d["impulse_response"] = d["impulse_response"].tolist()
         d["standoff_transform"] =  d["standoff_transform"].tolist()
         return d
 
@@ -231,6 +281,37 @@ class Transducer:
         for el in self.elements:
             el.set_matrix(np.dot(np.linalg.inv(matrix), el.get_matrix()))
 
+    def translate(self, dim: LDIMS, amount: float, units=None):
+        if units is not None:
+            self.rescale(units)
+        matrix = np.eye(4)
+        dim_index = list(DIMS).index(dim)
+        matrix[dim_index, 3] = amount
+        self.transform(matrix, units=units)
+
+    def rotate(self, dim: LDIMS, angle: float, units: Literal["deg", "rad"]="deg"):
+        if units == "deg":
+            angle_rad = np.deg2rad(angle)
+        else:
+            angle_rad = angle
+        matrix = np.eye(4)
+        if dim == 'x':
+            matrix[1,1] = np.cos(angle_rad)
+            matrix[1,2] = -np.sin(angle_rad)
+            matrix[2,1] = np.sin(angle_rad)
+            matrix[2,2] = np.cos(angle_rad)
+        elif dim == 'y':
+            matrix[0,0] = np.cos(angle_rad)
+            matrix[0,2] = np.sin(angle_rad)
+            matrix[2,0] = -np.sin(angle_rad)
+            matrix[2,2] = np.cos(angle_rad)
+        elif dim == 'z':
+            matrix[0,0] = np.cos(angle_rad)
+            matrix[0,1] = -np.sin(angle_rad)
+            matrix[1,0] = np.sin(angle_rad)
+            matrix[1,1] = np.cos(angle_rad)
+        self.transform(matrix, units=units)
+
     @staticmethod
     def from_file(filename):
         with open(filename) as file:
@@ -241,6 +322,8 @@ class Transducer:
     def from_dict(d, **kwargs):
         d = d.copy()
         d["elements"] = [Element.from_dict(element) for element in d["elements"]]
+        if "impulse_response" in d:
+            d["impulse_response"] = np.array(d["impulse_response"])
         if "standoff_transform" in d:
             d["standoff_transform"] = np.array(d["standoff_transform"])
         return Transducer(**d, **kwargs)
@@ -250,7 +333,7 @@ class Transducer:
         """Load a Transducer from a json string"""
         return Transducer.from_dict(json.loads(json_string))
 
-    def to_json(self, compact:bool) -> str:
+    def to_json(self, compact:bool=False) -> str:
         """Serialize a Transducer to a json string
 
         Args:
@@ -264,16 +347,7 @@ class Transducer:
             return json.dumps(self.to_dict(), indent=4)
 
     @staticmethod
-    def gen_matrix_array(nx:int=2,
-                         ny:int=2,
-                         pitch:float=1.0,
-                         kerf:float=0.0,
-                         units:str="mm",
-                         impulse_response:float|np.ndarray=1.0,
-                         impulse_dt:float=1.0,
-                         id:str='array',
-                         name:str='Array',
-                         attrs:Dict|None=None):
+    def gen_matrix_array(nx=2, ny=2, pitch=1, kerf=0, units="mm", impulse_response=[1], impulse_dt=1, id='array', name='Array', attrs={}):
         """Generate a 2D flat matrix array
 
         Args:
@@ -292,24 +366,108 @@ class Transducer:
         """
         N = nx * ny
         xpos = (np.arange(nx) - (nx - 1) / 2) * pitch # x positions, centered about x=0
-        ypos = (np.arange(ny) - (ny - 1) / 2) * pitch # y positions, centered about y=0
+        ypos = -(np.arange(ny) - (ny - 1) / 2) * pitch # y positions, centered about y=0
         elements = []
         for i in range(N):
-            x = xpos[i % nx] # inner loop through x positions
-            y = ypos[i // nx] # outer loop through y positions
+            x = xpos[i // ny] # inner loop through x positions
+            y = ypos[i % ny] # outer loop through y positions
             elements.append(Element(
-                x=x,
-                y=y,
-                z=0,
-                az=0,
-                el=0,
-                roll=0,
-                w=pitch - kerf,
-                l=pitch - kerf,
-                impulse_response=impulse_response,
-                impulse_dt=impulse_dt,
+                index=i+1,
+                pin=i+1,
+                position = np.array([x, y, 0]),
+                orientation = np.array([0, 0, 0]),
+                size = np.array([pitch - kerf, pitch - kerf]),
                 units=units
             ))
-        if attrs is None:
-            attrs = {}
-        return Transducer(elements=elements, id=id, name=name, attrs=attrs)
+        arr = Transducer(elements=elements, id=id, name=name, attrs=attrs, impulse_response=impulse_response, impulse_dt=impulse_dt, units=units)
+        return arr
+
+@dataclass
+class TransformedTransducer(Transducer):
+    transform: np.ndarray = field(default_factory= lambda: np.eye(4))
+
+    def bake(self):
+        tdict = self.to_dict()
+        tdict.pop("transform")
+        t = Transducer.from_dict(tdict)
+        t.transform(self.transform, units=self.units)
+        return t
+
+    def translate_global(self, dim: LDIMS, amount, units=None):
+        if units is None:
+            units = self.units
+        matrix = np.eye(4)
+        dim_index = DIMS.index(dim)
+        matrix[dim_index, 3] = amount
+        self.transform = self.transform @ np.linalg.inv(matrix)
+
+    def translate_local(self, dim: LDIMS, amount, units=None):
+        if units is None:
+            units = self.units
+        matrix = np.eye(4)
+        dim_index = DIMS.index(dim)
+        matrix[dim_index, 3] = amount
+        self.transform = np.linalg.inv(matrix) @ self.transform
+
+    def rotate_global(self, dim: LDIMS, angle: float, units: Literal["deg", "rad"]="deg"):
+        if units == "deg":
+            angle_rad = np.deg2rad(angle)
+        else:
+            angle_rad = angle
+        matrix = np.eye(4)
+        if dim == 'x':
+            matrix[1,1] = np.cos(angle_rad)
+            matrix[1,2] = -np.sin(angle_rad)
+            matrix[2,1] = np.sin(angle_rad)
+            matrix[2,2] = np.cos(angle_rad)
+        elif dim == 'y':
+            matrix[0,0] = np.cos(angle_rad)
+            matrix[0,2] = np.sin(angle_rad)
+            matrix[2,0] = -np.sin(angle_rad)
+            matrix[2,2] = np.cos(angle_rad)
+        elif dim == 'z':
+            matrix[0,0] = np.cos(angle_rad)
+            matrix[0,1] = -np.sin(angle_rad)
+            matrix[1,0] = np.sin(angle_rad)
+            matrix[1,1] = np.cos(angle_rad)
+        self.transform = self.transform @ matrix
+
+    def rotate_local(self, dim: LDIMS, angle: float, units: Literal["deg", "rad"]="deg"):
+        if units == "deg":
+            angle_rad = np.deg2rad(angle)
+        else:
+            angle_rad = angle
+        matrix = np.eye(4)
+        if dim == 'x':
+            matrix[1,1] = np.cos(angle_rad)
+            matrix[1,2] = -np.sin(angle_rad)
+            matrix[2,1] = np.sin(angle_rad)
+            matrix[2,2] = np.cos(angle_rad)
+        elif dim == 'y':
+            matrix[0,0] = np.cos(angle_rad)
+            matrix[0,2] = np.sin(angle_rad)
+            matrix[2,0] = -np.sin(angle_rad)
+            matrix[2,2] = np.cos(angle_rad)
+        elif dim == 'z':
+            matrix[0,0] = np.cos(angle_rad)
+            matrix[0,1] = -np.sin(angle_rad)
+            matrix[1,0] = np.sin(angle_rad)
+            matrix[1,1] = np.cos(angle_rad)
+        self.transform = matrix @ self.transform
+
+    def to_dict(self):
+        tdict = super().to_dict()
+        tdict["transform"] = self.transform.tolist()
+        return tdict
+
+    @staticmethod
+    def from_dict(data):
+        d = data.copy()
+        transform = np.array(d.pop("transform"))
+        t = Transducer.from_dict(d)
+        return TransformedTransducer.from_transducer(t, transform)
+
+    @staticmethod
+    def from_transducer(t: Transducer, transform: np.ndarray) -> TransformedTransducer:
+        tdict = t.__dict__
+        return TransformedTransducer(**tdict, transform=np.array(transform))

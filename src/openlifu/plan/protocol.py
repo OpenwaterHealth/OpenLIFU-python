@@ -354,7 +354,7 @@ class Protocol:
             id=solution_id,
             name=f"Solution {timestamp}",
             protocol_id=self.id,
-            transducer_id=transducer.id,
+            transducer=transducer,
             delays=np.stack(delays_to_stack, axis=0),
             apodizations=np.stack(apodizations_to_stack, axis=0),
             pulse=self.pulse,
@@ -377,7 +377,7 @@ class Protocol:
                 raise ValueError(f"Cannot scale solution {solution.id} if simulation is not enabled!")
             self.logger.info(f"Scaling solution {solution.id}...")
             #TODO can analysis be an attribute of solution ?
-            solution.scale(transducer, self.focal_pattern, analysis_options=analysis_options)
+            solution.scale(self.focal_pattern, analysis_options=analysis_options)
 
         if simulate:
             # Finally the resulting pressure is max-aggregated and intensity is mean-aggregated, over all focus points .
@@ -390,7 +390,7 @@ class Protocol:
             simulation_result_aggregated['p_min'] = pnp_aggregated
             simulation_result_aggregated['p_max'] = ppp_aggregated
             simulation_result_aggregated['intensity'] = intensity_aggregated
-            solution_analysis = solution.analyze(transducer=transducer, options=analysis_options, param_constraints=self.param_constraints)
+            solution_analysis = solution.analyze(options=analysis_options, param_constraints=self.param_constraints)
         else:
             simulation_result_aggregated = None
             solution_analysis = None

@@ -14,6 +14,7 @@ from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.units import getunitconversion
 
 DEFAULT_NUM_TRANSMITTERS = 2
+TRANSMITTERS_PER_MODULE = 2
 ADDRESS_GLOBAL_MODE = 0x0
 ADDRESS_STANDBY = 0x1
 ADDRESS_DYNPWR_2 = 0x6
@@ -149,7 +150,7 @@ if not logger.handlers:
     logger.addHandler(handler)
 
 class TxDevice:
-    def __init__(self, uart: LIFUUart):
+    def __init__(self, uart: LIFUUart, module_invert: bool | list[bool] = False):
         """
         Initialize the TxDevice.
 
@@ -159,6 +160,7 @@ class TxDevice:
         self._tx_instances = []
         self.tx_registers = None
         self.uart = uart
+        self.module_invert = module_invert
         if self.uart and not self.uart.asyncMode:
             self.uart.check_usb_status()
             if self.uart.is_connected():
@@ -833,7 +835,8 @@ class TxDevice:
             logger.error("ValueError: %s", v)
             raise
 
-    def enum_tx7332_devices(self, num_devices: int | None = None) -> int:
+    def enum_tx7332_devices(self,
+                            num_devices: int | None = None) -> int:
         """
         Enumerate TX7332 devices connected to the TX device.
 
@@ -866,7 +869,7 @@ class TxDevice:
                     logger.info("Error enumerating TX devices.")
                 if num_devices is not None and num_detected_devices != num_devices:
                     raise ValueError(f"Expected {num_devices} devices, but detected {num_detected_devices} devices")
-            self.tx_registers = TxDeviceRegisters(num_transmitters=num_detected_devices)
+            self.tx_registers = TxDeviceRegisters(num_transmitters=num_detected_devices, module_invert=self.module_invert)
             logger.info("TX Device Count: %d", num_detected_devices)
             return num_detected_devices
         except ValueError as v:
@@ -876,6 +879,17 @@ class TxDevice:
         except Exception as e:
             logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
+
+    def set_module_invert(self, module_invert: bool | List[bool]) -> None:
+        """
+        Set the module invert configuration for the TX device.
+
+        Args:
+            module_invert (bool | List[bool]): The module invert configuration to set.
+        """
+        self.module_invert = module_invert
+        if self.tx_registers is not None:
+            self.tx_registers.module_invert = module_invert
 
     def demo_tx7332(self, identifier:int) -> bool:
         """
@@ -1264,13 +1278,13 @@ class TxDevice:
             raise  # Re-raise the exception for the caller to handle
 
     def set_solution(self,
-                        pulse: Dict,
-                        delays: np.ndarray,
-                        apodizations: np.ndarray,
-                        sequence: Dict,
-                        trigger_mode: TriggerModeOpts = "sequence",
-                        profile_index: int = 1,
-                        profile_increment: bool = True):
+                     pulse: Dict,
+                     delays: np.ndarray,
+                     apodizations: np.ndarray,
+                     sequence: Dict,
+                     trigger_mode: TriggerModeOpts = "sequence",
+                     profile_index: int = 1,
+                     profile_increment: bool = True):
         """
         Set the solution parameters on the TX device.
 
@@ -1292,7 +1306,12 @@ class TxDevice:
         n = delays.shape[0]
         n_elements = delays.shape[1]
         n_required_devices = int(n_elements / NUM_CHANNELS)
-        self.enum_tx7332_devices(num_devices=n_required_devices)
+        n_detected_tx = self.enum_tx7332_devices(num_devices=n_required_devices)
+        n_modules = n_detected_tx / TRANSMITTERS_PER_MODULE
+        if n_required_devices != n_detected_tx:
+            errmsg = f"Number of detected TX devices ({n_detected_tx}) does not match required ({n_required_devices})"
+            logger.exception(errmsg)
+            raise OSError(errmsg)
 
         if n != apodizations.shape[0]:
             raise ValueError("Delays and apodizations must have the same number of rows")
@@ -1347,7 +1366,7 @@ class TxDevice:
             for txi, txregs in enumerate(registers):
                 for addr, reg_values in txregs.items():
                     if not self.write_block(identifier=txi, start_address=addr, reg_values=reg_values):
-                        logger.error(f"Error applying TX CHIP ID: {i} registers")
+                        logger.error(f"Error applying TX CHIP ID: {txi} registers")
                         return False
             return True
 
@@ -1759,27 +1778,27 @@ class Tx7332Registers:
         return {ADDRESS_DELAY_SEL: delay_sel_register,
                 ADDRESS_APODIZATION: apod_register}
 
-    def get_pulse_control_registers(self, profile: int | None=None) -> Dict[int,int]:
+    def get_pulse_control_registers(self, profile: int | None=None, pulse_invert: bool = False) -> Dict[int,int]:
         if profile is None:
             profile = self.active_pulse_profile
-        profile_index = self.get_pulse_profile(profile)
-        if profile_index.profile not in VALID_PATTERN_PROFILES:
-            raise ValueError(f"Invalid profile {profile_index.profile}.")
-        pattern = calc_pulse_pattern(profile_index.frequency, profile_index.duty_cycle, bf_clk=self.bf_clk)
+        pulse_profile = self.get_pulse_profile(profile)
+        if pulse_profile.profile not in VALID_PATTERN_PROFILES:
+            raise ValueError(f"Invalid profile {pulse_profile.profile}.")
+        pattern = calc_pulse_pattern(pulse_profile.frequency, pulse_profile.duty_cycle, bf_clk=self.bf_clk)
         clk_div_n = pattern['clk_div_n']
         clk_div = 2**clk_div_n
         clk_n = self.bf_clk / clk_div
-        cycles = int(profile_index.cycles)
+        cycles = int(pulse_profile.cycles)
         if cycles > (MAX_REPEAT+1):
             # Use elastic repeat
-            pulse_duration_samples = self.bf_clk * ((cycles  / profile_index.frequency) + ELASTIC_MODE_PULSE_LENGTH_ADJUST)
+            pulse_duration_samples = self.bf_clk * ((cycles  / pulse_profile.frequency) + ELASTIC_MODE_PULSE_LENGTH_ADJUST)
             repeat = 0
             elastic_repeat = int(pulse_duration_samples / 16)
-            period_samples = int(clk_n / profile_index.frequency)
+            period_samples = int(clk_n / pulse_profile.frequency)
             cycles = 16*elastic_repeat / period_samples
             y = pattern['y']*int(cycles+1)
             y = y[:(16*elastic_repeat)]
-            y = y + ([0]*profile_index.tail_count)
+            y = y + ([0]*pulse_profile.tail_count)
             t = np.arange(len(y))*(1/clk_n)
             elastic_mode = 1
             if elastic_repeat > MAX_ELASTIC_REPEAT:
@@ -1789,17 +1808,17 @@ class Tx7332Registers:
             elastic_repeat = 0
             elastic_mode = 0
             y = pattern['y']*(repeat+1)
-            y = np.array(y + [0]*profile_index.tail_count)
-        reg_mode =  0x02000003
+            y = np.array(y + [0]*pulse_profile.tail_count)
+        reg_mode =  0x02000043
         reg_mode = set_register_value(reg_mode, clk_div_n, lsb=3, width=3)
-        reg_mode = set_register_value(reg_mode, int(profile_index.invert), lsb=6, width=1)
+        reg_mode = set_register_value(reg_mode, int(pulse_profile.invert^pulse_invert), lsb=6, width=1)
         reg_repeat = 0
         reg_repeat = set_register_value(reg_repeat, repeat, lsb=1, width=5)
-        reg_repeat = set_register_value(reg_repeat, profile_index.tail_count, lsb=6, width=5)
+        reg_repeat = set_register_value(reg_repeat, pulse_profile.tail_count, lsb=6, width=5)
         reg_repeat = set_register_value(reg_repeat, elastic_mode, lsb=11, width=1)
         reg_repeat = set_register_value(reg_repeat, elastic_repeat, lsb=12, width=16)
         reg_pat_sel = 0
-        reg_pat_sel = set_register_value(reg_pat_sel, profile_index.profile-1, lsb=0, width=6)
+        reg_pat_sel = set_register_value(reg_pat_sel, pulse_profile.profile-1, lsb=0, width=6)
         registers = {ADDRESS_PATTERN_MODE: reg_mode,
                      ADDRESS_PATTERN_REPEAT: reg_repeat,
                      ADDRESS_PATTERN_SEL_G1: reg_pat_sel,
@@ -1847,7 +1866,7 @@ class Tx7332Registers:
             data_registers = pack_registers(data_registers, pack_single=pack_single)
         return data_registers
 
-    def get_registers(self, profiles: ProfileOpts = "configured", pack: bool=False, pack_single: bool=False) -> Dict[int,int]:
+    def get_registers(self, profiles: ProfileOpts = "configured", pack: bool=False, pack_single: bool=False, pulse_invert: bool=False) -> Dict[int,int]:
         if len(self._delay_profiles_list) == 0:
             raise ValueError("No delay profiles have been configured")
         if len(self._pulse_profiles_list) == 0:
@@ -1858,7 +1877,7 @@ class Tx7332Registers:
             raise ValueError("No pulse profile activated")
         registers = {addr:0x0 for addr in ADDRESSES_GLOBAL}
         registers.update(self.get_delay_control_registers())
-        registers.update(self.get_pulse_control_registers())
+        registers.update(self.get_pulse_control_registers(pulse_invert=pulse_invert))
         if profiles == "active":
             delay_data = self.get_delay_data_registers()
             pulse_data = self.get_pulse_data_registers()
@@ -1899,10 +1918,13 @@ class TxDeviceRegisters:
     num_transmitters: Annotated[int, OpenLIFUFieldData("Number of transmitters", "The number of transmitters available on the device")] = DEFAULT_NUM_TRANSMITTERS
     """The number of transmitters available on the device"""
 
+    module_invert: Annotated[List[bool] | bool, OpenLIFUFieldData("Module Invert", "List of flags indicating whether to invert the pulse amplitude for each module or a single flag for all modules")] = False
+    """List of flags indicating whether to invert the pulse amplitude for each module or a single flag for all modules"""
+
     def __post_init__(self):
         self.transmitters = tuple([Tx7332Registers(bf_clk=self.bf_clk) for _ in range(self.num_transmitters)])
 
-    def add_pulse_profile(self, profile_index: Tx7332PulseProfile, activate: bool | None=None):
+    def add_pulse_profile(self, pulse_profile: Tx7332PulseProfile, activate: bool | None=None):
         """
         Add a pulse profile
 
@@ -1910,17 +1932,17 @@ class TxDeviceRegisters:
         :param activate: Activate the pulse profile
         """
         profiles = self.configured_pulse_profiles()
-        if profile_index.profile in profiles:
-            i = profiles.index(profile_index.profile)
-            self._profiles_list[i] = profile_index
+        if pulse_profile.profile in profiles:
+            i = profiles.index(pulse_profile.profile)
+            self._profiles_list[i] = pulse_profile
         else:
-            self._profiles_list.append(profile_index)
+            self._profiles_list.append(pulse_profile)
         if activate is None:
             activate = self.active_profile is None
         if activate:
-            self.active_profile = profile_index.profile
+            self.active_profile = pulse_profile.profile
         for tx in self.transmitters:
-            tx.add_pulse_profile(profile_index, activate = activate)
+            tx.add_pulse_profile(pulse_profile, activate = activate)
 
     def add_delay_profile(self, delay_profile: Tx7332DelayProfile, activate: bool | None=None):
         """
@@ -2082,7 +2104,11 @@ class TxDeviceRegisters:
         if recompute:
             self.recompute_delay_profiles()
             self.recompute_pulse_profiles()
-        return [tx.get_registers(profiles, pack=pack, pack_single=pack_single) for tx in self.transmitters]
+        if isinstance(self.module_invert, bool):
+            tx_invert = [self.module_invert] * self.num_transmitters
+        else:
+            tx_invert = list(np.array(self.module_invert*TRANSMITTERS_PER_MODULE, dtype=bool).reshape(TRANSMITTERS_PER_MODULE, -1).T.reshape(-1))
+        return [tx.get_registers(profiles, pack=pack, pack_single=pack_single, pulse_invert=inv) for tx, inv in zip(self.transmitters, tx_invert)]
 
     def get_delay_control_registers(self, profile:int | None=None) -> List[Dict[int,int]]:
         """
@@ -2104,7 +2130,11 @@ class TxDeviceRegisters:
         """
         if profile is None:
             profile = self.active_profile
-        return [tx.get_pulse_control_registers(profile) for tx in self.transmitters]
+        if isinstance(self.module_invert, bool):
+            tx_invert = [self.module_invert] * self.num_transmitters
+        else:
+            tx_invert = list(np.array(self.module_invert*TRANSMITTERS_PER_MODULE, dtype=bool).T.reshape(-1))
+        return [tx.get_pulse_control_registers(profile, pulse_invert=inv) for tx, inv in zip(self.transmitters, tx_invert)]
 
     def get_delay_data_registers(self, profile:int | None=None, pack: bool=False, pack_single: bool=False) -> List[Dict[int,int]]:
         """

@@ -14,7 +14,7 @@ import h5py
 from openlifu.nav.photoscan import Photoscan, load_data_from_photoscan
 from openlifu.plan import Protocol, Run, Solution
 from openlifu.util.json import PYFUSEncoder
-from openlifu.xdc import Transducer
+from openlifu.xdc import Transducer, TransducerArray
 
 from .session import Session
 from .subject import Subject
@@ -851,7 +851,7 @@ class Database:
         sys = UltrasoundSystem.from_file(sys_filename)
         return sys
 
-    def load_transducer(self, transducer_id) -> Transducer:
+    def load_transducer(self, transducer_id, convert_array:bool = True) -> Transducer:
         """Given a transducer_id, reads the corresponding transducer file from database and returns a transducer object.
         Note: the transducer object includes the relative path to the affiliated transducer model data. `get_transducer_absolute_filepaths`, should
         be used to obtain the absolute data filepaths based on the Database directory path.
@@ -861,7 +861,16 @@ class Database:
             Corresponding Transducer object
         """
         transducer_filename = self.get_transducer_filename(transducer_id)
-        transducer = Transducer.from_file(transducer_filename)
+        with open(transducer_filename) as f:
+            if not f:
+                raise FileNotFoundError(f"Transducer file not found for ID: {transducer_id}")
+            d = json.load(f)
+        if "type"  in d and d["type"] == "TransducerArray":
+            transducer = TransducerArray.from_dict(d)
+            if convert_array:
+                transducer = transducer.to_transducer()
+        else:
+            transducer = Transducer.from_file(transducer_filename)
         return transducer
 
     def load_transducer_standoff(self, trans, coords, options=None):
@@ -965,6 +974,24 @@ class Database:
         solution = Solution.from_files(solution_json_filepath)
         self.logger.info(f"Loaded solution {solution_id}")
         return solution
+
+    def load_volume(self, subject, volume_id):
+        """Load the volume with the given ID for the specified subject."""
+        volume_metadata_filepath = self.get_volume_metadata_filepath(subject.id, volume_id)
+        if not volume_metadata_filepath.exists() or not volume_metadata_filepath.is_file():
+            self.logger.error(f"Volume metadata file not found for volume {volume_id}, subject {subject.id}")
+            raise FileNotFoundError(f"Volume metadata file not found for volume {volume_id}, subject {subject.id}")
+        with open(volume_metadata_filepath) as f:
+            volume_metadata = json.load(f)
+            volume_data_filepath = Path(volume_metadata_filepath).parent / volume_metadata["data_filename"]
+        if not volume_data_filepath.exists() or not volume_data_filepath.is_file():
+            self.logger.error(f"Volume data file not found for volume {volume_id}, subject {subject.id}")
+            raise FileNotFoundError(f"Volume data file not found for volume {volume_id}, subject {subject.id}")
+        import nibabel as nib
+        # Load the volume data using nibabel
+        volume_data = nib.load(volume_data_filepath)
+        self.logger.info(f"Loaded volume {volume_id} for subject {subject.id}")
+        return volume_data
 
     def set_connected_transducer(self, trans, options=None):
         trans_id = trans.id
