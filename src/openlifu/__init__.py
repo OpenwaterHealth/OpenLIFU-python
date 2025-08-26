@@ -42,6 +42,8 @@ from ._version import version as __version__
 __all__ = [
     "Point",
     "Transducer",
+    "TransformedTransducer",
+    "TransducerArray",
     "Protocol",
     "Solution",
     "Material",

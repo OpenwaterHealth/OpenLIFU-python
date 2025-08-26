@@ -50,8 +50,8 @@ class Solution:
     protocol_id: Annotated[str | None, OpenLIFUFieldData("Protocol ID", "ID of the protocol that was used when generating this solution")] = None  # this used to be called plan_id in the matlab code
     """ID of the protocol that was used when generating this solution"""
 
-    transducer_id: Annotated[str | None, OpenLIFUFieldData("Transducer ID", "ID of the transducer that was used when generating this solution")] = None
-    """ID of the transducer that was used when generating this solution"""
+    transducer: Annotated[Transducer | None, OpenLIFUFieldData("Transducer", "Transducer used when generating this solution")] = None
+    """Transducer used when generating this solution"""
 
     date_created: Annotated[datetime, OpenLIFUFieldData("Creation date", "Solution creation time")] = field(default_factory=datetime.now)
     """Solution creation time"""
@@ -133,13 +133,11 @@ class Solution:
         return len(self.foci)
 
     def analyze(self,
-                transducer: Transducer,
                 options: SolutionAnalysisOptions = SolutionAnalysisOptions(),
                 param_constraints: Dict[str,ParameterConstraint] | None = None) -> SolutionAnalysis:
         """Analyzes the treatment solution.
 
         Args:
-            transducer: A Transducer item.
             options: A struct for solution analysis options.
             param_constraints: A dictionary of parameter constraints to apply to the analysis.
                 The keys are the parameter names and the values are the ParameterConstraint objects.
@@ -149,10 +147,6 @@ class Solution:
         if param_constraints is None:
             param_constraints = {}
         solution_analysis = SolutionAnalysis()
-
-        if transducer.id != self.transducer_id:
-            # self.logger.error(f"Provided transducer id {transducer.id} does not match Solution transducer id: {self.transducer_id}")
-            raise ValueError(f"Provided transducer id {transducer.id} does not match Solution transducer id: {self.transducer_id}")
 
         dt = 1 / (self.pulse.frequency * 20)
         t = self.pulse.calc_time(dt)
@@ -167,9 +161,9 @@ class Solution:
 
         standoff_Z = options.standoff_density * 1500
         c_tic = 40e-3  # W cm-1
-        A_cm = transducer.get_area("cm")
+        A_cm = self.transducer.get_area("cm")
         d_eq_cm = np.sqrt(4*A_cm / np.pi)
-        ele_sizes_cm2 = np.array([elem.get_area("cm") for elem in transducer.elements])
+        ele_sizes_cm2 = np.array([elem.get_area("cm") for elem in self.transducer.elements])
 
         # xyz = np.stack(np.meshgrid(*coords, indexing="xy"), axis=-1)  #TODO: if fus.Axis is defined, coords.ndgrid(dim="z")
         # z_mask = xyz[..., -1] >= options.sidelobe_zmin  #TODO: probably wrong here, should be z{1}>=options.sidelobe_zmin;
@@ -193,13 +187,13 @@ class Solution:
             solution_analysis.target_position_ele_mm += [focus_mm[1]]
             solution_analysis.target_position_ax_mm += [focus_mm[2]]  # TODO: this should be a list, not a single value
             apodization = self.apodizations[focus_index]
-            origin = transducer.get_effective_origin(apodizations=apodization, units=options.distance_units)
+            origin = self.transducer.get_effective_origin(apodizations=apodization, units=options.distance_units)
 
             output_signal_Pa = []
-            output_signal_Pa = np.zeros((transducer.numelements(), len(input_signal_V)))
-            for i in range(transducer.numelements()):
+            output_signal_Pa = np.zeros((self.transducer.numelements(), len(input_signal_V)))
+            for i in range(self.transducer.numelements()):
                 apod_signal_V = input_signal_V * self.apodizations[focus_index, i]
-                output_signal_Pa[i] = transducer.elements[i].calc_output(apod_signal_V, dt)
+                output_signal_Pa[i] = self.transducer.elements[i].calc_output(apod_signal_V, dt)
 
             p0_Pa = np.max(output_signal_Pa, axis=1)
 
@@ -323,7 +317,6 @@ class Solution:
 
     def scale(
             self,
-            transducer: Transducer,
             focal_pattern: FocalPattern,
             analysis_options: SolutionAnalysisOptions = SolutionAnalysisOptions()
     ) -> None:
@@ -331,14 +324,13 @@ class Solution:
         Scale the solution in-place to match the target pressure.
 
         Args:
-            transducer: xdc.Transducer
             focal_pattern: FocalPattern
             analysis_options: plan.solution.SolutionAnalysisOptions
 
         Returns:
             analysis_scaled: the resulting plan.solution.SolutionAnalysis from scaled solution
         """
-        analysis = self.analyze(transducer, options=analysis_options)
+        analysis = self.analyze(options=analysis_options)
 
         apod_factors, v0, v1 = self.compute_scaling_factors(focal_pattern, analysis)
 
@@ -450,6 +442,44 @@ class Solution:
             return json.dumps(solution_dict, indent=4, cls=PYFUSEncoder)
 
     @staticmethod
+    def from_dict(solution_dict: dict) -> Solution:
+        """Load a Solution from a dictionary.
+
+        Args:
+            solution_dict: The dictionary containing the solution data.
+
+        Returns: The new Solution object.
+        """
+        # Convert the dictionary back into a Solution object
+        solution_dict["date_created"] = datetime.fromisoformat(solution_dict["date_created"])
+        if solution_dict["delays"] is not None:
+            solution_dict["delays"] = np.array(solution_dict["delays"])
+        if solution_dict["apodizations"] is not None:
+            solution_dict["apodizations"] = np.array(solution_dict["apodizations"], ndmin=2)
+            solution_dict["apodizations"] = np.array(solution_dict["apodizations"], ndmin=2)
+        if solution_dict["transducer"] is not None:
+            solution_dict["transducer"] = Transducer.from_dict(solution_dict["transducer"])
+        solution_dict["pulse"] = Pulse.from_dict(solution_dict["pulse"])
+        solution_dict["sequence"] = Sequence.from_dict(solution_dict["sequence"])
+        solution_dict["foci"] = [
+            Point.from_dict(focus_dict)
+            for focus_dict in solution_dict["foci"]
+        ]
+        if solution_dict["target"] is not None:
+            solution_dict["target"] = Point.from_dict(solution_dict["target"])
+
+        if "simulation_result" in solution_dict and isinstance(solution_dict["simulation_result"], str):
+            solution_dict["simulation_result"] = xa.open_dataset(
+                base64.b64decode(
+                    solution_dict["simulation_result"].encode('utf-8')
+                ),
+                engine='h5netcdf',
+            )
+
+        return Solution(**solution_dict)
+
+
+    @staticmethod
     def from_json(json_string : str, simulation_result: xa.Dataset | None=None) -> Solution:
         """Load a Solution from a json string.
 
@@ -461,21 +491,6 @@ class Solution:
         Returns: The new Solution object.
         """
         solution_dict = json.loads(json_string)
-        solution_dict["date_created"] = datetime.fromisoformat(solution_dict["date_created"])
-        if solution_dict["delays"] is not None:
-            solution_dict["delays"] = np.array(solution_dict["delays"])
-        if solution_dict["apodizations"] is not None:
-            solution_dict["apodizations"] = np.array(solution_dict["apodizations"], ndmin=2)
-            solution_dict["apodizations"] = np.array(solution_dict["apodizations"], ndmin=2)
-        solution_dict["pulse"] = Pulse.from_dict(solution_dict["pulse"])
-        solution_dict["sequence"] = Sequence.from_dict(solution_dict["sequence"])
-        solution_dict["foci"] = [
-            Point.from_dict(focus_dict)
-            for focus_dict in solution_dict["foci"]
-        ]
-        if solution_dict["target"] is not None:
-            solution_dict["target"] = Point.from_dict(solution_dict["target"])
-
         if simulation_result is not None:
             if "simulation_result" in solution_dict:
                 raise ValueError(
@@ -483,16 +498,8 @@ class Solution:
                     "Unclear which to use!"
                 )
             solution_dict["simulation_result"] = simulation_result
-        elif "simulation_result" in solution_dict:
-            # Deserialize xarray dataset from string
-            solution_dict["simulation_result"] = xa.open_dataset(
-                base64.b64decode(
-                    solution_dict["simulation_result"].encode('utf-8')
-                ),
-                engine='scipy',
-            )
 
-        return Solution(**solution_dict)
+        return Solution.from_dict(solution_dict)
 
     def to_files(self, json_filepath:Path, nc_filepath:Path | None=None) -> None:
         """Save the solution to json and netCDF files.

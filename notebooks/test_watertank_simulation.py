@@ -12,14 +12,15 @@ if os.name == 'nt':
 else:
     import select
 
-import numpy as np
 
+from openlifu.bf import apod_methods, focal_patterns
 from openlifu.bf.pulse import Pulse
 from openlifu.bf.sequence import Sequence
 from openlifu.db import Database
 from openlifu.geo import Point
 from openlifu.io.LIFUInterface import LIFUInterface
-from openlifu.plan.solution import Solution
+from openlifu.plan import Protocol
+from openlifu.sim import SimSetup
 
 # set PYTHONPATH=%cd%\src;%PYTHONPATH%
 # python notebooks/test_watertank.py
@@ -50,12 +51,11 @@ yInput = 0
 zInput = 50
 
 frequency_kHz = 400 # Frequency in kHz
-voltage = 10.0 # Voltage in Volts
-duration_msec = 5 # Pulse Duration in milliseconds
-interval_msec = 100 # Pulse Repetition Interval in milliseconds
+duration_msec = 0.1 # Pulse Duration in milliseconds
+interval_msec = 20 # Pulse Repetition Interval in milliseconds
 num_modules = 2 # Number of modules in the system
 
-use_external_power_supply = True # Select whether to use console or power supply
+use_external_power_supply = False # Select whether to use console or power supply
 
 console_shutoff_temp_C = 70.0 # Console shutoff temperature in Celsius
 tx_shutoff_temp_C = 70.0 # TX device shutoff temperature in Celsius
@@ -69,27 +69,41 @@ rapid_temp_shutoff_C = 40 # Cutoff temperature in Celsius if it jumps too fast
 rapid_temp_shutoff_seconds = 5 # Time in seconds to reach rapid temperature shutoff
 rapid_temp_increase_per_second_shutoff_C = 3 # Rapid temperature climbing shutoff in Celsius
 
-peak_to_peak_voltage = voltage * 2 # Peak to peak voltage for the pulse
 
 here = Path(__file__).parent.resolve()
 db_path = here / ".." / "db_dvc"
 db = Database(db_path)
-arr = db.load_transducer(f"openlifu_{num_modules}x400_evt1")
+arr = db.load_transducer(f"openlifu_{num_modules}x400_evt1_005")
+
 arr.sort_by_pin()
 
-
 target = Point(position=(xInput,yInput,zInput), units="mm")
-focus = target.get_position(units="mm")
-distances = np.sqrt(np.sum((focus - arr.get_positions(units="mm"))**2, 1)).reshape(1,-1)
-tof = distances*1e-3 / 1500
-delays = tof.max() - tof
-#delays = delays*0.0
 
-apodizations = np.ones((1, arr.numelements()))
-#active_element = 25
-#active_element = np.arange(1,65)
-#apodizations = np.zeros((1, arr.numelements()))
-#apodizations[:, active_element-1] = 1
+pulse = Pulse(frequency=frequency_kHz*1e3, duration=duration_msec*1e-3)
+sequence = Sequence(
+    pulse_interval=interval_msec*1e-3,
+    pulse_count=int(60/(interval_msec*1e-3)),
+    pulse_train_interval=0,
+    pulse_train_count=1)
+focal_pattern = focal_patterns.SinglePoint(target_pressure=300e3)
+apod_method = apod_methods.Uniform()
+sim_setup = SimSetup(x_extent=(-55,55), y_extent=(-30,30), z_extent=(-4,70))
+protocol = Protocol(
+    id='test_protocol',
+    name='Test Protocol',
+    pulse=pulse,
+    sequence=sequence,
+    focal_pattern=focal_pattern,
+    apod_method=apod_method,
+    sim_setup=sim_setup)
+
+solution, sim_res, scaled_analysis = protocol.calc_solution(
+    target=target,
+    transducer=arr,
+    simulate=True,
+    scale=True)
+voltage = solution.voltage
+peak_to_peak_voltage = solution.voltage * 2 # Peak to peak voltage for the pulse
 
 
 logger.info("Starting LIFU Test Script...")
@@ -276,33 +290,15 @@ elif num_tx_devices == num_modules*2:
 else:
     raise Exception(f"Number of TX7332 devices found: {num_tx_devices} != 2x{num_modules}")
 
-logger.info(f'Apodizations: {apodizations}')
-logger.info(f'Delays: {delays}')
+logger.info(f'Apodizations: {solution.apodizations}')
+logger.info(f'Delays: {solution.delays}')
 
-pulse = Pulse(frequency=frequency_kHz*1e3, duration=duration_msec*1e-3)
-
-sequence = Sequence(
-    pulse_interval=interval_msec*1e-3,
-    pulse_count=int(60/(interval_msec*1e-3)),
-    pulse_train_interval=0,
-    pulse_train_count=1
-)
-
-pin_order = np.argsort([el.pin for el in arr.elements])
-solution = Solution(
-    delays = delays[:, pin_order],
-    apodizations = apodizations[:, pin_order],
-    transducer=arr,
-    pulse = pulse,
-    voltage=voltage,
-    sequence = sequence
-)
 profile_index = 1
 profile_increment = True
 trigger_mode = "continuous"
 
 if use_external_power_supply:
-    logger.info(f"Using external power supply. Ensure HV is turned on and set to {voltage}V before starting the trigger.")
+    logger.info(f"Using external power supply. Ensure HV is turned on and set to {solution.voltage}V before starting the trigger.")
 interface.set_solution(
     solution=solution,
     profile_index=profile_index,
@@ -325,7 +321,7 @@ if duty_cycle > 50:
 logger.info(f"User parameters set: \n\
     Module Invert: {arr.module_invert}\n\
     Frequency: {frequency_kHz}kHz\n\
-    Voltage Per Rail: {voltage}V\n\
+    Voltage Per Rail: {solution.voltage}V\n\
     Voltage Peak to Peak: {peak_to_peak_voltage}V\n\
     Duration: {duration_msec}ms\n\
     Interval: {interval_msec}ms\n\

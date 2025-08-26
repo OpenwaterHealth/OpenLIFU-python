@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Annotated
 
@@ -35,34 +34,19 @@ class Element:
     index: Annotated[int, OpenLIFUFieldData("Element index", "Element index")] = 0
     """Element index to identify the element in the array."""
 
-    x: Annotated[float, OpenLIFUFieldData("X position", "X position of the element")] = 0
-    """X position of the element."""
+    position: Annotated[np.ndarray, OpenLIFUFieldData("Position", "Position of the element in 3D space")] = field(default_factory=lambda: np.array([0., 0., 0.]))
+    """ Position of the element in 3D space as a numpy array [x, y, z]."""
 
-    y: Annotated[float, OpenLIFUFieldData("Y position", "Y position of the element")] = 0
-    """Y position of the element."""
+    orientation: Annotated[np.ndarray, OpenLIFUFieldData("Orientation", "Orientation of the element in 3D space")] = field(repr=False, default_factory=lambda: np.array([0., 0., 0.]))
+    """ Orientation of the element in 3D space as a numpy array around the [y, x', z''] axes [az, el, roll] in radians."""
 
-    z: Annotated[float, OpenLIFUFieldData("Z position", "Z position of the element")] = 0
-    """Z position of the element."""
+    size: Annotated[np.ndarray, OpenLIFUFieldData("Size", "Size of the element in 2D")] = field(default_factory=lambda: np.array([1., 1.]))
+    """ Size of the element in 2D as a numpy array [width, length]."""
 
-    az: Annotated[float, OpenLIFUFieldData("Azimuth angle (rad)", "Azimuth angle of the element")] = 0
-    """Azimuth angle of the element, or rotation about the y-axis (rad)"""
-
-    el: Annotated[float, OpenLIFUFieldData("Elevation angle (rad)", "Elevation angle of the element")] = 0
-    """Elevation angle of the element, or rotation about the x'-axis (rad)"""
-
-    roll: Annotated[float, OpenLIFUFieldData("Roll angle (rad)", "Roll angle of the element")] = 0
-    """Roll angle of the element, or rotation about the z''-axis (rad)"""
-
-    w: Annotated[float, OpenLIFUFieldData("Width", "Width of the element in the x dimension")] = 1
-    """Width of the element in the x dimension"""
-
-    l: Annotated[float, OpenLIFUFieldData("Length", "Length of the element in the y dimension")] = 1
-    """Length of the element in the y dimension"""
-
-    impulse_response: Annotated[np.ndarray, OpenLIFUFieldData("Impulse response", "Impulse response of the element")] = field(repr=False, default_factory=lambda: np.array([1]))
+    impulse_response: Annotated[np.ndarray | None, OpenLIFUFieldData("Impulse response", "Impulse response of the element")] = None
     """Impulse response of the element, can be a single value or an array of values. If an array, `impulse_dt` must be set to the time step of the impulse response. Is convolved with the input signal."""
 
-    impulse_dt: Annotated[float, OpenLIFUFieldData("Impulse response timestep", """Impulse response timestep""")] = field(repr=False, default=1)
+    impulse_dt: Annotated[float | None, OpenLIFUFieldData("Impulse response timestep", """Impulse response timestep""")] = None
     """Impulse response timestep. If `impulse_response` is an array, this is the time step of the impulse response."""
 
     pin: Annotated[int, OpenLIFUFieldData("Pin", "Channel pin to which the element is connected")] = -1
@@ -72,13 +56,92 @@ class Element:
     """Spatial units of the element specification."""
 
     def __post_init__(self):
-        if isinstance(self.impulse_response, Iterable):
+        self.position = np.array(self.position, dtype=np.float64)
+        if self.position.shape != (3,):
+            raise ValueError("Position must be a 3-element array.")
+        self.orientation = np.array(self.orientation, dtype=np.float64)
+        if self.orientation.shape != (3,):
+            raise ValueError("Orientation must be a 3-element array.")
+        self.size = np.array(self.size, dtype=np.float64)
+        if self.size.shape != (2,):
+            raise ValueError("Size must be a 2-element array.")
+        if self.impulse_response is not None:
+            if isinstance(self.impulse_response, (int, float)):
+                self.impulse_response = np.array([self.impulse_response])
             self.impulse_response = np.array(self.impulse_response, dtype=np.float64)
-        else:
-            self.impulse_response = np.array([self.impulse_response], dtype=np.float64)
+            if self.impulse_response.ndim != 1:
+                raise ValueError("Impulse response must be a 1-dimensional array.")
+            if len(self.impulse_response)>1 and self.impulse_dt is None:
+                raise ValueError("Impulse response timestep must be set if impulse response is an array.")
+
+    @property
+    def x(self):
+        return self.position[0]
+
+    @x.setter
+    def x(self, value):
+        self.position[0] = value
+
+    @property
+    def y(self):
+        return self.position[1]
+
+    @y.setter
+    def y(self, value):
+        self.position[1] = value
+
+    @property
+    def z(self):
+        return self.position[2]
+
+    @z.setter
+    def z(self, value):
+        self.position[2] = value
+
+    @property
+    def az(self):
+        return self.orientation[0]
+
+    @az.setter
+    def az(self, value):
+        self.orientation[0] = value
+
+    @property
+    def el(self):
+        return self.orientation[1]
+
+    @el.setter
+    def el(self, value):
+        self.orientation[1] = value
+
+    @property
+    def roll(self):
+        return self.orientation[2]
+
+    @roll.setter
+    def roll(self, value):
+        self.orientation[2] = value
+
+    @property
+    def width(self):
+        return self.size[0]
+
+    @width.setter
+    def width(self, value):
+        self.size[0] = value
+
+    @property
+    def length(self):
+        return self.size[1]
+
+    @length.setter
+    def length(self, value):
+        self.size[1] = value
 
     def calc_output(self, input_signal, dt):
-        if len(self.impulse_response) == 1:
+        if self.impulse_response is None:
+            return input_signal
+        elif len(self.impulse_response) == 1:
             return input_signal * self.impulse_response
         else:
             impulse = self.interp_impulse_response(dt)
@@ -90,17 +153,14 @@ class Element:
     def rescale(self, units):
         if self.units != units:
             scl = getunitconversion(self.units, units)
-            self.x *= scl
-            self.y *= scl
-            self.z *= scl
-            self.w *= scl
-            self.l *= scl
+            self.position *= scl
+            self.size *= scl
             self.units = units
 
     def get_position(self, units=None, matrix=np.eye(4)):
         units = self.units if units is None else units
         scl = getunitconversion(self.units, units)
-        pos = np.array([self.x, self.y, self.z]) * scl
+        pos = self.position * scl
         pos = np.append(pos, 1)
         pos = np.dot(matrix, pos)
         return pos[:3]
@@ -108,8 +168,8 @@ class Element:
     def get_size(self, units=None):
         units = self.units if units is None else units
         scl = getunitconversion(self.units, units)
-        ele_width = self.w * scl
-        ele_length = self.l * scl
+        ele_width = self.size[0] * scl
+        ele_length = self.size[1] * scl
         return ele_width, ele_length
 
     def get_area(self, units=None):
@@ -120,8 +180,8 @@ class Element:
     def get_corners(self, units=None, matrix=np.eye(4)):
         units = self.units if units is None else units
         scl = getunitconversion(self.units, units)
-        rect = np.array([np.array([-1, -1.,  1,  1]) * 0.5 * self.w,
-                            np.array([-1,  1,  1, -1]) * 0.5 * self.l,
+        rect = np.array([np.array([-1, -1.,  1,  1]) * 0.5 * self.width,
+                            np.array([-1,  1,  1, -1]) * 0.5 * self.length,
                             np.zeros(4) ,
                             np.ones(4)])
         xyz = np.dot(self.get_matrix(), rect)
@@ -129,7 +189,7 @@ class Element:
         corner = []
         for j in range(3):
             corner.append(xyz1[j, :] * scl)
-        return np.array(corner            )
+        return np.array(corner)
 
     def get_matrix(self, units=None):
         units = self.units if units is None else units
@@ -200,28 +260,27 @@ class Element:
         if units is not None:
             self.rescale(units)
         x, y, z, az, el, roll = matrix2xyz(matrix)
-        self.x = x
-        self.y = y
-        self.z = z
-        self.az = az
-        self.el = el
-        self.roll = roll
+        self.position = np.array([x, y, z])
+        self.orientation = np.array([az, el, roll])
 
     def to_dict(self):
-        return {"index": self.index,
-                "x": self.x,
-                "y": self.y,
-                "z": self.z,
-                "az": self.az,
-                "el": self.el,
-                "roll": self.roll,
-                "w": self.w,
-                "l": self.l,
-                "impulse_response": self.impulse_response.tolist(),
-                "impulse_dt": self.impulse_dt,
+        d = {"index": self.index,
+                "position": self.position.tolist(),
+                "orientation": self.orientation.tolist(),
+                "size": self.size.tolist(),
                 "pin": self.pin,
                 "units": self.units}
+        if self.impulse_response is not None:
+            d["impulse_response"] = self.impulse_response.tolist()
+        if self.impulse_dt is not None:
+            d["impulse_dt"] = self.impulse_dt
+        return d
 
     @staticmethod
     def from_dict(d):
+        if 'x' in d:
+            d = copy.deepcopy(d)
+            d["position"] = np.array([d.pop('x'), d.pop('y'), d.pop('z')])
+            d["orientation"] = np.array([d.pop('az'), d.pop('el'), d.pop('roll')])
+            d["size"] = np.array([d.pop('w'), d.pop('l')])
         return Element(**d)
