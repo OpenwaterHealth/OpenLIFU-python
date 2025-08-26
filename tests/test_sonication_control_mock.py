@@ -16,7 +16,7 @@ def example_solution() -> Solution:
         id="solution",
         name="Solution",
         protocol_id="example_protocol",
-        transducer_id="example_transducer",
+        transducer=None,
         delays = np.zeros((1,64)),
         apodizations = np.ones((1,64)),
         pulse = Pulse(frequency=500e3, duration=2e-5),

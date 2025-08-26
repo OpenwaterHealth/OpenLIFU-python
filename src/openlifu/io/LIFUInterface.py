@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from enum import Enum
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 import pandas as pd
@@ -47,7 +47,17 @@ class LIFUInterface:
     hvcontroller: HVController = None
     txdevice: TxDevice = None
 
-    def __init__(self, vid: int = 0x0483, tx_pid: int = 0x57AF, con_pid: int = 0x57A0, baudrate: int = 921600, timeout: int = 10, TX_test_mode: bool = False, HV_test_mode: bool = False, run_async: bool = False) -> None:
+    def __init__(self,
+                 vid: int = 0x0483,
+                 tx_pid: int = 0x57AF,
+                 con_pid: int = 0x57A0,
+                 baudrate: int = 921600,
+                 timeout: int = 10,
+                 TX_test_mode: bool = False,
+                 HV_test_mode: bool = False,
+                 run_async: bool = False,
+                 ext_power_supply: bool = False,
+                 module_invert: bool | List[bool] = False) -> None:
         """
         Initialize the LIFUInterface with given parameters and store them in the class.
 
@@ -75,12 +85,17 @@ class LIFUInterface:
         # Create a TXDevice instance as part of the interface
         logger.debug("Initializing TX Module of LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", vid, tx_pid, baudrate, timeout)
         self._tx_uart = LIFUUart(vid=vid, pid=tx_pid, baudrate=baudrate, timeout=timeout, desc="TX", demo_mode=TX_test_mode, async_mode=run_async)
-        self.txdevice = TxDevice(uart=self._tx_uart)
+        self.txdevice = TxDevice(uart=self._tx_uart, module_invert=module_invert)
 
-        # Create a LIFUHVController instance as part of the interface
-        logger.debug("Initializing Console of LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", vid, con_pid, baudrate, timeout)
-        self._hv_uart = LIFUUart(vid=vid, pid=con_pid, baudrate=baudrate, timeout=timeout, desc="HV", demo_mode=HV_test_mode, async_mode=run_async)
-        self.hvcontroller = HVController(uart=self._hv_uart)
+        if ext_power_supply:
+            logger.debug("External power supply selected, skipping HVController initialization.")
+            self.hvcontroller = None
+        else:
+            # Create a LIFUHVController instance as part of the interface
+            logger.debug("Initializing Console of LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", vid, con_pid, baudrate, timeout)
+            self._hv_uart = LIFUUart(vid=vid, pid=con_pid, baudrate=baudrate, timeout=timeout, desc="HV", demo_mode=HV_test_mode, async_mode=run_async)
+            self.hvcontroller = HVController(uart=self._hv_uart)
+
 
         # Connect signals to internal handlers
         if self._async_mode:
@@ -120,9 +135,11 @@ class LIFUInterface:
             tuple: (tx_connected, hv_connected)
         """
         tx_connected = self.txdevice.is_connected()
-        hv_connected = self.hvcontroller.is_connected()
+        if self.hvcontroller is None:
+            hv_connected = False
+        else:
+            hv_connected = self.hvcontroller.is_connected()
         return tx_connected, hv_connected
-
 
     def get_max_voltage(self, solution: Solution | Dict) -> float:
         """
@@ -234,12 +251,15 @@ class LIFUInterface:
         else:
             return solution['sequence']['pulse_train_interval'] * solution['sequence']['pulse_train_count']
 
+    def set_module_invert(self, module_invert: bool | List[bool]) -> None:
+        if self.txdevice is not None:
+            self.txdevice.set_module_invert(module_invert)
+
     def set_solution(self,
                      solution: Solution | Dict,
                      profile_index:int=1,
                      profile_increment:bool=True,
                      trigger_mode: TriggerModeOpts = "sequence",
-                     turn_hv_on: bool = True
                      ) -> None:
         """
         Load a solution to the device.
@@ -249,11 +269,17 @@ class LIFUInterface:
             profile_index (int): The profile index to load the solution to (defaults to 0)
             profile_increment (bool): Increment the profile index
             trigger_mode (TriggerModeOpts): The trigger mode to use (defaults to "sequence")
+            module_invert (List[bool]|bool): Invert the signal on all modules (singleton) or specific modules (list) (defaults to False)
         """
         if isinstance(solution, Solution):
             solution = solution.to_dict()
 
         self.check_solution(solution)
+
+        if "transducer" in solution and solution["transducer"] is not None and "module_invert" in solution["transducer"]:
+            self.txdevice.set_module_invert(solution["transducer"]["module_invert"])
+        else:
+            self.txdevice.set_module_invert(False)
 
         self.set_status(LIFUInterfaceStatus.STATUS_PROGRAMMING)
 
@@ -274,15 +300,16 @@ class LIFUInterface:
                 profile_index=profile_index,
                 profile_increment=profile_increment,
                 trigger_mode=trigger_mode
-            )
+        )
         self.set_status(LIFUInterfaceStatus.STATUS_READY)
 
-        logger.info(f"Setting HV to {voltage} V...")
-        self.hvcontroller.set_voltage(voltage)
+        if self.hvcontroller is not None:
+            logger.info(f"Setting HV to {voltage} V...")
+            self.hvcontroller.set_voltage(voltage)
 
         logger.info("%s loaded successfully.", solution_name)
 
-    def start_sonication(self, use_external_power_supply:bool=False) -> bool:
+    def start_sonication(self) -> bool:
         """
         Start sonication.
 
@@ -292,7 +319,7 @@ class LIFUInterface:
             if self._test_mode:
                 return True
 
-            if not use_external_power_supply:
+            if self.hvcontroller is not None:
                 logger.info("Turn ON HV")
                 bHvOn = self.hvcontroller.turn_hv_on()
             else:
@@ -344,7 +371,7 @@ class LIFUInterface:
 
         return self.status
 
-    def stop_sonication(self, use_external_power_supply:bool=False) -> bool:
+    def stop_sonication(self) -> bool:
         """
         Stop sonication.
 
@@ -358,7 +385,7 @@ class LIFUInterface:
             # Send the solution data to the device
             bTriggerOff = self.txdevice.stop_trigger()
 
-            if not use_external_power_supply:
+            if self.hvcontroller is not None:
                 logger.info("Turn OFF HV")
                 bHvOff = self.hvcontroller.turn_hv_off()
             else:
