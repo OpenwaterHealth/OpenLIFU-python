@@ -350,7 +350,7 @@ def run_virtual_fit(
         planefit_points_unprojected_spherical = cartesian_to_spherical_vectorized(
             planefit_points_unprojected_cartesian
         ) # shape (num dthetas, num dphis, 3)
-        skin_projected_r_values = skin_interpolator(planefit_points_unprojected_spherical[...,1:]) # shape (num dthetas, num dphis) # TODO adjust docstrings to demand a *vectorizable* spherical interpolator
+        skin_projected_r_values = skin_interpolator(planefit_points_unprojected_spherical[...,1:]) # shape (num dthetas, num dphis)
         planefit_points_cartesian = spherical_to_cartesian_vectorized( # Could instead renormalize planefit_points_unprojected_cartesian, not sure if it would give a speedup versus this
             np.stack([
                 skin_projected_r_values, # New r values after projection to skin
