@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import tempfile
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -429,7 +430,17 @@ class Solution:
 
         if include_simulation_data:
             # Serialize xarray dataset into a string
-            solution_dict['simulation_result'] = base64.b64encode(self.simulation_result.to_netcdf(engine='scipy')).decode('utf-8')
+            with tempfile.NamedTemporaryFile(suffix=".nc", delete=False) as tmp:
+                tmp_path = Path(tmp.name)
+            try:
+                self.simulation_result.to_netcdf(tmp_path, engine='scipy')
+                # (to_netcdf can write to general byte stream instead of a file, but its behavior is changing
+                # in a way that will likely break how we do it in only some python versions,
+                # so writing to a tempfile is a fool proof solution across versions until to_netcdf stabilizes in its behavior)
+                raw_bytes = tmp_path.read_bytes()
+            finally:
+                tmp_path.unlink(missing_ok=True)
+            solution_dict['simulation_result'] = base64.b64encode(raw_bytes).decode('utf-8')
         else:
             solution_dict.pop('simulation_result')
 
