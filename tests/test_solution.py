@@ -21,13 +21,13 @@ def example_transducer() -> Transducer:
         id="trans_456",
         name="Test Transducer",
         elements=[
-            Element(index=1, x=-14, y=-14, units="m"),
-            Element(index=2, x=-2, y=-2, units="m"),
-            Element(index=3, x=2, y=2, units="m"),
-            Element(index=4, x=14, y=14, units="m")
+            Element(index=1, position=[-14, -14, 0], units="mm"),
+            Element(index=2, position=[-2, -2, 0], units="mm"),
+            Element(index=3, position=[2, 2, 0], units="mm"),
+            Element(index=4, position=[14, 14, 0], units="mm")
         ],
         frequency=1e6,
-        units="m"
+        units="mm"
     )
 
 
@@ -43,7 +43,18 @@ def example_solution() -> Solution:
         id="sol_001",
         name="Test Solution",
         protocol_id="prot_123",
-        transducer_id="trans_456",
+        transducer=Transducer(
+            id="trans_456",
+            name="Test Transducer",
+            elements=[
+                Element(index=1, position=[-14, -14, 0], units="m"),
+                Element(index=2, position=[-2, -2, 0], units="m"),
+                Element(index=3, position=[2, 2, 0], units="m"),
+                Element(index=4, position=[14, 14, 0], units="m")
+            ],
+            frequency=1e6,
+            units="m"
+        ),
         date_created=datetime(2024, 1, 1, 12, 0),
         description="This is a test solution for a unit test.",
         delays=np.array([[0.0, 1.0, 2.0, 3.0]]),
@@ -137,9 +148,9 @@ def test_json_serialize_deserialize_solution_analysis(compact_representation: bo
     analysis_reconstructed = SolutionAnalysis.from_json(analysis_json)
     assert dataclasses_are_equal(analysis_reconstructed, analysis)
 
-def test_solution_analyze_data_types(example_solution:Solution, example_transducer:Transducer):
+def test_solution_analyze_data_types(example_solution:Solution):
     """Test that solution analysis field are all floats or lists of floats as expected"""
-    analysis = example_solution.analyze(example_transducer)
+    analysis = example_solution.analyze()
     for f in fields(analysis):
         value = getattr(analysis, f.name)
         if f.name == "param_constraints":
@@ -159,7 +170,7 @@ def test_solution_created_date():
     assert(now - tolerance <= solution.date_created <= now + tolerance)
 
 
-def test_solution_analyze_ratios(example_solution: Solution, example_transducer: Transducer):
+def test_solution_analyze_ratios(example_solution: Solution):
     """Test the calculation of mainlobe to sidelobe ratios in Solution.analyze()"""
     solution = example_solution
     # Use only one focus point for simplicity
@@ -215,7 +226,7 @@ def test_solution_analyze_ratios(example_solution: Solution, example_transducer:
     # For example_transducer, with all elements at Z=0 and centered apodization, origin is approx (0,0,0)
     # Let's assume default transducer origin is [0,0,0] for get_mask calculations.
 
-    analysis = solution.analyze(example_transducer, options=options)
+    analysis = solution.analyze(options=options)
 
     # Check Case 1
     # Expected mainlobe pnp = 1.0 MPa (from p_min_data[0,1,0,1] = 1e6 Pa)
@@ -248,7 +259,7 @@ def test_solution_analyze_ratios(example_solution: Solution, example_transducer:
     solution.simulation_result['p_min'].data = p_min_data_case2
     solution.simulation_result['intensity'].data = intensity_data # Keep intensity same
 
-    analysis_case2 = solution.analyze(example_transducer, options=options)
+    analysis_case2 = solution.analyze(options=options)
     assert analysis_case2.mainlobe_pnp_MPa[0] == 1.0
     assert analysis_case2.sidelobe_pnp_MPa[0] == 0.0
     assert analysis_case2.sidelobe_to_mainlobe_pressure_ratio[0] == 0.0 # 0 / 1.0 == 0.0
@@ -260,7 +271,7 @@ def test_solution_analyze_ratios(example_solution: Solution, example_transducer:
     solution.simulation_result['p_min'].data = p_min_data # Reset p_min
     solution.simulation_result['intensity'].data = intensity_data_case3
 
-    analysis_case3 = solution.analyze(example_transducer, options=options)
+    analysis_case3 = solution.analyze(options=options)
     assert analysis_case3.mainlobe_isppa_Wcm2[0] == 10.0
     assert analysis_case3.sidelobe_isppa_Wcm2[0] == 0.0
     assert analysis_case3.sidelobe_to_mainlobe_intensity_ratio[0] == 0.0 # 0 / 10.0 == 0.0
@@ -272,7 +283,7 @@ def test_solution_analyze_ratios(example_solution: Solution, example_transducer:
     solution.simulation_result['p_min'].data = p_min_data_case4
     solution.simulation_result['intensity'].data = intensity_data # Keep intensity same
 
-    analysis_case4 = solution.analyze(example_transducer, options=options)
+    analysis_case4 = solution.analyze(options=options)
     assert analysis_case4.mainlobe_pnp_MPa[0] == 0.0
     # Ensure sidelobe is picked up as non-zero
     assert analysis_case4.sidelobe_pnp_MPa[0] > 0, "Sidelobe PNP was zero for Case 4, expected non-zero."
@@ -284,7 +295,7 @@ def test_solution_analyze_ratios(example_solution: Solution, example_transducer:
     intensity_data_case5[0, 2, 0, 2] = 2.0  # Sidelobe intensity = 2 W/cm^2
     solution.simulation_result['p_min'].data = p_min_data # Reset p_min
     solution.simulation_result['intensity'].data = intensity_data_case5
-    analysis_case5 = solution.analyze(example_transducer, options=options)
+    analysis_case5 = solution.analyze(options=options)
     assert analysis_case5.mainlobe_isppa_Wcm2[0] == 0.0
     assert analysis_case5.sidelobe_isppa_Wcm2[0] > 0, "Sidelobe ISPPA was zero for Case 5, expected non-zero."
     assert analysis_case5.sidelobe_to_mainlobe_intensity_ratio[0] == np.inf # 2.0 / 0 == inf
@@ -294,7 +305,7 @@ def test_solution_analyze_ratios(example_solution: Solution, example_transducer:
     solution.simulation_result['p_min'].data = p_min_data_case6
     solution.simulation_result['intensity'].data = intensity_data # Keep intensity same
 
-    analysis_case6 = solution.analyze(example_transducer, options=options)
+    analysis_case6 = solution.analyze(options=options)
     assert analysis_case6.mainlobe_pnp_MPa[0] == 0.0
     assert analysis_case6.sidelobe_pnp_MPa[0] == 0.0
     assert np.isnan(analysis_case6.sidelobe_to_mainlobe_pressure_ratio[0]) # 0 / 0 == nan
@@ -303,7 +314,7 @@ def test_solution_analyze_ratios(example_solution: Solution, example_transducer:
     intensity_data_case7 = np.zeros((1,3,1,3))
     solution.simulation_result['p_min'].data = p_min_data # Reset p_min
     solution.simulation_result['intensity'].data = intensity_data_case7
-    analysis_case7 = solution.analyze(example_transducer, options=options)
+    analysis_case7 = solution.analyze(options=options)
     assert analysis_case7.mainlobe_isppa_Wcm2[0] == 0.0
     assert analysis_case7.sidelobe_isppa_Wcm2[0] == 0.0
     assert np.isnan(analysis_case7.sidelobe_to_mainlobe_intensity_ratio[0]) # 0 / 0 == nan

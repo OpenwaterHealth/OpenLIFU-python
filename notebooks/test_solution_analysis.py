@@ -40,7 +40,7 @@ protocol = Protocol(
     sim_setup=sim_setup)
 
 target = Point(position=np.array([0, 0, 50]), units="mm", radius=2)
-trans = Transducer.gen_matrix_array(nx=8, ny=8, pitch=4, kerf=0.5, id="m3", name="openlifu", impulse_response=1e6/10)
+trans = Transducer.gen_matrix_array(nx=8, ny=8, pitch=4, kerf=0.5, id="m3", name="openlifu", sensitivity=1e6/10)
 # -
 
 solution, sim_res, scaled_analysis = protocol.calc_solution(

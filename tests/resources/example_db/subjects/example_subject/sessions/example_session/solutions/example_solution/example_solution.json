@@ -2,7 +2,34 @@
   "id": "example_solution",
   "name": "Example Solution",
   "protocol_id": "example_protocol",
-  "transducer_id": "example_transducer",
+  "transducer": {
+    "id": "example_transducer",
+    "name": "Example Transducer",
+    "elements": [
+      {
+        "index": 1,
+        "position": [-14, -14, 0],
+        "units": "m"
+      },
+      {
+        "index": 2,
+        "position": [-2, -2, 0],
+        "units": "m"
+      },
+      {
+        "index": 3,
+        "position": [2, 2, 0],
+        "units": "m"
+      },
+      {
+        "index": 4,
+        "position": [14, 14, 0],
+        "units": "m"
+      }
+    ],
+    "frequency": 1e6,
+    "units": "m"
+  },
   "date_created": "2024-01-30T09:18:11",
   "description": "Example plan created 30-Jan-2024 09:16:02",
   "delays": [
