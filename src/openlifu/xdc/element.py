@@ -43,6 +43,9 @@ class Element:
     size: Annotated[np.ndarray, OpenLIFUFieldData("Size", "Size of the element in 2D")] = field(default_factory=lambda: np.array([1., 1.]))
     """ Size of the element in 2D as a numpy array [width, length]."""
 
+    sensitivity: Annotated[float | None, OpenLIFUFieldData("Sensitivity", "Sensitivity of the element (Pa/V)")] = None
+    """Sensitivity of the element (Pa/V)"""
+
     impulse_response: Annotated[np.ndarray | None, OpenLIFUFieldData("Impulse response", "Impulse response of the element")] = None
     """Impulse response of the element, can be a single value or an array of values. If an array, `impulse_dt` must be set to the time step of the impulse response. Is convolved with the input signal."""
 
@@ -140,12 +143,13 @@ class Element:
 
     def calc_output(self, input_signal, dt):
         if self.impulse_response is None:
-            return input_signal
-        elif len(self.impulse_response) == 1:
-            return input_signal * self.impulse_response
+            filtered_signal = input_signal
         else:
             impulse = self.interp_impulse_response(dt)
-            return np.convolve(input_signal, impulse, mode='full')
+            filtered_signal = np.convolve(input_signal, impulse, mode='full')
+        if self.sensitivity is not None:
+            filtered_signal *= self.sensitivity
+        return filtered_signal
 
     def copy(self):
         return copy.deepcopy(self)
@@ -223,12 +227,9 @@ class Element:
         if dt is None:
             dt = self.impulse_dt
         n0 = len(self.impulse_response)
-        if n0 == 1:
-            impulse_response= self.impulse_response
-        else:
-            t0 = self.impulse_dt * np.arange(n0)
-            t1 = np.arange(0, t0[-1] + dt, dt)
-            impulse_response = np.interp(t1, t0, self.impulse_response)
+        t0 = self.impulse_dt * np.arange(n0)
+        t1 = np.arange(0, t0[-1] + dt, dt)
+        impulse_response = np.interp(t1, t0, self.impulse_response)
         impulse_t = np.arange(len(impulse_response)) * dt
         impulse_t = impulse_t - np.mean(impulse_t)
         return impulse_response, impulse_t
@@ -283,4 +284,8 @@ class Element:
             d["position"] = np.array([d.pop('x'), d.pop('y'), d.pop('z')])
             d["orientation"] = np.array([d.pop('az'), d.pop('el'), d.pop('roll')])
             d["size"] = np.array([d.pop('w'), d.pop('l')])
+        if "impulse_response" in d and d["impulse_response"] is not None:
+            d["impulse_response"] = np.array(d["impulse_response"])
+        if "impulse_dt" in d and d["impulse_dt"] is not None:
+            d["impulse_dt"] = float(d["impulse_dt"])
         return Element(**d)

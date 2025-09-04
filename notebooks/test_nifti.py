@@ -37,7 +37,7 @@ import numpy as np
 
 # %%
 
-arr = openlifu.Transducer.gen_matrix_array(nx=8, ny=8, pitch=4, kerf=.5, units="mm", impulse_response=1e5)
+arr = openlifu.Transducer.gen_matrix_array(nx=8, ny=8, pitch=4, kerf=.5, units="mm", sensitivity=1e5)
 trans_matrix = np.array(
     [[-1,   0,  0, 0],
      [0, .05,  np.sqrt(1-.05**2), -105],
