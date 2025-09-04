@@ -461,10 +461,10 @@ class TransformedTransducer(Transducer):
         return tdict
 
     @staticmethod
-    def from_dict(data):
+    def from_dict(data, **kwargs):
         d = data.copy()
         transform = np.array(d.pop("transform"))
-        t = Transducer.from_dict(d)
+        t = Transducer.from_dict(d, **kwargs)
         return TransformedTransducer.from_transducer(t, transform)
 
     @staticmethod

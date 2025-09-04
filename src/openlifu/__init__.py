@@ -35,14 +35,13 @@ from openlifu.seg import (
 )
 from openlifu.sim import SimSetup
 from openlifu.virtual_fit import VirtualFitOptions, run_virtual_fit
-from openlifu.xdc import Transducer
+from openlifu.xdc import Transducer, TransducerArray
 
 from ._version import version as __version__
 
 __all__ = [
     "Point",
     "Transducer",
-    "TransformedTransducer",
     "TransducerArray",
     "Protocol",
     "Solution",
