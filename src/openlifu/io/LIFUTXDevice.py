@@ -1809,7 +1809,7 @@ class Tx7332Registers:
             elastic_mode = 0
             y = pattern['y']*(repeat+1)
             y = np.array(y + [0]*pulse_profile.tail_count)
-        reg_mode =  0x02000043
+        reg_mode =  0x02000003
         reg_mode = set_register_value(reg_mode, clk_div_n, lsb=3, width=3)
         reg_mode = set_register_value(reg_mode, int(pulse_profile.invert^pulse_invert), lsb=6, width=1)
         reg_repeat = 0
