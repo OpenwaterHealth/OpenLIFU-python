@@ -18,7 +18,7 @@ import openlifu
 def test_run_simulation_runs():
     """Test that run_simulation can run and outputs something of the correct type."""
 
-    transducer = openlifu.Transducer.gen_matrix_array(nx=2, ny=2, pitch=2, kerf=.5, units="mm", impulse_response=1e5)
+    transducer = openlifu.Transducer.gen_matrix_array(nx=2, ny=2, pitch=2, kerf=.5, units="mm", sensitivity=1e5)
     dt = 2e-7
     sim_setup = openlifu.SimSetup(
         dt=dt,
