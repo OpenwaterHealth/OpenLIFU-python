@@ -473,7 +473,7 @@ class Solution:
                 base64.b64decode(
                     solution_dict["simulation_result"].encode('utf-8')
                 ),
-                engine='h5netcdf',
+                engine='scipy',
             )
 
         return Solution(**solution_dict)
