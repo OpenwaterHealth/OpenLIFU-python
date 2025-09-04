@@ -55,10 +55,13 @@ class Transducer:
     The units of this transform are assumed to be the native units of the transducer, the `Transducer.units` field.
     """
 
-    impulse_response: Annotated[np.ndarray, OpenLIFUFieldData("Impulse response", "Impulse response of the elements")] = field(repr=False, default_factory=lambda: np.array([1]))
-    """Impulse response of the element, can be a single value or an array of values. If an array, `impulse_dt` must be set to the time step of the impulse response. Is convolved with the input voltage signal with a time base in seconds to get pressure in Pa. If an impulse response is specified per element, those will also be applied."""
+    sensitivity: Annotated[float | None, OpenLIFUFieldData("Sensitivity", "Sensitivity of the element (Pa/V)")] = None
+    """Sensitivity of the element (Pa/V)"""
 
-    impulse_dt: Annotated[float, OpenLIFUFieldData("Impulse response timestep", """Impulse response timestep""")] = field(repr=False, default=1)
+    impulse_response: Annotated[np.ndarray | None, OpenLIFUFieldData("Impulse response", "Impulse response of the element")] = None
+    """Impulse response of the element, can be a single value or an array of values. If an array, `impulse_dt` must be set to the time step of the impulse response. Is convolved with the input signal."""
+
+    impulse_dt: Annotated[float | None, OpenLIFUFieldData("Impulse response timestep", """Impulse response timestep""")] = None
     """Impulse response timestep. If `impulse_response` is an array, this is the time step of the impulse response."""
 
     module_invert: Annotated[List[bool], OpenLIFUFieldData("Invert polarity", "Whether to invert the polarity of the transducer output, per module")] = field(default_factory=lambda: [False])
@@ -71,26 +74,20 @@ class Transducer:
         for element in self.elements:
             element.rescale(self.units)
         if self.impulse_response is not None:
-            if isinstance(self.impulse_response, (int, float)):
-                self.impulse_response = np.array([self.impulse_response])
             self.impulse_response = np.array(self.impulse_response, dtype=np.float64)
-            if self.impulse_response.ndim != 1:
+            if self.impulse_response.ndim != 1 or len(self.impulse_response)<2:
                 raise ValueError("Impulse response must be a 1-dimensional array.")
-            if len(self.impulse_response)>1 and self.impulse_dt is None:
-                raise ValueError("Impulse response timestep must be set if impulse response is an array.")
-
+            if self.impulse_dt is None:
+                raise ValueError("Impulse response timestep must be set if impulse response is set.")
 
 
     def interp_impulse_response(self, dt=None):
         if dt is None:
             dt = self.impulse_dt
         n0 = len(self.impulse_response)
-        if n0 == 1:
-            impulse_response= self.impulse_response
-        else:
-            t0 = self.impulse_dt * np.arange(n0)
-            t1 = np.arange(0, t0[-1] + dt, dt)
-            impulse_response = np.interp(t1, t0, self.impulse_response)
+        t0 = self.impulse_dt * np.arange(n0)
+        t1 = np.arange(0, t0[-1] + dt, dt)
+        impulse_response = np.interp(t1, t0, self.impulse_response)
         impulse_t = np.arange(len(impulse_response)) * dt
         impulse_t = impulse_t - np.mean(impulse_t)
         return impulse_response, impulse_t
@@ -100,12 +97,13 @@ class Transducer:
             delays = np.zeros(self.numelements())
         if apod is None:
             apod = np.ones(self.numelements())
-
-        if len(self.impulse_response) == 1:
-            filtered_input_signal = input_signal * self.impulse_response
+        if self.impulse_response is None:
+            filtered_input_signal = input_signal
         else:
             impulse = self.interp_impulse_response(dt)
             filtered_input_signal = np.convolve(input_signal, impulse, mode='full')
+        if self.sensitivity is not None:
+            filtered_input_signal *= self.sensitivity
         outputs = [np.concatenate([np.zeros(int(delay/dt)), a*element.calc_output(filtered_input_signal, dt)],axis=0) for element, delay, a, in zip(self.elements, delays, apod)]
         max_len = max([len(o) for o in outputs])
         output_signal = np.zeros([self.numelements(), max_len])
@@ -229,10 +227,26 @@ class Transducer:
         return matrix
 
     @staticmethod
-    def merge(list_of_transducers:List[Transducer], offset_pins:bool=False, offset_indices:bool=False, merged_attrs:dict={}) -> Transducer:
-        merged_array = list_of_transducers[0].copy()
-        for arr in list_of_transducers[1:]:
-            xform_array = arr.copy()
+    def merge(list_of_transducers:List[Transducer], offset_pins:bool=False, offset_indices:bool=False, merge_mismatched_sensitivity=True, merged_attrs:dict={}) -> Transducer:
+        array_copies = [arr.copy() for arr in list_of_transducers]
+        sensitivities = np.array([arr.sensitivity for arr in array_copies if arr.sensitivity is not None])
+        if len(sensitivities) > 0 and len(sensitivities) < len(array_copies):
+            raise ValueError("If one transducer has a sensitivity, all must have a sensitivity.")
+        if len(set(sensitivities)) > 1:
+            if not merge_mismatched_sensitivity:
+                raise ValueError("Transducers have different sensitivities. Use merge_mismatched_sensitivity=True to merge the relative sensitivities into the merged elements")
+            else:
+                max_sensitivity = sensitivities.max()
+                relative_sensitivities = sensitivities/max_sensitivity
+                for array, relative_sensitivity in zip(array_copies, relative_sensitivities):
+                    for el in array.elements:
+                        if el.sensitivity is not None:
+                            el.sensitivity = el.sensitivity * relative_sensitivity
+                        else:
+                            el.sensitivity = relative_sensitivity
+                    array.sensitivity = max_sensitivity
+        merged_array = array_copies[0]
+        for xform_array in array_copies[1:]:
             if offset_pins:
                 for el in xform_array.elements:
                     el.pin = el.pin + merged_array.numelements()
@@ -267,7 +281,14 @@ class Transducer:
     def to_dict(self):
         d = self.__dict__.copy()
         d["elements"] = [element.to_dict() for element in d["elements"]]
-        d["impulse_response"] = d["impulse_response"].tolist()
+        if self.impulse_response is None:
+            del d["impulse_response"]
+        else:
+            d["impulse_response"] = d["impulse_response"].tolist()
+        if self.impulse_dt is None:
+            del d["impulse_dt"]
+        else:
+            d["impulse_dt"] = d["impulse_dt"].tolist()
         d["standoff_transform"] =  d["standoff_transform"].tolist()
         return d
 
@@ -322,9 +343,13 @@ class Transducer:
     def from_dict(d, **kwargs):
         d = d.copy()
         d["elements"] = [Element.from_dict(element) for element in d["elements"]]
-        if "impulse_response" in d:
-            d["impulse_response"] = np.array(d["impulse_response"])
-        if "standoff_transform" in d:
+        if "impulse_response" in d and d["impulse_response"] is not None:
+            if len(d["impulse_response"]) == 1 and "sensitivity" not in d:
+                d["sensitivity"] = d["impulse_response"][0]
+                del d["impulse_response"]
+            else:
+                d["impulse_response"] = np.array(d["impulse_response"])
+        if "standoff_transform" in d and d["standoff_transform"] is not None:
             d["standoff_transform"] = np.array(d["standoff_transform"])
         return Transducer(**d, **kwargs)
 
@@ -347,7 +372,7 @@ class Transducer:
             return json.dumps(self.to_dict(), indent=4)
 
     @staticmethod
-    def gen_matrix_array(nx=2, ny=2, pitch=1, kerf=0, units="mm", impulse_response=[1], impulse_dt=1, id='array', name='Array', attrs={}):
+    def gen_matrix_array(nx=2, ny=2, pitch=1, kerf=0, units="mm", **kwargs):
         """Generate a 2D flat matrix array
 
         Args:
@@ -379,7 +404,7 @@ class Transducer:
                 size = np.array([pitch - kerf, pitch - kerf]),
                 units=units
             ))
-        arr = Transducer(elements=elements, id=id, name=name, attrs=attrs, impulse_response=impulse_response, impulse_dt=impulse_dt, units=units)
+        arr = Transducer(elements=elements, units=units, **kwargs)
         return arr
 
 @dataclass

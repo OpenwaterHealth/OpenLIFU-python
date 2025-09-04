@@ -22,6 +22,7 @@ import openlifu
 
 pulse = openlifu.Pulse(frequency=500e3, duration=2e-5)
 pt = openlifu.Point(position=(0,0,30), units="mm")
+example_transducer = openlifu.Transducer.gen_matrix_array(nx=8, ny=8, pitch=4, kerf=0.5, id="example_transducer")
 sequence = openlifu.Sequence(
     pulse_interval=0.1,
     pulse_count=10,
@@ -32,7 +33,7 @@ solution = openlifu.Solution(
     id="solution",
     name="Solution",
     protocol_id="example_protocol",
-    transducer_id="example_transducer",
+    transducer=example_transducer,
     delays = np.zeros((1,64)),
     apodizations = np.ones((1,64)),
     pulse = pulse,

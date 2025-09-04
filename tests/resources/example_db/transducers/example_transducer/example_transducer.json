@@ -526,7 +526,6 @@
     [0.0, 0.0, 1.0, 0.0],
     [0.0, 0.0, 0.0, 1.0]
   ],
-  "impulse_response": [100000.0],
-  "impulse_dt": 1,
+  "sensitivity": 1000,
   "module_invert": [false]
 }

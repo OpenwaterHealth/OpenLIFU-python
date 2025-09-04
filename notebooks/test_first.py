@@ -42,7 +42,7 @@ import openlifu
 # We'll start by generating a transducer and drawing it using some vtk-based methods
 
 # %%
-arr = openlifu.Transducer.gen_matrix_array(nx=8, ny=8, pitch=4, kerf=.5, units="mm", impulse_response=1e5)
+arr = openlifu.Transducer.gen_matrix_array(nx=8, ny=8, pitch=4, kerf=.5, units="mm", sensitivity=1e5)
 arr.draw()
 
 # %% [markdown]
