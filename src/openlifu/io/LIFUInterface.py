@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from enum import Enum
 from typing import Dict, List
 
 import numpy as np
 import pandas as pd
 
+import openlifu as m
 from openlifu.io.LIFUHVController import HVController
 from openlifu.io.LIFUSignal import LIFUSignal
 from openlifu.io.LIFUTXDevice import TriggerModeOpts, TxDevice
@@ -422,3 +424,10 @@ class LIFUInterface:
             self.txdevice.close()
         if self.hvcontroller:
             self.hvcontroller.close()
+
+    @staticmethod
+    def get_sdk_version() -> str:
+        version = m.__version__
+        # Match the version pattern X.Y.Z
+        match = re.match(r'\d+\.\d+\.\d+', version)
+        return match.group(0) if match else version
