@@ -13,9 +13,9 @@ from openlifu.xdc import Element, Transducer, TransducerArray
 def example_transducer() -> Transducer:
     return Transducer.from_file(Path(__file__).parent/'resources/example_db/transducers/example_transducer/example_transducer.json')
 
-@pytest.fixture()
-def example_transducer_array() -> TransducerArray:
-    return TransducerArray.from_file(Path(__file__).parent/'resources/example_db/transducers/example_transducer_array/example_transducer_array.json')
+def load_transducer_array(transducer_array_id : str) -> TransducerArray:
+    """Load an example TransducerArray given the transducer ID."""
+    return TransducerArray.from_file(Path(__file__).parent/f'resources/example_db/transducers/{transducer_array_id}/{transducer_array_id}.json')
 
 @pytest.mark.parametrize("compact_representation", [True, False])
 def test_serialize_deserialize_transducer(example_transducer : Transducer, compact_representation: bool):
@@ -94,8 +94,17 @@ def test_read_data_types(example_transducer:Transducer):
     if len(example_transducer.elements) > 0:
         assert isinstance(example_transducer.elements[0], Element)
 
-def test_transducer_array_to_transducer_data_types(example_transducer_array:TransducerArray):
-    transducer = example_transducer_array.to_transducer()
+@pytest.mark.parametrize(
+    "transducer_array_id",
+    [
+        "example_transducer_array",
+        "example_transducer_array2",
+    ]
+)
+def test_transducer_array_to_transducer_data_types(transducer_array_id):
+    transducer_array : TransducerArray = load_transducer_array(transducer_array_id)
+    transducer = transducer_array.to_transducer()
     assert isinstance(transducer.standoff_transform, np.ndarray)
+    assert isinstance(transducer.impulse_response, np.ndarray)
     if len(transducer.elements) > 0:
         assert isinstance(transducer.elements[0], Element)

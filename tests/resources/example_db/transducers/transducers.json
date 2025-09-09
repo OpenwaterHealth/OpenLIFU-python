@@ -1,1 +1,7 @@
-{ "transducer_ids": ["example_transducer", "example_transducer_array"] }
+{
+  "transducer_ids": [
+    "example_transducer",
+    "example_transducer_array",
+    "example_transducer_array2"
+  ]
+}

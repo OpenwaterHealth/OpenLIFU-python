@@ -42,12 +42,11 @@ class TransducerArray(DictMixin):
         if "type" in d:
             d.pop("type")
         d["modules"] = [TransformedTransducer.from_dict(t) for t in data["modules"]]
-        if (
-            "attrs" in d
-            and "standoff_transform" in d["attrs"]
-            and d["attrs"]["standoff_transform"] is not None
-        ):
-            d["attrs"]["standoff_transform"] = np.array(d["attrs"]["standoff_transform"])
+        if "attrs" in d:
+            if "standoff_transform" in d["attrs"] and d["attrs"]["standoff_transform"] is not None:
+                d["attrs"]["standoff_transform"] = np.array(d["attrs"]["standoff_transform"])
+            if "impulse_response" in d["attrs"] and d["attrs"]["impulse_response"] is not None:
+                d["attrs"]["impulse_response"] = np.array(d["attrs"]["impulse_response"])
         return TransducerArray(**d)
 
 
