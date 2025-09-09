@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from openlifu.io.LIFUInterface import LIFUInterface
 from openlifu.io.LIFUTXDevice import (
     Tx7332DelayProfile,
     Tx7332PulseProfile,
@@ -28,6 +29,7 @@ from openlifu.io.LIFUTXDevice import (
 
 # Create delay profile
 print("___TX registers___")
+interface = LIFUInterface()
 tx = Tx7332Registers()
 delays = np.arange(32)*1e-6
 apodizations = np.ones(32)
@@ -45,7 +47,7 @@ print()
 # Create n number of pulse profiles
 max_number_of_profiles = 16
 
-number_of_profiles = 5
+number_of_profiles = 3
 
 frequency = 150e3
 cycles = 3
@@ -197,4 +199,5 @@ for index in profiles:
     get_pulse_profile = txm.get_pulse_profile(index)
     print(f"Pulse Profile {index}: Frequency: {get_pulse_profile.frequency}, Cycles: {get_pulse_profile.cycles}")
 
-txm.apply_all_registers()
+interface.txdevice.tx_registers = txm
+interface.txdevice.apply_all_registers()
