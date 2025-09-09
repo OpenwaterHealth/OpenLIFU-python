@@ -35,6 +35,8 @@
         [0.0, 0.0, 1.0, 0.0],
         [0.0, 0.0, 0.0, 1.0]
       ],
+      "impulse_response": [1000.0, 1000.0],
+      "impulse_dt": 1,
       "sensitivity": 1200,
       "module_invert": [false],
       "transform": [
@@ -76,6 +78,8 @@
         [0.0, 0.0, 1.0, 0.0],
         [0.0, 0.0, 0.0, 1.0]
       ],
+      "impulse_response": [1000.0, 1000.0],
+      "impulse_dt": 1,
       "sensitivity": 1000,
       "module_invert": [false],
       "transform": [

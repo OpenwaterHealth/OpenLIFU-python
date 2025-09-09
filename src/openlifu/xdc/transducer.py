@@ -287,8 +287,6 @@ class Transducer:
             d["impulse_response"] = d["impulse_response"].tolist()
         if self.impulse_dt is None:
             del d["impulse_dt"]
-        else:
-            d["impulse_dt"] = d["impulse_dt"].tolist()
         d["standoff_transform"] =  d["standoff_transform"].tolist()
         return d
 
