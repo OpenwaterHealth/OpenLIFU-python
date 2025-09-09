@@ -851,12 +851,13 @@ class Database:
         sys = UltrasoundSystem.from_file(sys_filename)
         return sys
 
-    def load_transducer(self, transducer_id, convert_array:bool = True) -> Transducer:
+    def load_transducer(self, transducer_id, convert_array:bool = True) -> Transducer|TransducerArray:
         """Given a transducer_id, reads the corresponding transducer file from database and returns a transducer object.
         Note: the transducer object includes the relative path to the affiliated transducer model data. `get_transducer_absolute_filepaths`, should
         be used to obtain the absolute data filepaths based on the Database directory path.
         Args:
             transducer_id: Transducer ID
+            convert_array: When enabled, if a TransducerArray is encountered then it is converted to a Transducer.
         Returns:
             Corresponding Transducer object
         """

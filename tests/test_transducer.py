@@ -6,12 +6,16 @@ import numpy as np
 import pytest
 from helpers import dataclasses_are_equal
 
-from openlifu.xdc import Element, Transducer
+from openlifu.xdc import Element, Transducer, TransducerArray
 
 
 @pytest.fixture()
 def example_transducer() -> Transducer:
     return Transducer.from_file(Path(__file__).parent/'resources/example_db/transducers/example_transducer/example_transducer.json')
+
+@pytest.fixture()
+def example_transducer_array() -> TransducerArray:
+    return TransducerArray.from_file(Path(__file__).parent/'resources/example_db/transducers/example_transducer_array/example_transducer_array.json')
 
 @pytest.mark.parametrize("compact_representation", [True, False])
 def test_serialize_deserialize_transducer(example_transducer : Transducer, compact_representation: bool):
@@ -89,3 +93,9 @@ def test_read_data_types(example_transducer:Transducer):
     assert isinstance(example_transducer.standoff_transform, np.ndarray)
     if len(example_transducer.elements) > 0:
         assert isinstance(example_transducer.elements[0], Element)
+
+def test_transducer_array_to_transducer_data_types(example_transducer_array:TransducerArray):
+    transducer = example_transducer_array.to_transducer()
+    assert isinstance(transducer.standoff_transform, np.ndarray)
+    if len(transducer.elements) > 0:
+        assert isinstance(transducer.elements[0], Element)

@@ -1,0 +1,99 @@
+{
+  "type": "TransducerArray",
+  "id": "example_transducer_array",
+  "name": "test example of an *array* of *transformed* transducers",
+  "modules": [
+    {
+      "id": "module1",
+      "name": "Module 1",
+      "elements": [
+        {
+          "index": 1,
+          "position": [-17.5, 17.5, 0.0],
+          "orientation": [0.0, 0.0, 0.0],
+          "size": [3.7, 3.7],
+          "pin": 1,
+          "units": "mm"
+        },
+        {
+          "index": 2,
+          "position": [-17.5, 13.5, 0.0],
+          "orientation": [0.0, 0.0, 0.0],
+          "size": [3.7, 3.7],
+          "pin": 2,
+          "units": "mm"
+        }
+      ],
+      "frequency": 175000.0,
+      "units": "mm",
+      "attrs": {},
+      "registration_surface_filename": null,
+      "transducer_body_filename": null,
+      "standoff_transform": [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0]
+      ],
+      "sensitivity": 1200,
+      "module_invert": [false],
+      "transform": [
+        [0.9, 0.0, -0.2, 22.8],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.2, 0.0, 0.9, 3.3],
+        [0.0, 0.0, 0.0, 1.0]
+      ]
+    },
+    {
+      "id": "module2",
+      "name": "Module 2",
+      "elements": [
+        {
+          "index": 1,
+          "position": [-17.5, 17.5, 0.0],
+          "orientation": [0.0, 0.0, 0.0],
+          "size": [3.7, 3.7],
+          "pin": 1,
+          "units": "mm"
+        },
+        {
+          "index": 2,
+          "position": [-17.5, 13.5, 0.0],
+          "orientation": [0.0, 0.0, 0.0],
+          "size": [3.7, 3.7],
+          "pin": 2,
+          "units": "mm"
+        }
+      ],
+      "frequency": 180000.0,
+      "units": "mm",
+      "attrs": {},
+      "registration_surface_filename": null,
+      "transducer_body_filename": null,
+      "standoff_transform": [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0]
+      ],
+      "sensitivity": 1000,
+      "module_invert": [false],
+      "transform": [
+        [0.9, 0.0, 0.2, -22.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [-0.2, 0.0, 0.9, 4.2],
+        [0.0, 0.0, 0.0, 1.0]
+      ]
+    }
+  ],
+  "attrs": {
+    "standoff_transform": [
+      [1.0, 0.0, 0.0, 0.0],
+      [0.0, 0.9, -0.02, 0.0],
+      [0.0, 0.02, 0.9, -4.0],
+      [0.0, 0.0, 0.0, 1.0]
+    ],
+    "registration_surface_filename": null,
+    "transducer_body_filename": null
+  }
+}

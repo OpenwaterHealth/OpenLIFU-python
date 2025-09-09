@@ -666,13 +666,13 @@ def test_session_date_modified_updates_on_write(example_database:Database, examp
         assert session.date_modified > initial_modified_time - tolerance
 
 def test_get_transducer_ids(example_database:Database):
-    assert(example_database.get_transducer_ids() == ["example_transducer"])
+    assert(example_database.get_transducer_ids() == ["example_transducer", "example_transducer_array"])
 
 def test_write_transducer_nodata(example_database:Database, example_transducer: Transducer):
     example_transducer.id = "example_transducer_2"
 
     example_database.write_transducer(example_transducer)
-    assert(len(example_database.get_transducer_ids()) == 2)
+    assert(len(example_database.get_transducer_ids()) == 3)
     assert("example_transducer" in example_database.get_transducer_ids())
     assert("example_transducer_2" in example_database.get_transducer_ids())
 
