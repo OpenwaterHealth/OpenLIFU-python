@@ -819,25 +819,24 @@ class Database:
                   None if no transducer body is available.
         """
         transducer_metadata_filepath = self.get_transducer_filename(transducer_id)
-        with open(transducer_metadata_filepath) as f:
-            transducer = json.load(f)
-            transducer_filepaths_dict = {
-                "id": transducer["id"],
-                "name": transducer["name"],
-            }
-            if "registration_surface_filename" in transducer and transducer["registration_surface_filename"] is not None:
-                transducer_filepaths_dict["registration_surface_abspath"] = str(
-                    Path(transducer_metadata_filepath).parent/transducer["registration_surface_filename"]
-                )
-            else:
-                transducer_filepaths_dict["registration_surface_abspath"] = None
-            if "transducer_body_filename" in transducer and transducer["transducer_body_filename"] is not None:
-                transducer_filepaths_dict["transducer_body_abspath"] = str(
-                    Path(transducer_metadata_filepath).parent/transducer["transducer_body_filename"]
-                )
-            else:
-                transducer_filepaths_dict["transducer_body_abspath"] = None
-            return transducer_filepaths_dict
+        transducer = self.load_transducer(transducer_id, convert_array=True)
+
+        transducer_filepaths_dict = {
+            "id": transducer.id,
+            "name": transducer.name,
+            "registration_surface_abspath" : None,
+            "transducer_body_abspath" : None,
+        }
+
+        if transducer.registration_surface_filename is not None:
+            transducer_filepaths_dict["registration_surface_abspath"] = str(
+                Path(transducer_metadata_filepath).parent/(transducer.registration_surface_filename)
+            )
+        if transducer.transducer_body_filename is not None:
+            transducer_filepaths_dict["transducer_body_abspath"] = str(
+                Path(transducer_metadata_filepath).parent/(transducer.transducer_body_filename)
+            )
+        return transducer_filepaths_dict
 
     def load_standoff(self, transducer_id, standoff_id="standoff"):
         raise NotImplementedError("Standoff is not yet implemented")
