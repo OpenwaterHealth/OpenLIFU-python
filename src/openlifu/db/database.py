@@ -15,6 +15,7 @@ from openlifu.nav.photoscan import Photoscan, load_data_from_photoscan
 from openlifu.plan import Protocol, Run, Solution
 from openlifu.util.json import PYFUSEncoder
 from openlifu.xdc import Transducer, TransducerArray
+from openlifu.xdc.util import load_transducer_from_file
 
 from .session import Session
 from .subject import Subject
@@ -861,18 +862,10 @@ class Database:
         Returns:
             Corresponding Transducer object
         """
-        transducer_filename = self.get_transducer_filename(transducer_id)
-        with open(transducer_filename) as f:
-            if not f:
-                raise FileNotFoundError(f"Transducer file not found for ID: {transducer_id}")
-            d = json.load(f)
-        if "type"  in d and d["type"] == "TransducerArray":
-            transducer = TransducerArray.from_dict(d)
-            if convert_array:
-                transducer = transducer.to_transducer()
-        else:
-            transducer = Transducer.from_file(transducer_filename)
-        return transducer
+        return load_transducer_from_file(
+            transducer_filepath=self.get_transducer_filename(transducer_id),
+            convert_array=convert_array
+        )
 
     def load_transducer_standoff(self, trans, coords, options=None):
         raise NotImplementedError("Standoff is not yet implemented")
