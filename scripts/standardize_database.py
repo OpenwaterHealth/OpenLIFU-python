@@ -15,6 +15,7 @@ A couple of known issues to watch out for:
 """
 from __future__ import annotations
 
+import logging
 import pathlib
 import shutil
 import sys
@@ -22,6 +23,7 @@ import tempfile
 
 from openlifu.db import Database
 from openlifu.db.database import OnConflictOpts
+from openlifu.xdc import Transducer
 
 if len(sys.argv) != 2:
     raise RuntimeError("Provide exactly one argument: the path to the database folder.")
@@ -35,7 +37,10 @@ for protocol_id in db.get_protocol_ids():
 
 db.write_transducer_ids(db.get_transducer_ids())
 for transducer_id in db.get_transducer_ids():
-    transducer = db.load_transducer(transducer_id)
+    transducer = db.load_transducer(transducer_id, convert_array=False)
+    if not isinstance(transducer, Transducer):
+        logging.warning(f"Skipping {transducer_id} because TransducerArray writing is not supported.")
+        continue
     assert transducer_id == transducer.id
     db.write_transducer(transducer, on_conflict=OnConflictOpts.OVERWRITE)
 
