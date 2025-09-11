@@ -1350,6 +1350,7 @@ class TxDevice:
                     data=data
                 )
 
+                logger.info(f"data sent: 0x{data.hex()}")
                 # Clear the UART buffer after sending
                 self.uart.clear_buffer()
 

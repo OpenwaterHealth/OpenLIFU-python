@@ -296,7 +296,7 @@ solution = Solution(
     voltage=voltage,
     sequence = sequence
 )
-number_of_profiles = 5 # this is just choosing the profile we are not currently writing the profile
+number_of_profiles = 3 # this is just choosing the profile we are not currently writing the profile
 profile_list = []
 
 # interface.txdevice.tx_registers.add_pulse_profile()
@@ -306,14 +306,20 @@ print(f"Adding {number_of_profiles} pulse profiles")
 for profile in range(1, number_of_profiles+1):
 # for profile in profile_list:
     # duty_cycle=DEFAULT_PATTERN_DUTY_CYCLE * max(apodizations[0,:]) * pulse["amplitude"]
+    if profile == 2:
+        invert = True
+    else:
+        invert = False
     pulse_profile = Tx7332PulseProfile(
         profile=profile,
         frequency=pulse.frequency,
         cycles=int(pulse.duration * pulse.frequency),
-        duty_cycle=duty_cycle
+        duty_cycle=duty_cycle,
+        invert=invert
     )
     # profile_list.append([pulse_profile)
     interface.txdevice.tx_registers.add_pulse_profile(profile_index=pulse_profile)
+    delays = delays*0
     delay_profile = Tx7332DelayProfile(
         profile=profile,
         delays=delays[0,:],
@@ -322,16 +328,16 @@ for profile in range(1, number_of_profiles+1):
     profile_list.append([pulse_profile, delay_profile])
     interface.txdevice.tx_registers.add_delay_profile(delay_profile)
 
-# print(f"profile_list: {profile_list}")
+print(f"profile_list: {profile_list}")
 
-# print("Pulse and delay profiles added successfully.")
-# print("Printing out pulse and delay profiles:")
-# for profile in range(1, number_of_profiles+1):
-# # for profile in profile_list:
-#     pulse_profile = interface.txdevice.tx_registers.get_pulse_profile(profile)
-#     delay_profile = interface.txdevice.tx_registers.get_delay_profile(profile)
-#     print(f"Pulse Profile {profile}: {pulse_profile}")
-#     print(f"Delay Profile {profile}: {delay_profile}")
+print("Pulse and delay profiles added successfully.")
+print("Printing out pulse and delay profiles:")
+for profile in range(1, number_of_profiles+1):
+# for profile in profile_list:
+    pulse_profile = interface.txdevice.tx_registers.get_pulse_profile(profile)
+    delay_profile = interface.txdevice.tx_registers.get_delay_profile(profile)
+    print(f"Pulse Profile {profile}: {pulse_profile}")
+    print(f"Delay Profile {profile}: {delay_profile}")
 
 
 
@@ -339,8 +345,8 @@ profile_increment = True
 trigger_mode = "continuous"
 
 
-profile_index = 1
-
+profile_index = 2
+# exit()
 
 if use_external_power_supply:
     interface.check_solution(solution)
@@ -369,10 +375,10 @@ trigger_setting = interface.txdevice.get_trigger_json()
 if trigger_setting:
     logger.info(f"Trigger Setting: {trigger_setting}")
 else:
-    logger.error("Failed to sgt trigger setting.")
+    logger.error("Failed to set trigger setting.")
     sys.exit(1)
 
-profile_select_to_write = 63
+profile_select_to_write = 5
 tx_chip = 1
 print(f"Setting TX profile index to {profile_select_to_write} on tx_chip {tx_chip}")
 print(interface.txdevice.set_tx_profile(identifier=tx_chip, profile_number=profile_select_to_write))
@@ -433,13 +439,22 @@ t = threading.Thread(target=log_temperature)
 user_input = threading.Thread(target=input_wrapper)
 
 logger.info("Starting Trigger...")
-if interface.txdevice.start_trigger():
+if interface.start_sonication():
     logger.info("Trigger Running...")
     logger.info("Press enter to STOP trigger:")
 
     # Start logging and user input threads
     t.start()
     user_input.start()
+
+
+    # for i in range(number_of_profiles):
+    #     print(f"Waiting 5 seconds before switching profile... {i+1}/{number_of_profiles}")
+    #     time.sleep(10)
+    #     next_profile = (i % number_of_profiles) + 1
+    #     print("Attempting to switch profile...")
+    #     # interface.txdevice.set_tx_profile(identifier=1, profile_number=next_profile)
+    #     print(f"Profile switched to: {interface.txdevice.get_tx_profile(identifier=1)}")
 
     while (user_input.is_alive() and t.is_alive()):
         time.sleep(0.1)
