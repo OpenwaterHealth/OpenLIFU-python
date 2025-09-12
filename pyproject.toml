@@ -49,6 +49,7 @@ dependencies = [
   "OpenEXR",
   "scikit-image",
   "trimesh",
+  "embreex; platform_machine=='x86_64'",
   "onnxruntime==1.18.0",
 ]
 
