@@ -329,16 +329,18 @@ def run_virtual_fit(
     points_asl = np.zeros((num_search_points,3), dtype=float) # search grid points in ASL coordinates
     normals_asl = np.zeros((num_search_points,3), dtype=float) # normal vector of the plane that is fitted at each point, in ASL coordinates
 
+    # Pre-build plane fitting grid that will be used repeatedly in the search loop below.
+    # This grid lives in the spherical coordinate basis theta-phi plane at each point.
+    # Below we will project it onto the skin surface for each search point.
+    dtheta_sequence = np.arange(-planefit_dyaw_extent, planefit_dyaw_extent + planefit_dyaw_step, planefit_dyaw_step)
+    dphi_sequence = np.arange(-planefit_dpitch_extent, planefit_dpitch_extent + planefit_dpitch_step, planefit_dpitch_step)
+    dtheta_grid, dphi_grid = np.meshgrid(dtheta_sequence, dphi_sequence, indexing='ij')
+
     for i in range(num_search_points):
         theta_rad, phi_rad = thetas[i]*np.pi/180, phis[i]*np.pi/180
 
         # Cartesian coordinate location of the point at which we are fitting a plane
         point = np.array(spherical_to_cartesian(skin_interpolator(theta_rad, phi_rad), theta_rad, phi_rad))
-
-        # Build plane fitting grid in the spherical coordinate basis theta-phi plane, which we will later project back onto the skin surface
-        dtheta_sequence = np.arange(-planefit_dyaw_extent, planefit_dyaw_extent + planefit_dyaw_step, planefit_dyaw_step)
-        dphi_sequence = np.arange(-planefit_dpitch_extent, planefit_dpitch_extent + planefit_dpitch_step, planefit_dpitch_step)
-        dtheta_grid, dphi_grid = np.meshgrid(dtheta_sequence, dphi_sequence, indexing='ij')
 
         r_hat, theta_hat, phi_hat = spherical_coordinate_basis(theta_rad,phi_rad)
         planefit_points_unprojected_cartesian = (
