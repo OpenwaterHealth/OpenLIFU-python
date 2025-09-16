@@ -235,7 +235,7 @@ interface.set_solution(
     trigger_mode=trigger_mode
 )
 
-logger.info("Press enter to START burn-in test:")
+logger.info(f"Press enter to START burn-in Test {selected['name']}: ")
 input()
 
 # ------------------- Start Test -------------------
