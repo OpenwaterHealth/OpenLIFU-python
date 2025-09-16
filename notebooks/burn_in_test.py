@@ -54,7 +54,7 @@ test_cases = [
 frequency_kHz = 400
 interval_msec = 200
 num_modules = 2
-use_external_power_supply = True
+use_external_power_supply = False
 console_shutoff_temp_C = 70.0
 rapid_temp_shutoff_C = 40
 rapid_temp_shutoff_seconds = 5
@@ -89,7 +89,7 @@ if not logger.hasHandlers():
     logger.addHandler(handler)
     logger.propagate = False
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_handle = logging.FileHandler(f"burn_in_test_{timestamp}.log", mode='w')
+    file_handle = logging.FileHandler(f"burn_in_test_{timestamp}.log", mode='w', encoding='utf-8')
     logger.addHandler(file_handle)
 
 # ------------------- Device Setup -------------------
@@ -154,14 +154,17 @@ def monitor_temperature():
             logger.info(f"Total test time {total_test_time}s reached. Stopping test.")
             shutdown = True
         within_initial_time_threshold = elapsed < rapid_temp_shutoff_seconds
-        if prev_con_temp is None:
-            prev_con_temp = interface.hvcontroller.get_temperature1() if not use_external_power_supply else 0
-        con_temp = interface.hvcontroller.get_temperature1() if not use_external_power_supply else 0
-        if (con_temp - prev_con_temp) > rapid_temp_increase_per_second_shutoff_C:
-            logger.warning(f"Console temperature rose from {prev_con_temp}°C to {con_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
-            shutdown = True
-        else:
-            prev_con_temp = con_temp
+        if not use_external_power_supply:
+            if prev_con_temp is None:
+                prev_con_temp = interface.hvcontroller.get_temperature1()
+                prev_con_temp = 0
+            con_temp = interface.hvcontroller.get_temperature1()
+            con_temp = 0
+            if (con_temp - prev_con_temp) > rapid_temp_increase_per_second_shutoff_C:
+                logger.warning(f"Console temperature rose from {prev_con_temp}°C to {con_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
+                shutdown = True
+            else:
+                prev_con_temp = con_temp
         if prev_tx_temp is None:
             prev_tx_temp = interface.txdevice.get_temperature()
         tx_temp = interface.txdevice.get_temperature()
@@ -237,7 +240,7 @@ input()
 
 # ------------------- Start Test -------------------
 temp_thread = threading.Thread(target=monitor_temperature)
-temp_thread.start()
+
 
 logger.info("Starting Trigger...")
 if interface.start_sonication():
@@ -259,10 +262,14 @@ if interface.start_sonication():
                     shutdown_event.set()
                     break
     user_input = threading.Thread(target=input_wrapper)
+
+    temp_thread.start()
     user_input.start()
-    while temp_thread.is_alive() and user_input.is_alive():
+    while (temp_thread.is_alive() and user_input.is_alive()):
         time.sleep(0.1)
     shutdown_event.set()
+    stop_logging = True
+
     temp_thread.join()
     user_input.join()
     if interface.stop_sonication():
