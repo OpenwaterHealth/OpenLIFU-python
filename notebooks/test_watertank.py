@@ -296,7 +296,8 @@ solution = Solution(
     voltage=voltage,
     sequence = sequence
 )
-number_of_profiles = 3 # this is just choosing the profile we are not currently writing the profile
+number_of_profiles = 2 # this is just choosing the profile we are not currently writing the profile,
+                       # but that is only for external supply scenario
 profile_list = []
 
 # interface.txdevice.tx_registers.add_pulse_profile()
@@ -310,6 +311,7 @@ for profile in range(1, number_of_profiles+1):
         invert = True
     else:
         invert = False
+    # invert=True
     pulse_profile = Tx7332PulseProfile(
         profile=profile,
         frequency=pulse.frequency,
@@ -318,7 +320,7 @@ for profile in range(1, number_of_profiles+1):
         invert=invert
     )
     # profile_list.append([pulse_profile)
-    interface.txdevice.tx_registers.add_pulse_profile(profile_index=pulse_profile)
+    interface.txdevice.tx_registers.add_pulse_profile(pulse_profile)
     delays = delays*0
     delay_profile = Tx7332DelayProfile(
         profile=profile,
@@ -342,7 +344,7 @@ for profile in range(1, number_of_profiles+1):
 
 
 profile_increment = True
-trigger_mode = "continuous"
+trigger_mode = "sequence"
 
 
 profile_index = 2
@@ -378,12 +380,16 @@ else:
     logger.error("Failed to set trigger setting.")
     sys.exit(1)
 
-profile_select_to_write = 5
+profile_select_to_write = 1
 tx_chip = 1
-print(f"Setting TX profile index to {profile_select_to_write} on tx_chip {tx_chip}")
-print(interface.txdevice.set_tx_profile(identifier=tx_chip, profile_number=profile_select_to_write))
-print("reading active profile index:")
-print(interface.txdevice.get_tx_profile(identifier=1))
+
+for i in range(1, 16):
+    print(f"Setting TX profile index to {i} on tx_chip {tx_chip}")
+    print(interface.txdevice.set_tx_profile(identifier=tx_chip, profile_number=i))
+    print("reading active profile index:")
+    print(interface.txdevice.get_tx_profile(identifier=1))
+    time.sleep(1)
+
 if duty_cycle > 50:
     logger.warning("❗❗ Duty cycle is above 50% ❗❗")
 
@@ -447,14 +453,14 @@ if interface.start_sonication():
     t.start()
     user_input.start()
 
-
-    # for i in range(number_of_profiles):
-    #     print(f"Waiting 5 seconds before switching profile... {i+1}/{number_of_profiles}")
-    #     time.sleep(10)
-    #     next_profile = (i % number_of_profiles) + 1
-    #     print("Attempting to switch profile...")
-    #     # interface.txdevice.set_tx_profile(identifier=1, profile_number=next_profile)
-    #     print(f"Profile switched to: {interface.txdevice.get_tx_profile(identifier=1)}")
+    time_to_wait = 10
+    for i in range(number_of_profiles):
+        next_profile = (i % number_of_profiles) + 1
+        print("Attempting to switch profile...")
+        interface.txdevice.set_tx_profile(identifier=1, profile_number=next_profile)
+        print(f"Waiting {time_to_wait} seconds before reading profile... {i+1}/{number_of_profiles}")
+        time.sleep(time_to_wait)
+        print(f"Profile switched to: {interface.txdevice.get_tx_profile(identifier=1)}")
 
     while (user_input.is_alive() and t.is_alive()):
         time.sleep(0.1)
