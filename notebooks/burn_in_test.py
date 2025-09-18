@@ -29,6 +29,20 @@ Burn-in Test Script
 - Logs temperature and device status.
 """
 
+one_day_in_seconds = 24 * 60 * 60
+
+# ------------------- Logging Setup -------------------
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+if not logger.hasHandlers():
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    logger.addHandler(handler)
+    logger.propagate = False
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_handle = logging.FileHandler(f"burn_in_test_{timestamp}.log", mode='w', encoding='utf-8')
+    logger.addHandler(file_handle)
+
 # ------------------- Test Case Definitions -------------------
 test_cases = [
     {
@@ -51,6 +65,20 @@ test_cases = [
     },
 ]
 
+test_duration = [
+    {
+        'name': 'Case 1: Extended Test, 1 day',
+        'run_time': one_day_in_seconds,
+        'times_per_day': 8,
+    },
+    {
+        'name': 'Case 2: Lifetime Test, 365 days',
+        'run_time': 365*one_day_in_seconds,
+        'times_per_day': 8,
+    },
+]
+
+
 frequency_kHz = 400
 interval_msec = 200
 num_modules = 2
@@ -62,35 +90,39 @@ rapid_temp_increase_per_second_shutoff_C = 3
 log_interval = 1
 
 # ------------------- User Input Section -------------------
-print("\nAvailable Burn-in Test Cases:")
-for i, case in enumerate(test_cases, 1):
-    print(f"{i}. {case['name']}")
+logger.info("Available Burn-in Test Cases:")
+for case in test_cases:
+    logger.info(f"{case['name']}")
 
 while True:
-    choice = input("Select a test case by number (1, 2, 3): ").strip()
+    choice = input("\nSelect a test case by number (1, 2, 3): ").strip()
     if choice.isdigit() and 1 <= int(choice) <= len(test_cases):
         selected = test_cases[int(choice)-1]
         break
-    print("Invalid selection. Please enter 1, 2, or 3.")
+    logger.info("Invalid selection. Please enter 1, 2, or 3.")
 
 voltage = selected['voltage']
 duration_msec = selected['duration_msec']
 total_test_time = selected['total_test_time']
 
-print(f"\nSelected: {selected['name']}")
-print(f"Voltage: {voltage}V, Pulse Duration: {duration_msec}ms, Total Test Time: {total_test_time//60} min {total_test_time%60} sec")
+logger.info(f"Case {choice} Selected\n\n")
 
-# ------------------- Logging Setup -------------------
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-if not logger.hasHandlers():
-    handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
-    logger.addHandler(handler)
-    logger.propagate = False
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_handle = logging.FileHandler(f"burn_in_test_{timestamp}.log", mode='w', encoding='utf-8')
-    logger.addHandler(file_handle)
+logger.info("Available Test Durations:")
+for case in test_duration:
+    logger.info(f"{case['times_per_day']} times per day for {case['run_time']//(one_day_in_seconds)} day{'s' if case['run_time']//(one_day_in_seconds) > 1 else ''}")
+
+while True:
+    choice = input("\nSelect a test case by number (1, 2): ").strip()
+    if choice.isdigit() and 1 <= int(choice) <= len(test_duration):
+        selected = test_duration[int(choice)-1]
+        break
+    logger.info("Invalid selection. Please enter 1 or 2.")
+
+run_time = selected['run_time']
+times_per_day = selected['times_per_day']
+
+logger.info(f"Case {choice} Selected\n")
+logger.info(f"This will run the burn-in test {times_per_day} times a day for {run_time//(one_day_in_seconds)} day{'s' if run_time//(one_day_in_seconds) > 1 else ''}.\n")
 
 # ------------------- Device Setup -------------------
 here = Path(__file__).parent.resolve()
@@ -151,7 +183,7 @@ def monitor_temperature():
     while not (stop_logging or shutdown):
         elapsed = time.time() - start
         if elapsed > total_test_time:
-            logger.info(f"Total test time {total_test_time}s reached. Stopping test.")
+            logger.info(f"Total test time {run_time}s reached. Stopping test.")
             shutdown = True
         within_initial_time_threshold = elapsed < rapid_temp_shutoff_seconds
         if not use_external_power_supply:
@@ -235,7 +267,12 @@ interface.set_solution(
     trigger_mode=trigger_mode
 )
 
-logger.info(f"Press enter to START burn-in Test {selected['name']}: ")
+logger.info("Press enter to START burn-in test with the following parameters: ")
+logger.info(f"  Voltage: {voltage}V")
+logger.info(f"  Pulse Duration: {duration_msec}ms")
+logger.info(f"  Duration: {total_test_time//60} minutes")
+logger.info(f"  Times per day: {times_per_day}")
+logger.info(f"  Total Run Time: {run_time//(one_day_in_seconds)} day{'s' if run_time//(one_day_in_seconds) > 1 else ''}.")
 input()
 
 # ------------------- Start Test -------------------
@@ -244,7 +281,7 @@ temp_thread = threading.Thread(target=monitor_temperature)
 
 logger.info("Starting Trigger...")
 if interface.start_sonication():
-    logger.info("Trigger Running... (Press Enter to stop early)")
+    logger.info("Trigger Running... (Press enter to STOP early)")
     def input_wrapper():
         if os.name == 'nt':
             while not shutdown_event.is_set():
