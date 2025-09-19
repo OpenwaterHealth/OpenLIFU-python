@@ -7,7 +7,12 @@ from unittest.mock import MagicMock
 import pytest
 import requests
 
-from openlifu.util.assets import get_kwave_paths, install_asset
+from openlifu.util.assets import (
+    download_and_install_kwave_assets,
+    get_kwave_paths,
+    install_asset,
+    install_kwave_asset_from_file,
+)
 
 
 def test_destination_already_exists(tmp_path, mocker):
@@ -106,3 +111,51 @@ def test_get_kwave_paths():
         assert isinstance(p, Path)
         assert isinstance(url, str)
         assert len(url) > 0
+
+def test_download_and_install_kwave_assets(tmp_path, mocker):
+    """Verify kwave assets are downloaded by calling install_asset for each binary."""
+    fake_paths = [
+        (tmp_path / "bin1", "http://example.com/bin1"),
+        (tmp_path / "bin2", "http://example.com/bin2"),
+    ]
+    mocker.patch("openlifu.util.assets.get_kwave_paths", return_value=fake_paths)
+    mock_install_asset = mocker.patch("openlifu.util.assets.install_asset")
+
+    download_and_install_kwave_assets()
+
+    assert mock_install_asset.call_count == 2
+    # Check that install_asset was called for each item in our fake list
+    mock_install_asset.assert_any_call(destination=fake_paths[0][0], url_to_asset=fake_paths[0][1])
+    mock_install_asset.assert_any_call(destination=fake_paths[1][0], url_to_asset=fake_paths[1][1])
+
+
+def test_install_kwave_asset_from_file_succeeds(tmp_path, mocker):
+    """Verify a kwave binary is installed from a file with a matching name."""
+    install_path1 = tmp_path / "kwave_binary_1"
+    install_path2 = tmp_path / "another_binary"
+    fake_paths = [(install_path1, "url1"), (install_path2, "url2")]
+    mocker.patch("openlifu.util.assets.get_kwave_paths", return_value=fake_paths)
+    mock_install_asset = mocker.patch("openlifu.util.assets.install_asset")
+
+    # The source file can be in any directory, as long as its name matches.
+    source_file = tmp_path / "some_dir" / "kwave_binary_1"
+
+    result = install_kwave_asset_from_file(source_file)
+
+    mock_install_asset.assert_called_once_with(destination=install_path1, path_to_asset=source_file)
+    assert result == install_path1
+
+
+def test_install_kwave_asset_from_file_fails_on_unrecognized_name(tmp_path, mocker):
+    """Verify a ValueError is raised for a kwave binary with a non-matching name."""
+    fake_paths = [(tmp_path / "kwave_binary_1", "url1")]
+    mocker.patch("openlifu.util.assets.get_kwave_paths", return_value=fake_paths)
+    mock_install_asset = mocker.patch("openlifu.util.assets.install_asset")
+
+    unrecognized_file = tmp_path / "unrecognized_file.exe"
+
+    with pytest.raises(ValueError, match="was not recognized as one of the binaries"):
+        install_kwave_asset_from_file(unrecognized_file)
+
+    # Ensure we didn't accidentally try to install anything
+    mock_install_asset.assert_not_called()

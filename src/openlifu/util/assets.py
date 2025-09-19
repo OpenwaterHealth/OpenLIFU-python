@@ -15,7 +15,7 @@ import requests
 from openlifu.util.types import PathLike
 
 
-def install_asset(destination:PathLike, path_to_asset:PathLike|None, url_to_asset:str|None) -> None:
+def install_asset(destination:PathLike, path_to_asset:PathLike|None=None, url_to_asset:str|None=None) -> None:
     """Install a file to a location if it isn't already there.
 
     Downloads if a `url_to_asset` is provided, and copies if a local `path_to_asset` is provided.
@@ -136,9 +136,9 @@ def _import_kwave_inertly() -> ModuleType:
     return _import_without_calls("kwave", banned_calls=["install_binaries"])
 
 def get_kwave_paths() -> list[tuple[Path, str]]:
-    """Get a list of paths and urls to kwave binaries.
+    """Get a list of paths and urls to kwave binaries for this platform.
 
-    Each item in the list is a pair consisting of the install of a needed binary, followed by a download url for that binary.
+    Each item in the list is a pair consisting of the install path of a needed binary, followed by a download url for that binary.
     """
     kwave = _import_kwave_inertly()
     paths : list[tuple[str, str]] = []
@@ -147,3 +147,24 @@ def get_kwave_paths() -> list[tuple[Path, str]]:
             _, filename = url.split("/")[-2:]
             paths.append((Path(kwave.BINARY_PATH) / filename, url))
     return paths
+
+def download_and_install_kwave_assets() -> None:
+    """Download and install the binaries needed by kwave for this platform"""
+    for install_path, url in get_kwave_paths():
+        install_asset(destination=install_path, url_to_asset=url)
+
+def install_kwave_asset_from_file(path_to_kwave_binary:PathLike) -> Path:
+    """Copy kwave binary file to the appropriate place for kwave to use it.
+    The filename is used to identify which binary it is.
+    Returns the path to the installed (i.e. copied) binary.
+    """
+    path_to_kwave_binary = Path(path_to_kwave_binary)
+    kwave_paths = get_kwave_paths()
+    for install_path, _ in kwave_paths:
+        if path_to_kwave_binary.name == install_path.name:
+            install_asset(destination=install_path, path_to_asset=path_to_kwave_binary)
+            return install_path
+    raise ValueError(
+        f"The filename {path_to_kwave_binary.name} was not recognized as one of the binaries kwave is looking for: "
+        + ", ".join([str(install_path) for install_path, _ in kwave_paths])
+    )
