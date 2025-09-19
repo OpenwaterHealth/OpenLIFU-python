@@ -23,8 +23,6 @@ from openlifu.geo import Point
 from openlifu.io.LIFUInterface import LIFUInterface
 from openlifu.plan.solution import Solution
 
-global test_status
-
 """
 Burn-in Test Script
 - User selects one of three test cases.
@@ -34,24 +32,37 @@ Burn-in Test Script
 openlifu_dir = Path(openlifu.__file__).parent.parent.parent.resolve()
 test_id = "thermal_stress_test"
 test_name = "Thermal Stress Test"
-TEST_MODE = True
+HW_SIMULATE = False
 
 # ------------------- Test Case Definitions -------------------
 test_cases = {
-    1: {
-        'voltage': 65,
+    0: {
+        'id': 'dryrun',
+        'description': 'Dry Run Testing',
+        'voltage': 30,
         'duty_cycle_pct': 5,
-        'sequence_duration': 10 * 60,  # seconds
+        'sequence_duration': 10  # seconds
+    },
+    1: {
+        'id': 'hv',
+        'description': 'High Voltage, Low Duty Cycle, 10min',
+        'voltage': 60,
+        'duty_cycle_pct': 5,
+        'sequence_duration': 10 * 60  # seconds
     },
     2: {
+        'id': 'med',
+        'description': 'Medium Voltage, High Duty Cycle, 2min',
         'voltage': 30,
         'duty_cycle_pct': 50,
-        'sequence_duration': 2 * 60,  # seconds
+        'sequence_duration': 2 * 60  # seconds
     },
     3: {
+        'id': 'lv',
+        'description': 'Low Voltage, High Duty Cycle, 10min',
         'voltage': 20,
         'duty_cycle_pct': 50,
-        'sequence_duration': 10 * 60,  # seconds
+        'sequence_duration': 10 * 60  # seconds
     },
 }
 
@@ -102,8 +113,9 @@ while True:
         break
     print("Invalid selection. Please try again.")
 
-test_case_description = f"{frequency_kHz}kHz, Case {test_case_num}: {test_case['voltage']}V, {test_case['duty_cycle_pct']}%, {format_hhmmss(test_case['sequence_duration'])}"
-test_case_id = f"{frequency_kHz}kHz_Case{test_case_num}"
+test_case_description = test_case["description"]
+test_case_long_description = f"{frequency_kHz}kHz, Case {test_case_num}: {test_case['voltage']}V, {test_case['duty_cycle_pct']}%, {format_hhmmss(test_case['sequence_duration'])}"
+test_case_id = f"{frequency_kHz}kHz_{test_case['id']}"
 voltage = test_case['voltage']
 duration_msec = int(test_case['duty_cycle_pct']/100 * interval_msec)
 sequence_duration = test_case['sequence_duration']
@@ -124,12 +136,13 @@ if not logger.hasHandlers():
     logger.addHandler(file_handle)
 
 
-if TEST_MODE:
+if HW_SIMULATE:
     logger.info(f"Beginning Test {test_case_description} (TEST MODE)")
     logger.info("⚠️ TEST MODE: This is a simulated test run.")
     logger.info("No actual hardware interactions will occur.")
 else:
     logger.info(f"Beginning Test {test_case_description}")
+logger.info(f"{test_case_long_description}")
 
 
 # ------------------- Device Setup -------------------
@@ -148,7 +161,7 @@ delays = tof.max() - tof
 apodizations = np.ones((1, arr.numelements()))
 
 logger.info(f"Starting {test_name}...")
-interface = LIFUInterface(ext_power_supply=use_external_power_supply, TX_test_mode=TEST_MODE, HV_test_mode=TEST_MODE)
+interface = LIFUInterface(ext_power_supply=use_external_power_supply, TX_test_mode=HW_SIMULATE, HV_test_mode=HW_SIMULATE)
 tx_connected, hv_connected = interface.is_device_connected()
 
 if not use_external_power_supply and not tx_connected:
@@ -159,7 +172,7 @@ if not use_external_power_supply and not tx_connected:
     del interface
     time.sleep(1)
     logger.info("Reinitializing LIFU interface after powering 12V...")
-    interface = LIFUInterface(ext_power_supply=use_external_power_supply, TX_test_mode=TEST_MODE, HV_test_mode=TEST_MODE)
+    interface = LIFUInterface(ext_power_supply=use_external_power_supply, TX_test_mode=HW_SIMULATE, HV_test_mode=HW_SIMULATE)
     tx_connected, hv_connected = interface.is_device_connected()
 
 if not use_external_power_supply:
@@ -181,10 +194,11 @@ else:
 # ------------------- Temperature Monitoring -------------------
 test_status = "not started"
 shutdown_event = threading.Event()
+sequence_complete_event = threading.Event()
+temperature_shutdown_event = threading.Event()
 
 temperature_log_interval = 5  # seconds
 def monitor_temperature():
-    global test_status
     start = time.time()
     time_since_last_log = 0
     temperature_shutdown = False
@@ -252,10 +266,9 @@ def monitor_temperature():
         shutdown_event.set()
     if temperature_shutdown:
         logger.warning("Temperature shutdown triggered.")
-        test_status = "temperature shutdown"
+        temperature_shutdown_event.set()
 
 def exit_on_time_complete(timeout, time_log_interval=2, check_interval=0.1):
-    global test_status
     start = time.time()
     elapsed_time = 0
     last_log_time = 0
@@ -271,10 +284,12 @@ def exit_on_time_complete(timeout, time_log_interval=2, check_interval=0.1):
             logger.info(f"Time elapsed: {format_hhmmss(elapsed_time)}, Remaining time: {format_hhmmss(remaining_time)}")
     if not shutdown_event.is_set():
         logger.info(f"✅ Test complete {format_hhmmss(timeout)} reached.")
-        test_status = "passed"
         shutdown_event.set()
+        sequence_complete_event.set()
     else:
         logger.warning(f"❌ Test shutdown early due to event at {format_hhmmss(elapsed_time)}.")
+
+
 
 # ------------------- Solution Setup -------------------
 pulse = Pulse(frequency=frequency_kHz*1e3, duration=duration_msec*1e-3)
@@ -338,6 +353,12 @@ if interface.start_sonication():
 
 else:
     logger.error("Failed to start trigger.")
+    test_status = "error"
+
+if sequence_complete_event.is_set():
+    test_status = "passed"
+elif temperature_shutdown_event.is_set():
+    test_status = "temperature shutdown"
 
 if not use_external_power_supply:
     logger.info("Turning off HV and 12V...")
