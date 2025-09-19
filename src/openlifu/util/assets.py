@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import shutil
 import tempfile
 from pathlib import Path
@@ -50,3 +51,28 @@ def install_asset(destination:PathLike, path_to_asset:PathLike|None, url_to_asse
                 Path(temp_file_path).unlink()
     else:
         raise ValueError("Either path_to_asset or url_to_asset must be provided.")
+
+
+def get_modnet_path() -> Path:
+    """Get the MODNet checkpoint path.
+    It may or may not exist; see `download_and_install_modnet` and `install_modnet_from_file`.
+    If `get_modnet_path().exists()` is False, then use one of those two options to install.
+    """
+    package = "openlifu.nav.modnet_checkpoints"
+    filename = "modnet_photographic_portrait_matting.onnx"
+    base_dir = Path(importlib.resources.files(package))
+    return  base_dir / filename
+
+def download_and_install_modnet() -> Path:
+    """Download and install the MODNet checkpoint. Returns path to installed MODNet checkpoint."""
+    url = "https://data.kitware.com/api/v1/file/67feb2cb31a330568827ab32/download"
+    modnet_path = get_modnet_path()
+    install_asset(modnet_path, url_to_asset=url)
+    return modnet_path
+
+def install_modnet_from_file(path_to_modnet_file:PathLike) -> Path:
+    """Copy MODNet checkpoint to the appropriate place for openlifu to use it.
+    Returns path to installed MODNet checkpoint."""
+    modnet_path = get_modnet_path()
+    install_asset(modnet_path, path_to_asset=path_to_modnet_file)
+    return modnet_path
