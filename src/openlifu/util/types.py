@@ -2,5 +2,6 @@
 from __future__ import annotations
 
 import os
+from typing import Union
 
-PathLike = str|os.PathLike
+PathLike = Union[str,os.PathLike]
