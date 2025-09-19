@@ -3,24 +3,15 @@ from __future__ import annotations
 import logging
 from typing import List
 
-import kwave
-import kwave.data
 import numpy as np
 import xarray as xa
-from kwave.kgrid import kWaveGrid
-from kwave.kmedium import kWaveMedium
-from kwave.ksensor import kSensor
-from kwave.ksource import kSource
-from kwave.kspaceFirstOrder3D import kspaceFirstOrder3D
-from kwave.options.simulation_execution_options import SimulationExecutionOptions
-from kwave.options.simulation_options import SimulationOptions
-from kwave.utils.kwave_array import kWaveArray
 
 from openlifu import xdc
 from openlifu.util.units import getunitconversion
 
 
 def get_kgrid(coords: xa.Coordinates, t_end = 0, dt = 0, sound_speed_ref=1500, cfl=0.5):
+    from kwave.kgrid import kWaveGrid
     units = [coords[dim].attrs['units'] for dim in coords.dims]
     if not all(unit == units[0] for unit in units):
         raise ValueError("All coordinates must have the same units")
@@ -40,6 +31,9 @@ def get_karray(arr: xdc.Transducer,
                upsampling_rate: int = 5,
                translation: List[float] = [0.,0.,0.],
                rotation: List[float] = [0.,0.,0.]):
+    import kwave
+    import kwave.data
+    from kwave.utils.kwave_array import kWaveArray
     karray = kWaveArray(bli_tolerance=bli_tolerance, upsampling_rate=upsampling_rate,
                         single_precision=True)
     for el in arr.elements:
@@ -53,6 +47,7 @@ def get_karray(arr: xdc.Transducer,
     return karray
 
 def get_medium(params: xa.Dataset, ref_values_only: bool = False):
+    from kwave.kmedium import kWaveMedium
     if ref_values_only:
         medium = kWaveMedium(sound_speed=params['sound_speed'].attrs['ref_value'],
                              density=params['density'].attrs['ref_value'],
@@ -68,11 +63,13 @@ def get_medium(params: xa.Dataset, ref_values_only: bool = False):
     return medium
 
 def get_sensor(kgrid, record=['p_max','p_min']):
+    from kwave.ksensor import kSensor
     sensor_mask = np.ones([kgrid.Nx, kgrid.Ny, kgrid.Nz])
     sensor = kSensor(sensor_mask, record=record)
     return sensor
 
 def get_source(kgrid, karray, source_sig):
+    from kwave.ksource import kSource
     source = kSource()
     logging.info("Getting binary mask")
     source.p_mask = karray.get_array_binary_mask(kgrid)
@@ -95,6 +92,9 @@ def run_simulation(arr: xdc.Transducer,
                    gpu: bool = True,
                    ref_values_only: bool = False
 ):
+    from kwave.kspaceFirstOrder3D import kspaceFirstOrder3D
+    from kwave.options.simulation_execution_options import SimulationExecutionOptions
+    from kwave.options.simulation_options import SimulationOptions
     delays = delays if delays is not None else np.zeros(arr.numelements())
     apod = apod if apod is not None else np.ones(arr.numelements())
     kgrid = get_kgrid(params.coords, dt=dt, t_end=t_end, cfl=cfl)

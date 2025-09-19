@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -159,3 +160,10 @@ def test_install_kwave_asset_from_file_fails_on_unrecognized_name(tmp_path, mock
 
     # Ensure we didn't accidentally try to install anything
     mock_install_asset.assert_not_called()
+
+def test_kwave_not_imported():
+    """Ensure that kwave does not get imported just by importing openlifu.
+    (Otherwise the tools in openlifu.util.assets cannot be used ahead of the
+    kwave auto-download of assets.)"""
+    import openlifu  # noqa: F401
+    assert "kwave" not in sys.modules
