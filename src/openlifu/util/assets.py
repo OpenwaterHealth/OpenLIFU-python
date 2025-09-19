@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import ast
 import importlib
 import shutil
+import sys
 import tempfile
 from pathlib import Path
+from types import ModuleType
 
 import requests
 
@@ -76,3 +79,58 @@ def install_modnet_from_file(path_to_modnet_file:PathLike) -> Path:
     modnet_path = get_modnet_path()
     install_asset(modnet_path, path_to_asset=path_to_modnet_file)
     return modnet_path
+
+def _import_without_calls(pkg: str, banned_calls:list[str], register=False) -> ModuleType:
+    """Import `pkg` but strip any top-level statements that call a banned function.
+
+    It is simplistic: it is looking at the syntax tree and stripping out any node that
+    has a banned function call in any of its descendent nodes. There are lots of ways to break
+    this if there is enough misdirection in a banned function call. The point of this is just
+    to help handle a specific issue we have with kwave's binary download.
+
+    Args:
+        pkg: The name of the package to import
+        banned_calls: A list of functions to import
+        register: Whether to add the module in global import registry.
+            Doing so makes any future imports of the module via the usual `import`
+            statement end up referring to the version imported here.
+
+    Returns the module.
+    """
+    spec = importlib.util.find_spec(pkg)
+    if not spec or not spec.submodule_search_locations:
+        raise ImportError(f"Can't find package {pkg!r}")
+
+    init_path = Path(spec.submodule_search_locations[0]) / "__init__.py"
+    src = init_path.read_text(encoding="utf-8")
+    tree = ast.parse(src, filename=str(init_path))
+
+    # this function tells whether a top level statement tries to call a banned function anywhere inside it
+    def stmt_calls_banned(stmt: ast.stmt) -> bool:
+        for node in ast.walk(stmt):
+            if isinstance(node, ast.Call):
+                f = node.func
+                if isinstance(f, ast.Name) and f.id in banned_calls:
+                    return True
+                if isinstance(f, ast.Attribute) and f.attr in banned_calls:
+                    return True
+        return False
+
+    tree.body = [s for s in tree.body if not stmt_calls_banned(s)] # strip out offending top level statements
+    code = compile(tree, str(init_path), "exec")
+
+    module = ModuleType(pkg) # create a blank module object
+    module.__file__ = str(init_path)
+    module.__package__ = pkg
+    g = module.__dict__ # build up the context in which we will execute the module code
+    g["__name__"] = pkg
+    g["__file__"] = str(init_path)
+    exec(code, g, g)
+
+    if register:
+        sys.modules[pkg] = module
+    return module
+
+def _import_kwave_inertly() -> ModuleType:
+    """Import kwave without allowing it to install binaries"""
+    return _import_without_calls("kwave", banned_calls=["install_binaries"])
