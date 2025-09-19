@@ -134,3 +134,16 @@ def _import_without_calls(pkg: str, banned_calls:list[str], register=False) -> M
 def _import_kwave_inertly() -> ModuleType:
     """Import kwave without allowing it to install binaries"""
     return _import_without_calls("kwave", banned_calls=["install_binaries"])
+
+def get_kwave_paths() -> list[tuple[Path, str]]:
+    """Get a list of paths and urls to kwave binaries.
+
+    Each item in the list is a pair consisting of the install of a needed binary, followed by a download url for that binary.
+    """
+    kwave = _import_kwave_inertly()
+    paths : list[tuple[str, str]] = []
+    for url_list in kwave.URL_DICT[kwave.PLATFORM].values():
+        for url in url_list:
+            _, filename = url.split("/")[-2:]
+            paths.append((Path(kwave.BINARY_PATH) / filename, url))
+    return paths

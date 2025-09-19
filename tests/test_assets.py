@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import shutil
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 import requests
 
-from openlifu.util.assets import install_asset
+from openlifu.util.assets import get_kwave_paths, install_asset
 
 
 def test_destination_already_exists(tmp_path, mocker):
@@ -94,3 +95,14 @@ def test_raises_error_if_no_source_provided(tmp_path):
     destination = tmp_path / "asset.dat"
     with pytest.raises(ValueError, match="Either path_to_asset or url_to_asset must be provided."):
         install_asset(destination, path_to_asset=None, url_to_asset=None)
+
+def test_get_kwave_paths():
+    """Check that get_kwave_paths returns a nonempty list of (Path, str) pairs.
+    This may break if kwave changes how it represents download urls and binary paths."""
+    paths = get_kwave_paths()
+    assert isinstance(paths, list)
+    assert len(paths) > 0
+    for p, url in paths:
+        assert isinstance(p, Path)
+        assert isinstance(url, str)
+        assert len(url) > 0
