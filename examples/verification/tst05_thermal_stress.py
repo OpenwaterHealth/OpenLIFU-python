@@ -2,30 +2,27 @@ from __future__ import annotations
 
 import logging
 import os
-from re import T
 import sys
 import threading
 import time
 from datetime import datetime
 from pathlib import Path
 
-from cycler import K
-
 if os.name == 'nt':
-    import msvcrt
+    pass
 else:
-    import select
+    pass
 
-from cv2 import log
 import numpy as np
 
+import openlifu
 from openlifu.bf.pulse import Pulse
 from openlifu.bf.sequence import Sequence
 from openlifu.db import Database
 from openlifu.geo import Point
 from openlifu.io.LIFUInterface import LIFUInterface
 from openlifu.plan.solution import Solution
-import openlifu
+
 global test_status
 
 """
@@ -34,7 +31,7 @@ Burn-in Test Script
 - Test runs for a fixed total duration or until a thermal shutdown occurs.
 - Logs temperature and device status.
 """
-openlifu_dir = Path(openlifu.__file__).parent.parent.parent.resolve() 
+openlifu_dir = Path(openlifu.__file__).parent.parent.parent.resolve()
 test_id = "thermal_stress_test"
 test_name = "Thermal Stress Test"
 TEST_MODE = True
@@ -90,7 +87,7 @@ def format_hhmmss(seconds):
     if hours > 0:
         return f"{int(hours)}:{int(minutes):02}:{int(secs):02}"
     else:
-        return f"{int(minutes):02}:{int(secs):02}" 
+        return f"{int(minutes):02}:{int(secs):02}"
 
 print("\nAvailable Burn-in Test Cases:")
 for i, case in test_cases.items():
@@ -278,7 +275,7 @@ def exit_on_time_complete(timeout, time_log_interval=2, check_interval=0.1):
         shutdown_event.set()
     else:
         logger.warning(f"❌ Test shutdown early due to event at {format_hhmmss(elapsed_time)}.")
-    
+
 # ------------------- Solution Setup -------------------
 pulse = Pulse(frequency=frequency_kHz*1e3, duration=duration_msec*1e-3)
 sequence = Sequence(
@@ -318,7 +315,7 @@ all_threads = [temp_thread, completion_thread]
 logger.info("Starting Trigger...")
 if interface.start_sonication():
     logger.info("Trigger Running... (Press CTRL-C to stop early)")
-    
+
     for t in all_threads:
         t.start()
     try:
@@ -338,7 +335,7 @@ if interface.start_sonication():
             logger.error("Failed to stop trigger.")
         for t in all_threads:
             t.join()
-    
+
 else:
     logger.error("Failed to start trigger.")
 
@@ -347,7 +344,7 @@ if not use_external_power_supply:
     interface.hvcontroller.turn_hv_off()
     interface.hvcontroller.turn_12v_off()
     logger.info("HV and 12V turned off.")
-    
+
 if test_status == "passed":
     logger.info(f"✅ TEST PASSED: {test_case_description} completed successfully.")
 elif test_status == "temperature shutdown":

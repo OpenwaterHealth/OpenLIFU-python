@@ -2,31 +2,27 @@ from __future__ import annotations
 
 import logging
 import os
-from re import T
 import sys
 import threading
 import time
 from datetime import datetime
 from pathlib import Path
 
-from cycler import K
-import test
-
 if os.name == 'nt':
-    import msvcrt
+    pass
 else:
-    import select
+    pass
 
-from cv2 import log
 import numpy as np
 
+import openlifu
 from openlifu.bf.pulse import Pulse
 from openlifu.bf.sequence import Sequence
 from openlifu.db import Database
 from openlifu.geo import Point
 from openlifu.io.LIFUInterface import LIFUInterface
 from openlifu.plan.solution import Solution
-import openlifu
+
 global test_status
 
 """
@@ -35,7 +31,7 @@ Burn-in Test Script
 - Test runs for a fixed total duration or until a thermal shutdown occurs.
 - Logs temperature and device status.
 """
-openlifu_dir = Path(openlifu.__file__).parent.parent.parent.resolve() 
+openlifu_dir = Path(openlifu.__file__).parent.parent.parent.resolve()
 test_id = "burn_in_test"
 test_name = "Burn-In Test"
 HW_TEST_MODE = True # HW simulation flag
@@ -269,10 +265,10 @@ def exit_on_time_complete(total_test_time, time_log_interval=1, check_interval=0
     if not shutdown_event.is_set():
         logger.info(f"  ✅ Sequence complete {format_hhmmss(total_test_time)} reached.")
         test_status = "passed"
-        shutdown_event.set()        
+        shutdown_event.set()
     else:
         logger.warning(f"  ❌ Sequence shutdown early due to event at {format_hhmmss(elapsed_time)}.")
-    
+
 # ------------------- Solution Setup -------------------
 pulse = Pulse(frequency=frequency_kHz*1e3, duration=duration_msec*1e-3)
 sequence = Sequence(
@@ -305,12 +301,12 @@ logger.info(f"Press enter to START {test_case_description}: ")
 input()
 
 start_time = time.time()
-test_number = 1            
+test_number = 1
 try:
     while test_number <= test_repeats:
         logger.info(f"[{format_hhmmss(time.time()-start_time)}]Starting Test {test_number}/{test_repeats}...")
         test_start_time = time.time()
-        sequence_number = 1    
+        sequence_number = 1
         while sequence_number <= sequence_repeats:
             logger.info(f"[{format_hhmmss(time.time()-start_time)}]  Starting Sequence {sequence_number}/{sequence_repeats}...")
             test_status= "running"
@@ -319,7 +315,7 @@ try:
             temp_thread = threading.Thread(target=monitor_temperature)
             completion_thread = threading.Thread(target=exit_on_time_complete, args=(sequence_duration_sec,))
             all_threads = [temp_thread, completion_thread]
-            if interface.start_sonication():           
+            if interface.start_sonication():
                 for t in all_threads:
                     t.start()
                 while all(t.is_alive() for t in all_threads):
@@ -329,7 +325,7 @@ try:
                 if not interface.stop_sonication():
                     logger.error("Failed to stop trigger.")
                     test_status = "error"
-                    break                
+                    break
             else:
                 logger.error("Failed to start trigger.")
             if test_status == "passed":
@@ -337,7 +333,7 @@ try:
                 if sequence_number < sequence_repeats:
                     off_time = sequence_repeat_interval_sec - (time.time() - sequence_start_time)
                     if off_time > 0:
-                        logger.info(f"  Waiting {format_hhmmss(off_time)} until next sequence...")                    
+                        logger.info(f"  Waiting {format_hhmmss(off_time)} until next sequence...")
                         time.sleep(off_time)
                 sequence_number += 1
                 shutdown_event.clear()
@@ -349,7 +345,7 @@ try:
             if test_number < test_repeats:
                 off_time = test_repeat_interval_sec - (time.time() - test_start_time)
                 if off_time > 0:
-                    logger.info(f"Waiting {format_hhmmss(off_time)} until next test...")                    
+                    logger.info(f"Waiting {format_hhmmss(off_time)} until next test...")
                     time.sleep(off_time)
             test_number += 1
         else:
@@ -361,7 +357,7 @@ except KeyboardInterrupt:
 finally:
     if not interface.stop_sonication():
         logger.critical("Failed to stop trigger.")
-        test_status = "error"            
+        test_status = "error"
     if not shutdown_event.is_set():
         logger.warning("A thread exited without setting shutdown event.")
         shutdown_event.set()
