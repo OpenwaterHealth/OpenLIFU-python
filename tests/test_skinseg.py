@@ -4,6 +4,7 @@ from typing import Tuple
 
 import numpy as np
 import pytest
+import trimesh
 import vtk
 from scipy.linalg import expm
 from scipy.stats import skew
@@ -111,7 +112,16 @@ def test_create_closed_surface_from_labelmap():
     # isn't supposed to add a colormap or anything like that
     assert surface.GetPointData().GetScalars() is None
 
-def test_spherical_interpolator_from_mesh():
+@pytest.mark.parametrize(
+        "use_embree",
+        [
+            False,
+            pytest.param(
+                True,
+                marks = pytest.mark.skipif(not trimesh.ray.has_embree, reason="Embree not available (needs x86 architecture)")
+            )
+        ])
+def test_spherical_interpolator_from_mesh(use_embree):
     """Check using a torus that the spherical interpolator behaves reasonably"""
     parametric_torus = vtk.vtkParametricTorus()
     parametric_torus.SetRingRadius(12.)
@@ -131,6 +141,7 @@ def test_spherical_interpolator_from_mesh():
         surface_mesh = torus_polydata,
         origin = origin,
         xyz_direction_columns = xyz_direction_columns,
+        use_embree=use_embree
     )
 
     sphere_source = vtk.vtkSphereSource()
