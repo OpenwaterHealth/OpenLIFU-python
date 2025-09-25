@@ -2106,8 +2106,12 @@ class TxDeviceRegisters:
             self.recompute_pulse_profiles()
         if isinstance(self.module_invert, bool):
             tx_invert = [self.module_invert] * self.num_transmitters
-        else:
+        elif len(self.module_invert) == 1 and len(self.transmitters) > 1:
+            tx_invert = self.module_invert * self.num_transmitters
+        elif len(self.module_invert) * TRANSMITTERS_PER_MODULE == self.num_transmitters:
             tx_invert = list(np.array(self.module_invert*TRANSMITTERS_PER_MODULE, dtype=bool).reshape(TRANSMITTERS_PER_MODULE, -1).T.reshape(-1))
+        else:
+            raise ValueError("module_invert must be a single bool or a list of bools with length equal to the number of modules")
         return [tx.get_registers(profiles, pack=pack, pack_single=pack_single, pulse_invert=inv) for tx, inv in zip(self.transmitters, tx_invert)]
 
     def get_delay_control_registers(self, profile:int | None=None) -> List[Dict[int,int]]:
