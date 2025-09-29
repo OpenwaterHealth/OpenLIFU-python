@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import csv
 import logging
 import os
 import sys
 import threading
 import time
 from pathlib import Path
+
+import pyvisa
 
 if os.name == 'nt':
     import msvcrt
@@ -30,6 +33,30 @@ Test script to automate:
 2. Test HVController: Turn HV on/off and check voltage.
 3. Test Device functionality.
 """
+rm = pyvisa.ResourceManager()
+print(rm.list_resources())
+
+scope_address = next((r for r in rm.list_resources() if "USB0" in r), None)
+
+if scope_address is None:
+    raise Exception("No USB0 instruments found.")
+
+print(f"Using scope at {scope_address}")
+scope = rm.open_resource(scope_address)
+print(scope.query("*IDN?"))
+
+CHANNEL = "CHAN2"
+
+scope.write(f"MEASUrement:IMMed:SOURCE {CHANNEL}")
+scope.write("MEASUrement:IMMed:TYPe MEAN")
+mean_voltage = float(scope.query("MEASUrement:IMMed:VALue?"))
+print(f"Mean voltage on {CHANNEL}: {mean_voltage:.4f} V")
+
+channel_list = ["CH1", "CH2", "CH3", "CH4"]
+
+folder = Path("console_test_csvs")
+folder.mkdir(parents=True, exist_ok=True) if not folder.exists() else None
+# Path.mkdir(parents=True) os.makedirs(folder, exist_ok=True)
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -50,9 +77,9 @@ yInput = 0
 zInput = 50
 
 frequency_kHz = 400 # Frequency in kHz
-voltage = 5.0 # Voltage in Volts
-duration_msec = 5 # Pulse Duration in milliseconds
-interval_msec = 100 # Pulse Repetition Interval in milliseconds
+voltage = 40.0 # Voltage in Volts
+duration_msec = 10 # Pulse Duration in milliseconds
+interval_msec = 200 # Pulse Repetition Interval in milliseconds
 num_modules = 2 # Number of modules in the system
 
 use_external_power_supply = 0 # Select whether to use console or power supply
@@ -373,47 +400,89 @@ user_input = threading.Thread(target=input_wrapper)
 # user_input.start()
 time_between_voltage_steps = 30  # seconds
 
-for i in range(5, 70, 5):
-    logger.info("Starting Trigger...")
-    print(f"Setting voltage to {i}")
-    if interface.hvcontroller.set_voltage(i):
-        time.sleep(2)
-        print(f"Voltage set to {interface.hvcontroller.get_voltage()} V\n", )
-
-    # time.sleep(2)
-
-    print("Starting sonication...")
-    if interface.start_sonication():
-        # logger.info(f"Trigger Running for {time_between_voltage_steps} seconds...")
-        # logger.info("Press enter to STOP trigger:")
-
-        # Start logging and user input threads
-        # while (user_input.is_alive() and t.is_alive()):
-        #     time.sleep(0.1)
-
-        # if (not user_input.is_alive()):
-        #     logger.info("Logging interrupted by user.")
-        # else:
-        #     logger.info("Logging interrupted by shutdown event.")
-            # shutdown_event.set()  # Signal the logging thread to stop
-        # while time_left < time_between_voltage_steps:
-        #     print("Seconds remaining: ", time_between_voltage_steps, end="\r")
-        #     time.sleep(1)
-        #     time += 1
-        input()
-        # time.sleep(time_between_voltage_steps)  # Give the logging thread time to finish
-        print("Stopping Trigger...")
-        if interface.stop_sonication():
-            logger.info("Trigger stopped successfully.")
-        else:
-            logger.error("Failed to stop trigger.")
-    else:
-        logger.error("Failed to get trigger setting.")
-
-    print("Trigger cycle complete. Waiting for input to go to next voltage setting...")
-    input()
+# print("starting infinite loop for sonication on/off")
+# while 1:
+#     print("Starting sonication...")
+#     interface.hvcontroller.turn_hv_on()
+#     interface.start_sonication()
+#     input()
+#     print("Stopping sonication...")
+#     interface.stop_sonication()
+#     interface.hvcontroller.turn_hv_off()
+#     input()
 
 
+time_to_charge = 10
+time_to_discharge = 30
+
+test_parameters = {
+    "**Test Parameters**": "",
+    "Real 2x Transmitter Load": "",
+    "Frequency (kHz)": frequency_kHz,
+    "Pulse Duration (ms)": duration_msec,
+    "Pulse Interval (ms)": interval_msec
+}
+
+hvp_channel = "CH2"
+hvm_channel = "CH3"
+
+while True:
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    # csv_filename = os.path.join(folder, f"{timestamp}_Console_Voltage_Test_Readings.csv")
+    csv_filename = folder / f"{timestamp}_Console_Voltage_Test_Readings.csv"
+
+    with open(csv_filename, mode='w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+
+        csvfile.seek(0)
+        for key, value in test_parameters.items():
+            writer.writerow([key, value])
+        writer.writerow([])
+
+        writer.writerow(["Timestamp", "Target Voltage (V)", "HV+", "HV-"])
+
+        for channel in channel_list:
+            scope.write(f"MEASUrement:IMMed:SOURCE {channel}")
+            scope.write(f":{channel}:COUP DC")
+            scope.write(f":{channel}:OFFS 0")
+
+        for i in range(10, 65, 5):
+            logger.info("Starting Trigger...")
+            print(f"Setting voltage to {i}")
+            if interface.hvcontroller.set_voltage(i):
+                time.sleep(2)
+
+            print("Starting sonication...")
+            if interface.start_sonication():
+                print(f"SLeeping for {time_to_charge} seconds to allow HV to stabilize...")
+                time.sleep(time_to_charge)
+
+                scope.write("MEASU:IMMed:TYPe MEAN")
+                scope.write(f"MEASU:IMMed:SOUrce {hvp_channel}")
+
+                # scope.write("MEASUrement:IMMed:TYPe MEAN")
+                hvp_mean_voltage = float(scope.query("MEASU:IMMed:VAL?"))
+
+                scope.write(f"MEASU:IMMed:SOUrce {hvm_channel}")
+                hvm_mean_voltage = float(scope.query("MEASU:IMMed:VAL?"))
+
+                print(f"Mean voltage on {hvp_channel}: {hvp_mean_voltage:.4f} V")
+                print(f"Mean voltage on {hvm_channel}: {hvm_mean_voltage:.4f} V")
+
+                # print(f"Mean voltage on {channel}: {mean_voltage:.4f} V")
+                writer.writerow([time.strftime("%Y-%m-%d %H:%M:%S"), i, f"{hvp_mean_voltage:.4f}", f"{hvm_mean_voltage:.4f}"])
+
+                print("Stopping Trigger...")
+                if interface.stop_sonication():
+                    logger.info("HV stopped successfully.")
+                    time.sleep(time_to_discharge)
+                else:
+                    logger.error("Failed to turn off HV.")
+            else:
+                logger.error("Failed to get trigger setting.")
+
+            print("Trigger cycle complete. Waiting for input to go to next voltage setting...")
+    time.sleep(30)
 
 stop_logging = True
 
