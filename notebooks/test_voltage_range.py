@@ -54,7 +54,10 @@ print(f"Mean voltage on {CHANNEL}: {mean_voltage:.4f} V")
 
 channel_list = ["CH1", "CH2", "CH3", "CH4"]
 
-folder = Path("console_test_csvs")
+console = "EVT2"
+
+
+folder = Path(f"{console}_console_test_csvs")
 folder.mkdir(parents=True, exist_ok=True) if not folder.exists() else None
 # Path.mkdir(parents=True) os.makedirs(folder, exist_ok=True)
 
@@ -415,21 +418,27 @@ time_between_voltage_steps = 30  # seconds
 time_to_charge = 10
 time_to_discharge = 30
 
+start_voltage = 10
+end_voltage = 60
+voltage_step = 5
+
+hvp_channel = "CH2"
+hvm_channel = "CH3"
+
+
 test_parameters = {
     "**Test Parameters**": "",
+    "Console": console,
     "Real 2x Transmitter Load": "",
     "Frequency (kHz)": frequency_kHz,
     "Pulse Duration (ms)": duration_msec,
     "Pulse Interval (ms)": interval_msec
 }
 
-hvp_channel = "CH2"
-hvm_channel = "CH3"
-
 while True:
     timestamp = time.strftime("%Y%m%d_%H%M%S")
     # csv_filename = os.path.join(folder, f"{timestamp}_Console_Voltage_Test_Readings.csv")
-    csv_filename = folder / f"{timestamp}_Console_Voltage_Test_Readings.csv"
+    csv_filename = folder / f"{timestamp}_{console}_Console_Voltage_Test_Readings.csv"
 
     with open(csv_filename, mode='w', newline='') as csvfile:
         writer = csv.writer(csvfile)
@@ -446,7 +455,7 @@ while True:
             scope.write(f":{channel}:COUP DC")
             scope.write(f":{channel}:OFFS 0")
 
-        for i in range(10, 65, 5):
+        for i in range(start_voltage, end_voltage, voltage_step):
             logger.info("Starting Trigger...")
             print(f"Setting voltage to {i}")
             if interface.hvcontroller.set_voltage(i):
