@@ -165,9 +165,7 @@ def log_temperature():
             if not use_external_power_supply:
                 if prev_con_temp is None:
                     prev_con_temp = interface.hvcontroller.get_temperature1()
-                    prev_con_temp = 0
                 con_temp = interface.hvcontroller.get_temperature1()
-                con_temp = 0
                 if (con_temp - prev_con_temp) > rapid_temp_increase_per_second_shutoff_C:
                     logger.warning(f"Console temperature rose from {prev_con_temp}°C to {con_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
                     log_line = f"{current_time},SHUTDOWN,Console temperature exceeded rapid temp increase shutoff threshold\n"
