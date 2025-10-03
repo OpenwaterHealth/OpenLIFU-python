@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import logging
 import os
+from re import S
 import sys
 import threading
 import time
 from datetime import datetime
 from pathlib import Path
+from serial.serialutil import SerialException
 
 if os.name == 'nt':
     pass
@@ -93,8 +95,8 @@ interval_msec = 200
 num_modules = 2
 use_external_power_supply = False
 console_shutoff_temp_C = 70.0
-rapid_temp_shutoff_C = 40
-rapid_temp_shutoff_seconds = 5
+initial_temp_shutoff_C = 40
+intitial_time_window = 5
 rapid_temp_increase_per_second_shutoff_C = 3
 temperature_check_interval = 1
 
@@ -214,80 +216,104 @@ shutdown_event = threading.Event()
 sequence_complete_event = threading.Event()
 temperature_shutdown_event = threading.Event()
 
+max_serial_failures = 3
+serial_failures = 0
 temperature_log_interval = 5  # seconds
 def monitor_temperature():
-    start = time.time()
-    time_since_last_log = 0
-    temperature_shutdown = False
+    start_time = time.time()
+    last_log_time = 0
     prev_tx_temp = None
     prev_amb_temp = None
     prev_con_temp = None
-    while not (shutdown_event.is_set() or temperature_shutdown):
-        elapsed = time.time() - start
-        within_initial_time_threshold = elapsed < rapid_temp_shutoff_seconds
-        if not use_external_power_supply:
-            if prev_con_temp is None:
-                prev_con_temp = interface.hvcontroller.get_temperature1()
-            con_temp = interface.hvcontroller.get_temperature1()
-            if (con_temp - prev_con_temp) > rapid_temp_increase_per_second_shutoff_C:
-                logger.warning(f"Console temperature rose from {prev_con_temp}°C to {con_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {temperature_check_interval}s.")
-                temperature_shutdown = True
+    while True:
+        if shutdown_event.is_set():
+            return
+        
+        time_elapsed = time.time() - start_time
+        # Check temperatures
+        try:        
+            if not use_external_power_supply:
+                if prev_con_temp is None:
+                    prev_con_temp = interface.hvcontroller.get_temperature1()
+                con_temp = interface.hvcontroller.get_temperature1()            
+            if prev_tx_temp is None:
+                prev_tx_temp = interface.txdevice.get_temperature()
+            tx_temp = interface.txdevice.get_temperature()
+            if prev_amb_temp is None:
+                prev_amb_temp = interface.txdevice.get_ambient_temperature()
+            amb_temp = interface.txdevice.get_ambient_temperature()
+        except SerialException as e:
+            logger.error(f"SerialException encountered while reading temperatures: {e}")
+            serial_failures += 1
+            if serial_failures >= max_serial_failures:
+                logger.critical("Maximum serial failures reached. Initiating shutdown.")
+                break
             else:
-                prev_con_temp = con_temp
-        if prev_tx_temp is None:
-            prev_tx_temp = interface.txdevice.get_temperature()
-        tx_temp = interface.txdevice.get_temperature()
-        if (tx_temp - prev_tx_temp) > rapid_temp_increase_per_second_shutoff_C:
-            logger.warning(f"TX device temperature rose from {prev_tx_temp}°C to {tx_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {temperature_check_interval}s.")
-            temperature_shutdown = True
-        else:
-            prev_tx_temp = tx_temp
-        if prev_amb_temp is None:
-            prev_amb_temp = interface.txdevice.get_ambient_temperature()
-        amb_temp = interface.txdevice.get_ambient_temperature()
-        if (amb_temp - prev_amb_temp) > rapid_temp_increase_per_second_shutoff_C:
-            logger.warning(f"Ambient temperature rose from {prev_amb_temp}°C to {amb_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {temperature_check_interval}s.")
-            temperature_shutdown = True
-        else:
-            prev_amb_temp = amb_temp
-        time_since_last_log += temperature_check_interval
+                time.sleep(temperature_check_interval)
+                continue
+        
+        # Log Temperature every temperature_log_interval seconds
+        time_since_last_log = time_elapsed - last_log_time
         if time_since_last_log >= temperature_log_interval:
-            time_since_last_log = 0
+            last_log_time = time_elapsed
             if not use_external_power_supply:
                 logger.info(f"  Console Temp: {con_temp}°C, TX Temp: {tx_temp}°C, Ambient Temp: {amb_temp}°C")
             else:
                 logger.info(f"TX Temp: {tx_temp}°C, Ambient Temp: {amb_temp}°C")
+
+        # Check for initial temperature rise at startup
+        within_initial_time_threshold = time_elapsed < intitial_time_window
         if within_initial_time_threshold:
-            if not use_external_power_supply and (con_temp > rapid_temp_shutoff_C):
-                logger.warning(f"Console temperature {con_temp}°C exceeds rapid shutoff threshold of {rapid_temp_shutoff_C}°C within {rapid_temp_shutoff_seconds}s.")
-                temperature_shutdown = True
-            elif (tx_temp > rapid_temp_shutoff_C):
-                logger.warning(f"TX device temperature {tx_temp}°C exceeds rapid shutoff threshold of {rapid_temp_shutoff_C}°C within {rapid_temp_shutoff_seconds}s.")
-                temperature_shutdown = True
-            elif (amb_temp > rapid_temp_shutoff_C):
-                logger.warning(f"Ambient temperature {amb_temp}°C exceeds rapid shutoff threshold of {rapid_temp_shutoff_C}°C within {rapid_temp_shutoff_seconds}s.")
-                temperature_shutdown = True
+            if not use_external_power_supply and (con_temp > initial_temp_shutoff_C):
+                logger.warning(f"Console temperature {con_temp}°C exceeds initial shutoff threshold of {initial_temp_shutoff_C}°C within {intitial_time_window}s.")
+                break
+            elif (tx_temp > initial_temp_shutoff_C):
+                logger.warning(f"TX device temperature {tx_temp}°C exceeds initial shutoff threshold of {initial_temp_shutoff_C}°C within {intitial_time_window}s.")
+                break
+            elif (amb_temp > initial_temp_shutoff_C):
+                logger.warning(f"Ambient temperature {amb_temp}°C exceeds initial shutoff threshold of {initial_temp_shutoff_C}°C within {intitial_time_window}s.")
+                break
+
+        # Check for rapid temperature increase
+        if not use_external_power_supply:
+            if (con_temp - prev_con_temp) > rapid_temp_increase_per_second_shutoff_C:
+                logger.warning(f"Console temperature rose from {prev_con_temp}°C to {con_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {temperature_check_interval}s.")
+                break
+            else:
+                prev_con_temp = con_temp
+        if (tx_temp - prev_tx_temp) > rapid_temp_increase_per_second_shutoff_C:
+            logger.warning(f"TX device temperature rose from {prev_tx_temp}°C to {tx_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {temperature_check_interval}s.")
+            break
+        else:
+            prev_tx_temp = tx_temp
+        if (amb_temp - prev_amb_temp) > rapid_temp_increase_per_second_shutoff_C:
+            logger.warning(f"Ambient temperature rose from {prev_amb_temp}°C to {amb_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {temperature_check_interval}s.")
+            break
+        else:
+            prev_amb_temp = amb_temp
+
         if not use_external_power_supply and (con_temp > console_shutoff_temp_C):
             logger.warning(f"Console temperature {con_temp}°C exceeds shutoff threshold {console_shutoff_temp_C}°C.")
-            temperature_shutdown = True
+            break
         if tx_temp > 70.0:
             logger.warning(f"TX device temperature {tx_temp}°C exceeds shutoff threshold 70.0°C.")
-            temperature_shutdown = True
+            break
         if amb_temp > 70.0:
             logger.warning(f"Ambient temperature {amb_temp}°C exceeds shutoff threshold 70.0°C.")
-            temperature_shutdown = True
+            break
         time.sleep(temperature_check_interval)
-    if not shutdown_event.is_set():
-        shutdown_event.set()
-    if temperature_shutdown:
-        logger.warning("Temperature shutdown triggered.")
-        temperature_shutdown_event.set()
+
+    logger.warning("Temperature shutdown triggered.")
+    shutdown_event.set()
+    temperature_shutdown_event.set()
 
 def exit_on_time_complete(total_test_time, time_log_interval=1, check_interval=0.1):
     start = time.time()
     elapsed_time = 0
     last_log_time = 0
-    while not (shutdown_event.is_set() or (elapsed_time >= total_test_time)):
+    while True:
+        if shutdown_event.is_set():
+            return
         time.sleep(check_interval)
         elapsed_time = time.time() - start
         time_since_last_log = elapsed_time - last_log_time
@@ -297,12 +323,11 @@ def exit_on_time_complete(total_test_time, time_log_interval=1, check_interval=0
             if remaining_time < 0:
                 remaining_time = 0
             logger.info(f"  Sequence time elapsed: {format_hhmmss(elapsed_time)}, Remaining time: {format_hhmmss(remaining_time)}")
-    if not shutdown_event.is_set():
-        logger.info(f"  ✅ Sequence complete {format_hhmmss(total_test_time)} reached.")
-        shutdown_event.set()
-        sequence_complete_event.set()
-    else:
-        logger.warning(f"  ❌ Sequence shutdown early due to event at {format_hhmmss(elapsed_time)}.")
+        if elapsed_time >= total_test_time:
+            logger.info(f"  ✅ Sequence complete {format_hhmmss(total_test_time)} reached.")
+            shutdown_event.set()
+            sequence_complete_event.set()
+            return
 
 # ------------------- Solution Setup -------------------
 pulse = Pulse(frequency=frequency_kHz*1e3, duration=duration_msec*1e-3)
