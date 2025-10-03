@@ -109,10 +109,13 @@ class LIFUInterface:
     async def start_monitoring(self, interval: int = 1) -> None:
         """Start monitoring for USB device connections."""
         try:
-            await asyncio.gather(
-                self._tx_uart.monitor_usb_status(interval),
-                self._hv_uart.monitor_usb_status(interval)
-            )
+            if self._hv_uart is not None:
+                await asyncio.gather(
+                    self._tx_uart.monitor_usb_status(interval),
+                    self._hv_uart.monitor_usb_status(interval)
+                )
+            else:
+                await self._tx_uart.monitor_usb_status(interval)
 
         except Exception as e:
             logger.error("Error starting monitoring: %s", e)
@@ -122,7 +125,8 @@ class LIFUInterface:
         """Stop monitoring for USB device connections."""
         try:
             self._tx_uart.stop_monitoring()
-            self._hv_uart.stop_monitoring()
+            if self._hv_uart is not None:
+                self._hv_uart.stop_monitoring()
         except Exception as e:
             logger.error("Error stopping monitoring: %s", e)
             raise e
