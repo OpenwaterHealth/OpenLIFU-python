@@ -68,7 +68,7 @@ class Sequence(DictMixin):
         :returns: Total duration of the sequence in seconds
         """
         if self.pulse_train_interval == 0:
-            interval = self.get_pulsetrain_duration()
+            interval = self.get_pulse_train_duration()
         else:
             interval = self.pulse_train_interval
         return interval * self.pulse_train_count
