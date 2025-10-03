@@ -8,8 +8,6 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-import test
-
 if os.name == 'nt':
     pass
 else:
@@ -24,7 +22,6 @@ from openlifu.db import Database
 from openlifu.geo import Point
 from openlifu.io.LIFUInterface import LIFUInterface
 from openlifu.plan.solution import Solution
-
 
 """
 Burn-in Test Script
@@ -231,7 +228,6 @@ def monitor_temperature():
         if not use_external_power_supply:
             if prev_con_temp is None:
                 prev_con_temp = interface.hvcontroller.get_temperature1()
-                prev_con_temp = 0
             con_temp = interface.hvcontroller.get_temperature1()
             if (con_temp - prev_con_temp) > rapid_temp_increase_per_second_shutoff_C:
                 logger.warning(f"Console temperature rose from {prev_con_temp}°C to {con_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {temperature_check_interval}s.")
@@ -395,7 +391,7 @@ except KeyboardInterrupt:
 finally:
     if not interface.stop_sonication():
         logger.critical("Failed to stop trigger.")
-        test_status = "error"    
+        test_status = "error"
     elif temperature_shutdown_event.is_set():
         test_status = "temperature shutdown"
     elif sequence_complete_event.is_set() and (test_number > test_repeats):
