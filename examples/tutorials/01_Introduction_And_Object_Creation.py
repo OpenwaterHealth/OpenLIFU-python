@@ -34,7 +34,9 @@
 # %%
 # Let's start by importing the necessary classes.
 from __future__ import annotations
+
 import numpy as np
+
 from openlifu.bf import Pulse, Sequence, focal_patterns
 from openlifu.geo import Point
 from openlifu.plan import Protocol

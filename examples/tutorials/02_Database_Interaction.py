@@ -40,13 +40,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 import numpy as np
 
-from openlifu.db import Database, Subject, Session
-from openlifu import Transducer, Protocol, Pulse, Sequence, Point
-from openlifu.bf import focal_patterns, apod_methods, delay_methods
-from openlifu.sim import SimSetup
+from openlifu import Protocol, Pulse, Sequence, Transducer
+from openlifu.bf import apod_methods, delay_methods, focal_patterns
+from openlifu.db import Database, Session, Subject
 from openlifu.geo import ArrayTransform
+from openlifu.sim import SimSetup
 
 # Create a new database at a default location
 # You can easily change this path to wherever you want your database
@@ -60,14 +61,14 @@ print("Successfully created empty database!")
 # %% [markdown]
 # ## Creating and Adding a Transducer to the Database
 #
-# Now let's create a sample transducer programmatically and add it to our database. 
+# Now let's create a sample transducer programmatically and add it to our database.
 # We'll use the built-in matrix array generator to create a simple 8x8 element transducer.
 
 # %%
 # Create a matrix array transducer with 8x8 elements
 example_transducer = Transducer.gen_matrix_array(
     nx=8,                    # 8 elements in x direction
-    ny=8,                    # 8 elements in y direction  
+    ny=8,                    # 8 elements in y direction
     pitch=4e-3,              # 4mm pitch between elements
     kerf=0.5e-3,             # 0.5mm kerf (gap) between elements
     id="tutorial_transducer", # Unique identifier
@@ -108,14 +109,14 @@ print(f"Center Frequency: {loaded_transducer.frequency / 1e3} kHz")
 
 # Get element positions (first 5 for brevity)
 positions = loaded_transducer.get_positions(units="mm")
-print(f"\nFirst 5 element positions (mm):")
+print("\nFirst 5 element positions (mm):")
 for i in range(min(5, len(positions))):
     print(f"  Element {i}: [{positions[i][0]:.2f}, {positions[i][1]:.2f}, {positions[i][2]:.2f}]")
 
 # Example: Accessing properties of individual elements
 if loaded_transducer.elements:
     first_element = loaded_transducer.elements[0]
-    print(f"\nProperties of the first element:")
+    print("\nProperties of the first element:")
     print(f"  ID: {first_element.id}")
     print(f"  Position: {first_element.get_position(units='mm')} mm")
     print(f"  Normal: {first_element.get_normal()}")
@@ -155,7 +156,7 @@ print(f"Array extent in Z: {positions[:, 2].min():.2f} to {positions[:, 2].max()
 # %% [markdown]
 # ## Creating and Adding a Protocol to the Database
 #
-# A `Protocol` defines the treatment parameters including pulse characteristics, sequence timing, 
+# A `Protocol` defines the treatment parameters including pulse characteristics, sequence timing,
 # focal patterns, and simulation settings. Let's create a sample protocol and add it to our database.
 
 # %%
@@ -277,7 +278,7 @@ example_session = Session(
     transducer_id=example_transducer.id,    # Link to our transducer
     protocol_id=example_protocol.id,        # Link to our protocol
     date_created=datetime.now(),
-    # Array transform represents the coordinate transformation 
+    # Array transform represents the coordinate transformation
     # from transducer coordinates to volume coordinates
     array_transform=ArrayTransform(
         matrix=np.eye(4),  # Identity transform for this example
@@ -302,14 +303,14 @@ print(f"Sessions for subject {example_subject.id}: {available_sessions}")
 # %% [markdown]
 # ## Querying and Loading Database Items
 #
-# Now that we have populated our database with various items, let's demonstrate how to query 
+# Now that we have populated our database with various items, let's demonstrate how to query
 # and load them. This shows the typical workflow for accessing stored data.
 
 # %%
 print("=== DATABASE SUMMARY ===")
 print(f"Database location: {database_path}")
 print(f"Available transducers: {db.list_transducers()}")
-print(f"Available protocols: {db.list_protocols()}")  
+print(f"Available protocols: {db.list_protocols()}")
 print(f"Available subjects: {db.list_subjects()}")
 
 # Load a specific subject and show its sessions
@@ -326,11 +327,11 @@ if sessions:
     print(f"  Transducer: {session.transducer_id}")
     print(f"  Protocol: {session.protocol_id}")
     print(f"  Created: {session.date_created}")
-    
+
     # Load the associated objects
     session_transducer = db.load_transducer(session.transducer_id)
     session_protocol = db.load_protocol(session.protocol_id)
-    
+
     print(f"\nAssociated transducer: {session_transducer.name} ({session_transducer.numelements()} elements)")
     print(f"Associated protocol: {session_protocol.name}")
     print(f"  Pulse frequency: {session_protocol.pulse.frequency / 1e3} kHz")
@@ -357,7 +358,7 @@ for root, dirs, files in os.walk(database_path):
 # ## Summary
 #
 # In this tutorial, we have:
-# 
+#
 # 1. **Created a new database** from scratch using `Database.initialize_empty_database()`
 # 2. **Generated a transducer** programmatically using `Transducer.gen_matrix_array()` and stored it
 # 3. **Created a protocol** with pulse, sequence, and simulation parameters and stored it
