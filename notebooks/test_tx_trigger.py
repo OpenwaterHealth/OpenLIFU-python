@@ -4,6 +4,7 @@ import sys
 import time
 
 from openlifu.io.LIFUConfig import (
+    TRIGGER_MODE_CONTINUOUS,
     TRIGGER_MODE_SEQUENCE,
     TRIGGER_MODE_SINGLE,
 )
@@ -81,11 +82,11 @@ def main():
 
         json_trigger_data = {
             "TriggerFrequencyHz": params["freq"],
-            "TriggerPulseCount": 10,
+            "TriggerPulseCount": 5,
             "TriggerPulseWidthUsec": params["pulse_width"],
-            "TriggerPulseTrainInterval": 300000,
-            "TriggerPulseTrainCount": 10,
-            "TriggerMode": TRIGGER_MODE_SEQUENCE, # Change to TRIGGER_MODE_CONTINUOUS or TRIGGER_MODE_SEQUENCE or TRIGGER_MODE_SINGLE as needed
+            "TriggerPulseTrainInterval": 600000,
+            "TriggerPulseTrainCount": 3,
+            "TriggerMode": TRIGGER_MODE_CONTINUOUS, # Change to TRIGGER_MODE_CONTINUOUS or TRIGGER_MODE_SEQUENCE or TRIGGER_MODE_SINGLE as needed
             "ProfileIndex": 0,
             "ProfileIncrement": 0
         }
