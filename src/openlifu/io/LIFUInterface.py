@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from enum import Enum
 from typing import Dict, List
 
@@ -24,7 +25,6 @@ MAX_VOLTAGE_BY_DUTY_CYCLE_AND_SEQUENCE_TIME = [
     [35, 30, 25], # 0.4
     [30, 25, 20] # 0.5
     ]
-
 
 class LIFUInterfaceStatus(Enum):
     STATUS_COMMS_ERROR = -1
@@ -81,6 +81,7 @@ class LIFUInterface:
         self._tx_uart = None
         self._hv_uart = None
         self.status = LIFUInterfaceStatus.STATUS_SYS_OFF
+        self.bHvOn = False
 
         # Create a TXDevice instance as part of the interface
         logger.debug("Initializing TX Module of LIFUInterface with VID: %s, PID: %s, baudrate: %s, timeout: %s", vid, tx_pid, baudrate, timeout)
@@ -306,6 +307,9 @@ class LIFUInterface:
         if self.hvcontroller is not None:
             logger.info(f"Setting HV to {voltage} V...")
             self.hvcontroller.set_voltage(voltage)
+            logger.info("Turning ON HV...")
+            self.bHvOn = self.hvcontroller.turn_hv_on()
+            time.sleep(5)  # Wait for HV to stabilize
 
         logger.info("%s loaded successfully.", solution_name)
 
@@ -321,10 +325,9 @@ class LIFUInterface:
 
             if self.hvcontroller is not None:
                 logger.info("Turn ON HV")
-                bHvOn = self.hvcontroller.turn_hv_on()
             else:
                 logger.info("Using external power supply, HV will not be turned ON.")
-                bHvOn = True
+                self.bHvOn = True
 
             if self._async_mode:
                 self.txdevice.async_mode(True)
@@ -333,7 +336,7 @@ class LIFUInterface:
             # Send the solution data to the device
             bTriggerOn = self.txdevice.start_trigger()
 
-            if bTriggerOn and bHvOn:
+            if bTriggerOn and self.bHvOn:
                 logger.info("Sonication started successfully.")
                 self.set_status(LIFUInterfaceStatus.STATUS_RUNNING)
                 return True
