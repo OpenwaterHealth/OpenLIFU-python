@@ -8,6 +8,7 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 
+import openlifu
 from openlifu.io.LIFUHVController import HVController
 from openlifu.io.LIFUSignal import LIFUSignal
 from openlifu.io.LIFUTXDevice import TriggerModeOpts, TxDevice
@@ -422,3 +423,7 @@ class LIFUInterface:
             self.txdevice.close()
         if self.hvcontroller:
             self.hvcontroller.close()
+
+    @staticmethod
+    def get_sdk_version() -> str:
+        return openlifu.__version__
