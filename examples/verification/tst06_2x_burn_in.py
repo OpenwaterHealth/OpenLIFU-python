@@ -55,8 +55,8 @@ def format_hhmmss(seconds):
 frequencies_kHz = {1: 150, 2: 400}
 
 test_cases = {
-    0: {
-        'id': 'dryrun',
+
+    'dryrun': {
         'description': 'Dry Run Testing',
         'voltage': 60,
         'duty_cycle_pct': 5,
@@ -66,8 +66,7 @@ test_cases = {
         'test_repeats': 2,
         'test_repeat_interval_sec': 30
     },
-    1: {
-        'id': '24hr',
+    '24hr': {
         'description': '24 hour burn-in',
         'voltage': 60,
         'duty_cycle_pct': 5,
@@ -77,8 +76,7 @@ test_cases = {
         'test_repeats': 1,
         'test_repeat_interval_sec': 60*60*24
     },
-    2: {
-        'id': 'lifetime',
+    'lifetime': {
         'description': 'Lifetime test',
         'voltage': 60,
         'duty_cycle_pct': 5,
@@ -87,6 +85,26 @@ test_cases = {
         'sequence_repeat_interval_sec': 60*60,
         'test_repeats': 200,
         'test_repeat_interval_sec': 60*60*24
+    },
+    'endless': {
+        'description': 'Endless test',
+        'voltage': 60,
+        'duty_cycle_pct': 5,
+        'sequence_duration_sec': 10*60,
+        'sequence_repeats': 8,
+        'sequence_repeat_interval_sec': 60*60,
+        'test_repeats': float('inf'),
+        'test_repeat_interval_sec': 60*60*24
+    },
+    'custom': {
+        'description': 'Custom test',
+        'voltage': None,
+        'duty_cycle_pct': None,
+        'sequence_duration_sec': None,
+        'sequence_repeats': None,
+        'sequence_repeat_interval_sec': None,
+        'test_repeats': None,
+        'test_repeat_interval_sec': None
     }
 }
 
@@ -106,19 +124,42 @@ TIME_CHECK_INTERVAL = 0.1
 # ------------------- User Input Section -------------------
 print("Select Test Case:")
 for i, case in test_cases.items():
-    print(f"{i}. {case['description']}, {case['voltage']}V, {case['duty_cycle_pct']}%, {format_hhmmss(case['sequence_duration_sec'])} sequence, repeated {case['sequence_repeats']}x every {format_hhmmss(case['sequence_repeat_interval_sec'])}, test repeated {case['test_repeats']}x every {format_hhmmss(case['test_repeat_interval_sec'])}")
+    if i != 'custom':
+        print(f"  {i}: {case['description']}, {case['voltage']}V, {case['duty_cycle_pct']}%, {format_hhmmss(case['sequence_duration_sec'])} sequence, repeated {case['sequence_repeats']}x every {format_hhmmss(case['sequence_repeat_interval_sec'])}, test repeated {case['test_repeats']}x every {format_hhmmss(case['test_repeat_interval_sec'])}")
+    else:
+        print(f"  {i}: {case['description']} (user-defined parameters)")
 while True:
-    choice = input(f"Select test case by number {list(test_cases.keys())}: ").strip()
-    if choice.isdigit() and int(choice) in test_cases:
-        selected_case = test_cases[int(choice)]
-        voltage = selected_case['voltage']
-        duty_cycle_pct = selected_case['duty_cycle_pct']
-        sequence_duration_sec = selected_case['sequence_duration_sec']
-        sequence_repeats = selected_case['sequence_repeats']
-        sequence_repeat_interval_sec = selected_case['sequence_repeat_interval_sec']
-        test_repeats = selected_case['test_repeats']
-        test_repeat_interval_sec = selected_case['test_repeat_interval_sec']
-        print(f"Selected Test Case: {selected_case['description']}")
+    case_id = input(f"Select test case by id {list(test_cases.keys())}: ").strip()
+    if case_id in test_cases:
+        selected_case = test_cases[case_id]
+        if case_id == 'custom':
+            while True:
+                try:
+                    voltage = float(input("Enter voltage (V): ").strip())
+                    duty_cycle_pct = float(input("Enter duty cycle (%): ").strip())
+                    sequence_duration_sec = int(input("Enter sequence duration (seconds): ").strip())
+                    sequence_repeats = int(input("Enter number of sequence repeats: ").strip())
+                    sequence_repeat_interval_sec = int(input("Enter sequence repeat interval (seconds): ").strip())
+                    test_repeats = float(input("Enter number of test repeats: ").strip())
+                    if test_repeats != float('inf'):
+                        test_repeats = int(test_repeats)
+                    test_repeat_interval_sec = int(input("Enter test repeat interval (seconds): ").strip())
+                    if not (0 < duty_cycle_pct <= 100):
+                        raise ValueError("Duty cycle must be between 0 and 100.")
+                    if voltage <= 0 or sequence_duration_sec <= 0 or sequence_repeats <= 0 or sequence_repeat_interval_sec < 0 or test_repeats <= 0 or test_repeat_interval_sec < 0:
+                        raise ValueError("All numeric inputs must be positive, and intervals cannot be negative.")
+                    break
+                except ValueError as e:
+                    print(f"Invalid input: {e}. Please try again.")
+        else:
+            voltage = selected_case['voltage']
+            duty_cycle_pct = selected_case['duty_cycle_pct']
+            sequence_duration_sec = selected_case['sequence_duration_sec']
+            sequence_repeats = selected_case['sequence_repeats']
+            sequence_repeat_interval_sec = selected_case['sequence_repeat_interval_sec']
+            test_repeats = selected_case['test_repeats']
+            test_repeat_interval_sec = selected_case['test_repeat_interval_sec']
+            print(f"Selected Test Case: {selected_case['description']}")
         break
     print("Invalid selection. Please try again.")
 
@@ -141,7 +182,7 @@ duration_msec = int(duty_cycle_pct/100 * pulse_interval_msec)
 
 test_case_description = selected_case["description"]
 test_case_long_description = f"{frequency_kHz}kHz, {voltage}V, {duty_cycle_pct}%, {format_hhmmss(sequence_duration_sec)} sequence, repeated {sequence_repeats}x every {format_hhmmss(sequence_repeat_interval_sec)}, test repeated {test_repeats}x every {format_hhmmss(test_repeat_interval_sec)}"
-test_case_id = f"{frequency_kHz}kHz_{selected_case['id']}"
+test_case_id = f"{frequency_kHz}kHz_{case_id}"
 
 
 # ------------------- Logging Setup -------------------
