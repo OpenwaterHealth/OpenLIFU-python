@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import re
 from enum import Enum
 from typing import Dict, List
 
@@ -427,7 +426,4 @@ class LIFUInterface:
 
     @staticmethod
     def get_sdk_version() -> str:
-        version = openlifu.__version__
-        # Match the version pattern X.Y.Z
-        match = re.match(r'\d+\.\d+\.\d+', version)
-        return match.group(0) if match else version
+        return openlifu.__version__
