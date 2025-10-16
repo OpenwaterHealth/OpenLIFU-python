@@ -7,13 +7,14 @@ import os
 import shutil
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List
 
 import h5py
 
 from openlifu.nav.photoscan import Photoscan, load_data_from_photoscan
 from openlifu.plan import Protocol, Run, Solution
 from openlifu.util.json import PYFUSEncoder
+from openlifu.util.types import PathLike
 from openlifu.xdc import Transducer, TransducerArray
 from openlifu.xdc.util import load_transducer_from_file
 
@@ -22,7 +23,6 @@ from .subject import Subject
 from .user import User
 
 OnConflictOpts = Enum('OnConflictOpts', ['ERROR', 'OVERWRITE', 'SKIP'])
-PathLike = Union[str, os.PathLike]
 
 class Database:
     def __init__(self, path: str | None = None):

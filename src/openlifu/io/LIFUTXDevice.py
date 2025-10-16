@@ -744,14 +744,9 @@ class TxDevice:
             if not self.uart.is_connected():
                 raise ValueError("TX Device not connected")
 
-            r = self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_RESET, addr=module)
+            self.uart.send_packet(id=None, packetType=OW_CONTROLLER, command=OW_CMD_RESET, addr=module)
             self.uart.clear_buffer()
-            # r.print_packet()
-            if r.packet_type == OW_ERROR:
-                logger.error("Error resetting device")
-                return False
-            else:
-                return True
+            return True
         except ValueError as v:
             logger.error("ValueError: %s", v)
             raise  # Re-raise the exception for the caller to handle

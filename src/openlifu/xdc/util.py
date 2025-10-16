@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import json
-import os
-from typing import Union
 
+from openlifu.util.types import PathLike
 from openlifu.xdc.transducer import Transducer
 from openlifu.xdc.transducerarray import TransducerArray
 
-PathLike = Union[str,os.PathLike]
 
 def load_transducer_from_file(transducer_filepath : PathLike, convert_array:bool = True) -> Transducer|TransducerArray:
     """Load a Transducer or TransducerArray from file, depending on the "type" field in the file.

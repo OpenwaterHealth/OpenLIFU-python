@@ -144,6 +144,8 @@ class Element:
     def calc_output(self, input_signal, dt):
         if self.impulse_response is None:
             filtered_signal = input_signal
+        elif len(self.impulse_response) == 1:
+            filtered_signal = input_signal * self.impulse_response[0]
         else:
             impulse = self.interp_impulse_response(dt)
             filtered_signal = np.convolve(input_signal, impulse, mode='full')

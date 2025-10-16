@@ -18,13 +18,13 @@ import cv2
 import numpy as np
 import onnxruntime as ort
 import OpenEXR
-import requests
 import trimesh
 import vtk
 from PIL import Image
 from vtk.util.numpy_support import numpy_to_vtk
 
 from openlifu.util.annotations import OpenLIFUFieldData
+from openlifu.util.assets import download_and_install_modnet, get_modnet_path
 
 logger_meshrecon = logging.getLogger("MeshRecon")
 logger_meshroom = logging.getLogger("Meshroom")
@@ -300,6 +300,7 @@ def run_reconstruction(
     locations: List[Tuple[float, float, float]] | None = None,
     return_durations: bool = False,
     progress_callback : Callable[[int,str],None] | None = None,
+    download_masking_model: bool = True,
 ) -> Tuple[Photoscan, Path] | Tuple[Photoscan, Path, Dict[str, float]]:
     """Run Meshroom with the given images and pipeline.
     Args:
@@ -322,6 +323,8 @@ def run_reconstruction(
         return_durations (bool): If True, also return a dictionary mapping node names to durations in seconds.
         progress_callback: An optional function that will be called to report progress. The function should accept two arguments:
             an integer progress value from 0 to 100 followed by a string message describing the step currently being worked on.
+        download_masking_model: Whether to auto-download the masking model weights if they are not present;
+            only relevant if use_masks is enabled.
 
     Returns:
         Union[Tuple[Photoscan, Path], Tuple[Photoscan, Path, Dict[str, float]]]:
@@ -432,7 +435,7 @@ def run_reconstruction(
         start_time = time.perf_counter()
         masks_dir = temp_dir / "masks"
         masks_dir.mkdir(parents=True, exist_ok=True)
-        make_masks(new_paths, masks_dir)
+        make_masks(new_paths, masks_dir, download_model=download_masking_model)
         command.append( f"PrepareDenseScene_1.masksFolders=['{masks_dir.as_posix()}']" )
         durations["MaskCreation"] = time.perf_counter() - start_time
 
@@ -597,38 +600,6 @@ def apply_exif_orientation_numpy(image: np.ndarray, orientation: int, inverse: b
 
     return inverse_transform(image) if inverse else transform(image)
 
-
-def get_modnet_path() -> Path:
-    """Get the MODNet checkpoint path. Download it if not present.
-    """
-    package = "openlifu.nav.modnet_checkpoints"
-    filename = "modnet_photographic_portrait_matting.onnx"
-    url = "https://data.kitware.com/api/v1/file/67feb2cb31a330568827ab32/download"
-    try:
-        # Try to find the checkpoint in the package
-        resource_path = importlib.resources.files(package) / filename
-        if resource_path.is_file():
-            logger_meshrecon.info(f"Found existing MODNet checkpoint at {resource_path}")
-            return resource_path
-    except (FileNotFoundError, ModuleNotFoundError):
-        pass
-
-    # Fallback: Download the checkpoint
-    base_dir = Path(importlib.resources.files(package))
-    full_path = base_dir / filename
-    logger_meshrecon.info(f"MODNet checkpoint not found. Downloading from {url}...")
-    response = requests.get(url, stream=True, timeout=(10, 300))
-    if response.status_code == 200:
-        with open(full_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
-        logger_meshrecon.info(f"Downloaded MODNet checkpoint to {full_path}")
-    else:
-        raise RuntimeError(f"Failed to download MODNet checkpoint: {response.status_code} - {response.text}")
-
-    return full_path
-
 def preprocess_image_modnet(image: np.ndarray, ref_size: int = 512) -> np.ndarray:
     """
     Preprocess an input image for MODNet inference.
@@ -675,7 +646,7 @@ def preprocess_image_modnet(image: np.ndarray, ref_size: int = 512) -> np.ndarra
     return image
 
 
-def make_masks(image_paths: list[Path], output_dir: Path, threshold: float = 0.01) -> None:
+def make_masks(image_paths: list[Path], output_dir: Path, threshold: float = 0.01, download_model=True) -> None:
     """
     Runs MODNet on a list of image paths and saves the output masks.
 
@@ -687,10 +658,23 @@ def make_masks(image_paths: list[Path], output_dir: Path, threshold: float = 0.0
         image_paths (List[str]): List of input image file paths.
         output_dir (str): Directory where the output masks will be saved.
         threshold (float): Threshold to binarize the soft segmentation output.
+        download_model (bool): Whether to auto-download the model weights if they are not present.
     """
+
     # Load the ONNX model
+
     ckpt_path = get_modnet_path()
+    if not ckpt_path.exists():
+        if download_model:
+            logger_meshrecon.info(f"Downloading MODNet checkpoint to {ckpt_path}")
+            download_and_install_modnet()
+        else:
+            raise FileNotFoundError(f"MODNet checkpoint not found at {ckpt_path}. Install it using an appropirate utility in openlifu.util.assets.")
+    else:
+        logger_meshrecon.info(f"Found existing MODNet checkpoint at {ckpt_path}")
+
     session = ort.InferenceSession(ckpt_path, providers=["CPUExecutionProvider"])  # or CUDAExecutionProvider
+
     for image_path in image_paths:
         image = Image.open(image_path)
         exif = image.getexif()
