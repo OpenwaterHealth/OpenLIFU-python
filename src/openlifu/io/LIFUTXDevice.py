@@ -124,6 +124,7 @@ from openlifu.io.LIFUConfig import (
     OW_ERROR,
     OW_TX7332,
     OW_TX7332_DEMO,
+    OW_TX7332_DEVICE_COUNT,
     OW_TX7332_ENUM,
     OW_TX7332_RREG,
     OW_TX7332_VWBLOCK,
@@ -832,6 +833,44 @@ class TxDevice:
         except ValueError as v:
             logger.error("ValueError: %s", v)
             raise
+
+
+    def get_tx_module_count(self) -> int:
+        """
+        Retrieve the number of detected Transmit modules.
+
+        Args:
+        Returns:
+            tx_module_count: number of transmitter modules connected.
+
+        Raises:
+            ValueError: If the UART is not connected.
+            Exception: If an error occurs during enumeration.
+        """
+        tx_module_count = 0
+        try:
+            if self.uart.demo_mode:
+                tx_module_count = 1
+            else:
+                if not self.uart.is_connected():
+                    raise ValueError("TX Device not connected")
+
+                r = self.uart.send_packet(id=None, packetType=OW_TX7332, command=OW_TX7332_DEVICE_COUNT)
+                self.uart.clear_buffer()
+                # r.print_packet()
+                if r.packet_type != OW_ERROR and r.data_len == 1:
+                    tx_module_count = r.data[0]
+                else:
+                    logger.info("Error retrieving TX module count.")
+            logger.info("TX Module Count: %d", tx_module_count)
+            return tx_module_count
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
 
     def enum_tx7332_devices(self,
                             num_devices: int | None = None) -> int:
