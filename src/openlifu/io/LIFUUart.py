@@ -474,7 +474,6 @@ class LIFUUart:
                 try:
                     # Do not expect a reply for RESET-type commands (OW_CMD_RESET)
                     if command == 0x0F:  # OW_CMD_RESET
-                        self._tx(packet)
                         log.info("RESET packet sent; skipping response read.")
                         # Give the MCU time to reset and re-enumerate
                         self.reopen_after_reset()
