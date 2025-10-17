@@ -500,6 +500,9 @@ class TxDevice:
         else:
             raise ValueError("Invalid trigger mode")
 
+        if pulse_train_interval > 0 and (pulse_train_interval < pulse_interval * pulse_count):
+            raise ValueError("Pulse train interval cannot be less than pulse interval * pulse count")
+
         logger.info(f"Setting trigger with parameters: "
                         f"pulse_interval={pulse_interval}, "
                         f"pulse_count={pulse_count}, "
