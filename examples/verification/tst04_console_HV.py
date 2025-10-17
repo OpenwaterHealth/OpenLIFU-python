@@ -294,8 +294,7 @@ try:
         solution=solution,
         profile_index=profile_index,
         profile_increment=True,
-        trigger_mode=trigger_mode,
-        turn_hv_on=True)
+        trigger_mode=trigger_mode)
 
     duty_cycle = round((pulse_duration_msec / pulse_interval_msec) * 100, 2)
     if duty_cycle > 50:
