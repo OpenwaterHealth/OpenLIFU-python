@@ -936,9 +936,7 @@ class HVController:
             if not self.uart.is_connected():
                 raise ValueError("Console Device  not connected")
 
-            r = self.uart.send_packet(
-                id=None, packetType=OW_CMD, command=OW_CMD_RESET
-            )
+            r = self.uart.send_packet(id=None, packetType=OW_CMD, command=OW_CMD_RESET)
             self.uart.clear_buffer()
             # r.print_packet()
             if r.packet_type == OW_ERROR:

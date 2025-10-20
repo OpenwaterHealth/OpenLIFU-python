@@ -472,14 +472,7 @@ class LIFUUart:
 
             if not self.asyncMode:
                 try:
-                    # Do not expect a reply for RESET-type commands (OW_CMD_RESET)
-                    if command == 0x0F:  # OW_CMD_RESET
-                        log.info("RESET packet sent; skipping response read.")
-                        # Give the MCU time to reset and re-enumerate
-                        self.reopen_after_reset()
-                        return None
-                    else:
-                        return self.read_packet(timeout=timeout)
+                    return self.read_packet(timeout=timeout)
                 except serial.SerialException as e:
                     if "ClearCommError" in str(e):
                         log.warning("Serial handle lost after RESET, attempting reconnect...")
