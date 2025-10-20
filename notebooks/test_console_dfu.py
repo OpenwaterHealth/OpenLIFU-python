@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from time import sleep
 
 from openlifu.io.LIFUInterface import LIFUInterface
 
@@ -27,8 +28,26 @@ if not hv_connected:
 print("Ping the device")
 interface.hvcontroller.ping()
 
-print("Enter DFU mode")
-interface.hvcontroller.enter_dfu()
+# Ask the user for confirmation
+user_input = input("Do you want to Enter DFU Mode? (y/n): ").strip().lower()
 
-print("Use stm32 cube programmer to update firmware, power cycle will put the console back into an operating state")
-sys.exit(0)
+if user_input == 'y':
+    print("Enter DFU mode")
+    if interface.hvcontroller.enter_dfu():
+        print("Successful.")
+
+        print("Use stm32 cube programmer to update firmware, power cycle will put the console back into an operating state")
+        sys.exit(0)
+
+elif user_input == 'n':
+    print("Reset device")
+    if interface.hvcontroller.soft_reset():
+        print("Successful.")
+
+sleep(6)
+interface.hvcontroller.uart.reopen_after_reset()
+print("Ping the device again")
+if  interface.hvcontroller.ping():
+    print("Test script complete.")
+else:
+    print("Device did not respond after reset.")
