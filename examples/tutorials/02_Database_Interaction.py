@@ -7,7 +7,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.17.3
 #   kernelspec:
-#     display_name: python3
+#     display_name: env (3.11.4)
 #     language: python
 #     name: python3
 # ---
@@ -46,16 +46,31 @@ import numpy as np
 from openlifu import Protocol, Pulse, Sequence, Transducer
 from openlifu.bf import apod_methods, delay_methods, focal_patterns
 from openlifu.db import Database, Session, Subject
+from openlifu.db.database import OnConflictOpts
 from openlifu.geo import ArrayTransform
 from openlifu.sim import SimSetup
+import os
 
 # Create a new database at a default location
 # You can easily change this path to wherever you want your database
 database_path = Path.cwd() / "tutorial_database"
 
-print(f"Creating new database at: {database_path}")
+if os.path.exists(database_path):
+    # remove existing database directory if it exists
+    import shutil
+    print("Removing existing database at:", database_path)
+    shutil.rmtree(database_path)
+
 db = Database.initialize_empty_database(database_path)
 print("Successfully created empty database!")
+print("=== DATABASE DIRECTORY STRUCTURE ===")
+for root, dirs, files in os.walk(database_path):
+    level = root.replace(str(database_path), '').count(os.sep)
+    indent = ' ' * 2 * level
+    print(f"{indent}{os.path.basename(root)}/")
+    subindent = ' ' * 2 * (level + 1)
+    for file in files:
+        print(f"{subindent}{file}")
 
 
 # %% [markdown]
@@ -68,16 +83,13 @@ print("Successfully created empty database!")
 # Create a matrix array transducer with 8x8 elements
 example_transducer = Transducer.gen_matrix_array(
     nx=8,                    # 8 elements in x direction
-    ny=8,                    # 8 elements in y direction
+    ny=8,                    # 8 elements in y direction  
     pitch=4e-3,              # 4mm pitch between elements
     kerf=0.5e-3,             # 0.5mm kerf (gap) between elements
     id="tutorial_transducer", # Unique identifier
-    name="Tutorial 8x8 Matrix Array"  # Human-readable name
+    name="Tutorial 8x8 Matrix Array",  # Human-readable name
+    frequency=400e3  # 400 kHz center frequency
 )
-
-# Set some additional properties
-example_transducer.frequency = 400e3  # 400 kHz center frequency
-example_transducer.manufacturer = "Tutorial Examples Inc."
 
 print(f"Created transducer: {example_transducer.name}")
 print(f"ID: {example_transducer.id}")
@@ -85,12 +97,39 @@ print(f"Number of elements: {example_transducer.numelements()}")
 print(f"Center frequency: {example_transducer.frequency / 1e3} kHz")
 
 # Write the transducer to the database
-db.write_transducer(example_transducer)
+db.write_transducer(example_transducer, on_conflict=OnConflictOpts.OVERWRITE)
 print(f"\nSuccessfully added transducer '{example_transducer.id}' to the database!")
 
 # Verify it was added by listing available transducers
-available_transducers = db.list_transducers()
+available_transducers = db.get_transducer_ids()
 print(f"\nTransducers now in database: {available_transducers}")
+
+# %% [markdown]
+# ## Conflict Options
+# When adding items to the database, we can specify how to handle conflicts (e.g., if an item with the same ID already exists). The options are:
+# - `ConflictOptions.SKIP`: Do nothing if the item already exists.
+# - `ConflictOptions.OVERWRITE`: Replace the existing item with the new one.
+# - `ConflictOptions.ERROR`: Raise an error if the item already exists.
+
+# %%
+from datetime import datetime
+modified_transducer = example_transducer.copy()
+modified_transducer.name = f"Tutorial Transducer ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})"
+
+loaded_transducer = db.load_transducer(example_transducer.id)
+print(f"Starting with {loaded_transducer.name}")
+print(f"Attempting to replace with {modified_transducer.name}")
+
+# --- IGNORE ---
+for option, name in zip([OnConflictOpts.SKIP, OnConflictOpts.ERROR, OnConflictOpts.OVERWRITE], ["SKIP", "ERROR", "OVERWRITE"]):
+    try: 
+        print(f"\nAttempting to add conflict option: {name}")
+        db.write_transducer(modified_transducer, on_conflict=option)
+    except Exception as e:
+        print(f"Error occurred: {e}")
+    finally:
+        loaded_transducer = db.load_transducer(example_transducer.id)
+        print(f"Result in database: {loaded_transducer.name}")
 
 # %% [markdown]
 # ## Loading a Transducer from the Database
@@ -104,7 +143,6 @@ loaded_transducer = db.load_transducer("tutorial_transducer")
 print(f"Successfully loaded transducer: '{loaded_transducer.id}'")
 print(f"Name: {loaded_transducer.name}")
 print(f"Number of elements: {loaded_transducer.numelements()}")
-print(f"Manufacturer: {loaded_transducer.manufacturer}")
 print(f"Center Frequency: {loaded_transducer.frequency / 1e3} kHz")
 
 # Get element positions (first 5 for brevity)
@@ -117,41 +155,10 @@ for i in range(min(5, len(positions))):
 if loaded_transducer.elements:
     first_element = loaded_transducer.elements[0]
     print("\nProperties of the first element:")
-    print(f"  ID: {first_element.id}")
+    print(f"  ID: {first_element.index}")  # elements have index, not id
     print(f"  Position: {first_element.get_position(units='mm')} mm")
-    print(f"  Normal: {first_element.get_normal()}")
-    if hasattr(first_element, 'width'):
-        print(f"  Width: {first_element.width * 1000} mm")
-    if hasattr(first_element, 'height'):
-        print(f"  Height: {first_element.height * 1000} mm")
-
-# %% [markdown]
-# ## Transducer Properties
-#
-# A `Transducer` object contains detailed information:
-# *   `id`: Unique identifier.
-# *   `name`: Descriptive name.
-# *   `elements`: A list of `TransducerElement` objects, each with properties like position, normal vector, dimensions, etc.
-# *   `numelements()`: Returns the number of active elements.
-# *   `get_positions()`: Returns a NumPy array of element center positions.
-# *   `get_normals()`: Returns a NumPy array of element normal vectors.
-# *   And many more specific to the transducer type (e.g., `pitch`, `frequency` for arrays).
-
-# %%
-print(f"\nAdditional properties of '{loaded_transducer.id}':")
-print(f"  Focus Point: {loaded_transducer.focus_pt}")
-print(f"  Element Type: {type(loaded_transducer.elements[0]).__name__ if loaded_transducer.elements else 'N/A'}")
-print(f"  Units: {loaded_transducer.units}")
-
-# Example: Get element normals
-normals = loaded_transducer.get_normals()
-print(f"\nFirst element normal vector: {normals[0]}")
-
-# Show the range of positions to understand the array extent
-print(f"\nArray extent in X: {positions[:, 0].min():.2f} to {positions[:, 0].max():.2f} mm")
-print(f"Array extent in Y: {positions[:, 1].min():.2f} to {positions[:, 1].max():.2f} mm")
-print(f"Array extent in Z: {positions[:, 2].min():.2f} to {positions[:, 2].max():.2f} mm")
-
+    print(f"  Width: {first_element.width * 1000} mm")
+    print(f"  Length: {first_element.length * 1000} mm")
 
 # %% [markdown]
 # ## Creating and Adding a Protocol to the Database
@@ -186,7 +193,7 @@ sim_setup = SimSetup(
     x_extent=(-30, 30),    # Simulation domain in mm
     y_extent=(-30, 30),
     z_extent=(0, 60),
-    dx=1.0,                # 1mm resolution
+    spacing=1.0,                # 1mm resolution
     dt=2e-7,               # Time step for simulation
     t_end=100e-6           # Simulation duration
 )
@@ -199,8 +206,8 @@ example_protocol = Protocol(
     pulse=pulse,
     sequence=sequence,
     focal_pattern=focal_pattern,
-    delay_method=delay_methods.GeometricFocus(),  # Focus delays
-    apod_method=apod_methods.Uniform(),           # Uniform apodization
+    delay_method=delay_methods.Direct(),  # Direct delays
+    apod_method=apod_methods.Uniform(),   # Uniform apodization
     sim_setup=sim_setup
 )
 
@@ -211,11 +218,11 @@ print(f"Pulse duration: {example_protocol.pulse.duration * 1e6} μs")
 print(f"Sequence: {example_protocol.sequence.pulse_count} pulses, {example_protocol.sequence.pulse_interval}s interval")
 
 # Write the protocol to the database
-db.write_protocol(example_protocol)
+db.write_protocol(example_protocol, on_conflict=OnConflictOpts.OVERWRITE)
 print(f"\nSuccessfully added protocol '{example_protocol.id}' to the database!")
 
 # Verify it was added
-available_protocols = db.list_protocols()
+available_protocols = db.get_protocol_ids()
 print(f"Protocols now in database: {available_protocols}")
 
 # %% [markdown]
@@ -246,19 +253,17 @@ print(f"Simulation grid extent: X={loaded_protocol.sim_setup.x_extent}, Y={loade
 example_subject = Subject(
     id="tutorial_subject_001",
     name="Tutorial Subject",
-    date_of_birth=None,  # Optional - can be set if needed
-    sex="unspecified"    # Optional demographic information
 )
 
 print(f"Created subject: {example_subject.name}")
 print(f"ID: {example_subject.id}")
 
 # Write the subject to the database
-db.write_subject(example_subject)
+db.write_subject(example_subject, on_conflict=OnConflictOpts.OVERWRITE)
 print(f"\nSuccessfully added subject '{example_subject.id}' to the database!")
 
 # Verify it was added
-available_subjects = db.list_subjects()
+available_subjects = db.get_subject_ids()
 print(f"Subjects now in database: {available_subjects}")
 
 # %% [markdown]
@@ -278,7 +283,7 @@ example_session = Session(
     transducer_id=example_transducer.id,    # Link to our transducer
     protocol_id=example_protocol.id,        # Link to our protocol
     date_created=datetime.now(),
-    # Array transform represents the coordinate transformation
+    # Array transform represents the coordinate transformation 
     # from transducer coordinates to volume coordinates
     array_transform=ArrayTransform(
         matrix=np.eye(4),  # Identity transform for this example
@@ -297,7 +302,7 @@ db.write_session(example_subject, example_session)
 print(f"\nSuccessfully added session '{example_session.id}' to the database!")
 
 # Verify it was added
-available_sessions = db.list_sessions(example_subject.id)
+available_sessions = db.get_session_ids(example_subject.id)
 print(f"Sessions for subject {example_subject.id}: {available_sessions}")
 
 # %% [markdown]
@@ -309,14 +314,14 @@ print(f"Sessions for subject {example_subject.id}: {available_sessions}")
 # %%
 print("=== DATABASE SUMMARY ===")
 print(f"Database location: {database_path}")
-print(f"Available transducers: {db.list_transducers()}")
-print(f"Available protocols: {db.list_protocols()}")
-print(f"Available subjects: {db.list_subjects()}")
+print(f"Available transducers: {db.get_transducer_ids()}")
+print(f"Available protocols: {db.get_protocol_ids()}")
+print(f"Available subjects: {db.get_subject_ids()}")
 
 # Load a specific subject and show its sessions
 subject = db.load_subject("tutorial_subject_001")
 print(f"\nLoaded subject: {subject.name}")
-sessions = db.list_sessions(subject.id)
+sessions = db.get_session_ids(subject.id)
 print(f"Sessions for this subject: {sessions}")
 
 # Load a specific session and examine its properties
@@ -343,8 +348,6 @@ if sessions:
 # Let's explore what was actually created in our database directory.
 
 # %%
-import os
-
 print("=== DATABASE DIRECTORY STRUCTURE ===")
 for root, dirs, files in os.walk(database_path):
     level = root.replace(str(database_path), '').count(os.sep)
