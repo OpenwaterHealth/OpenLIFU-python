@@ -1,0 +1,9 @@
+{
+    "id": "openwater_admin",
+    "password_hash": "$2b$12$L9.77eE5Dh7skn.rCEfgd.6RgjLLU/jqLDOM3IXql04e/oQQ.w2Gm",
+    "roles": [
+        "admin"
+    ],
+    "name": "Openwater (Admin)",
+    "description": "Openwater Administrator"
+}

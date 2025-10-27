@@ -1,0 +1,9 @@
+{
+    "id": "openwater",
+    "password_hash": "$2b$12$choiFZ0xEUv2u0EFKro69OfG35KlvxFGJU2uZaw0UNbL0zbEdADC2",
+    "roles": [
+        "operator"
+    ],
+    "name": "Openwater",
+    "description": "Openwater"
+}

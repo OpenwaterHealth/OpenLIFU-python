@@ -1,0 +1,3188 @@
+{
+    "id": "neuromod_2x_demo_20251010_131900_366984",
+    "name": "Solution 20251010_131900_366984",
+    "protocol_id": "neuromod_demo",
+    "transducer": {
+        "id": "openlifu_2x400_evt1_002",
+        "name": "OpenLIFU 2x 400kHz EVT1 002",
+        "elements": [
+            {
+                "index": 1,
+                "position": [
+                    -42.81697497739789,
+                    17.5,
+                    7.470232972103389
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 1,
+                "units": "mm"
+            },
+            {
+                "index": 2,
+                "position": [
+                    -42.81697497739789,
+                    12.5,
+                    7.470232972103389
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 2,
+                "units": "mm"
+            },
+            {
+                "index": 3,
+                "position": [
+                    -42.81697497739789,
+                    7.5,
+                    7.470232972103389
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 3,
+                "units": "mm"
+            },
+            {
+                "index": 4,
+                "position": [
+                    -42.81697497739789,
+                    2.5,
+                    7.470232972103389
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 4,
+                "units": "mm"
+            },
+            {
+                "index": 5,
+                "position": [
+                    -42.81697497739789,
+                    -2.5,
+                    7.470232972103389
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 5,
+                "units": "mm"
+            },
+            {
+                "index": 6,
+                "position": [
+                    -42.81697497739789,
+                    -7.5,
+                    7.470232972103389
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 6,
+                "units": "mm"
+            },
+            {
+                "index": 7,
+                "position": [
+                    -42.81697497739789,
+                    -12.5,
+                    7.470232972103389
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 7,
+                "units": "mm"
+            },
+            {
+                "index": 8,
+                "position": [
+                    -42.81697497739789,
+                    -17.5,
+                    7.470232972103389
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 8,
+                "units": "mm"
+            },
+            {
+                "index": 9,
+                "position": [
+                    -37.968044980411506,
+                    17.5,
+                    6.250446972706112
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 9,
+                "units": "mm"
+            },
+            {
+                "index": 10,
+                "position": [
+                    -37.968044980411506,
+                    12.5,
+                    6.250446972706112
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 10,
+                "units": "mm"
+            },
+            {
+                "index": 11,
+                "position": [
+                    -37.968044980411506,
+                    7.5,
+                    6.250446972706112
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 11,
+                "units": "mm"
+            },
+            {
+                "index": 12,
+                "position": [
+                    -37.968044980411506,
+                    2.5,
+                    6.250446972706112
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 12,
+                "units": "mm"
+            },
+            {
+                "index": 13,
+                "position": [
+                    -37.968044980411506,
+                    -2.5,
+                    6.250446972706112
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 13,
+                "units": "mm"
+            },
+            {
+                "index": 14,
+                "position": [
+                    -37.968044980411506,
+                    -7.5,
+                    6.250446972706112
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 14,
+                "units": "mm"
+            },
+            {
+                "index": 15,
+                "position": [
+                    -37.968044980411506,
+                    -12.5,
+                    6.250446972706112
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 15,
+                "units": "mm"
+            },
+            {
+                "index": 16,
+                "position": [
+                    -37.968044980411506,
+                    -17.5,
+                    6.250446972706112
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 16,
+                "units": "mm"
+            },
+            {
+                "index": 17,
+                "position": [
+                    -33.11911498342512,
+                    17.5,
+                    5.030660973308835
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 17,
+                "units": "mm"
+            },
+            {
+                "index": 18,
+                "position": [
+                    -33.11911498342512,
+                    12.5,
+                    5.030660973308835
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 18,
+                "units": "mm"
+            },
+            {
+                "index": 19,
+                "position": [
+                    -33.11911498342512,
+                    7.5,
+                    5.030660973308835
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 19,
+                "units": "mm"
+            },
+            {
+                "index": 20,
+                "position": [
+                    -33.11911498342512,
+                    2.5,
+                    5.030660973308835
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 20,
+                "units": "mm"
+            },
+            {
+                "index": 21,
+                "position": [
+                    -33.11911498342512,
+                    -2.5,
+                    5.030660973308835
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 21,
+                "units": "mm"
+            },
+            {
+                "index": 22,
+                "position": [
+                    -33.11911498342512,
+                    -7.5,
+                    5.030660973308835
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 22,
+                "units": "mm"
+            },
+            {
+                "index": 23,
+                "position": [
+                    -33.11911498342512,
+                    -12.5,
+                    5.030660973308835
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 23,
+                "units": "mm"
+            },
+            {
+                "index": 24,
+                "position": [
+                    -33.11911498342512,
+                    -17.5,
+                    5.030660973308835
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 24,
+                "units": "mm"
+            },
+            {
+                "index": 25,
+                "position": [
+                    -28.270184986438736,
+                    17.5,
+                    3.8108749739115586
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 25,
+                "units": "mm"
+            },
+            {
+                "index": 26,
+                "position": [
+                    -28.270184986438736,
+                    12.5,
+                    3.8108749739115586
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 26,
+                "units": "mm"
+            },
+            {
+                "index": 27,
+                "position": [
+                    -28.270184986438736,
+                    7.5,
+                    3.8108749739115586
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 27,
+                "units": "mm"
+            },
+            {
+                "index": 28,
+                "position": [
+                    -28.270184986438736,
+                    2.5,
+                    3.8108749739115586
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 28,
+                "units": "mm"
+            },
+            {
+                "index": 29,
+                "position": [
+                    -28.270184986438736,
+                    -2.5,
+                    3.8108749739115586
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 29,
+                "units": "mm"
+            },
+            {
+                "index": 30,
+                "position": [
+                    -28.270184986438736,
+                    -7.5,
+                    3.8108749739115586
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 30,
+                "units": "mm"
+            },
+            {
+                "index": 31,
+                "position": [
+                    -28.270184986438736,
+                    -12.5,
+                    3.8108749739115586
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 31,
+                "units": "mm"
+            },
+            {
+                "index": 32,
+                "position": [
+                    -28.270184986438736,
+                    -17.5,
+                    3.8108749739115586
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 32,
+                "units": "mm"
+            },
+            {
+                "index": 33,
+                "position": [
+                    -23.42125498945235,
+                    17.5,
+                    2.5910889745142818
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 33,
+                "units": "mm"
+            },
+            {
+                "index": 34,
+                "position": [
+                    -23.42125498945235,
+                    12.5,
+                    2.5910889745142818
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 34,
+                "units": "mm"
+            },
+            {
+                "index": 35,
+                "position": [
+                    -23.42125498945235,
+                    7.5,
+                    2.5910889745142818
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 35,
+                "units": "mm"
+            },
+            {
+                "index": 36,
+                "position": [
+                    -23.42125498945235,
+                    2.5,
+                    2.5910889745142818
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 36,
+                "units": "mm"
+            },
+            {
+                "index": 37,
+                "position": [
+                    -23.42125498945235,
+                    -2.5,
+                    2.5910889745142818
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 37,
+                "units": "mm"
+            },
+            {
+                "index": 38,
+                "position": [
+                    -23.42125498945235,
+                    -7.5,
+                    2.5910889745142818
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 38,
+                "units": "mm"
+            },
+            {
+                "index": 39,
+                "position": [
+                    -23.42125498945235,
+                    -12.5,
+                    2.5910889745142818
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 39,
+                "units": "mm"
+            },
+            {
+                "index": 40,
+                "position": [
+                    -23.42125498945235,
+                    -17.5,
+                    2.5910889745142818
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 40,
+                "units": "mm"
+            },
+            {
+                "index": 41,
+                "position": [
+                    -18.572324992465965,
+                    17.5,
+                    1.3713029751170047
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 41,
+                "units": "mm"
+            },
+            {
+                "index": 42,
+                "position": [
+                    -18.572324992465965,
+                    12.5,
+                    1.3713029751170047
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 42,
+                "units": "mm"
+            },
+            {
+                "index": 43,
+                "position": [
+                    -18.572324992465965,
+                    7.5,
+                    1.3713029751170047
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 43,
+                "units": "mm"
+            },
+            {
+                "index": 44,
+                "position": [
+                    -18.572324992465965,
+                    2.5,
+                    1.3713029751170047
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 44,
+                "units": "mm"
+            },
+            {
+                "index": 45,
+                "position": [
+                    -18.572324992465965,
+                    -2.5,
+                    1.3713029751170047
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 45,
+                "units": "mm"
+            },
+            {
+                "index": 46,
+                "position": [
+                    -18.572324992465965,
+                    -7.5,
+                    1.3713029751170047
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 46,
+                "units": "mm"
+            },
+            {
+                "index": 47,
+                "position": [
+                    -18.572324992465965,
+                    -12.5,
+                    1.3713029751170047
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 47,
+                "units": "mm"
+            },
+            {
+                "index": 48,
+                "position": [
+                    -18.572324992465965,
+                    -17.5,
+                    1.3713029751170047
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 48,
+                "units": "mm"
+            },
+            {
+                "index": 49,
+                "position": [
+                    -13.723394995479579,
+                    17.5,
+                    0.1515169757197281
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 49,
+                "units": "mm"
+            },
+            {
+                "index": 50,
+                "position": [
+                    -13.723394995479579,
+                    12.5,
+                    0.1515169757197281
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 50,
+                "units": "mm"
+            },
+            {
+                "index": 51,
+                "position": [
+                    -13.723394995479579,
+                    7.5,
+                    0.1515169757197281
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 51,
+                "units": "mm"
+            },
+            {
+                "index": 52,
+                "position": [
+                    -13.723394995479579,
+                    2.5,
+                    0.1515169757197281
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 52,
+                "units": "mm"
+            },
+            {
+                "index": 53,
+                "position": [
+                    -13.723394995479579,
+                    -2.5,
+                    0.1515169757197281
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 53,
+                "units": "mm"
+            },
+            {
+                "index": 54,
+                "position": [
+                    -13.723394995479579,
+                    -7.5,
+                    0.1515169757197281
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 54,
+                "units": "mm"
+            },
+            {
+                "index": 55,
+                "position": [
+                    -13.723394995479579,
+                    -12.5,
+                    0.1515169757197281
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 55,
+                "units": "mm"
+            },
+            {
+                "index": 56,
+                "position": [
+                    -13.723394995479579,
+                    -17.5,
+                    0.1515169757197281
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 56,
+                "units": "mm"
+            },
+            {
+                "index": 57,
+                "position": [
+                    -8.874464998493192,
+                    17.5,
+                    -1.0682690236775492
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 57,
+                "units": "mm"
+            },
+            {
+                "index": 58,
+                "position": [
+                    -8.874464998493192,
+                    12.5,
+                    -1.0682690236775492
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 58,
+                "units": "mm"
+            },
+            {
+                "index": 59,
+                "position": [
+                    -8.874464998493192,
+                    7.5,
+                    -1.0682690236775492
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 59,
+                "units": "mm"
+            },
+            {
+                "index": 60,
+                "position": [
+                    -8.874464998493192,
+                    2.5,
+                    -1.0682690236775492
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 60,
+                "units": "mm"
+            },
+            {
+                "index": 61,
+                "position": [
+                    -8.874464998493192,
+                    -2.5,
+                    -1.0682690236775492
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 61,
+                "units": "mm"
+            },
+            {
+                "index": 62,
+                "position": [
+                    -8.874464998493192,
+                    -7.5,
+                    -1.0682690236775492
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 62,
+                "units": "mm"
+            },
+            {
+                "index": 63,
+                "position": [
+                    -8.874464998493192,
+                    -12.5,
+                    -1.0682690236775492
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 63,
+                "units": "mm"
+            },
+            {
+                "index": 64,
+                "position": [
+                    -8.874464998493192,
+                    -17.5,
+                    -1.0682690236775492
+                ],
+                "orientation": [
+                    0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 64,
+                "units": "mm"
+            },
+            {
+                "index": 65,
+                "position": [
+                    8.874464998493192,
+                    17.5,
+                    -1.0682690236775492
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 65,
+                "units": "mm"
+            },
+            {
+                "index": 66,
+                "position": [
+                    8.874464998493192,
+                    12.5,
+                    -1.0682690236775492
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 66,
+                "units": "mm"
+            },
+            {
+                "index": 67,
+                "position": [
+                    8.874464998493192,
+                    7.5,
+                    -1.0682690236775492
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 67,
+                "units": "mm"
+            },
+            {
+                "index": 68,
+                "position": [
+                    8.874464998493192,
+                    2.5,
+                    -1.0682690236775492
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 68,
+                "units": "mm"
+            },
+            {
+                "index": 69,
+                "position": [
+                    8.874464998493192,
+                    -2.5,
+                    -1.0682690236775492
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 69,
+                "units": "mm"
+            },
+            {
+                "index": 70,
+                "position": [
+                    8.874464998493192,
+                    -7.5,
+                    -1.0682690236775492
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 70,
+                "units": "mm"
+            },
+            {
+                "index": 71,
+                "position": [
+                    8.874464998493192,
+                    -12.5,
+                    -1.0682690236775492
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 71,
+                "units": "mm"
+            },
+            {
+                "index": 72,
+                "position": [
+                    8.874464998493192,
+                    -17.5,
+                    -1.0682690236775492
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 72,
+                "units": "mm"
+            },
+            {
+                "index": 73,
+                "position": [
+                    13.723394995479579,
+                    17.5,
+                    0.1515169757197281
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 73,
+                "units": "mm"
+            },
+            {
+                "index": 74,
+                "position": [
+                    13.723394995479579,
+                    12.5,
+                    0.1515169757197281
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 74,
+                "units": "mm"
+            },
+            {
+                "index": 75,
+                "position": [
+                    13.723394995479579,
+                    7.5,
+                    0.1515169757197281
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 75,
+                "units": "mm"
+            },
+            {
+                "index": 76,
+                "position": [
+                    13.723394995479579,
+                    2.5,
+                    0.1515169757197281
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 76,
+                "units": "mm"
+            },
+            {
+                "index": 77,
+                "position": [
+                    13.723394995479579,
+                    -2.5,
+                    0.1515169757197281
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 77,
+                "units": "mm"
+            },
+            {
+                "index": 78,
+                "position": [
+                    13.723394995479579,
+                    -7.5,
+                    0.1515169757197281
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 78,
+                "units": "mm"
+            },
+            {
+                "index": 79,
+                "position": [
+                    13.723394995479579,
+                    -12.5,
+                    0.1515169757197281
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 79,
+                "units": "mm"
+            },
+            {
+                "index": 80,
+                "position": [
+                    13.723394995479579,
+                    -17.5,
+                    0.1515169757197281
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 80,
+                "units": "mm"
+            },
+            {
+                "index": 81,
+                "position": [
+                    18.572324992465965,
+                    17.5,
+                    1.3713029751170047
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 81,
+                "units": "mm"
+            },
+            {
+                "index": 82,
+                "position": [
+                    18.572324992465965,
+                    12.5,
+                    1.3713029751170047
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 82,
+                "units": "mm"
+            },
+            {
+                "index": 83,
+                "position": [
+                    18.572324992465965,
+                    7.5,
+                    1.3713029751170047
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 83,
+                "units": "mm"
+            },
+            {
+                "index": 84,
+                "position": [
+                    18.572324992465965,
+                    2.5,
+                    1.3713029751170047
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 84,
+                "units": "mm"
+            },
+            {
+                "index": 85,
+                "position": [
+                    18.572324992465965,
+                    -2.5,
+                    1.3713029751170047
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 85,
+                "units": "mm"
+            },
+            {
+                "index": 86,
+                "position": [
+                    18.572324992465965,
+                    -7.5,
+                    1.3713029751170047
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 86,
+                "units": "mm"
+            },
+            {
+                "index": 87,
+                "position": [
+                    18.572324992465965,
+                    -12.5,
+                    1.3713029751170047
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 87,
+                "units": "mm"
+            },
+            {
+                "index": 88,
+                "position": [
+                    18.572324992465965,
+                    -17.5,
+                    1.3713029751170047
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 88,
+                "units": "mm"
+            },
+            {
+                "index": 89,
+                "position": [
+                    23.42125498945235,
+                    17.5,
+                    2.5910889745142818
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 89,
+                "units": "mm"
+            },
+            {
+                "index": 90,
+                "position": [
+                    23.42125498945235,
+                    12.5,
+                    2.5910889745142818
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 90,
+                "units": "mm"
+            },
+            {
+                "index": 91,
+                "position": [
+                    23.42125498945235,
+                    7.5,
+                    2.5910889745142818
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 91,
+                "units": "mm"
+            },
+            {
+                "index": 92,
+                "position": [
+                    23.42125498945235,
+                    2.5,
+                    2.5910889745142818
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 92,
+                "units": "mm"
+            },
+            {
+                "index": 93,
+                "position": [
+                    23.42125498945235,
+                    -2.5,
+                    2.5910889745142818
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 93,
+                "units": "mm"
+            },
+            {
+                "index": 94,
+                "position": [
+                    23.42125498945235,
+                    -7.5,
+                    2.5910889745142818
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 94,
+                "units": "mm"
+            },
+            {
+                "index": 95,
+                "position": [
+                    23.42125498945235,
+                    -12.5,
+                    2.5910889745142818
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 95,
+                "units": "mm"
+            },
+            {
+                "index": 96,
+                "position": [
+                    23.42125498945235,
+                    -17.5,
+                    2.5910889745142818
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 96,
+                "units": "mm"
+            },
+            {
+                "index": 97,
+                "position": [
+                    28.270184986438736,
+                    17.5,
+                    3.8108749739115586
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 97,
+                "units": "mm"
+            },
+            {
+                "index": 98,
+                "position": [
+                    28.270184986438736,
+                    12.5,
+                    3.8108749739115586
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 98,
+                "units": "mm"
+            },
+            {
+                "index": 99,
+                "position": [
+                    28.270184986438736,
+                    7.5,
+                    3.8108749739115586
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 99,
+                "units": "mm"
+            },
+            {
+                "index": 100,
+                "position": [
+                    28.270184986438736,
+                    2.5,
+                    3.8108749739115586
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 100,
+                "units": "mm"
+            },
+            {
+                "index": 101,
+                "position": [
+                    28.270184986438736,
+                    -2.5,
+                    3.8108749739115586
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 101,
+                "units": "mm"
+            },
+            {
+                "index": 102,
+                "position": [
+                    28.270184986438736,
+                    -7.5,
+                    3.8108749739115586
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 102,
+                "units": "mm"
+            },
+            {
+                "index": 103,
+                "position": [
+                    28.270184986438736,
+                    -12.5,
+                    3.8108749739115586
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 103,
+                "units": "mm"
+            },
+            {
+                "index": 104,
+                "position": [
+                    28.270184986438736,
+                    -17.5,
+                    3.8108749739115586
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 104,
+                "units": "mm"
+            },
+            {
+                "index": 105,
+                "position": [
+                    33.11911498342512,
+                    17.5,
+                    5.030660973308835
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 105,
+                "units": "mm"
+            },
+            {
+                "index": 106,
+                "position": [
+                    33.11911498342512,
+                    12.5,
+                    5.030660973308835
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 106,
+                "units": "mm"
+            },
+            {
+                "index": 107,
+                "position": [
+                    33.11911498342512,
+                    7.5,
+                    5.030660973308835
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 107,
+                "units": "mm"
+            },
+            {
+                "index": 108,
+                "position": [
+                    33.11911498342512,
+                    2.5,
+                    5.030660973308835
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 108,
+                "units": "mm"
+            },
+            {
+                "index": 109,
+                "position": [
+                    33.11911498342512,
+                    -2.5,
+                    5.030660973308835
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 109,
+                "units": "mm"
+            },
+            {
+                "index": 110,
+                "position": [
+                    33.11911498342512,
+                    -7.5,
+                    5.030660973308835
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 110,
+                "units": "mm"
+            },
+            {
+                "index": 111,
+                "position": [
+                    33.11911498342512,
+                    -12.5,
+                    5.030660973308835
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 111,
+                "units": "mm"
+            },
+            {
+                "index": 112,
+                "position": [
+                    33.11911498342512,
+                    -17.5,
+                    5.030660973308835
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 112,
+                "units": "mm"
+            },
+            {
+                "index": 113,
+                "position": [
+                    37.968044980411506,
+                    17.5,
+                    6.250446972706112
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 113,
+                "units": "mm"
+            },
+            {
+                "index": 114,
+                "position": [
+                    37.968044980411506,
+                    12.5,
+                    6.250446972706112
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 114,
+                "units": "mm"
+            },
+            {
+                "index": 115,
+                "position": [
+                    37.968044980411506,
+                    7.5,
+                    6.250446972706112
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 115,
+                "units": "mm"
+            },
+            {
+                "index": 116,
+                "position": [
+                    37.968044980411506,
+                    2.5,
+                    6.250446972706112
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 116,
+                "units": "mm"
+            },
+            {
+                "index": 117,
+                "position": [
+                    37.968044980411506,
+                    -2.5,
+                    6.250446972706112
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 117,
+                "units": "mm"
+            },
+            {
+                "index": 118,
+                "position": [
+                    37.968044980411506,
+                    -7.5,
+                    6.250446972706112
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 118,
+                "units": "mm"
+            },
+            {
+                "index": 119,
+                "position": [
+                    37.968044980411506,
+                    -12.5,
+                    6.250446972706112
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 119,
+                "units": "mm"
+            },
+            {
+                "index": 120,
+                "position": [
+                    37.968044980411506,
+                    -17.5,
+                    6.250446972706112
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 120,
+                "units": "mm"
+            },
+            {
+                "index": 121,
+                "position": [
+                    42.81697497739789,
+                    17.5,
+                    7.470232972103389
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 121,
+                "units": "mm"
+            },
+            {
+                "index": 122,
+                "position": [
+                    42.81697497739789,
+                    12.5,
+                    7.470232972103389
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 122,
+                "units": "mm"
+            },
+            {
+                "index": 123,
+                "position": [
+                    42.81697497739789,
+                    7.5,
+                    7.470232972103389
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 123,
+                "units": "mm"
+            },
+            {
+                "index": 124,
+                "position": [
+                    42.81697497739789,
+                    2.5,
+                    7.470232972103389
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 124,
+                "units": "mm"
+            },
+            {
+                "index": 125,
+                "position": [
+                    42.81697497739789,
+                    -2.5,
+                    7.470232972103389
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 125,
+                "units": "mm"
+            },
+            {
+                "index": 126,
+                "position": [
+                    42.81697497739789,
+                    -7.5,
+                    7.470232972103389
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 126,
+                "units": "mm"
+            },
+            {
+                "index": 127,
+                "position": [
+                    42.81697497739789,
+                    -12.5,
+                    7.470232972103389
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 127,
+                "units": "mm"
+            },
+            {
+                "index": 128,
+                "position": [
+                    42.81697497739789,
+                    -17.5,
+                    7.470232972103389
+                ],
+                "orientation": [
+                    -0.2464442579557452,
+                    -0.0,
+                    0.0
+                ],
+                "size": [
+                    4.7,
+                    4.7
+                ],
+                "sensitivity": null,
+                "impulse_response": null,
+                "impulse_dt": null,
+                "pin": 128,
+                "units": "mm"
+            }
+        ],
+        "frequency": 400600.0,
+        "units": "mm",
+        "attrs": {},
+        "registration_surface_filename": "openlifu_2x400_evt1.surf.obj",
+        "transducer_body_filename": "openlifu_2x400_evt1.body.obj",
+        "standoff_transform": [
+            [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+            ],
+            [
+                0.0,
+                0.997684,
+                -0.0680153,
+                0.0
+            ],
+            [
+                0.0,
+                0.0680153,
+                0.997684,
+                -8.0
+            ],
+            [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ]
+        ],
+        "sensitivity": 1621.521780170567,
+        "impulse_response": null,
+        "impulse_dt": null,
+        "module_invert": [
+            false,
+            true
+        ]
+    },
+    "date_created": "2025-10-10T13:19:00.366984",
+    "description": "A solution computed for the Neuromodulation Demo protocol with transducer OpenLIFU 2x 400kHz EVT1 002 for target Target-in-transducer-coords. This solution was created for the session neuromod_2x_demo for subject ow_ex001.",
+    "delays": [
+        [
+            3.8882304145178835e-08,
+            7.856999047042075e-07,
+            1.2891985863353853e-06,
+            1.5403916115607407e-06,
+            1.5346308510864464e-06,
+            1.2720241683296613e-06,
+            7.574255470374204e-07,
+            0.0,
+            1.7116275295696602e-06,
+            2.489701026699807e-06,
+            3.014954423929431e-06,
+            3.277214427064764e-06,
+            3.2711982356435068e-06,
+            2.9970286026182447e-06,
+            2.4602216156074775e-06,
+            1.6711499349305852e-06,
+            3.1866197513483917e-06,
+            3.994531496714996e-06,
+            4.540633707577374e-06,
+            4.813525749298104e-06,
+            4.807263966783202e-06,
+            4.521986650658418e-06,
+            3.963899167493076e-06,
+            3.14462283940401e-06,
+            4.440825047560366e-06,
+            5.275990563658279e-06,
+            5.8412077597112976e-06,
+            6.123870896388184e-06,
+            6.117383231075965e-06,
+            5.8218984421668386e-06,
+            5.244302939024085e-06,
+            4.397443611362703e-06,
+            5.45177836863723e-06,
+            6.310303952615646e-06,
+            6.89196207098541e-06,
+            7.183047847360482e-06,
+            7.176365329722834e-06,
+            6.872082342464713e-06,
+            6.2777100394364275e-06,
+            5.407212715421162e-06,
+            6.199118335693593e-06,
+            7.075781135204076e-06,
+            7.670241688449533e-06,
+            7.96789831273972e-06,
+            7.96106368850142e-06,
+            7.64991725946617e-06,
+            7.042482407450417e-06,
+            6.153634866238106e-06,
+            6.666320824871003e-06,
+            7.554721694820301e-06,
+            8.157485594972757e-06,
+            8.459409756582406e-06,
+            8.452476299126258e-06,
+            8.13687249265174e-06,
+            7.520966274295748e-06,
+            6.620244137017732e-06,
+            6.842354747256838e-06,
+            7.735261319268463e-06,
+            8.341216273752366e-06,
+            8.644781732258625e-06,
+            8.63781025387132e-06,
+            8.320492178162837e-06,
+            7.701330479152168e-06,
+            6.796050514053038e-06,
+            7.752568610340022e-06,
+            8.669531608814011e-06,
+            9.292560117656153e-06,
+            9.604919166954679e-06,
+            9.597743890866227e-06,
+            9.271241646875408e-06,
+            8.634663074316271e-06,
+            7.70505104644672e-06,
+            8.076842363010456e-06,
+            9.002696302789562e-06,
+            9.632050656570402e-06,
+            9.947672964383341e-06,
+            9.940422019639656e-06,
+            9.61051174412218e-06,
+            8.96748072818998e-06,
+            8.02887704063521e-06,
+            8.095905035665818e-06,
+            9.0222870791497e-06,
+            9.652017445433453e-06,
+            9.967833813089064e-06,
+            9.960578367775886e-06,
+            9.63046542594552e-06,
+            8.987050882811474e-06,
+            8.04791312890305e-06,
+            7.80925263974561e-06,
+            8.727757297092697e-06,
+            9.351882072387163e-06,
+            9.664806440068615e-06,
+            9.657618056919336e-06,
+            9.33052540785538e-06,
+            8.692828605798813e-06,
+            7.76165740982098e-06,
+            7.224349429306661e-06,
+            8.127194436791881e-06,
+            8.740195556945075e-06,
+            9.047387633360127e-06,
+            9.040332124558434e-06,
+            8.71922627103449e-06,
+            8.092876434895561e-06,
+            7.177543612826895e-06,
+            6.355695016979281e-06,
+            7.236256529188987e-06,
+            7.833473406077263e-06,
+            8.13254613860804e-06,
+            8.125678722268954e-06,
+            7.81305317315971e-06,
+            7.202806162684056e-06,
+            6.310014446361661e-06,
+            5.223151558365922e-06,
+            6.0762793074347254e-06,
+            6.654133642091548e-06,
+            6.943269201187998e-06,
+            6.9366318125249355e-06,
+            6.634385951037654e-06,
+            6.043894958526663e-06,
+            5.178859334776525e-06,
+            3.8499447172245235e-06,
+            4.672042510249124e-06,
+            5.22808563065253e-06,
+            5.506056381314261e-06,
+            5.4996772137905954e-06,
+            5.209094281766954e-06,
+            4.640861153845061e-06,
+            3.8072267499359724e-06
+        ]
+    ],
+    "apodizations": [
+        [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            0.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            0.0,
+            0.0
+        ]
+    ],
+    "pulse": {
+        "frequency": 400000.0,
+        "amplitude": 1.0,
+        "duration": 0.005
+    },
+    "voltage": 7.8971649568699345,
+    "sequence": {
+        "pulse_interval": 0.1,
+        "pulse_count": 300,
+        "pulse_train_interval": 30.0,
+        "pulse_train_count": 20
+    },
+    "foci": [
+        {
+            "position": [
+                4.274363154938101,
+                0.11176941221935977,
+                49.23461992866571
+            ],
+            "id": "Target-in-transducer-coords",
+            "name": "sonication target",
+            "color": [
+                1.0,
+                0.0,
+                0.0
+            ],
+            "radius": 1.0,
+            "dims": [
+                "x",
+                "y",
+                "z"
+            ],
+            "units": "mm"
+        }
+    ],
+    "target": {
+        "position": [
+            4.274363154938101,
+            0.11176941221935977,
+            49.23461992866571
+        ],
+        "id": "Target-in-transducer-coords",
+        "name": "sonication target",
+        "color": [
+            1.0,
+            0.0,
+            0.0
+        ],
+        "radius": 1.0,
+        "dims": [
+            "x",
+            "y",
+            "z"
+        ],
+        "units": "mm"
+    },
+    "approved": false
+}

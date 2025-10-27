@@ -1,0 +1,197 @@
+{
+    "id": "neuromod_demo",
+    "name": "Neuromodulation Demo",
+    "description": "For Demo Only",
+    "allowed_roles": [],
+    "pulse": {
+        "frequency": 400000.0,
+        "amplitude": 1.0,
+        "duration": 0.005
+    },
+    "sequence": {
+        "pulse_interval": 0.1,
+        "pulse_count": 300,
+        "pulse_train_interval": 30.0,
+        "pulse_train_count": 20
+    },
+    "focal_pattern": {
+        "target_pressure": 100000.0,
+        "units": "Pa",
+        "class": "SinglePoint"
+    },
+    "sim_setup": {
+        "spacing": 1.0,
+        "units": "mm",
+        "x_extent": [
+            -50.0,
+            50.0
+        ],
+        "y_extent": [
+            -30.0,
+            30.0
+        ],
+        "z_extent": [
+            -4.0,
+            80.0
+        ],
+        "dt": 0.0,
+        "t_end": 0.0,
+        "c0": 1500.0,
+        "cfl": 0.5,
+        "options": {}
+    },
+    "delay_method": {
+        "c0": 1540.0,
+        "class": "Direct"
+    },
+    "apod_method": {
+        "max_angle": 30,
+        "units": "deg",
+        "class": "MaxAngle"
+    },
+    "seg_method": {
+        "materials": {
+            "water": {
+                "name": "water",
+                "sound_speed": 1500,
+                "density": 1000,
+                "attenuation": 0.0022,
+                "specific_heat": 4182,
+                "thermal_conductivity": 0.598
+            },
+            "tissue": {
+                "name": "tissue",
+                "sound_speed": 1540,
+                "density": 1050,
+                "attenuation": 0.3,
+                "specific_heat": 3600,
+                "thermal_conductivity": 0.528
+            },
+            "skull": {
+                "name": "skull",
+                "sound_speed": 2800,
+                "density": 1900,
+                "attenuation": 6,
+                "specific_heat": 1300,
+                "thermal_conductivity": 0.4
+            },
+            "standoff": {
+                "name": "standoff",
+                "sound_speed": 1420,
+                "density": 1000,
+                "attenuation": 1,
+                "specific_heat": 4182,
+                "thermal_conductivity": 0.598
+            },
+            "air": {
+                "name": "air",
+                "sound_speed": 344,
+                "density": 1.25,
+                "attenuation": 7.5,
+                "specific_heat": 1012,
+                "thermal_conductivity": 0.025
+            }
+        },
+        "ref_material": "tissue",
+        "class": "UniformSegmentation"
+    },
+    "param_constraints": {
+        "MI": {
+            "operator": "<",
+            "warning_value": 1.0,
+            "error_value": 1.9
+        },
+        "TIC": {
+            "operator": "<",
+            "warning_value": 2.0,
+            "error_value": 3.0
+        },
+        "mainlobe_isppa_Wcm2": {
+            "operator": "<",
+            "warning_value": 100.0,
+            "error_value": 190.0
+        },
+        "mainlobe_ispta_mWcm2": {
+            "operator": "<",
+            "warning_value": 360.0,
+            "error_value": 720.0
+        },
+        "sidelobe_pnp_MPa": {
+            "operator": "<",
+            "warning_value": 0.05,
+            "error_value": 0.05
+        }
+    },
+    "target_constraints": [
+        {
+            "dim": "x",
+            "name": "Lateral",
+            "units": "mm",
+            "min": -20.0,
+            "max": 20.0
+        },
+        {
+            "dim": "y",
+            "name": "Elevation",
+            "units": "mm",
+            "min": -20.0,
+            "max": 20.0
+        },
+        {
+            "dim": "z",
+            "name": "Axial",
+            "units": "mm",
+            "min": 20.0,
+            "max": 80.0
+        }
+    ],
+    "virtual_fit_options": {
+        "units": "mm",
+        "transducer_steering_center_distance": 30.0,
+        "steering_limits": [
+            [
+                -20.0,
+                20.0
+            ],
+            [
+                -20.0,
+                20.0
+            ],
+            [
+                -30.0,
+                80.0
+            ]
+        ],
+        "pitch_range": [
+            -10.0,
+            80.0
+        ],
+        "pitch_step": 10.0,
+        "yaw_range": [
+            -65.0,
+            65.0
+        ],
+        "yaw_step": 10.0,
+        "planefit_dyaw_extent": 15.0,
+        "planefit_dyaw_step": 3.0,
+        "planefit_dpitch_extent": 15.0,
+        "planefit_dpitch_step": 3.0
+    },
+    "analysis_options": {
+        "standoff_sound_speed": 1500.0,
+        "standoff_density": 1000.0,
+        "ref_sound_speed": 1500.0,
+        "ref_density": 1000.0,
+        "mainlobe_aspect_ratio": [
+            1.0,
+            1.0,
+            10.0
+        ],
+        "mainlobe_radius": 0.010,
+        "beamwidth_radius": 0.010,
+        "sidelobe_radius": 0.018,
+        "sidelobe_zmin": 0.015,
+        "distance_units": "m",
+        "param_constraints": {}
+    }
+}
