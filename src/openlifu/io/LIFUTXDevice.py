@@ -109,6 +109,7 @@ from openlifu.io.LIFUConfig import (
     OW_CMD_ASYNC,
     OW_CMD_DFU,
     OW_CMD_ECHO,
+    OW_CMD_FLASH_WRITE,
     OW_CMD_GET_AMBIENT,
     OW_CMD_GET_TEMP,
     OW_CMD_HWID,
@@ -786,6 +787,44 @@ class TxDevice:
             # r.print_packet()
             if r.packet_type == OW_ERROR:
                 logger.error("Error setting DFU mode for device")
+                return False
+            else:
+                return True
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+    def flash_write(self, data: None, module:int=1) -> bool:
+        """
+        Write the current configuration to flash memory on the TX device.
+
+        Returns:
+            bool: True if the write operation was successful, False otherwise.
+
+        Raises:
+            ValueError: If the UART is not connected.
+            Exception: If an error occurs while writing to flash.
+        """
+        try:
+            if self.uart.demo_mode:
+                return True
+
+            if not self.uart.is_connected():
+                raise ValueError("TX Device not connected")
+
+            r = self.uart.send_packet(id=None,
+                                      packetType=OW_CONTROLLER,
+                                      command=OW_CMD_FLASH_WRITE,
+                                      addr=module,
+                                      data=data)
+            self.uart.clear_buffer()
+            # r.print_packet()
+            if r.packet_type == OW_ERROR:
+                logger.error("Error writing to flash for device")
                 return False
             else:
                 return True
