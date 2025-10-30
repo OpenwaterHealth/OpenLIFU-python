@@ -115,7 +115,8 @@ use_external_power_supply = False
 CONSOLE_SHUTOFF_TEMP_C = 70.0
 INITIAL_TEMP_SHUTOFF_C = 40
 INITIAL_TIME_WINDOW = 5
-RAPID_TEMP_INCREASE_PER_SECOND_SHUTOFF_C = 3
+RAPID_TRANSMITTER_TEMP_INCREASE_PER_SECOND_SHUTOFF_C = 3
+RAPID_CONSOLE_TEMP_INCREASE_PER_SECOND_SHUTOFF_C = 5
 TEMPERATURE_CHECK_INTERVAL = 1
 TEMPERATURE_LOG_INTERVAL = 5
 TIME_LOG_INTERVAL = 1
@@ -263,7 +264,8 @@ temperature_shutdown_event = threading.Event()
 def monitor_temperature(
         initial_temp_shutoff_C=INITIAL_TEMP_SHUTOFF_C,
         initial_time_window=INITIAL_TIME_WINDOW,
-        rapid_temp_increase_per_second_shutoff_C=RAPID_TEMP_INCREASE_PER_SECOND_SHUTOFF_C,
+        rapid_tx_temp_increase_per_second_shutoff_C=RAPID_TRANSMITTER_TEMP_INCREASE_PER_SECOND_SHUTOFF_C,
+        rapid_con_temp_increase_per_second_shutoff_C=RAPID_CONSOLE_TEMP_INCREASE_PER_SECOND_SHUTOFF_C,
         console_shutoff_temp_C=CONSOLE_SHUTOFF_TEMP_C,
         temperature_log_interval=TEMPERATURE_LOG_INTERVAL,
         temperature_check_interval=TEMPERATURE_CHECK_INTERVAL,
@@ -324,15 +326,15 @@ def monitor_temperature(
 
         # Check for rapid temperature increase
         if not use_external_power_supply:
-            if (con_temp - prev_con_temp) > rapid_temp_increase_per_second_shutoff_C:
+            if (con_temp - prev_con_temp) > rapid_con_temp_increase_per_second_shutoff_C:
                 logger.warning(f"Console temperature rose from {prev_con_temp}°C to {con_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {temperature_check_interval}s.")
                 break
             prev_con_temp = con_temp
-        if (tx_temp - prev_tx_temp) > rapid_temp_increase_per_second_shutoff_C:
+        if (tx_temp - prev_tx_temp) > rapid_tx_temp_increase_per_second_shutoff_C:
             logger.warning(f"TX device temperature rose from {prev_tx_temp}°C to {tx_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {temperature_check_interval}s.")
             break
         prev_tx_temp = tx_temp
-        if (amb_temp - prev_amb_temp) > rapid_temp_increase_per_second_shutoff_C:
+        if (amb_temp - prev_amb_temp) > rapid_tx_temp_increase_per_second_shutoff_C:
             logger.warning(f"Ambient temperature rose from {prev_amb_temp}°C to {amb_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {temperature_check_interval}s.")
             break
         prev_amb_temp = amb_temp

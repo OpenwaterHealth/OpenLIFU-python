@@ -114,7 +114,8 @@ try:
     # Fail-safe parameters if the temperature jumps too fast
     rapid_temp_shutoff_C = 40 # Cutoff temperature in Celsius if it jumps too fast
     rapid_temp_shutoff_seconds = 5 # Time in seconds to reach rapid temperature shutoff
-    rapid_temp_increase_per_second_shutoff_C = 3 # Rapid temperature climbing shutoff in Celsius
+    rapid_transmitter_temp_increase_per_second_shutoff_C = 3 # Rapid temperature climbing shutoff in Celsius
+    rapid_console_temp_increase_per_second_shutoff_C = 5 # Rapid temperature climbing shutoff in Celsius
 
     # Create delays array with proper shape for 2D indexing
     delays = np.zeros((1, 64*number_of_boards))
@@ -177,7 +178,7 @@ try:
                 prev_con_temp = 0
             # con_temp = interface.hvcontroller.get_temperature1()
             con_temp = 0
-            if (con_temp - prev_con_temp) > rapid_temp_increase_per_second_shutoff_C:
+            if (con_temp - prev_con_temp) > rapid_console_temp_increase_per_second_shutoff_C:
                 logger.warning(f"Console temperature rose from {prev_con_temp}°C to {con_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
                 shutdown=True
             else:
@@ -187,7 +188,7 @@ try:
             if prev_tx_temp is None:
                 prev_tx_temp = interface.txdevice.get_temperature()
             tx_temp = interface.txdevice.get_temperature()
-            if (tx_temp - prev_tx_temp) > rapid_temp_increase_per_second_shutoff_C:
+            if (tx_temp - prev_tx_temp) > rapid_transmitter_temp_increase_per_second_shutoff_C:
                 logger.warning(f"TX device temperature rose from {prev_tx_temp}°C to {tx_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
                 shutdown=True
             else:
@@ -197,7 +198,7 @@ try:
             if prev_amb_temp is None:
                 prev_amb_temp = interface.txdevice.get_ambient_temperature()
             amb_temp = interface.txdevice.get_ambient_temperature()
-            if (amb_temp - prev_amb_temp) > rapid_temp_increase_per_second_shutoff_C:
+            if (amb_temp - prev_amb_temp) > rapid_transmitter_temp_increase_per_second_shutoff_C:
                 logger.warning(f"Ambient temperature rose from {prev_amb_temp}°C to {amb_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
                 shutdown=True
             else:
