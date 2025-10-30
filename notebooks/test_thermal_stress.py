@@ -58,7 +58,8 @@ ambient_shutoff_temp_C = 70.0 # Ambient shutoff temperature in Celsius
 # Fail-safe parameters if the temperature jumps too fast
 rapid_temp_shutoff_C = 40 # Cutoff temperature in Celsius if it jumps too fast
 rapid_temp_shutoff_seconds = 5 # Time in seconds to reach rapid temperature shutoff
-rapid_temp_increase_per_second_shutoff_C = 2 # Rapid temperature climbing shutoff in Celsius
+rapid_transmitter_temp_increase_per_second_shutoff_C = 3 # Rapid temperature climbing shutoff in Celsius
+rapid_console_temp_increase_per_second_shutoff_C = 5 # Rapid temperature climbing shutoff in Celsius
 
 peak_to_peak_voltage = voltage * 2 # Peak to peak voltage for the pulse
 
@@ -133,8 +134,8 @@ def log_temperature():
                 if prev_con_temp is None:
                     prev_con_temp = interface.hvcontroller.get_temperature1()
                 con_temp = interface.hvcontroller.get_temperature1()
-                if (con_temp - prev_con_temp) > rapid_temp_increase_per_second_shutoff_C:
-                    logger.warning(f"Console temperature rose from {prev_con_temp}°C to {con_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
+                if (con_temp - prev_con_temp) > rapid_console_temp_increase_per_second_shutoff_C:
+                    logger.warning(f"Console temperature rose from {prev_con_temp}°C to {con_temp}°C (above {rapid_console_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
                     log_line = f"{current_time},SHUTDOWN,Console temperature exceeded rapid temp increase shutoff threshold\n"
                     shutdown=True
                 else:
@@ -144,8 +145,8 @@ def log_temperature():
             if prev_tx_temp is None:
                 prev_tx_temp = interface.txdevice.get_temperature()
             tx_temp = interface.txdevice.get_temperature()
-            if (tx_temp - prev_tx_temp) > rapid_temp_increase_per_second_shutoff_C:
-                logger.warning(f"TX device temperature rose from {prev_tx_temp}°C to {tx_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
+            if (tx_temp - prev_tx_temp) > rapid_transmitter_temp_increase_per_second_shutoff_C:
+                logger.warning(f"TX device temperature rose from {prev_tx_temp}°C to {tx_temp}°C (above {rapid_transmitter_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
                 log_line = f"{current_time},SHUTDOWN,TX device temperature exceeded rapid temp increase shutoff threshold\n"
                 shutdown=True
             else:
@@ -155,8 +156,8 @@ def log_temperature():
             if prev_amb_temp is None:
                 prev_amb_temp = interface.txdevice.get_ambient_temperature()
             amb_temp = interface.txdevice.get_ambient_temperature()
-            if (amb_temp - prev_amb_temp) > rapid_temp_increase_per_second_shutoff_C:
-                logger.warning(f"Ambient temperature rose from {prev_amb_temp}°C to {amb_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
+            if (amb_temp - prev_amb_temp) > rapid_transmitter_temp_increase_per_second_shutoff_C:
+                logger.warning(f"Ambient temperature rose from {prev_amb_temp}°C to {amb_temp}°C (above {rapid_transmitter_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
                 log_line = f"{current_time},SHUTDOWN,Ambient temperature exceeded rapid temp increase shutoff threshold\n"
                 shutdown=True
             else:
@@ -296,7 +297,8 @@ logger.info(f"User parameters set: \n\
     Duty Cycle: {duty_cycle}%\n\
     Use External Power Supply: {use_external_power_supply}\n\
     Initial Temp Safety Shutoff: Increase to {rapid_temp_shutoff_C}°C within {rapid_temp_shutoff_seconds}s of starting.\n\
-    General Temp Safety Shutoff: Increase of {rapid_temp_increase_per_second_shutoff_C}°C within {log_interval}s at any point.\n")
+    TX Temp Safety Shutoff: Increase of {rapid_transmitter_temp_increase_per_second_shutoff_C}°C within {log_interval}s at any point.\n\
+    Console Temp Safety Shutoff: Increase of {rapid_console_temp_increase_per_second_shutoff_C}°C within {log_interval}s at any point.\n")
 
 logger.info("Press enter to START trigger:")
 input()  # Wait for the user to press Enter
