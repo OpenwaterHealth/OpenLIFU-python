@@ -327,15 +327,15 @@ def monitor_temperature(
         # Check for rapid temperature increase
         if not use_external_power_supply:
             if (con_temp - prev_con_temp) > rapid_con_temp_increase_per_second_shutoff_C:
-                logger.warning(f"Console temperature rose from {prev_con_temp}°C to {con_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {temperature_check_interval}s.")
+                logger.warning(f"Console temperature rose from {prev_con_temp}°C to {con_temp}°C (above {rapid_con_temp_increase_per_second_shutoff_C}°C threshold) within {temperature_check_interval}s.")
                 break
             prev_con_temp = con_temp
         if (tx_temp - prev_tx_temp) > rapid_tx_temp_increase_per_second_shutoff_C:
-            logger.warning(f"TX device temperature rose from {prev_tx_temp}°C to {tx_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {temperature_check_interval}s.")
+            logger.warning(f"TX device temperature rose from {prev_tx_temp}°C to {tx_temp}°C (above {rapid_tx_temp_increase_per_second_shutoff_C}°C threshold) within {temperature_check_interval}s.")
             break
         prev_tx_temp = tx_temp
         if (amb_temp - prev_amb_temp) > rapid_tx_temp_increase_per_second_shutoff_C:
-            logger.warning(f"Ambient temperature rose from {prev_amb_temp}°C to {amb_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {temperature_check_interval}s.")
+            logger.warning(f"Ambient temperature rose from {prev_amb_temp}°C to {amb_temp}°C (above {rapid_tx_temp_increase_per_second_shutoff_C}°C threshold) within {temperature_check_interval}s.")
             break
         prev_amb_temp = amb_temp
 

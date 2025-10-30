@@ -179,7 +179,7 @@ try:
             # con_temp = interface.hvcontroller.get_temperature1()
             con_temp = 0
             if (con_temp - prev_con_temp) > rapid_console_temp_increase_per_second_shutoff_C:
-                logger.warning(f"Console temperature rose from {prev_con_temp}°C to {con_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
+                logger.warning(f"Console temperature rose from {prev_con_temp}°C to {con_temp}°C (above {rapid_console_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
                 shutdown=True
             else:
                 prev_con_temp = con_temp
@@ -189,7 +189,7 @@ try:
                 prev_tx_temp = interface.txdevice.get_temperature()
             tx_temp = interface.txdevice.get_temperature()
             if (tx_temp - prev_tx_temp) > rapid_transmitter_temp_increase_per_second_shutoff_C:
-                logger.warning(f"TX device temperature rose from {prev_tx_temp}°C to {tx_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
+                logger.warning(f"TX device temperature rose from {prev_tx_temp}°C to {tx_temp}°C (above {rapid_transmitter_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
                 shutdown=True
             else:
                 prev_tx_temp = tx_temp
@@ -199,7 +199,7 @@ try:
                 prev_amb_temp = interface.txdevice.get_ambient_temperature()
             amb_temp = interface.txdevice.get_ambient_temperature()
             if (amb_temp - prev_amb_temp) > rapid_transmitter_temp_increase_per_second_shutoff_C:
-                logger.warning(f"Ambient temperature rose from {prev_amb_temp}°C to {amb_temp}°C (above {rapid_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
+                logger.warning(f"Ambient temperature rose from {prev_amb_temp}°C to {amb_temp}°C (above {rapid_transmitter_temp_increase_per_second_shutoff_C}°C threshold) within {log_interval}s.")
                 shutdown=True
             else:
                 prev_amb_temp = amb_temp
