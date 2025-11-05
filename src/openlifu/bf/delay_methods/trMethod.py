@@ -11,10 +11,16 @@ from openlifu.bf.delay_methods import DelayMethod
 from openlifu.geo import Point
 from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.xdc import Transducer
-from openlifu.sim.time_reversal import TimeReversal
+# from openlifu.sim.time_reversal import TimeReversal
 
+@dataclass
 class TRDelay(DelayMethod):
     c0: Annotated[float, OpenLIFUFieldData("Speed of Sound (m/s)", "Speed of sound in the medium (m/s)")] = 1480.0
+
+    def __init__(self,kgrid,medium,sensor):
+        self.kgrid = kgrid
+        self.medium = medium
+        self.sensor = sensor
 
     def __post_init__(self):
         if not isinstance(self.c0, (int, float)):
@@ -23,12 +29,14 @@ class TRDelay(DelayMethod):
             raise ValueError("Speed of sound must be greater than 0")
         self.c0 = float(self.c0)
     
-    def calc_delays(self, arr, target, params, transform = None, medium = None):
+    def calc_delays(self, arr: Transducer, target: Point, params: xa.Dataset | None=None, transform:np.ndarray | None=None):
         if params is None:
             c = self.c0
         else:
-            
-            tr = TimeReversal(kgrid,medium,sensor)
-            c = medium["sound_speed"]
-        return super().calc_delays(arr, target, params, transform)
+            c = self.medium['sound_speed']
+        target_pos = target.get_position(units="m")
         
+        tr = TimeReversal(self.kgrid,self.medium,self.sensor)
+        c = medium["sound_speed"]
+        return delays
+

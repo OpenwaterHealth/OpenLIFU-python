@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import logging
 import os
 import sys
@@ -7,12 +5,10 @@ import threading
 import time
 from pathlib import Path
 
-if os.name == 'nt':
-    import msvcrt
-else:
-    import select
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import ndimage
 
-from matplotlib import pyplot as plt
 from openlifu.bf import apod_methods, focal_patterns, delay_methods
 from openlifu.bf.pulse import Pulse
 from openlifu.bf.sequence import Sequence
@@ -22,18 +18,55 @@ from openlifu.io.LIFUInterface import LIFUInterface
 from openlifu.plan import Protocol
 from openlifu.sim import SimSetup
 
-# Configure logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
-# Prevent duplicate handlers and cluttered terminal output
-if not logger.hasHandlers():
-    handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
-    logger.addHandler(handler)
-    logger.propagate = False
+width = 56
+height = 56
+depth = 56
 
-log_interval = 1  # seconds; you can adjust this variable as needed
+x = np.arange(width)
+y = np.arange(height)
+z = np.arange(depth)
+
+X, Y, Z = np.meshgrid(x, y, z)
+p = np.random.rand(width,height,depth)
+noise = np.random.normal(p,0.2*p)
+wavelength_x = 100000 
+wavelength_y = 15000 
+amplitude = 1
+
+sine_image = amplitude * np.sin(2 * np.pi * (X / wavelength_x + Y / wavelength_y)) + p
+
+sine_image = np.abs(sine_image)
+max_val = sine_image.max()
+scale_factor = 1500/max_val
+sine_image = sine_image*scale_factor
+sine_image = ndimage.median_filter(sine_image,3)
+
+plt.figure()
+plt.imshow(sine_image[:,:,10])
+plt.colorbar()
+plt.show()
+
+# medium parameters
+c_min               = 1500     # sound speed [m/s]
+c_max               = 3100     # max. speed of sound in skull (F. A. Duck, 2013.) [m/s]
+rho_min             = 1000     # density [kg/m^3]
+rho_max             = 1900     # max. skull density [kg/m3]
+alpha_power         = 1.43     # Robertson et al., PMB 2017 usually between 1 and 3? from Treeby paper
+alpha_coeff_water   = 0        # [dB/(MHz^y cm)] close to 0 (Mueller et al., 2017), see also 0.05 Fomenko et al., 2020?
+alpha_coeff_min     = 4     
+alpha_coeff_max     = 8.7      # [dB/(MHz cm)] Fry 1978 at 0.5MHz: 1 Np/cm (8.7 dB/cm) for both diploe and outer tables
+
+hu_min 	= 300
+hu_max 	= 2000	
+
+if max_val < hu_max:
+    hu_max = max_val
+
+sine_image[sine_image<hu_min] = 0
+sine_image[sine_image>hu_max] = hu_max
+padx = 20
+tmp_model = np.zeros(np.size(sine_image))
 
 # set focus
 xInput = 20
@@ -75,13 +108,25 @@ sequence = Sequence(
     pulse_count=int(60/(interval_msec*1e-3)),
     pulse_train_interval=0,
     pulse_train_count=1)
+
 focal_pattern = focal_patterns.SinglePoint(target_pressure=300e3)
 apod_method = apod_methods.Uniform()
 delay_method = delay_methods.Direct()
-# delay_method = delay_methods.TimeReversal()
-# apod_method = apod_methods.MaxAngle()
-# apod_method = apod_methods.PiecewiseLinear()
-sim_setup = SimSetup(x_extent=(-55,55), y_extent=(-30,30), z_extent=(-4,150))
+
+midpoint = np.round([xInput/2,yInput/2,zInput/2])
+
+x_extent=(-55,55)
+y_extent=(-30,30)
+z_extent=(-4,150)
+
+padx = np.round((np.abs(x_extent[0]) + np.abs(x_extent[1]) - width)/2)
+pady = np.round((np.abs(y_extent[0]) + np.abs(y_extent[1]) - height)/2)
+padz = np.round((np.abs(z_extent[0]) + np.abs(z_extent[1]) - depth)/2)
+
+tmp = np.zeros(np.size(sine_image,0)+padx,np.size(sine_image,1)+pady,np.size(sine_image,2)+padz)
+print(np.size(tmp))
+sim_setup = SimSetup(x_extent, y_extent, z_extent)
+
 protocol = Protocol(
     id='test_protocol',
     name='Test Protocol',
@@ -97,38 +142,11 @@ solution, sim_res, scaled_analysis = protocol.calc_solution(
     simulate=True,
     scale=True,
     use_gpu=True)
-voltage = solution.voltage
-peak_to_peak_voltage = solution.voltage * 2 # Peak to peak voltage for the pulse
-
-logger.info(f'Apodizations: {solution.apodizations}')
-logger.info(f'Delays: {solution.delays}')
-
-profile_index = 1
-profile_increment = True
-trigger_mode = "continuous"
-
-duty_cycle = int((duration_msec/interval_msec) * 100)
-if duty_cycle > 50:
-    logger.warning("❗❗ Duty cycle is above 50% ❗❗")
-
-logger.info(f"User parameters set: \n\
-    Module Invert: {arr.module_invert}\n\
-    Frequency: {frequency_kHz}kHz\n\
-    Voltage Per Rail: {solution.voltage}V\n\
-    Voltage Peak to Peak: {peak_to_peak_voltage}V\n\
-    Duration: {duration_msec}ms\n\
-    Interval: {interval_msec}ms\n\
-    Duty Cycle: {duty_cycle}%\n\
-    Use External Power Supply: {use_external_power_supply}\n\
-    Initial Temp Safety Shutoff: Increase to {rapid_temp_shutoff_C}°C within {rapid_temp_shutoff_seconds}s of starting.\n\
-    General Temp Safety Shutoff: Increase of {rapid_temp_increase_per_second_shutoff_C}°C within {log_interval}s at any point.\n")
-
 
 p_map = sim_res['p_max']
-if scaled_analysis is not None:
-    scaled_analysis.to_table().set_index('Param')[['Value', 'Units', 'Status']]
-
+plt.figure()
 plt.imshow(p_map[:,30,:])
 plt.colorbar()
 plt.show()
+
 

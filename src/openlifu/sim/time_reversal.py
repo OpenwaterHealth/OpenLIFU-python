@@ -21,7 +21,7 @@ from kwave.ksource import kSource
 from kwave.options.simulation_execution_options import SimulationExecutionOptions
 from kwave.options.simulation_options import SimulationOptions
 
-from openlifu import bf, geo, seg, sim, xdc
+from openlifu import geo, seg, sim, xdc
 from openlifu.db.session import Session
 from openlifu.geo import Point
 from openlifu.plan.param_constraint import ParameterConstraint
@@ -58,7 +58,6 @@ class TimeReversal:
         self.compensation_factor = compensation_factor
         self._source = None
         self._new_sensor = None
-        self.
 
         # Validate inputs
         if sensor.mask is None:

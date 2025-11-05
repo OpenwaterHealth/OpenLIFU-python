@@ -20,6 +20,7 @@ from openlifu.db import Database
 from openlifu.geo import Point
 from openlifu.io.LIFUInterface import LIFUInterface
 from openlifu.plan.solution import Solution
+from openlifu.tnk.rigol import Rigol
 
 # set PYTHONPATH=%cd%\src;%PYTHONPATH%
 # python notebooks/test_watertank.py
@@ -380,7 +381,7 @@ if interface.start_sonication():
     # Start logging and user input threads
     t.start()
     user_input.start()
-
+    
     while (user_input.is_alive() and t.is_alive()):
         time.sleep(0.1)
 
@@ -404,3 +405,11 @@ else:
     logger.error("Failed to get trigger setting.")
 
 turn_off_console_and_tx()
+
+
+window = 1000
+
+rigol = Rigol(channels=1, window=window,
+                  data_length=1200, volt_multiplier=(5, 5))
+
+maxv = rigol.acquireOnce()
