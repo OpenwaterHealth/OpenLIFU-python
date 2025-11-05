@@ -125,7 +125,8 @@ class LIFUInterface:
     def stop_monitoring(self) -> None:
         """Stop monitoring for USB device connections."""
         try:
-            self._tx_uart.stop_monitoring()
+            if self._tx_uart is not None:
+                self._tx_uart.stop_monitoring()
             if self._hv_uart is not None:
                 self._hv_uart.stop_monitoring()
         except Exception as e:
