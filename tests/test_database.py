@@ -15,7 +15,7 @@ from vtk import vtkImageData, vtkPolyData
 
 from openlifu import Solution
 from openlifu.db import Session, Subject, User
-from openlifu.db.database import Database, OnConflictOpts
+from openlifu.db.database import Database, OnConflictOpts, is_dicom_file_or_directory
 from openlifu.db.session import TransducerTrackingResult
 from openlifu.geo import ArrayTransform, Point
 from openlifu.nav.photoscan import Photoscan
@@ -743,3 +743,87 @@ def test_get_transducer_absolute_filepaths(example_database, tmp_path: Path, reg
         assert reconstructed_path.name == transducer_body.name
     else:
         assert absolute_file_paths["transducer_body_abspath"] is None
+
+def test_is_dicom_file_or_directory(tmp_path: Path):
+    test_dicom_file = Path(__file__).parent / "resources" / "CT_small.dcm"
+    assert test_dicom_file.exists(), "CT_small.dcm test file should exist"
+    assert is_dicom_file_or_directory(test_dicom_file)
+
+    non_dicom_file = tmp_path / "test.nii"
+    non_dicom_file.write_bytes(b'not a dicom file')
+    assert not is_dicom_file_or_directory(non_dicom_file)
+
+    dicom_dir = tmp_path / "dicom_series"
+    dicom_dir.mkdir()
+    shutil.copy(test_dicom_file, dicom_dir / "CT_small.dcm")
+    assert is_dicom_file_or_directory(dicom_dir)
+
+    non_dicom_dir = tmp_path / "non_dicom"
+    non_dicom_dir.mkdir()
+    (non_dicom_dir / "file.txt").write_text("not dicom")
+    assert not is_dicom_file_or_directory(non_dicom_dir)
+
+    assert not is_dicom_file_or_directory(tmp_path / "nonexistent.dcm")
+
+def test_write_volume_dicom(example_database: Database):
+    """Test writing a volume from DICOM file - conversion to NIfTI and storage"""
+    subject_id = "example_subject"
+    volume_id = "test_dicom_volume"
+    volume_name = "TEST_DICOM_VOLUME"
+
+    test_dicom_file = Path(__file__).parent / "resources" / "CT_small.dcm"
+    assert test_dicom_file.exists(), "CT_small.dcm test file should exist"
+
+    example_database.write_volume(subject_id, volume_id, volume_name, test_dicom_file)
+
+    volume_ids = example_database.get_volume_ids(subject_id)
+    assert volume_id in volume_ids
+
+    volume_metadata_filepath = example_database.get_volume_metadata_filepath(subject_id, volume_id)
+    assert volume_metadata_filepath.exists()
+    assert volume_metadata_filepath.name == f"{volume_id}.json"
+
+    # verify stored as nifti not dicom
+    volume_info = example_database.get_volume_info(subject_id, volume_id)
+    stored_file = Path(volume_info["data_abspath"])
+    assert stored_file.exists()
+    assert stored_file.suffix in [".nii", ".gz"]  # .nii.gz suffix
+    assert not is_dicom_file_or_directory(stored_file)
+
+def test_write_volume_dicom_directory(example_database: Database):
+    """Test writing a volume from DICOM directory (multi-slice series) - conversion to NIfTI and storage"""
+    subject_id = "example_subject"
+    volume_id = "test_dicom_series_volume"
+    volume_name = "TEST_DICOM_SERIES_VOLUME"
+
+    test_dicom_dir = Path(__file__).parent / "resources" / "dicom_series"
+    assert test_dicom_dir.exists(), "dicom_series directory should exist"
+    assert test_dicom_dir.is_dir()
+    assert len(list(test_dicom_dir.iterdir())) > 0, "dicom_series should contain files"
+
+    example_database.write_volume(subject_id, volume_id, volume_name, test_dicom_dir)
+
+    volume_ids = example_database.get_volume_ids(subject_id)
+    assert volume_id in volume_ids
+
+    volume_metadata_filepath = example_database.get_volume_metadata_filepath(subject_id, volume_id)
+    assert volume_metadata_filepath.exists()
+    assert volume_metadata_filepath.name == f"{volume_id}.json"
+
+    # verify stored as nifti not dicom
+    volume_info = example_database.get_volume_info(subject_id, volume_id)
+    stored_file = Path(volume_info["data_abspath"])
+    assert stored_file.exists()
+    assert stored_file.suffix in [".nii", ".gz"]  # .nii.gz suffix
+    assert not is_dicom_file_or_directory(stored_file)
+
+def test_write_volume_empty_directory(example_database: Database, tmp_path: Path):
+    subject_id = "example_subject"
+    volume_id = "test_empty_dir_volume"
+    volume_name = "TEST_EMPTY_DIR_VOLUME"
+
+    empty_dir = tmp_path / "empty_dir"
+    empty_dir.mkdir()
+
+    with pytest.raises(ValueError, match="directory without DICOM files"):
+        example_database.write_volume(subject_id, volume_id, volume_name, empty_dir)
