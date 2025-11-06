@@ -5,11 +5,15 @@ import json
 import logging
 import os
 import shutil
+import tempfile
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List
 
 import h5py
+import nibabel as nib
+import numpy as np
+import pydicom
 
 from openlifu.nav.photoscan import Photoscan, load_data_from_photoscan
 from openlifu.plan import Protocol, Run, Solution
@@ -23,6 +27,100 @@ from .subject import Subject
 from .user import User
 
 OnConflictOpts = Enum('OnConflictOpts', ['ERROR', 'OVERWRITE', 'SKIP'])
+
+
+def is_dicom_file_or_directory(path: PathLike) -> bool:
+    """
+    Check if a path is a DICOM file or directory containing DICOM files.
+
+    Args:
+        path: Path to check
+
+    Returns:
+        True if path is a DICOM file or directory with DICOM files, False otherwise
+    """
+    path = Path(path)
+
+    if path.is_file():
+        # check for 'DICM' magic bytes at offset 128
+        try:
+            with open(path, 'rb') as f:
+                f.seek(128)
+                return f.read(4) == b'DICM'
+        except OSError:
+            return False
+
+    elif path.is_dir():
+        for file in path.iterdir():
+            if file.is_file():
+                try:
+                    with open(file, 'rb') as f:
+                        f.seek(128)
+                        if f.read(4) == b'DICM':
+                            return True
+                except OSError:
+                    continue
+
+    return False
+
+
+def convert_dicom_to_nifti(input_path: PathLike, output_filepath: PathLike) -> None:
+    """
+    Convert DICOM file(s) to NIfTI format using pydicom and nibabel.
+
+    Args:
+        input_path: Path to either a DICOM file or directory containing DICOM files
+        output_filepath: Path where the output NIfTI file should be saved
+
+    Raises:
+        RuntimeError: If the conversion fails
+    """
+    input_path = Path(input_path)
+    output_filepath = Path(output_filepath)
+
+    try:
+        if input_path.is_file():
+            dicom_files = [input_path]
+        else:
+            # dicom files may not have .dcm extension
+            dicom_files = [f for f in input_path.iterdir() if f.is_file()]
+
+        if not dicom_files:
+            raise RuntimeError("No DICOM files found")
+
+        slices = []
+        for dcm_file in dicom_files:
+            try:
+                ds = pydicom.dcmread(dcm_file)
+                slices.append((ds.get('InstanceNumber', 0), ds.pixel_array))
+            except Exception:
+                # skip files that aren't valid dicom
+                continue
+
+        if not slices:
+            raise RuntimeError("No valid DICOM files found")
+
+        # sort by instance number - this is the slice order in the series
+        # so we reconstruct the 3D volume in the right order
+        slices.sort(key=lambda x: x[0])
+
+        # stack into 3D volume
+        if len(slices) == 1:
+            # single slice needs extra dimension
+            volume = slices[0][1][np.newaxis, :, :] if slices[0][1].ndim == 2 else slices[0][1]
+        else:
+            # multiple slices stacked along last axis
+            volume = np.stack([s[1] for s in slices], axis=-1)
+
+        # identity affine for now - could extract from dicom headers in the future
+        affine = np.eye(4)
+
+        nifti_img = nib.Nifti1Image(volume, affine)
+        nib.save(nifti_img, str(output_filepath))
+
+    except Exception as e:
+        raise RuntimeError(f"DICOM to NIfTI conversion failed: {e}") from e
+
 
 class Database:
     def __init__(self, path: str | None = None):
@@ -378,35 +476,60 @@ class Database:
         if not Path(volume_data_filepath).exists():
             raise ValueError(f'Volume data filepath does not exist: {volume_data_filepath}')
 
-        volume_ids = self.get_volume_ids(subject_id)
-        if volume_id in volume_ids:
-            if on_conflict == OnConflictOpts.ERROR:
-                raise ValueError(f"Volume with ID {volume_id} already exists for subject {subject_id}.")
-            elif on_conflict == OnConflictOpts.OVERWRITE:
-                self.logger.info(f"Overwriting volume with ID {volume_id} for subject {subject_id}.")
-            elif on_conflict == OnConflictOpts.SKIP:
-                self.logger.info(f"Skipping volume with ID {volume_id} for subject {subject_id} as it already exists.")
-                return
-            else:
-                raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
+        path = Path(volume_data_filepath)
+        if path.is_dir() and not is_dicom_file_or_directory(volume_data_filepath):
+            raise ValueError(f'Volume data filepath is a directory without DICOM files: {volume_data_filepath}')
 
-        # Create volume metadata
-        volume_metadata_dict = {"id": volume_id, "name": volume_name, "data_filename": Path(volume_data_filepath).name}
-        volume_metadata_json = json.dumps(volume_metadata_dict, separators=(',', ':'), cls=PYFUSEncoder)
+        # convert dicom to nifti if needed
+        temp_nifti_file = None
+        if is_dicom_file_or_directory(volume_data_filepath):
+            self.logger.info(f"Detected DICOM input for volume {volume_id}, converting to NIfTI format")
+            temp_nifti_file = tempfile.NamedTemporaryFile(suffix='.nii.gz', delete=False)
+            temp_nifti_path = Path(temp_nifti_file.name)
+            temp_nifti_file.close()
 
-        # Save the volume metadata to a JSON file and copy volume data file to database
-        volume_metadata_filepath = self.get_volume_metadata_filepath(subject_id, volume_id) #subject_id/volume/volume_id/volume_id.json
-        Path(volume_metadata_filepath).parent.parent.mkdir(exist_ok=True) # volume directory
-        Path(volume_metadata_filepath).parent.mkdir(exist_ok=True)
-        with open(volume_metadata_filepath, 'w') as file:
-            file.write(volume_metadata_json)
-        shutil.copy(Path(volume_data_filepath), Path(volume_metadata_filepath).parent)
+            try:
+                convert_dicom_to_nifti(volume_data_filepath, temp_nifti_path)
+                volume_data_filepath = temp_nifti_path
+            except Exception as e:
+                if temp_nifti_path.exists():
+                    temp_nifti_path.unlink()
+                raise RuntimeError(f"Failed to convert DICOM to NIfTI: {e}") from e
 
-        if volume_id not in volume_ids:
-            volume_ids.append(volume_id)
-            self.write_volume_ids(subject_id, volume_ids)
+        try:
+            volume_ids = self.get_volume_ids(subject_id)
+            if volume_id in volume_ids:
+                if on_conflict == OnConflictOpts.ERROR:
+                    raise ValueError(f"Volume with ID {volume_id} already exists for subject {subject_id}.")
+                elif on_conflict == OnConflictOpts.OVERWRITE:
+                    self.logger.info(f"Overwriting volume with ID {volume_id} for subject {subject_id}.")
+                elif on_conflict == OnConflictOpts.SKIP:
+                    self.logger.info(f"Skipping volume with ID {volume_id} for subject {subject_id} as it already exists.")
+                    return
+                else:
+                    raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
 
-        self.logger.info(f"Added volume with ID {volume_id} for subject {subject_id} to the database.")
+            volume_metadata_dict = {"id": volume_id, "name": volume_name, "data_filename": Path(volume_data_filepath).name}
+            volume_metadata_json = json.dumps(volume_metadata_dict, separators=(',', ':'), cls=PYFUSEncoder)
+
+            volume_metadata_filepath = self.get_volume_metadata_filepath(subject_id, volume_id)
+            Path(volume_metadata_filepath).parent.parent.mkdir(exist_ok=True)
+            Path(volume_metadata_filepath).parent.mkdir(exist_ok=True)
+            with open(volume_metadata_filepath, 'w') as file:
+                file.write(volume_metadata_json)
+            shutil.copy(Path(volume_data_filepath), Path(volume_metadata_filepath).parent)
+
+            if volume_id not in volume_ids:
+                volume_ids.append(volume_id)
+                self.write_volume_ids(subject_id, volume_ids)
+
+            self.logger.info(f"Added volume with ID {volume_id} for subject {subject_id} to the database.")
+        finally:
+            # cleanup temp nifti file
+            if temp_nifti_file is not None:
+                temp_path = Path(temp_nifti_file.name)
+                if temp_path.exists():
+                    temp_path.unlink()
 
     def write_photocollection(self, subject_id, session_id, reference_number: str, photo_paths: List[PathLike], on_conflict=OnConflictOpts.ERROR):
         """ Writes a photocollection to database and copies the associated
