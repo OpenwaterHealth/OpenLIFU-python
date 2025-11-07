@@ -88,8 +88,6 @@ interval_msec = 200
 num_modules = 2
 use_external_power_supply = False
 CONSOLE_SHUTOFF_TEMP_C = 70.0
-INITIAL_TEMP_SHUTOFF_C = 40
-INITIAL_TIME_WINDOW = 5
 RAPID_TRANSMITTER_TEMP_INCREASE_PER_SECOND_SHUTOFF_C = 3
 RAPID_CONSOLE_TEMP_INCREASE_PER_SECOND_SHUTOFF_C = 5
 TEMPERATURE_CHECK_INTERVAL = 1
@@ -218,8 +216,6 @@ sequence_complete_event = threading.Event()
 temperature_shutdown_event = threading.Event()
 
 def monitor_temperature(
-        initial_temp_shutoff_C=INITIAL_TEMP_SHUTOFF_C,
-        initial_time_window=INITIAL_TIME_WINDOW,
         rapid_tx_temp_increase_per_second_shutoff_C=RAPID_TRANSMITTER_TEMP_INCREASE_PER_SECOND_SHUTOFF_C,
         rapid_con_temp_increase_per_second_shutoff_C=RAPID_CONSOLE_TEMP_INCREASE_PER_SECOND_SHUTOFF_C,
         console_shutoff_temp_C=CONSOLE_SHUTOFF_TEMP_C,
@@ -266,19 +262,6 @@ def monitor_temperature(
                 logger.info(f"  Console Temp: {con_temp}°C, TX Temp: {tx_temp}°C, Ambient Temp: {amb_temp}°C")
             else:
                 logger.info(f"TX Temp: {tx_temp}°C, Ambient Temp: {amb_temp}°C")
-
-        # Check for initial temperature rise at startup
-        within_initial_time_threshold = time_elapsed < initial_time_window
-        if within_initial_time_threshold:
-            if not use_external_power_supply and (con_temp > initial_temp_shutoff_C):
-                logger.warning(f"Console temperature {con_temp}°C exceeds initial shutoff threshold of {initial_temp_shutoff_C}°C within {initial_time_window}s.")
-                break
-            if (tx_temp > initial_temp_shutoff_C):
-                logger.warning(f"TX device temperature {tx_temp}°C exceeds initial shutoff threshold of {initial_temp_shutoff_C}°C within {initial_time_window}s.")
-                break
-            if (amb_temp > initial_temp_shutoff_C):
-                logger.warning(f"Ambient temperature {amb_temp}°C exceeds initial shutoff threshold of {initial_temp_shutoff_C}°C within {initial_time_window}s.")
-                break
 
         # Check for rapid temperature increase
         if not use_external_power_supply:
