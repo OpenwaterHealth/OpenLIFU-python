@@ -104,13 +104,8 @@ def convert_dicom_to_nifti(input_path: PathLike, output_filepath: PathLike) -> N
         # so we reconstruct the 3D volume in the right order
         slices.sort(key=lambda x: x[0])
 
-        # stack into 3D volume
-        if len(slices) == 1:
-            # single slice needs extra dimension
-            volume = slices[0][1][np.newaxis, :, :] if slices[0][1].ndim == 2 else slices[0][1]
-        else:
-            # multiple slices stacked along last axis
-            volume = np.stack([s[1] for s in slices], axis=-1)
+        # stack into 3D volume (handles both single and multiple slices)
+        volume = np.stack([s[1] for s in slices], axis=-1)
 
         # identity affine for now - could extract from dicom headers in the future
         affine = np.eye(4)
@@ -481,12 +476,12 @@ class Database:
             raise ValueError(f'Volume data filepath is a directory without DICOM files: {volume_data_filepath}')
 
         # convert dicom to nifti if needed
-        temp_nifti_file = None
+        temp_nifti_path = None
         if is_dicom_file_or_directory(volume_data_filepath):
             self.logger.info(f"Detected DICOM input for volume {volume_id}, converting to NIfTI format")
-            temp_nifti_file = tempfile.NamedTemporaryFile(suffix='.nii.gz', delete=False)
-            temp_nifti_path = Path(temp_nifti_file.name)
-            temp_nifti_file.close()
+            temp_file = tempfile.NamedTemporaryFile(suffix='.nii.gz', delete=False)
+            temp_nifti_path = Path(temp_file.name)
+            temp_file.close()
 
             try:
                 convert_dicom_to_nifti(volume_data_filepath, temp_nifti_path)
@@ -526,10 +521,8 @@ class Database:
             self.logger.info(f"Added volume with ID {volume_id} for subject {subject_id} to the database.")
         finally:
             # cleanup temp nifti file
-            if temp_nifti_file is not None:
-                temp_path = Path(temp_nifti_file.name)
-                if temp_path.exists():
-                    temp_path.unlink()
+            if temp_nifti_path is not None and temp_nifti_path.exists():
+                temp_nifti_path.unlink()
 
     def write_photocollection(self, subject_id, session_id, reference_number: str, photo_paths: List[PathLike], on_conflict=OnConflictOpts.ERROR):
         """ Writes a photocollection to database and copies the associated
