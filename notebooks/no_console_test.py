@@ -18,7 +18,6 @@ from openlifu.bf.pulse import Pulse
 from openlifu.bf.sequence import Sequence
 from openlifu.db import Database
 from openlifu.geo import Point
-from openlifu.io.LIFUInterface import LIFUInterface
 from openlifu.plan import Protocol
 from openlifu.sim import SimSetup
 
