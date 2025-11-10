@@ -37,8 +37,10 @@ def find_nearest(array, value):
     return idx
 
 # set focus
-simulate = False
-plot = False
+simulate = True
+plot = True
+simulate2 = True
+
 xInput = 0
 yInput = 0
 zInput = 45
@@ -71,7 +73,8 @@ simulation_options = SimulationOptions(
 target = Point(position=(xInput,yInput,zInput), units="mm")
 
 execution_options = SimulationExecutionOptions(is_gpu_simulation=True)
-spacing = 0.5
+spacing = 1
+# spacing = 0.125
 sim_setup = SimSetup(spacing=spacing, dt=2e-7, t_end=100e-6)
 focal_pattern = focal_patterns.SinglePoint(target_pressure=300e3)
 apod_method = apod_methods.Uniform()
@@ -94,9 +97,6 @@ cycles = 20
 t = np.arange(0, cycles / freq, kgrid.dt)
 input_signal = amplitude * np.sin(2 * np.pi * freq * t)
 source_mat = arr.calc_output(input_signal, kgrid.dt, delays, apod)
-
-coords = protocol.sim_setup.get_coords()
-params = protocol.seg_method.ref_params(coords)
 
 units = [params[dim].attrs['units'] for dim in params.dims]
 scl = getunitconversion(units[0], 'm')
@@ -135,19 +135,21 @@ if simulate:
                             name='I',
                             attrs={'units':'W/cm^2', 'long_name':'Intensity'})
     ds = xa.Dataset({'p_max':p_max, 'p_min':p_min, 'intensity':intensity})
-
-    plt.figure()
-    plt.imshow(p_max[:,30,:])
-    plt.colorbar()
+    if plot == True:
+        plt.figure()
+        plt.imshow(p_max[:,round(kgrid.Ny/2),:])
+        plt.colorbar()
 
 sensor_mask_pos = np.array([el.get_position(units='m') for el in arr.elements]).T*100
 
-==
 if plot:
+    xs, ys, zs = (sensor_mask_pos[0],sensor_mask_pos[1],sensor_mask_pos[2])
     fig = plt.figure(figsize=(12, 12))
     ax = fig.add_subplot(projection='3d')
+    ax.set_box_aspect((np.ptp(xs), np.ptp(ys), np.ptp(zs))) 
     ax.scatter(sensor_mask_pos[0],sensor_mask_pos[1],sensor_mask_pos[2])
-    plt.show()
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
 
 x_values = np.floor(kgrid.Nx/2)
 y_values = np.floor(kgrid.Ny/2)
@@ -156,46 +158,64 @@ z_values = np.floor(kgrid.Nz/2)
 x_range = np.arange(-x_values/2,x_values/2+spacing,spacing)
 y_range = np.arange(-y_values/2,y_values/2+spacing,spacing)
 z_range = np.arange(-z_values/2,z_values/2+spacing,spacing)
+ele_bin = np.zeros((kgrid.Nx,kgrid.Ny,kgrid.Nz))
+ele_sensors = np.empty((128))
 
-ele_sensors = []
 for i in range(128):
     ind_x = find_nearest(x_range,sensor_mask_pos[0][i])
     ind_y = find_nearest(x_range,sensor_mask_pos[1][i])
     ind_z = find_nearest(x_range,sensor_mask_pos[2][i])
-    ele_sensors.append([ind_x,ind_y,ind_z])
+    # ele_sensors[i] = np.array([ind_x,ind_y,ind_z])
+    ele_bin[ind_x,ind_y,ind_z] = 1
 
-ele_sensors = np.array([ele_sensors]).reshape(3,128)
+# if plot:
+#     xs, ys, zs = (ele_sensors[0],ele_sensors[1],ele_sensors[2])
+#     fig = plt.figure(figsize=(12, 12))
+#     ax = fig.add_subplot(projection='3d')
+#     ax.set_box_aspect((np.ptp(xs), np.ptp(ys), np.ptp(zs))) 
+#     ax.scatter(ele_sensors[0],ele_sensors[1],ele_sensors[2])
+    
+#     ax.set_xlabel('x')
+#     ax.set_ylabel('y')
 
-fig = plt.figure(figsize=(12, 12))
-ax = fig.add_subplot(projection='3d')
-ax.scatter(ele_sensors[0],ele_sensors[1],ele_sensors[2])
-ax.set_xlabel('x')
-ax.set_ylabel('y')
-# ax.set_zlabel('z')
-plt.show()
+# print(ele_sensors)
 
-if simulate:
-    sensor2 = kSensor(sensor_mask,record=['p'])
+if simulate2:
+    sensor2 = kSensor(record=['p'])
+    # sensor2.mask = ele_bin
+    sensor2.mask = karray.get_array_binary_mask(kgrid)
     source2 = kSource()
-    source2.p0 = p_max
+    source2.p0 = p_max.to_numpy()
+    kgrid2 = get_kgrid(coords)
+    medium2 = get_medium(params)
 
     sensor_data = kspaceFirstOrder3D(
-        kgrid=kgrid,
+        kgrid=kgrid2,
         source=source2,
         sensor=sensor2,
-        medium=medium,
+        medium=medium2,
         simulation_options=simulation_options,
         execution_options=execution_options
     )
 
+    if plot:
+        plt.figure(figsize=(10, 6))
+        plt.imshow(sensor_data['p'], aspect='auto', extent=[
+            0, kgrid.Nt * kgrid.dt * 1e6,  # Time in μs
+            0, sensor_data['p'].shape[0]  # Sensor number
+        ])
+        plt.xlabel('Time (μs)')
+        plt.ylabel('Sensor Number')
+        plt.title('Recorded Pressure at Boundary Sensors')
+        plt.colorbar(label='Pressure (Pa)')
 
-    plt.figure(figsize=(10, 6))
-    plt.imshow(sensor_data['p'], aspect='auto', extent=[
-        0, kgrid.Nt * kgrid.dt * 1e6,  # Time in μs
-        0, sensor_data['p'].shape[0]  # Sensor number
-    ])
-    plt.xlabel('Time (μs)')
-    plt.ylabel('Sensor Number')
-    plt.title('Recorded Pressure at Boundary Sensors')
-    plt.colorbar(label='Pressure (Pa)')
+        plt.figure()
+        plt.imshow(sensor2.mask[:,round(kgrid2.Ny/2),:])
+
+if plot:
     plt.show()
+
+print('num ele')
+print(np.sum(ele_bin))
+print(f'num grid: {np.sum(sensor2.mask)}')
+# amp, phase, freq = extract_amp_phase(np.squeeze(sensor_data['p']),1/kgrid.dt,freq)
