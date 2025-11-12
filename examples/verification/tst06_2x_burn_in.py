@@ -109,7 +109,7 @@ test_cases = {
 }
 
 
-pulse_interval_msec = 200
+pulse_interval_msec = 100
 num_modules = 2
 use_external_power_supply = False
 CONSOLE_SHUTOFF_TEMP_C = 70.0

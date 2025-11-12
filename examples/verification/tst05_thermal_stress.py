@@ -84,7 +84,7 @@ test_cases = {
 
 frequencies_kHz = {1: 150, 2: 400}
 
-interval_msec = 200
+interval_msec = 100
 num_modules = 2
 use_external_power_supply = False
 CONSOLE_SHUTOFF_TEMP_C = 70.0
