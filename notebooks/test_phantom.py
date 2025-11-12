@@ -335,8 +335,9 @@ if interface.start_sonication():
         logger.info(f"Sonication stopping in {i} seconds")
         time.sleep(1)
 
+    shutdown_event.set()
     # Wait for threads to finish
-    # user_input.join()
+    user_input.join()
 
     # time.sleep(0.5)  # Give the logging thread time to finish
     if interface.stop_sonication():
