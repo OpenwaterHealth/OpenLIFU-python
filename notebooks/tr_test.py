@@ -82,9 +82,9 @@ def generate_ct_noise(kgrid):
     return sine_image
 
 # set focus
-simulate = True
+simulate = False
 plot = True
-simulate2 = True
+simulate2 = False
 use_ct_noise = True
 
 xInput = 0
@@ -210,9 +210,9 @@ ele_sensors = np.empty((128))
 
 for i in range(128):
     ind_x = find_nearest(x_range,sensor_mask_pos[0][i])
-    ind_y = find_nearest(x_range,sensor_mask_pos[1][i])
-    ind_z = find_nearest(x_range,sensor_mask_pos[2][i])
-    # ele_sensors[i] = np.array([ind_x,ind_y,ind_z])
+    ind_y = find_nearest(y_range,sensor_mask_pos[1][i])
+    ind_z = find_nearest(z_range,sensor_mask_pos[2][i])
+    print(f'{(sensor_mask_pos[0][i],sensor_mask_pos[1][i],sensor_mask_pos[2][i])}:{(ind_x,ind_y,ind_z)}')
     ele_bin[ind_x,ind_y,ind_z] = 1
 
 # if plot:
