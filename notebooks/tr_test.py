@@ -30,20 +30,66 @@ import xarray as xa
 from openlifu.util.units import getunitconversion
 from kwave.ksensor import kSensor
 from kwave.ksource import kSource
+from kwave.kmedium import kWaveMedium
+from scipy import ndimage
+
+
+# medium parameters
+c_min               = 1500     # sound speed [m/s]
+c_max               = 3100     # max. speed of sound in skull (F. A. Duck, 2013.) [m/s]
+rho_min             = 1000     # density [kg/m^3]
+rho_max             = 1900     # max. skull density [kg/m3]
+# alpha_power         = 1.43     # Robertson et al., PMB 2017 usually between 1 and 3? from Treeby paper
+alpha_power = 0.9
+alpha_coeff_water   = 0        # [dB/(MHz^y cm)] close to 0 (Mueller et al., 2017), see also 0.05 Fomenko et al., 2020?
+alpha_coeff_min     = 4     
+alpha_coeff_max     = 8.7      # [dB/(MHz cm)] Fry 1978 at 0.5MHz: 1 Np/cm (8.7 dB/cm) for both diploe and outer tables
+
+hu_min 	= 300
+hu_max 	= 2000	
 
 def find_nearest(array, value):
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
     return idx
 
+def generate_ct_noise(kgrid):
+    hu_max 	= 2000
+    width = kgrid.Nx
+    height = kgrid.Ny
+    depth = kgrid.Nz
+    x = np.arange(width)
+    y = np.arange(height)
+    z = np.arange(depth)
+
+    X, Y, Z = np.meshgrid(x, y, z)
+    p = np.random.rand(width,height,depth)
+    wavelength_x = 100000 
+    wavelength_y = 15000 
+    amplitude = 1
+
+    sine_image = amplitude * np.sin(2 * np.pi * (X / wavelength_x + Y / wavelength_y)) + p
+
+    sine_image = np.abs(sine_image)
+    max_val = sine_image.max()
+    scale_factor = 1500/max_val
+    sine_image = sine_image*scale_factor
+    sine_image = ndimage.median_filter(sine_image,3)
+
+    sine_image[sine_image<hu_min] = 0
+    sine_image[sine_image>hu_max] = hu_max
+
+    return sine_image
+
 # set focus
 simulate = True
 plot = True
 simulate2 = True
+use_ct_noise = True
 
 xInput = 0
 yInput = 0
-zInput = 45
+zInput = 25
 
 frequency_kHz = 400 # Frequency in kHz
 duration_msec = 0.1 # Pulse Duration in milliseconds
@@ -73,8 +119,8 @@ simulation_options = SimulationOptions(
 target = Point(position=(xInput,yInput,zInput), units="mm")
 
 execution_options = SimulationExecutionOptions(is_gpu_simulation=True)
-spacing = 1
-# spacing = 0.125
+# spacing = 1
+spacing = 0.25
 sim_setup = SimSetup(spacing=spacing, dt=2e-7, t_end=100e-6)
 focal_pattern = focal_patterns.SinglePoint(target_pressure=300e3)
 apod_method = apod_methods.Uniform()
@@ -102,7 +148,7 @@ units = [params[dim].attrs['units'] for dim in params.dims]
 scl = getunitconversion(units[0], 'm')
 array_offset =[-float(coord.mean())*scl for coord in params.coords.values()]
 bli_tolerance = 0.05
-upsampling_rate = 5
+upsampling_rate = 1
 karray = get_karray(arr,
                     translation=array_offset,
                     bli_tolerance=bli_tolerance,
@@ -138,6 +184,7 @@ if simulate:
     if plot == True:
         plt.figure()
         plt.imshow(p_max[:,round(kgrid.Ny/2),:])
+        plt.title('initial pressure distribution')
         plt.colorbar()
 
 sensor_mask_pos = np.array([el.get_position(units='m') for el in arr.elements]).T*100
@@ -182,12 +229,33 @@ for i in range(128):
 
 if simulate2:
     sensor2 = kSensor(record=['p'])
-    # sensor2.mask = ele_bin
-    sensor2.mask = karray.get_array_binary_mask(kgrid)
+    sensor2.mask = ele_bin
+    # sensor2.mask = karray.get_array_binary_mask(kgrid)
     source2 = kSource()
     source2.p0 = p_max.to_numpy()
     kgrid2 = get_kgrid(coords)
-    medium2 = get_medium(params)
+    if use_ct_noise:
+        ct_noise = generate_ct_noise(kgrid2)
+        # if plot:
+        #     plt.figure()
+        #     plt.imshow(ct_noise[:,round(kgrid.Ny/2),:])
+        #     plt.title('noisegen')
+        #     plt.colorbar()
+        model = np.zeros_like(ct_noise)
+        model[:,:,zInput-7:zInput-3] = ct_noise[:,:,zInput-7:zInput-3]
+        dmap = rho_min + (rho_max-rho_min)*(model-0)/(hu_max-0)
+        cmap = c_min + (c_max-c_min)*(dmap-rho_min)/(rho_max-rho_min)
+        amap = alpha_coeff_min+(alpha_coeff_max-alpha_coeff_min)*(1-(model-hu_min)/(hu_max-hu_min))**0.5
+        medium2 = kWaveMedium(sound_speed=cmap,density=dmap,alpha_coeff=amap,alpha_power=alpha_power,alpha_mode='no_dispersion')
+        if plot:
+            plt.figure()
+            plt.imshow(model[:,round(kgrid.Ny/2),:])
+            plt.title('medium')
+            plt.colorbar()
+
+    else:
+        medium2 = get_medium(params)
+
 
     sensor_data = kspaceFirstOrder3D(
         kgrid=kgrid2,
@@ -209,8 +277,32 @@ if simulate2:
         plt.title('Recorded Pressure at Boundary Sensors')
         plt.colorbar(label='Pressure (Pa)')
 
-        plt.figure()
-        plt.imshow(sensor2.mask[:,round(kgrid2.Ny/2),:])
+    medium3 = get_medium(params)
+    sensor3 = kSensor(record=['p'])
+    sensor3.mask = ele_bin
+    # sensor2.mask = karray.get_array_binary_mask(kgrid)
+    source3 = kSource()
+    source3.p0 = p_max.to_numpy()
+    kgrid3 = get_kgrid(coords)
+    sensor_data = kspaceFirstOrder3D(
+        kgrid=kgrid3,
+        source=source3,
+        sensor=sensor3,
+        medium=medium3,
+        simulation_options=simulation_options,
+        execution_options=execution_options
+    )
+
+    if plot:
+        plt.figure(figsize=(10, 6))
+        plt.imshow(sensor_data['p'], aspect='auto', extent=[
+            0, kgrid.Nt * kgrid.dt * 1e6,  # Time in μs
+            0, sensor_data['p'].shape[0]  # Sensor number
+        ])
+        plt.xlabel('Time (μs)')
+        plt.ylabel('Sensor Number')
+        plt.title('Recorded Pressure at Boundary Sensors no noise')
+        plt.colorbar(label='Pressure (Pa)')
 
 if plot:
     plt.show()

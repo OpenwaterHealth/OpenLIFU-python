@@ -13,7 +13,6 @@ from openlifu.plan import Protocol
 from openlifu.sim import SimSetup
 from kwave.options.simulation_execution_options import SimulationExecutionOptions
 from kwave.options.simulation_options import SimulationOptions
-from kwave import 
 # set focus
 xInput = 0
 yInput = 0
@@ -45,9 +44,9 @@ focal_pattern = focal_patterns.SinglePoint(target_pressure=300e3)
 apod_method = apod_methods.Uniform()
 delay_method = delay_methods.Direct()
 
-width = 
-height = 
-depth = 
+width = 80
+height = 80
+depth = 80
 
 x = np.arange(width)
 y = np.arange(height)
@@ -55,7 +54,6 @@ z = np.arange(depth)
 
 X, Y, Z = np.meshgrid(x, y, z)
 p = np.random.rand(width,height,depth)
-noise = np.random.normal(p,0.2*p)
 wavelength_x = 100000 
 wavelength_y = 15000 
 amplitude = 1
@@ -68,10 +66,7 @@ scale_factor = 1500/max_val
 sine_image = sine_image*scale_factor
 sine_image = ndimage.median_filter(sine_image,3)
 
-plt.figure()
-plt.imshow(sine_image[:,:,10])
-plt.colorbar()
-plt.show()
+
 
 # medium parameters
 c_min               = 1500     # sound speed [m/s]
@@ -86,46 +81,24 @@ alpha_coeff_max     = 8.7      # [dB/(MHz cm)] Fry 1978 at 0.5MHz: 1 Np/cm (8.7 
 hu_min 	= 300
 hu_max 	= 2000	
 
-if max_val < hu_max:
-    hu_max = max_val
+# if max_val < hu_max:
+#     hu_max = max_val
 
+plt.figure()
+plt.imshow(sine_image[:,:,10])
+plt.colorbar()
+print((hu_min,hu_max))
 sine_image[sine_image<hu_min] = 0
 sine_image[sine_image>hu_max] = hu_max
-padx = 20
-tmp_model = np.zeros(np.size(sine_image))
 
-midpoint = np.round([xInput/2,yInput/2,zInput/2])
-
-simulation_options = SimulationOptions(
-                        pml_auto=True,
-                        pml_inside=False,
-                        save_to_disk=True,
-                        data_cast='single'
-                    )
-execution_options = SimulationExecutionOptions(is_gpu_simulation=True)
-
-sim_setup = SimSetup(x_extent=(-55,55), y_extent=(-30,30), z_extent=(-4,150))
-
-protocol = Protocol(
-    id='test_protocol',
-    name='Test Protocol',
-    pulse=pulse,
-    sequence=sequence,
-    focal_pattern=focal_pattern,
-    apod_method=apod_method,
-    sim_setup=sim_setup)
-
-solution, sim_res, scaled_analysis = protocol.calc_solution(
-    target=target,
-    transducer=arr,
-    simulate=True,
-    scale=True,
-    use_gpu=True)
-
-p_map = sim_res['p_max']
 plt.figure()
-plt.imshow(p_map[:,30,:])
+plt.imshow(sine_image[:,:,10])
+plt.colorbar()
+
+model = np.zeros_like(sine_image)
+model[:,zInput-7:zInput-3,:] = sine_image[:,zInput-7:zInput-3,:]
+
+plt.figure()
+plt.imshow(model[:,:,10])
 plt.colorbar()
 plt.show()
-
-
