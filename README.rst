@@ -58,14 +58,14 @@ Dev mode
 Installing Meshroom
 -------------------
 
-If you are using ``openlifu.nav.photoscan`` to reconstruct meshes from photo collections, then you will need to set up **Meshroom**.
+If you are using ``openlifu.nav.photoscan`` to reconstruct meshes from photo collections, then you will need to set up **Meshroom 2023.3.0**.
 
 Ubuntu
 ~~~~~~
 
 Download and Extract
 ^^^^^^^^^^^^^^^^^^^^
-1. Download Meshroom for Linux from `<https://alicevision.org/#meshroom>`_.
+1. Download Meshroom 2023.3.0 for Linux from `<https://github.com/alicevision/Meshroom/releases/tag/v2023.3.0>`_.
 2. Extract the downloaded archive:
 
    .. code:: bash
@@ -98,7 +98,7 @@ Windows
 Download and Extract
 ^^^^^^^^^^^^^^^^^^^^
 
-1. Download Meshroom for Windows from `<https://alicevision.org/#meshroom>`_.
+1. Download Meshroom 2023.3.0 for Windows from `<https://github.com/alicevision/Meshroom/releases/tag/v2023.3.0>`_.
 2. Extract the downloaded archive to a directory of your choice.
 
 Add Meshroom to PATH
