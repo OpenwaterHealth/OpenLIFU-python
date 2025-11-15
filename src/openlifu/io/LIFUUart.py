@@ -5,6 +5,7 @@ import logging
 import queue
 import threading
 import time
+from contextlib import suppress
 
 import serial
 import serial.tools.list_ports
@@ -293,6 +294,34 @@ class LIFUUart:
                 return port.device
         return None
 
+    def reopen_after_reset(self, retries=5, delay=1.0):
+        """
+        Attempt to reopen the serial port after a device reset or disconnection.
+        Returns True if reconnected, False otherwise.
+        """
+        try:
+            if self.serial and self.serial.is_open:
+                with suppress(Exception):
+                    self.serial.close()
+            self.serial = None
+            self.port = None
+            for _ in range(retries):
+                time.sleep(delay)
+                port = self.list_vcp_with_vid_pid()
+                if port:
+                    self.port = port
+                    try:
+                        self.connect()
+                        log.info("Reconnected to UART on %s after reset.", self.port)
+                        return True
+                    except Exception as e:
+                        log.warning("Reconnect attempt failed: %s", e)
+            log.error("Failed to reconnect UART after reset.")
+            return False
+        except Exception as e:
+            log.error("reopen_after_reset() error: %s", e)
+            return False
+
     def _read_data(self, timeout=20):
         """Read data from the serial port in a separate thread."""
         log.debug("Starting data read loop for %s.", self.descriptor)
@@ -371,7 +400,14 @@ class LIFUUart:
 
         while timeout == -1 or time.monotonic() - start_time < timeout:
             time.sleep(0.05)
-            raw_data += self.serial.read_all()
+            try:
+                raw_data += self.serial.read_all()
+            except serial.SerialException as e:
+                if "ClearCommError" in str(e):
+                    log.warning("Serial lost during read_packet; attempting reconnect...")
+                    self.reopen_after_reset()
+                    return None
+                raise
             if raw_data:
                 count += 1
                 if count > 1:
@@ -435,7 +471,14 @@ class LIFUUart:
             self._tx(packet)
 
             if not self.asyncMode:
-                return self.read_packet(timeout=timeout)
+                try:
+                    return self.read_packet(timeout=timeout)
+                except serial.SerialException as e:
+                    if "ClearCommError" in str(e):
+                        log.warning("Serial handle lost after RESET, attempting reconnect...")
+                        self.reopen_after_reset()
+                        return None
+                    raise
             else:
                 response_queue = queue.Queue()
                 with self.response_lock:

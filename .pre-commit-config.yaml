@@ -88,3 +88,5 @@ repos:
       - id: check-dependabot
       - id: check-github-workflows
       - id: check-readthedocs
+
+exclude: (?x)( ^examples )

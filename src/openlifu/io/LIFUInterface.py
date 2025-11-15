@@ -110,10 +110,13 @@ class LIFUInterface:
     async def start_monitoring(self, interval: int = 1) -> None:
         """Start monitoring for USB device connections."""
         try:
-            await asyncio.gather(
-                self._tx_uart.monitor_usb_status(interval),
-                self._hv_uart.monitor_usb_status(interval)
-            )
+            if self._hv_uart is not None:
+                await asyncio.gather(
+                    self._tx_uart.monitor_usb_status(interval),
+                    self._hv_uart.monitor_usb_status(interval)
+                )
+            else:
+                await self._tx_uart.monitor_usb_status(interval)
 
         except Exception as e:
             logger.error("Error starting monitoring: %s", e)
@@ -122,8 +125,10 @@ class LIFUInterface:
     def stop_monitoring(self) -> None:
         """Stop monitoring for USB device connections."""
         try:
-            self._tx_uart.stop_monitoring()
-            self._hv_uart.stop_monitoring()
+            if self._tx_uart is not None:
+                self._tx_uart.stop_monitoring()
+            if self._hv_uart is not None:
+                self._hv_uart.stop_monitoring()
         except Exception as e:
             logger.error("Error stopping monitoring: %s", e)
             raise e
@@ -412,17 +417,17 @@ class LIFUInterface:
             raise e
 
     def close(self):
-        pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
         self.stop_monitoring()
         if self.txdevice:
             self.txdevice.close()
         if self.hvcontroller:
             self.hvcontroller.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
 
     @staticmethod
     def get_sdk_version() -> str:
