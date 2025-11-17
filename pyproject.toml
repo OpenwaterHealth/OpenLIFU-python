@@ -251,6 +251,7 @@ messages_control.disable = [
   "duplicate-code",
   "cyclic-import",
   "unreachable", # This is to allow marking of TODO items with a NotImplementedError
+  "c-extension-no-member",
 ]
 
 [tool.setuptools.package-data]

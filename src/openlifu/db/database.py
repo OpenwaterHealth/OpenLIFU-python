@@ -393,9 +393,8 @@ class Database:
         temp_nifti_path = None
         if is_dicom_file_or_directory(volume_data_filepath):
             self.logger.info(f"Detected DICOM input for volume {volume_id}, converting to NIfTI format")
-            temp_file = tempfile.NamedTemporaryFile(suffix='.nii.gz', delete=False)
-            temp_nifti_path = Path(temp_file.name)
-            temp_file.close()
+            with tempfile.NamedTemporaryFile(suffix='.nii.gz', delete=False) as temp_file:
+                temp_nifti_path = Path(temp_file.name)
 
             try:
                 convert_dicom_to_nifti(volume_data_filepath, temp_nifti_path)
