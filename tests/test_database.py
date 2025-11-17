@@ -15,11 +15,12 @@ from vtk import vtkImageData, vtkPolyData
 
 from openlifu import Solution
 from openlifu.db import Session, Subject, User
-from openlifu.db.database import Database, OnConflictOpts, is_dicom_file_or_directory
+from openlifu.db.database import Database, OnConflictOpts
 from openlifu.db.session import TransducerTrackingResult
 from openlifu.geo import ArrayTransform, Point
 from openlifu.nav.photoscan import Photoscan
 from openlifu.plan import Protocol, Run
+from openlifu.util.volume_conversion import is_dicom_file_or_directory
 from openlifu.xdc import Transducer
 
 
@@ -743,27 +744,6 @@ def test_get_transducer_absolute_filepaths(example_database, tmp_path: Path, reg
         assert reconstructed_path.name == transducer_body.name
     else:
         assert absolute_file_paths["transducer_body_abspath"] is None
-
-def test_is_dicom_file_or_directory(tmp_path: Path):
-    test_dicom_file = Path(__file__).parent / "resources" / "CT_small.dcm"
-    assert test_dicom_file.exists(), "CT_small.dcm test file should exist"
-    assert is_dicom_file_or_directory(test_dicom_file)
-
-    non_dicom_file = tmp_path / "test.nii"
-    non_dicom_file.write_bytes(b'not a dicom file')
-    assert not is_dicom_file_or_directory(non_dicom_file)
-
-    dicom_dir = tmp_path / "dicom_series"
-    dicom_dir.mkdir()
-    shutil.copy(test_dicom_file, dicom_dir / "CT_small.dcm")
-    assert is_dicom_file_or_directory(dicom_dir)
-
-    non_dicom_dir = tmp_path / "non_dicom"
-    non_dicom_dir.mkdir()
-    (non_dicom_dir / "file.txt").write_text("not dicom")
-    assert not is_dicom_file_or_directory(non_dicom_dir)
-
-    assert not is_dicom_file_or_directory(tmp_path / "nonexistent.dcm")
 
 def test_write_volume_dicom(example_database: Database):
     """Test writing a volume from DICOM file - conversion to NIfTI and storage"""
