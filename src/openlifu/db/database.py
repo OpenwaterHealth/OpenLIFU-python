@@ -12,13 +12,15 @@ from typing import Dict, List
 
 import h5py
 import nibabel as nib
-import numpy as np
-import pydicom
 
 from openlifu.nav.photoscan import Photoscan, load_data_from_photoscan
 from openlifu.plan import Protocol, Run, Solution
 from openlifu.util.json import PYFUSEncoder
 from openlifu.util.types import PathLike
+from openlifu.util.volume_conversion import (
+    convert_dicom_to_nifti,
+    is_dicom_file_or_directory,
+)
 from openlifu.xdc import Transducer, TransducerArray
 from openlifu.xdc.util import load_transducer_from_file
 
@@ -27,94 +29,6 @@ from .subject import Subject
 from .user import User
 
 OnConflictOpts = Enum('OnConflictOpts', ['ERROR', 'OVERWRITE', 'SKIP'])
-
-
-def is_dicom_file_or_directory(path: PathLike) -> bool:
-    """
-    Check if a path is a DICOM file or directory containing DICOM files.
-
-    Args:
-        path: Path to check
-
-    Returns:
-        True if path is a DICOM file or directory with DICOM files, False otherwise
-    """
-    path = Path(path)
-
-    if path.is_file():
-        # check for 'DICM' magic bytes at offset 128
-        try:
-            with open(path, 'rb') as f:
-                f.seek(128)
-                return f.read(4) == b'DICM'
-        except OSError:
-            return False
-
-    elif path.is_dir():
-        for file in path.iterdir():
-            if file.is_file():
-                try:
-                    with open(file, 'rb') as f:
-                        f.seek(128)
-                        if f.read(4) == b'DICM':
-                            return True
-                except OSError:
-                    continue
-
-    return False
-
-
-def convert_dicom_to_nifti(input_path: PathLike, output_filepath: PathLike) -> None:
-    """
-    Convert DICOM file(s) to NIfTI format using pydicom and nibabel.
-
-    Args:
-        input_path: Path to either a DICOM file or directory containing DICOM files
-        output_filepath: Path where the output NIfTI file should be saved
-
-    Raises:
-        RuntimeError: If the conversion fails
-    """
-    input_path = Path(input_path)
-    output_filepath = Path(output_filepath)
-
-    try:
-        if input_path.is_file():
-            dicom_files = [input_path]
-        else:
-            # dicom files may not have .dcm extension
-            dicom_files = [f for f in input_path.iterdir() if f.is_file()]
-
-        if not dicom_files:
-            raise RuntimeError("No DICOM files found")
-
-        slices = []
-        for dcm_file in dicom_files:
-            try:
-                ds = pydicom.dcmread(dcm_file)
-                slices.append((ds.get('InstanceNumber', 0), ds.pixel_array))
-            except Exception:
-                # skip files that aren't valid dicom
-                continue
-
-        if not slices:
-            raise RuntimeError("No valid DICOM files found")
-
-        # sort by instance number - this is the slice order in the series
-        # so we reconstruct the 3D volume in the right order
-        slices.sort(key=lambda x: x[0])
-
-        # stack into 3D volume (handles both single and multiple slices)
-        volume = np.stack([s[1] for s in slices], axis=-1)
-
-        # identity affine for now - could extract from dicom headers in the future
-        affine = np.eye(4)
-
-        nifti_img = nib.Nifti1Image(volume, affine)
-        nib.save(nifti_img, str(output_filepath))
-
-    except Exception as e:
-        raise RuntimeError(f"DICOM to NIfTI conversion failed: {e}") from e
 
 
 class Database:
@@ -1096,7 +1010,6 @@ class Database:
         if not volume_data_filepath.exists() or not volume_data_filepath.is_file():
             self.logger.error(f"Volume data file not found for volume {volume_id}, subject {subject.id}")
             raise FileNotFoundError(f"Volume data file not found for volume {volume_id}, subject {subject.id}")
-        import nibabel as nib
         # Load the volume data using nibabel
         volume_data = nib.load(volume_data_filepath)
         self.logger.info(f"Loaded volume {volume_id} for subject {subject.id}")
