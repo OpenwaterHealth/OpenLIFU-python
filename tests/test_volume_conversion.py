@@ -45,8 +45,10 @@ def test_convert_dicom_to_nifti_single_file(tmp_path: Path):
 
     assert output_nifti.exists()
     img = nib.load(output_nifti)
-    assert img.shape[2] == 1  # single slice
-    assert not np.allclose(img.affine, np.eye(4))  # affine should not be identity
+    # Ensure 3D shape even for single slice
+    assert img.shape[2] == 1
+    # Affine should definitely not be identity for a valid medical image
+    assert not np.allclose(img.affine, np.eye(4))
 
 
 def test_convert_dicom_to_nifti_directory(tmp_path: Path):
@@ -57,24 +59,67 @@ def test_convert_dicom_to_nifti_directory(tmp_path: Path):
 
     assert output_nifti.exists()
     img = nib.load(output_nifti)
-    assert img.shape[2] == 2  # two slices in test series
-    assert not np.allclose(img.affine, np.eye(4))  # affine should not be identity
+    assert img.shape[2] == 2
+    assert not np.allclose(img.affine, np.eye(4))
 
 
-def test_extract_affine_from_dicom():
-    # mock DICOM dataset with minimal required tags
+def test_extract_affine_standard_orientation():
+    """
+    Test affine extraction for a standard axial slice.
+    Verifies proper mapping of Row/Col spacing and LPS->RAS conversion.
+    """
     mock_ds = Mock()
+    # Standard Axial: Row is X, Col is Y
     mock_ds.ImageOrientationPatient = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+    # Position in LPS (Left, Posterior, Superior)
     mock_ds.ImagePositionPatient = [10.0, 20.0, 30.0]
-    mock_ds.PixelSpacing = [0.5, 0.5]
+    # PixelSpacing: [RowSpacing (dy), ColSpacing (dx)]
+    mock_ds.PixelSpacing = [0.5, 0.8]
     mock_ds.SliceThickness = 2.0
 
     slices = [(1, None, mock_ds)]
     affine = extract_affine_from_dicom(slices)
 
-    assert affine.shape == (4, 4)
-    assert np.allclose(affine[3, :], [0, 0, 0, 1])  # homogeneous coordinate
-    assert np.allclose(affine[:3, 3], [10.0, 20.0, 30.0])  # position
+    # Expected RAS Matrix:
+    # 1. Spacing: X=0.8, Y=0.5, Z=2.0
+    # 2. Orientation: Standard Axial means X aligns with Right, Y with Anterior.
+    #    However, DICOM is LPS.
+    #    LPS X+ (Left) converts to RAS X- (Left).
+    #    LPS Y+ (Posterior) converts to RAS Y- (Posterior).
+    # 3. Origin: [10, 20, 30] LPS -> [-10, -20, 30] RAS
+
+    expected_affine = np.array([
+        [-0.8,  0.0,  0.0, -10.0],
+        [ 0.0, -0.5,  0.0, -20.0],
+        [ 0.0,  0.0,  2.0,  30.0],
+        [ 0.0,  0.0,  0.0,   1.0]
+    ])
+
+    np.testing.assert_allclose(affine, expected_affine)
+
+
+def test_extract_affine_multi_slice_spacing():
+    """Test that Z-spacing is calculated from slice positions, not SliceThickness."""
+    ds1 = Mock()
+    ds1.ImageOrientationPatient = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+    ds1.PixelSpacing = [1.0, 1.0]
+    ds1.ImagePositionPatient = [0.0, 0.0, 10.0]  # z = 10
+
+    ds2 = Mock()
+    ds2.ImagePositionPatient = [0.0, 0.0, 12.5]  # z = 12.5
+
+    # Create slice list with dummy pixel arrays
+    slices = [
+        (1, None, ds1),
+        (2, None, ds2)
+    ]
+
+    affine = extract_affine_from_dicom(slices)
+
+    # Z spacing should be 12.5 - 10.0 = 2.5
+    assert np.isclose(affine[2, 2], 2.5)
+    # Origin should be from the first slice, converted to RAS (Z is unchanged)
+    assert np.isclose(affine[2, 3], 10.0)
 
 
 def test_extract_affine_missing_tags():

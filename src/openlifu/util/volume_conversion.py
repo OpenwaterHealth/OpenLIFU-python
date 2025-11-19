@@ -49,12 +49,13 @@ def is_dicom_file_or_directory(path: PathLike) -> bool:
 def extract_affine_from_dicom(dicom_slices: list) -> np.ndarray:
     """
     Extract the affine transformation matrix from DICOM header information.
+    Converts from DICOM LPS (Left-Posterior-Superior) to NIfTI RAS.
 
     Args:
         dicom_slices: List of tuples (instance_number, pixel_array, dicom_dataset)
 
     Returns:
-        4x4 affine transformation matrix mapping voxel coordinates to world coordinates
+        4x4 affine transformation matrix mapping voxel coordinates to RAS world coordinates
 
     Raises:
         RuntimeError: If required DICOM tags are missing
@@ -71,17 +72,15 @@ def extract_affine_from_dicom(dicom_slices: list) -> np.ndarray:
         # ImagePositionPatient (0020,0032): position of the upper-left voxel
         position = np.array(first_ds.ImagePositionPatient, dtype=float)
 
-        # PixelSpacing (0028,0030): spacing between pixels [row_spacing, col_spacing]
-        pixel_spacing = np.array(first_ds.PixelSpacing, dtype=float)
-        row_spacing = pixel_spacing[0]
-        col_spacing = pixel_spacing[1]
+        # PixelSpacing is [row_spacing, col_spacing], so map to dy, dx
+        dy, dx = np.array(first_ds.PixelSpacing, dtype=float)
 
     except AttributeError as e:
         raise RuntimeError(
             f"Missing required DICOM tag for affine calculation: {e}"
         ) from e
 
-    # calculate slice direction as cross product of row and column directions
+    # Compute Z direction and spacing (handling potential gantry tilt)
     slice_cosine = np.cross(row_cosine, col_cosine)
 
     # calculate slice spacing
@@ -89,28 +88,25 @@ def extract_affine_from_dicom(dicom_slices: list) -> np.ndarray:
         # calculate from the distance between first two slices
         first_pos = np.array(dicom_slices[0][2].ImagePositionPatient, dtype=float)
         second_pos = np.array(dicom_slices[1][2].ImagePositionPatient, dtype=float)
-        slice_spacing = np.linalg.norm(second_pos - first_pos)
+        dz = np.dot(second_pos - first_pos, slice_cosine)
     else:
         # single slice - try to get from SliceThickness or default to 1.0
-        slice_spacing = float(getattr(first_ds, 'SliceThickness', 1.0))
+        dz = float(getattr(first_ds, 'SliceThickness', 1.0))
 
-    # construct the affine matrix
-    # The affine maps from voxel indices (i, j, k) to physical coordinates (x, y, z)
+    # Construct affine in DICOM LPS space
     affine = np.eye(4)
-    affine[:3, 0] = row_cosine * row_spacing
-    affine[:3, 1] = col_cosine * col_spacing
-    affine[:3, 2] = slice_cosine * slice_spacing
+    affine[:3, 0] = row_cosine * dx
+    affine[:3, 1] = col_cosine * dy
+    affine[:3, 2] = slice_cosine * dz
     affine[:3, 3] = position
 
-    return affine
+    # Convert LPS to RAS by flipping X and Y axes
+    return np.diag([-1, -1, 1, 1]) @ affine
 
 
 def convert_dicom_to_nifti(input_path: PathLike, output_filepath: PathLike) -> None:
     """
     Convert DICOM file(s) to NIfTI format using pydicom and nibabel.
-
-    The affine transformation matrix is extracted from DICOM headers to properly
-    map voxel coordinates to scanner coordinates in the NIfTI output.
 
     Args:
         input_path: Path to either a DICOM file or directory containing DICOM files
@@ -136,8 +132,8 @@ def convert_dicom_to_nifti(input_path: PathLike, output_filepath: PathLike) -> N
         for dcm_file in dicom_files:
             try:
                 ds = pydicom.dcmread(dcm_file)
-                # store instance number, pixel array, and dataset for affine extraction
-                slices.append((ds.get('InstanceNumber', 0), ds.pixel_array, ds))
+                # Transpose to swap (Row, Col) -> (X, Y) for NIfTI
+                slices.append((ds.get('InstanceNumber', 0), ds.pixel_array.T, ds))
             except Exception:
                 # skip files that aren't valid dicom
                 continue
@@ -155,8 +151,7 @@ def convert_dicom_to_nifti(input_path: PathLike, output_filepath: PathLike) -> N
         # extract affine from DICOM headers
         affine = extract_affine_from_dicom(slices)
 
-        nifti_img = nib.Nifti1Image(volume, affine)
-        nib.save(nifti_img, str(output_filepath))
+        nib.save(nib.Nifti1Image(volume, affine), str(output_filepath))
 
     except Exception as e:
         raise RuntimeError(f"DICOM to NIfTI conversion failed: {e}") from e
