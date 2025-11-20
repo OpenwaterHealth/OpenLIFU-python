@@ -46,13 +46,16 @@ def is_dicom_file_or_directory(path: PathLike) -> bool:
     return False
 
 
-def extract_affine_from_dicom(dicom_slices: list) -> np.ndarray:
+def extract_affine_from_dicom(
+    dicom_slices: list[tuple[int, np.ndarray, pydicom.Dataset]]
+) -> np.ndarray:
     """
     Extract the affine transformation matrix from DICOM header information.
     Converts from DICOM LPS (Left-Posterior-Superior) to NIfTI RAS.
 
     Args:
-        dicom_slices: List of tuples (instance_number, pixel_array, dicom_dataset)
+        dicom_slices: List of tuples (instance_number, pixel_array, header) where
+            header is a pydicom.Dataset containing DICOM metadata tags
 
     Returns:
         4x4 affine transformation matrix mapping voxel coordinates to RAS world coordinates
@@ -61,19 +64,19 @@ def extract_affine_from_dicom(dicom_slices: list) -> np.ndarray:
         RuntimeError: If required DICOM tags are missing
     """
     # use the first slice to extract most parameters
-    first_ds = dicom_slices[0][2]
+    first_header = dicom_slices[0][2]
 
     try:
         # ImageOrientationPatient (0020,0037): direction cosines for row and column
-        orientation = np.array(first_ds.ImageOrientationPatient, dtype=float)
+        orientation = np.array(first_header.ImageOrientationPatient, dtype=float)
         row_cosine = orientation[:3]  # direction cosines for rows
         col_cosine = orientation[3:]  # direction cosines for columns
 
         # ImagePositionPatient (0020,0032): position of the upper-left voxel
-        position = np.array(first_ds.ImagePositionPatient, dtype=float)
+        position = np.array(first_header.ImagePositionPatient, dtype=float)
 
         # PixelSpacing is [row_spacing, col_spacing], so map to dy, dx
-        dy, dx = np.array(first_ds.PixelSpacing, dtype=float)
+        dy, dx = np.array(first_header.PixelSpacing, dtype=float)
 
     except AttributeError as e:
         raise RuntimeError(
@@ -91,7 +94,7 @@ def extract_affine_from_dicom(dicom_slices: list) -> np.ndarray:
         dz = np.dot(second_pos - first_pos, slice_cosine)
     else:
         # single slice - try to get from SliceThickness or default to 1.0
-        dz = float(getattr(first_ds, 'SliceThickness', 1.0))
+        dz = float(getattr(first_header, 'SliceThickness', 1.0))
 
     # Construct affine in DICOM LPS space
     affine = np.eye(4)
@@ -131,9 +134,9 @@ def convert_dicom_to_nifti(input_path: PathLike, output_filepath: PathLike) -> N
         slices = []
         for dcm_file in dicom_files:
             try:
-                ds = pydicom.dcmread(dcm_file)
+                header = pydicom.dcmread(dcm_file)
                 # Transpose to swap (Row, Col) -> (X, Y) for NIfTI
-                slices.append((ds.get('InstanceNumber', 0), ds.pixel_array.T, ds))
+                slices.append((header.get('InstanceNumber', 0), header.pixel_array.T, header))
             except Exception:
                 # skip files that aren't valid dicom
                 continue
