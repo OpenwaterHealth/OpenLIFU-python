@@ -10,9 +10,10 @@ from openlifu.io.LIFUInterface import LIFUInterface
 
 print("Starting LIFU Test Script...")
 interface = LIFUInterface()
+
 tx_connected, hv_connected = interface.is_device_connected()
 
-if not hv_connected:
+if not tx_connected and not hv_connected:
     print("✅ LIFU Console not connected.")
     sys.exit(1)
 
@@ -34,8 +35,8 @@ if not tx_connected:
     # Re-check connection
     tx_connected, hv_connected = interface.is_device_connected()
 
-if tx_connected and hv_connected:
-    print("✅ LIFU Device fully connected.")
+if tx_connected:
+    print("✅ LIFU Device TX connected.")
 else:
     print("❌ LIFU Device NOT fully connected.")
     print(f"  TX Connected: {tx_connected}")
@@ -60,7 +61,19 @@ if user_input == 'y':
     print("Enter DFU mode")
     if interface.txdevice.enter_dfu():
         print("Successful.")
+
+        print("Use stm32 cube programmer to update firmware, power cycle will put the console back into an operating state")
+        sys.exit(0)
+
 elif user_input == 'n':
-    pass
+    print("Reset device")
+    if interface.txdevice.soft_reset():
+        print("Successful.")
+
+time.sleep(6)
+interface.txdevice.uart.reopen_after_reset()
+print("Ping the device again")
+if  interface.txdevice.ping():
+    print("Test script complete.")
 else:
-    print("Invalid input. Please enter 'y' or 'n'.")
+    print("Device did not respond after reset.")
