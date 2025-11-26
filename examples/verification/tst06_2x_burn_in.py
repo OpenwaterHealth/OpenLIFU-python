@@ -109,8 +109,6 @@ CUSTOM_TEST_CASE_KEY = 0
 CONSOLE_SHUTOFF_TEMP_C_DEFAULT = 70.0
 TX_SHUTOFF_TEMP_C_DEFAULT = 70.0
 AMBIENT_SHUTOFF_TEMP_C_DEFAULT = 70.0
-RAPID_TX_INCREASE_C_DEFAULT = 3.0
-RAPID_CONSOLE_INCREASE_C_DEFAULT = 5.0
 TEMPERATURE_CHECK_INTERVAL_DEFAULT = 1.0
 TEMPERATURE_LOG_INTERVAL_DEFAULT = 1.0
 
@@ -194,8 +192,6 @@ class TestThermalStress:
         self.console_shutoff_temp_C = CONSOLE_SHUTOFF_TEMP_C_DEFAULT
         self.tx_shutoff_temp_C = TX_SHUTOFF_TEMP_C_DEFAULT
         self.ambient_shutoff_temp_C = AMBIENT_SHUTOFF_TEMP_C_DEFAULT
-        self.rapid_tx_increase_C = RAPID_TX_INCREASE_C_DEFAULT
-        self.rapid_console_increase_C = RAPID_CONSOLE_INCREASE_C_DEFAULT
         self.temperature_check_interval = TEMPERATURE_CHECK_INTERVAL_DEFAULT
         self.temperature_log_interval = TEMPERATURE_LOG_INTERVAL_DEFAULT
 
@@ -673,44 +669,6 @@ class TestThermalStress:
                         tx_temp,
                         amb_temp,
                     )
-
-            # Rapid temperature increase checks
-            if not self.use_external_power and con_temp is not None:
-                if (con_temp - prev_con_temp) > self.rapid_console_increase_C:
-                    self.logger.warning(
-                        "Console temperature rose from %.2f°C to %.2f°C "
-                        "(above %.2f°C threshold) within %.2fs.",
-                        prev_con_temp,
-                        con_temp,
-                        self.rapid_console_increase_C,
-                        self.temperature_check_interval,
-                    )
-                    break
-                prev_con_temp = con_temp
-
-            if (tx_temp - prev_tx_temp) > self.rapid_tx_increase_C:
-                self.logger.warning(
-                    "TX device temperature rose from %.2f°C to %.2f°C "
-                    "(above %.2f°C threshold) within %.2fs.",
-                    prev_tx_temp,
-                    tx_temp,
-                    self.rapid_tx_increase_C,
-                    self.temperature_check_interval,
-                )
-                break
-            prev_tx_temp = tx_temp
-
-            if (amb_temp - prev_amb_temp) > self.rapid_tx_increase_C:
-                self.logger.warning(
-                    "Ambient temperature rose from %.2f°C to %.2f°C "
-                    "(above %.2f°C threshold) within %.2fs.",
-                    prev_amb_temp,
-                    amb_temp,
-                    self.rapid_tx_increase_C,
-                    self.temperature_check_interval,
-                )
-                break
-            prev_amb_temp = amb_temp
 
             # Absolute temperature thresholds
             if (

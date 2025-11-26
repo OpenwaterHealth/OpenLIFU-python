@@ -100,8 +100,6 @@ NUM_MODULES_DEFAULT = 2
 CONSOLE_SHUTOFF_TEMP_C_DEFAULT = 70.0
 TX_SHUTOFF_TEMP_C_DEFAULT = 70.0
 AMBIENT_SHUTOFF_TEMP_C_DEFAULT = 70.0
-RAPID_TX_INCREASE_C_DEFAULT = 3.0
-RAPID_CONSOLE_INCREASE_C_DEFAULT = 5.0
 TEMPERATURE_CHECK_INTERVAL_DEFAULT = 1.0
 TEMPERATURE_LOG_INTERVAL_DEFAULT = 1.0
 
@@ -173,8 +171,6 @@ class TestThermalStress:
         self.console_shutoff_temp_C = self.args.console_shutoff_temp
         self.tx_shutoff_temp_C = self.args.tx_shutoff_temp
         self.ambient_shutoff_temp_C = self.args.ambient_shutoff_temp
-        self.rapid_tx_increase_C = self.args.rapid_tx_increase
-        self.rapid_console_increase_C = self.args.rapid_console_increase
         self.temperature_check_interval = self.args.temperature_check_interval
         self.temperature_log_interval = self.args.temperature_log_interval
 
@@ -544,44 +540,6 @@ class TestThermalStress:
                         amb_temp,
                     )
 
-            # Rapid temperature increase checks
-            if not self.use_external_power and con_temp is not None:
-                if (con_temp - prev_con_temp) > self.rapid_console_increase_C:
-                    self.logger.warning(
-                        "Console temperature rose from %.2f°C to %.2f°C "
-                        "(above %.2f°C threshold) within %.2fs.",
-                        prev_con_temp,
-                        con_temp,
-                        self.rapid_console_increase_C,
-                        self.temperature_check_interval,
-                    )
-                    break
-                prev_con_temp = con_temp
-
-            if (tx_temp - prev_tx_temp) > self.rapid_tx_increase_C:
-                self.logger.warning(
-                    "TX device temperature rose from %.2f°C to %.2f°C "
-                    "(above %.2f°C threshold) within %.2fs.",
-                    prev_tx_temp,
-                    tx_temp,
-                    self.rapid_tx_increase_C,
-                    self.temperature_check_interval,
-                )
-                break
-            prev_tx_temp = tx_temp
-
-            if (amb_temp - prev_amb_temp) > self.rapid_tx_increase_C:
-                self.logger.warning(
-                    "Ambient temperature rose from %.2f°C to %.2f°C "
-                    "(above %.2f°C threshold) within %.2fs.",
-                    prev_amb_temp,
-                    amb_temp,
-                    self.rapid_tx_increase_C,
-                    self.temperature_check_interval,
-                )
-                break
-            prev_amb_temp = amb_temp
-
             # Absolute temperature thresholds
             if (not self.use_external_power and con_temp is not None and
                     con_temp > self.console_shutoff_temp_C):
@@ -877,26 +835,6 @@ Examples:
         default=AMBIENT_SHUTOFF_TEMP_C_DEFAULT,
         metavar="C",
         help=f"Ambient shutoff temperature in Celsius (default: {AMBIENT_SHUTOFF_TEMP_C_DEFAULT}).",
-    )
-    safety_group.add_argument(
-        "--rapid-tx-increase",
-        type=float,
-        default=RAPID_TX_INCREASE_C_DEFAULT,
-        metavar="C",
-        help=(
-            "Rapid TX/ambient temperature increase shutoff in Celsius per "
-            f"check interval (default: {RAPID_TX_INCREASE_C_DEFAULT})."
-        ),
-    )
-    safety_group.add_argument(
-        "--rapid-console-increase",
-        type=float,
-        default=RAPID_CONSOLE_INCREASE_C_DEFAULT,
-        metavar="C",
-        help=(
-            "Rapid console temperature increase shutoff in Celsius per "
-            f"check interval (default: {RAPID_CONSOLE_INCREASE_C_DEFAULT})."
-        ),
     )
 
     # Timing / logging
