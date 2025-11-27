@@ -29,6 +29,7 @@ from openlifu.io.LIFUConfig import (
     OW_POWER_SET_FAN,
     OW_POWER_SET_HV,
     OW_POWER_SET_RGB,
+    OW_POWER_VMON,
 )
 from openlifu.io.LIFUUart import LIFUUart
 
@@ -916,6 +917,70 @@ class HVController:
 
         except Exception as e:
             logger.error("Unexpected error during process: %s", e)
+            raise  # Re-raise the exception for the caller to handle
+
+    def get_vmon_values(self) -> list[dict]:
+        """
+        Retrieve the voltage monitor readings from the console device.
+
+        Returns:
+            list[dict]: A list of 8 dictionaries, one for each channel, containing:
+                - channel (int): Channel number (0-7)
+                - raw_adc (int): Raw ADC reading (uint16)
+                - reserved (int): Reserved value (uint16)
+                - voltage (float): Voltage reading in volts
+                - converted_voltage (float): Converted voltage value
+
+        Raises:
+            ValueError: If the UART is not connected.
+            Exception: If an error occurs or the received data length is invalid.
+        """
+        try:
+            if self.uart.demo_mode:
+                # Return demo data for 8 channels
+                return [
+                    {"channel": i, "raw_adc": 2048, "reserved": 0, "voltage": 12.5 + i, "converted_voltage": 25.0 + i * 2}
+                    for i in range(8)
+                ]
+
+            if not self.uart.is_connected():
+                logger.error("Console Device not connected")
+                return []
+
+            # Send the voltage monitor command
+            r = self.uart.send_packet(
+                id=None, packetType=OW_POWER, command=OW_POWER_VMON
+            )
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            # Check if the data length matches 8 channels * 10 bytes per channel = 80 bytes
+            # Each channel: index (raw_adc) + uint16 (reserved) + float (voltage) + float (converted_voltage)
+            if r.data_len == 80:  # sizeof(ADC_ChannelData_t)
+                # Unpack: 8 uint16s, 8 floats, 8 floats (little-endian)
+                raw_values = struct.unpack_from("<8H", r.data, 0)
+                voltages = struct.unpack_from("<8f", r.data, 16)
+                converted_voltages = struct.unpack_from("<8f", r.data, 48)
+                channels = []
+                offset = 0
+
+                # Unpack data for 8 channels
+                for channel_num in range(8):
+                    channels.append({
+                        "channel": channel_num,
+                        "raw_adc": raw_values[channel_num],
+                        "voltage": round(voltages[channel_num], 3),
+                        "converted_voltage": round(converted_voltages[channel_num], 3)
+                    })
+
+                    offset += 10  # Move to next channel (2 + 4 + 4 = 10 bytes)
+
+                return channels
+            else:
+                raise ValueError(f"Invalid data length received for voltage monitor: expected 96 bytes, got {r.data_len}")
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
             raise  # Re-raise the exception for the caller to handle
 
     def soft_reset(self) -> bool:
