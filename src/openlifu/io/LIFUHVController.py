@@ -23,8 +23,10 @@ from openlifu.io.LIFUConfig import (
     OW_POWER_GET_RGB,
     OW_POWER_GET_TEMP1,
     OW_POWER_GET_TEMP2,
+    OW_POWER_HV_ENABLE,
     OW_POWER_HV_OFF,
     OW_POWER_HV_ON,
+    OW_POWER_RAW_DAC,
     OW_POWER_SET_DACS,
     OW_POWER_SET_FAN,
     OW_POWER_SET_HV,
@@ -981,6 +983,111 @@ class HVController:
 
         except ValueError as v:
             logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+    def set_raw_dac(self, dac_id: int = 0, dac_value: int = 0) -> int:
+            """
+            Set Raw DAC value.
+
+            Args:
+                dac_id (int): The desired DAC to set (default is 0). Valid IDs are 0, 1, 2, and 3.
+                dac_value (int): The desired DAC value (default is 0). Must be between 0 and 4095.
+            Returns:
+                int: The current output DAC value.
+
+            Raises:
+                ValueError: If the controller is not connected.
+            """
+            if not self.uart.is_connected():
+                raise ValueError("High voltage controller not connected")
+
+            if dac_id not in [0, 1, 2 ,3]:
+                raise ValueError("Invalid DAC ID. Must be 0, 1, 2, or 3")
+
+            if dac_value not in range(4096):
+                raise ValueError("Invalid DAC value. Must be 0 to 4095")
+
+            try:
+                if self.uart.demo_mode:
+                    return dac_value
+                logger.info("Setting Raw DAC value.")
+                data = bytes(
+                    [
+                        (dac_value >> 8) & 0xFF,  # High byte (most significant bits)
+                        dac_value & 0xFF,  # Low byte (least significant bits)
+                    ]
+                )
+                r = self.uart.send_packet(
+                    id=None,
+                    addr=dac_id,
+                    packetType=OW_POWER,
+                    command=OW_POWER_RAW_DAC,
+                    data=data,
+                )
+
+                self.uart.clear_buffer()
+                # r.print_packet()
+
+                if r.packet_type == OW_ERROR:
+                    logger.error("Error setting DAC value")
+                    return -1
+
+                logger.info(f"Set DAC value to {dac_value}")
+                return dac_value
+
+            except ValueError as v:
+                logger.error("ValueError: %s", v)
+                raise  # Re-raise the exception for the caller to handle
+
+            except Exception as e:
+                logger.error("Unexpected error during process: %s", e)
+                raise  # Re-raise the exception for the caller to handle
+
+    def hv_enable(self, enable: bool = False) -> bool:
+        """
+        Enable or disable high voltage output.
+
+        Args:
+            enable (bool): True to enable HV, False to disable.
+        Returns:
+            bool: True if the operation was successful, False otherwise.
+        Raises:
+            ValueError: If the controller is not connected.
+        if not self.uart.is_connected():
+        """
+        if not self.uart.is_connected():
+            raise ValueError("High voltage controller not connected")
+
+        try:
+            if self.uart.demo_mode:
+                return True
+
+            logger.info(f"{'Enabling' if enable else 'Disabling'} high voltage output.")
+
+            r = self.uart.send_packet(
+                id=None,
+                addr=1 if enable else 0,
+                packetType=OW_POWER,
+                command=OW_POWER_HV_ENABLE,
+                data=None,
+            )
+
+            self.uart.clear_buffer()
+            # r.print_packet()
+
+            if r.packet_type == OW_ERROR:
+                logger.error("Error setting HV enable state")
+                return False
+
+            logger.info(f"High voltage output {'enabled' if enable else 'disabled'} successfully.")
+            return True
+
+        except ValueError as v:
+            logger.error("ValueError: %s", v)
+            raise  # Re-raise the exception for the caller to handle
+
+        except Exception as e:
+            logger.error("Unexpected error during process: %s", e)
             raise  # Re-raise the exception for the caller to handle
 
     def soft_reset(self) -> bool:
