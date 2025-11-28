@@ -827,7 +827,7 @@ def display_menu():
     print("="*80)
     print("1. Display voltage monitor readings")
     print("2. Calibrate positive supply with DMM")
-    print("3. Calibrate negative supply with DMM (use negative limits, e.g., -65 to -100V)")
+    print("3. Calibrate negative supply with DMM")
     print("4. Set target voltage (positive supply)")
     print("5. Set target voltage (negative supply)")
     print("6. Save calibration data to CSV")
