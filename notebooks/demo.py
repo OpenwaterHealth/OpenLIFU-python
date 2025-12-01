@@ -57,6 +57,10 @@ def main():
             print(f"  HV Connected: {hv_connected}")
             sys.exit(1)
 
+    if hv_connected:
+        print("HV Controller connected.")
+        interface.hvcontroller.set_voltage(24.5)
+        interface.hvcontroller.turn_hv_on()
 
     device_count = interface.txdevice.get_tx_module_count()
     print(f"Device Count: {device_count}")
@@ -70,6 +74,12 @@ def main():
 
         version = interface.txdevice.get_version(module=i)
         print(f"Version: {version}")
+
+
+    if hv_connected:
+        time.sleep(5)
+        print("disabling HV for safety...")
+        interface.hvcontroller.turn_hv_off()
 
 if __name__ == "__main__":
     main()

@@ -564,15 +564,17 @@ class HVController:
             )
 
         try:
-            dac_input = int(((voltage) / 162) * 4095)
+            #dac_input = int(((voltage) / 162) * 4095)
             # logger.info("Setting DAC Value %d.", dac_input)
             # Pack the 12-bit DAC input into two bytes
-            data = bytes(
-                [
-                    (dac_input >> 8) & 0xFF,  # High byte (most significant bits)
-                    dac_input & 0xFF,  # Low byte (least significant bits)
-                ]
-            )
+            #data = bytes(
+            #    [
+            #        (dac_input >> 8) & 0xFF,  # High byte (most significant bits)
+            #        dac_input & 0xFF,  # Low byte (least significant bits)
+            #    ]
+            #)
+
+            data = struct.pack('>f', voltage)
 
             r = self.uart.send_packet(
                 id=None, packetType=OW_POWER, command=OW_POWER_SET_HV, data=data
