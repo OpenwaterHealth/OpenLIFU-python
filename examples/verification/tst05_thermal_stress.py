@@ -899,7 +899,7 @@ def main() -> None:
     try:
         test.run()
     except KeyboardInterrupt:
-        self.logger.info("\nUser interrupted. Shutting down...")
+        print("\nUser interrupted. Shutting down...")
         test.shutdown_event.set()
         test.stop_logging = True
         time.sleep(0.5)
@@ -909,7 +909,7 @@ def main() -> None:
             test.cleanup_interface()
         sys.exit(0)
     except Exception as e:
-        self.logger.error(f"\nFatal error: {e}")
+        print(f"\nFatal error: {e}")
         with contextlib.suppress(Exception):
             test.turn_off_console_and_tx()
         with contextlib.suppress(Exception):

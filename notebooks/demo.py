@@ -32,6 +32,18 @@ def main():
     interface = LIFUInterface()
     tx_connected, hv_connected = interface.is_device_connected()
 
+    if hv_connected:
+        console_version = interface.hvcontroller.get_version()
+        print(f"Version: {console_version}")
+        print("HV Controller connected.")
+        interface.hvcontroller.set_voltage(24.5)
+        interface.hvcontroller.turn_hv_on()
+        input("Press Enter to continue...")
+
+        interface.hvcontroller.turn_hv_off()
+
+
+
     if not tx_connected and not hv_connected:
         print("✅ LIFU Console not connected.")
         sys.exit(1)
@@ -57,7 +69,6 @@ def main():
             print(f"  HV Connected: {hv_connected}")
             sys.exit(1)
 
-    if hv_connected:
         print("HV Controller connected.")
         interface.hvcontroller.set_voltage(24.5)
         interface.hvcontroller.turn_hv_on()
