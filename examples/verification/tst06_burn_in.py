@@ -40,8 +40,8 @@ Burn-in Test Script
 """
 
 __version__ = "1.0.0"
-TEST_ID = "tst06_2x_burn_in"
-TEST_NAME = "2x Burn In Test"
+TEST_ID = "tst06_burn_in"
+TEST_NAME = "Burn In Test"
 
 # ------------------- Test Case Definitions (from procedural script) -------------------
 
@@ -102,7 +102,7 @@ TEST_CASES = {
 }
 
 PULSE_INTERVAL_MSEC = 100
-NUM_MODULES = 2
+NUM_MODULES_DEFAULT = 2
 CUSTOM_TEST_CASE_KEY = 0
 
 # Default safety / logging timing parameters
@@ -152,7 +152,6 @@ class TestThermalStress:
         # Derived paths
         self.openlifu_dir = Path(openlifu.__file__).parent.parent.parent.resolve()
         self.log_dir = Path(self.args.log_dir or (self.openlifu_dir / "logs")).resolve()
-        self.num_modules = NUM_MODULES
 
         # Runtime attributes
         self.interface: LIFUInterface | None = None
@@ -239,9 +238,9 @@ class TestThermalStress:
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
         if self.test_case_id is None:
-            filename = f"{TEST_ID}_{self.run_timestamp}.log"
+            filename = f"{TEST_ID}_{self.args.num_modules}x_{self.run_timestamp}.log"
         else:
-            filename = f"{TEST_ID}_{self.test_case_id}_{self.run_timestamp}.log"
+            filename = f"{TEST_ID}_{self.args.num_modules}x_{self.test_case_id}_{self.run_timestamp}.log"
 
         log_path = self.log_dir / filename
 
@@ -518,11 +517,11 @@ class TestThermalStress:
 
         if num_tx_devices == 0:
             raise ValueError("No TX7332 devices found.")
-        elif num_tx_devices == self.num_modules * 2:
+        elif num_tx_devices == self.args.num_modules * 2:
             self.logger.info(f"Number of TX7332 devices found: {num_tx_devices}")
             return 32 * num_tx_devices
         else:
-            raise Exception(f"Number of TX7332 devices found: {num_tx_devices} != 2x{self.num_modules}")
+            raise Exception(f"Number of TX7332 devices found: {num_tx_devices} != 2x{self.args.num_modules}")
 
 
     def configure_solution(self) -> None:
@@ -533,7 +532,7 @@ class TestThermalStress:
         db_path = self.openlifu_dir / "db_dvc"
         db = Database(db_path)
         # Procedural script uses fixed 2x400 transducer ID
-        arr = db.load_transducer(f"openlifu_{self.num_modules}x400_evt1")
+        arr = db.load_transducer(f"openlifu_{self.args.num_modules}x400_evt1")
         arr.sort_by_pin()
 
         # Focus at (0, 0, 50 mm)
@@ -980,7 +979,14 @@ Examples:
         action="store_true",
         help="Hardware simulation mode (no actual device I/O or HV changes).",
     )
-
+    parser.add_argument(
+        "--num-modules",
+        type=int,
+        choices=[1,2],
+        default=NUM_MODULES_DEFAULT,
+        metavar="N",
+        help=f"Number of modules in the system (default: {NUM_MODULES_DEFAULT}).",
+    )
     parser.add_argument(
         "--frequency",
         type=int,
