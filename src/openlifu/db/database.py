@@ -5,16 +5,22 @@ import json
 import logging
 import os
 import shutil
+import tempfile
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List
 
 import h5py
+import nibabel as nib
 
 from openlifu.nav.photoscan import Photoscan, load_data_from_photoscan
 from openlifu.plan import Protocol, Run, Solution
 from openlifu.util.json import PYFUSEncoder
 from openlifu.util.types import PathLike
+from openlifu.util.volume_conversion import (
+    convert_dicom_to_nifti,
+    is_dicom_file_or_directory,
+)
 from openlifu.xdc import Transducer, TransducerArray
 from openlifu.xdc.util import load_transducer_from_file
 
@@ -23,6 +29,7 @@ from .subject import Subject
 from .user import User
 
 OnConflictOpts = Enum('OnConflictOpts', ['ERROR', 'OVERWRITE', 'SKIP'])
+
 
 class Database:
     def __init__(self, path: str | None = None):
@@ -378,35 +385,57 @@ class Database:
         if not Path(volume_data_filepath).exists():
             raise ValueError(f'Volume data filepath does not exist: {volume_data_filepath}')
 
-        volume_ids = self.get_volume_ids(subject_id)
-        if volume_id in volume_ids:
-            if on_conflict == OnConflictOpts.ERROR:
-                raise ValueError(f"Volume with ID {volume_id} already exists for subject {subject_id}.")
-            elif on_conflict == OnConflictOpts.OVERWRITE:
-                self.logger.info(f"Overwriting volume with ID {volume_id} for subject {subject_id}.")
-            elif on_conflict == OnConflictOpts.SKIP:
-                self.logger.info(f"Skipping volume with ID {volume_id} for subject {subject_id} as it already exists.")
-                return
-            else:
-                raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
+        path = Path(volume_data_filepath)
+        if path.is_dir() and not is_dicom_file_or_directory(volume_data_filepath):
+            raise ValueError(f'Volume data filepath is a directory without DICOM files: {volume_data_filepath}')
 
-        # Create volume metadata
-        volume_metadata_dict = {"id": volume_id, "name": volume_name, "data_filename": Path(volume_data_filepath).name}
-        volume_metadata_json = json.dumps(volume_metadata_dict, separators=(',', ':'), cls=PYFUSEncoder)
+        # convert dicom to nifti if needed
+        temp_nifti_path = None
+        if is_dicom_file_or_directory(volume_data_filepath):
+            self.logger.info(f"Detected DICOM input for volume {volume_id}, converting to NIfTI format")
+            with tempfile.NamedTemporaryFile(suffix='.nii.gz', delete=False) as temp_file:
+                temp_nifti_path = Path(temp_file.name)
 
-        # Save the volume metadata to a JSON file and copy volume data file to database
-        volume_metadata_filepath = self.get_volume_metadata_filepath(subject_id, volume_id) #subject_id/volume/volume_id/volume_id.json
-        Path(volume_metadata_filepath).parent.parent.mkdir(exist_ok=True) # volume directory
-        Path(volume_metadata_filepath).parent.mkdir(exist_ok=True)
-        with open(volume_metadata_filepath, 'w') as file:
-            file.write(volume_metadata_json)
-        shutil.copy(Path(volume_data_filepath), Path(volume_metadata_filepath).parent)
+            try:
+                convert_dicom_to_nifti(volume_data_filepath, temp_nifti_path)
+                volume_data_filepath = temp_nifti_path
+            except Exception as e:
+                if temp_nifti_path.exists():
+                    temp_nifti_path.unlink()
+                raise RuntimeError(f"Failed to convert DICOM to NIfTI: {e}") from e
 
-        if volume_id not in volume_ids:
-            volume_ids.append(volume_id)
-            self.write_volume_ids(subject_id, volume_ids)
+        try:
+            volume_ids = self.get_volume_ids(subject_id)
+            if volume_id in volume_ids:
+                if on_conflict == OnConflictOpts.ERROR:
+                    raise ValueError(f"Volume with ID {volume_id} already exists for subject {subject_id}.")
+                elif on_conflict == OnConflictOpts.OVERWRITE:
+                    self.logger.info(f"Overwriting volume with ID {volume_id} for subject {subject_id}.")
+                elif on_conflict == OnConflictOpts.SKIP:
+                    self.logger.info(f"Skipping volume with ID {volume_id} for subject {subject_id} as it already exists.")
+                    return
+                else:
+                    raise ValueError("Invalid 'on_conflict' option. Use 'error', 'overwrite', or 'skip'.")
 
-        self.logger.info(f"Added volume with ID {volume_id} for subject {subject_id} to the database.")
+            volume_metadata_dict = {"id": volume_id, "name": volume_name, "data_filename": Path(volume_data_filepath).name}
+            volume_metadata_json = json.dumps(volume_metadata_dict, separators=(',', ':'), cls=PYFUSEncoder)
+
+            volume_metadata_filepath = self.get_volume_metadata_filepath(subject_id, volume_id)
+            Path(volume_metadata_filepath).parent.parent.mkdir(exist_ok=True)
+            Path(volume_metadata_filepath).parent.mkdir(exist_ok=True)
+            with open(volume_metadata_filepath, 'w') as file:
+                file.write(volume_metadata_json)
+            shutil.copy(Path(volume_data_filepath), Path(volume_metadata_filepath).parent)
+
+            if volume_id not in volume_ids:
+                volume_ids.append(volume_id)
+                self.write_volume_ids(subject_id, volume_ids)
+
+            self.logger.info(f"Added volume with ID {volume_id} for subject {subject_id} to the database.")
+        finally:
+            # cleanup temp nifti file
+            if temp_nifti_path is not None and temp_nifti_path.exists():
+                temp_nifti_path.unlink()
 
     def write_photocollection(self, subject_id, session_id, reference_number: str, photo_paths: List[PathLike], on_conflict=OnConflictOpts.ERROR):
         """ Writes a photocollection to database and copies the associated
@@ -980,7 +1009,6 @@ class Database:
         if not volume_data_filepath.exists() or not volume_data_filepath.is_file():
             self.logger.error(f"Volume data file not found for volume {volume_id}, subject {subject.id}")
             raise FileNotFoundError(f"Volume data file not found for volume {volume_id}, subject {subject.id}")
-        import nibabel as nib
         # Load the volume data using nibabel
         volume_data = nib.load(volume_data_filepath)
         self.logger.info(f"Loaded volume {volume_id} for subject {subject.id}")

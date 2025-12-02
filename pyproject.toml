@@ -51,6 +51,7 @@ dependencies = [
   "trimesh",
   "embreex; platform_machine=='x86_64' or platform_machine=='AMD64'",
   "onnxruntime==1.18.0",
+  "pydicom",
 ]
 
 [project.optional-dependencies]
@@ -250,6 +251,7 @@ messages_control.disable = [
   "duplicate-code",
   "cyclic-import",
   "unreachable", # This is to allow marking of TODO items with a NotImplementedError
+  "c-extension-no-member",
 ]
 
 [tool.setuptools.package-data]
