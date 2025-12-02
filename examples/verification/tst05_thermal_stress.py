@@ -368,13 +368,14 @@ class TestThermalStress:
             self.logger.error("Console Communication verification failed: %s", e)
             return False
 
-        try:
-            if not self.interface.txdevice.ping():
-                self.logger.error("Failed to ping the transmitter device.")
-            return True
-        except Exception as e:
-            self.logger.error("TX Device Communication verification failed: %s", e)
-            return False
+        for module in range(1, self.args.num_modules + 1):
+            try:
+                if not self.interface.txdevice.ping(module=module):
+                    self.logger.error(f"Failed to ping transmitter device {module}.")
+                return True
+            except Exception as e:
+                self.logger.error(f"TX Device {module} Communication verification failed: %s", e)
+                return False
 
     def get_firmware_versions(self) -> None:
         """Retrieve and log firmware versions from the LIFU device."""
@@ -389,11 +390,13 @@ class TestThermalStress:
         except Exception as e:
             self.logger.error("Error retrieving console firmware version: %s", e)
 
-        try:
-            tx_fw = self.interface.txdevice.get_version()
-            self.logger.info("TX Device Firmware Version: %s", tx_fw)
-        except Exception as e:
-            self.logger.error("Error retrieving TX device firmware version: %s", e)
+        
+        for module in range(1, self.args.num_modules + 1):
+            try:
+                tx_fw = self.interface.txdevice.get_version(module=module)
+                self.logger.info(f"TX Device {module} Firmware Version: %s", tx_fw)
+            except Exception as e:
+                self.logger.error(f"Error retrieving TX device {module} firmware version: %s", e)
 
     def enumerate_devices(self):
         """Enumerate TX7332 devices and verify count."""
@@ -486,6 +489,10 @@ class TestThermalStress:
         prev_amb_temp = None
         prev_con_temp = None
 
+        if self.args.num_modules == 2:
+            prev_tx_temp2 = None
+            prev_amb_temp2 = None
+
         while True:
             if self.shutdown_event.is_set():
                 return
@@ -494,6 +501,7 @@ class TestThermalStress:
 
             # Read temperatures
             try:
+                # Console Temp Readings
                 if not self.use_external_power:
                     if prev_con_temp is None:
                         with self.mutex:
@@ -503,6 +511,7 @@ class TestThermalStress:
                 else:
                     con_temp = None
 
+                # TX Device Temp Readings
                 if prev_tx_temp is None:
                     with self.mutex:
                         prev_tx_temp = self.interface.txdevice.get_temperature()
@@ -514,6 +523,21 @@ class TestThermalStress:
                         prev_amb_temp = self.interface.txdevice.get_ambient_temperature()
                 with self.mutex:    
                     amb_temp = self.interface.txdevice.get_ambient_temperature()
+
+                # Second Module Temp Readings if connected
+                if self.args.num_modules == 2:
+                    if prev_tx_temp2 is None:
+                        with self.mutex:
+                            tx_temp2 = self.interface.txdevice.get_temperature(module=2)
+                    with self.mutex:
+                        tx_temp2 = self.interface.txdevice.get_temperature(module=2)
+
+                    if prev_amb_temp2 is None:
+                        with self.mutex:
+                            amb_temp2 = self.interface.txdevice.get_ambient_temperature(module=2)
+                    with self.mutex:
+                        amb_temp2 = self.interface.txdevice.get_ambient_temperature(module=2)
+                    amb_temp2 = self.interface.txdevice.get_ambient_temperature(module=2)
 
             except SerialException as e:
                 self.logger.error("SerialException encountered while reading temperatures: %s", e)
@@ -528,10 +552,12 @@ class TestThermalStress:
                 last_log_time = time_elapsed
                 if not self.use_external_power and con_temp is not None:
                     self.logger.info(
-                        "  Console Temp: %.2f°C, TX Temp: %.2f°C, Ambient Temp: %.2f°C",
+                        "  Console Temp: %.2f°C, TX Temp: %.2f°C, Ambient Temp: %.2f°C TX Temp 2: %.2f°C, Ambient Temp 2: %.2f°C",
                         con_temp,
                         tx_temp,
                         amb_temp,
+                        tx_temp2,
+                        amb_temp2,
                     )
                 else:
                     self.logger.info(
@@ -792,6 +818,7 @@ Examples:
     behavior_group.add_argument(
         "--num-modules",
         type=int,
+        choices=[1,2],
         default=NUM_MODULES_DEFAULT,
         metavar="N",
         help=f"Number of modules in the system (default: {NUM_MODULES_DEFAULT}).",

@@ -851,6 +851,7 @@ Examples:
     )
     behavior_group.add_argument(
         "--num-modules",
+        choices=[1,2],
         type=int,
         default=DEFAULT_NUM_MODULES,
         metavar="N",
