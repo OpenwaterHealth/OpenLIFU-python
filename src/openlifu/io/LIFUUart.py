@@ -314,11 +314,11 @@ class LIFUUart:
                         self.connect()
                         log.info("Reconnected to UART on %s after reset.", self.port)
                         return True
-                    except Exception as e:
+                    except (OSError, ValueError) as e:
                         log.warning("Reconnect attempt failed: %s", e)
             log.error("Failed to reconnect UART after reset.")
             return False
-        except Exception as e:
+        except (OSError, ValueError) as e:
             log.error("reopen_after_reset() error: %s", e)
             return False
 
