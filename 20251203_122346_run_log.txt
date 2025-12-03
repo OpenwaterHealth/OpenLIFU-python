@@ -1,0 +1,25 @@
+2025-12-03 12:23:46 - INFO - Run log will be saved to: 20251203_122346_run_log.txt
+2025-12-03 12:23:46 - INFO - Starting LIFU Test Script...
+2025-12-03 12:23:46 - INFO -   HV Connected: True
+2025-12-03 12:23:46 - INFO -   TX Connected: True
+2025-12-03 12:23:46 - INFO - LIFU Device fully connected.
+2025-12-03 12:23:47 - INFO - Console Firmware Version: v1.2.2
+2025-12-03 12:23:47 - INFO - TX Firmware Version: v2.0.2
+2025-12-03 12:23:47 - INFO - Enumerate TX7332 chips
+2025-12-03 12:23:47 - ERROR - Unexpected error: Number of TX7332 devices found: 4 != 2x1
+Traceback (most recent call last):
+  File "E:\CURRENT-WORK\openwater\OpenLIFU-python\notebooks\test_thermal_stress.py", line 444, in run
+    numelements = self.enumerate_devices()
+                  ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\CURRENT-WORK\openwater\OpenLIFU-python\notebooks\test_thermal_stress.py", line 181, in enumerate_devices
+    raise Exception(f"Number of TX7332 devices found: {num_tx_devices} != 2x{self.args.num_modules}")
+Exception: Number of TX7332 devices found: 4 != 2x1
+2025-12-03 12:23:47 - INFO - Waiting for threads to complete...
+2025-12-03 12:23:48 - INFO - Stopping sonication...
+2025-12-03 12:23:48 - INFO - Turning off console and TX...
+2025-12-03 12:23:48 - INFO - Attempting to turn off High Voltage...
+2025-12-03 12:23:49 - INFO - High Voltage successfully turned off.
+2025-12-03 12:23:49 - INFO - Attempting to turn off 12V...
+2025-12-03 12:23:50 - INFO - 12V successfully turned off.
+2025-12-03 12:23:50 - INFO - Closing device interface...
+2025-12-03 12:23:50 - INFO - Graceful shutdown complete.
