@@ -541,7 +541,7 @@ def display_voltages(interface):
 
     # Check if calibration coefficients are available
     try:
-        import calibration_coeffs as cal
+        import examples.tools.calibration_coeffs as cal
         has_calibration = True
         print("✅ Using calibrated coefficients")
     except ImportError:
@@ -662,7 +662,7 @@ def calibrate_supply(interface, calibration: SupplyCalibrationDMM, max_voltage: 
 def set_hv_positive_voltage(interface, voltage, fine_tune=True):
     """Set the positive HV output voltage using calibration lookup."""
     try:
-        import calibration_coeffs as cal
+        import examples.tools.calibration_coeffs as cal
         has_calibration = True
     except ImportError:
         print("❌ No calibration coefficients found. Run option 8 to generate calibration first.")
@@ -750,7 +750,7 @@ def set_hv_positive_voltage(interface, voltage, fine_tune=True):
 def set_hv_negative_voltage(interface, voltage, fine_tune=True):
     """Set the negative HV output voltage using calibration lookup."""
     try:
-        import calibration_coeffs as cal
+        import examples.tools.calibration_coeffs as cal
         has_calibration = True
     except ImportError:
         print("❌ No calibration coefficients found. Run option 8 to generate calibration first.")
