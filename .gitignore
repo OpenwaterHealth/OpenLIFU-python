@@ -161,6 +161,14 @@ Thumbs.db
 .vscode
 /db_dvc
 /logs
+/examples/tutorials/tutorial_database
 
 # ONNX checkpoints
 *.onnx
+
+notebooks/calibration_coeffs.py
+neg_cal.csv
+pos_cal.csv
+calibration_coeffs.py
+hv_calibration_coeffs.c
+hv_calibration_coeffs.h
