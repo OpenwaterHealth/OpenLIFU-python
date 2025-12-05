@@ -425,6 +425,8 @@ class TestThermalStress:
             ext_power_supply=self.use_external_power,
             TX_test_mode=self.hw_simulate,
             HV_test_mode=self.hw_simulate,
+            voltage_table="evt0",
+            sequence_time="stress_test"
         )
         tx_connected, hv_connected = self.interface.is_device_connected()
 
@@ -451,6 +453,8 @@ class TestThermalStress:
                 ext_power_supply=self.use_external_power,
                 TX_test_mode=self.hw_simulate,
                 HV_test_mode=self.hw_simulate,
+                voltage_table="evt0",
+                sequence_time="stress_test"
             )
             tx_connected, hv_connected = self.interface.is_device_connected()
 
