@@ -43,23 +43,23 @@ class Material:
     def __post_init__(self):
         if not isinstance(self.name, str):
             raise TypeError("Material name must be a string.")
-        if not isinstance(self.sound_speed, (int, float)):
+        if not isinstance(self.sound_speed, int | float):
             raise TypeError(f"Sound speed of {self.name} must be a number.")
         if self.sound_speed <= 0:
             raise ValueError(f"Sound speed of {self.name} must be positive.")
-        if not isinstance(self.density, (int, float)):
+        if not isinstance(self.density, int | float):
             raise TypeError(f"Density of {self.name} must be a number.")
         if self.density <= 0:
             raise ValueError(f"Density of {self.name} must be positive.")
-        if not isinstance(self.attenuation, (int, float)):
+        if not isinstance(self.attenuation, int | float):
             raise TypeError(f"Attenuation of {self.name} must be a number.")
         if self.attenuation < 0:
             raise ValueError(f"Attenuation of {self.name} must be non-negative.")
-        if not isinstance(self.specific_heat, (int, float)):
+        if not isinstance(self.specific_heat, int | float):
             raise TypeError(f"Specific heat of {self.name} must be a number.")
         if self.specific_heat <= 0:
             raise ValueError(f"Specific heat of {self.name} must be positive.")
-        if not isinstance(self.thermal_conductivity, (int, float)):
+        if not isinstance(self.thermal_conductivity, int | float):
             raise TypeError(f"Thermal conductivity of {self.name} must be a number.")
         if self.thermal_conductivity <= 0:
             raise ValueError(f"Thermal conductivity of {self.name} must be positive.")

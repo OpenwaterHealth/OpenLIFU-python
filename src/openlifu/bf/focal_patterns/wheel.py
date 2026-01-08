@@ -34,7 +34,7 @@ class Wheel(FocalPattern):
             raise TypeError(f"Center must be a boolean, got {type(self.center).__name__}.")
         if not isinstance(self.num_spokes, int) or self.num_spokes < 1:
             raise ValueError(f"Number of spokes must be a positive integer, got {self.num_spokes}.")
-        if not isinstance(self.spoke_radius, (int, float)) or self.spoke_radius <= 0:
+        if not isinstance(self.spoke_radius, int | float) or self.spoke_radius <= 0:
             raise ValueError(f"Spoke radius must be a positive number, got {self.spoke_radius}.")
         super().__post_init__()
 
