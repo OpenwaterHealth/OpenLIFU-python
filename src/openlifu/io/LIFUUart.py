@@ -445,7 +445,7 @@ class LIFUUart:
                 id = self.packet_count
 
             if data:
-                if not isinstance(data, (bytes, bytearray)):
+                if not isinstance(data, bytes | bytearray):
                     raise ValueError("Data must be bytes or bytearray")
                 payload = data
                 payload_length = len(payload)

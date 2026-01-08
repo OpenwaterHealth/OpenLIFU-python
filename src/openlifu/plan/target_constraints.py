@@ -45,9 +45,9 @@ class TargetConstraints(DictMixin):
             raise TypeError("Dimension units must be a string")
         if getunittype(self.units) != 'distance':
             raise ValueError(f"Units must be a length unit, got {self.units}")
-        if not isinstance(self.min, (int, float)):
+        if not isinstance(self.min, int | float):
             raise TypeError("Minimum value must be a number")
-        if not isinstance(self.max, (int, float)):
+        if not isinstance(self.max, int | float):
             raise TypeError("Maximum value must be a number")
         if self.min > self.max:
             raise ValueError("Minimum value cannot be greater than maximum value")

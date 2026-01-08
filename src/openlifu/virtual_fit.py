@@ -97,43 +97,43 @@ class VirtualFitOptions(DictMixin):
             raise ValueError(f"Units must be a length unit, got {self.units}")
         if self.transducer_steering_center_distance <= 0:
             raise ValueError("Transducer steering center distance must be greater than 0")
-        if not isinstance(self.transducer_steering_center_distance, (int, float)):
+        if not isinstance(self.transducer_steering_center_distance, int | float):
             raise TypeError("Transducer steering center distance must be a number")
         if not isinstance(self.steering_limits, tuple) or len(self.steering_limits) != 3:
             raise ValueError("Steering limits must be a tuple of three tuples, each with two elements")
         if not all(isinstance(sl, tuple) and len(sl) == 2 for sl in self.steering_limits):
             raise ValueError("Each steering limit must be a tuple of two elements")
-        if not all(isinstance(sl[0], (int, float)) and isinstance(sl[1], (int, float)) for sl in self.steering_limits):
+        if not all(isinstance(sl[0], int | float) and isinstance(sl[1], int | float) for sl in self.steering_limits):
             raise ValueError("Each steering limit must contain two numbers")
         if not isinstance(self.pitch_range, tuple) or len(self.pitch_range) != 2:
             raise ValueError("Pitch range must be a tuple of two elements")
-        if not all(isinstance(pr, (int, float)) for pr in self.pitch_range):
+        if not all(isinstance(pr, int | float) for pr in self.pitch_range):
             raise ValueError("Pitch range must contain two numbers")
-        if not isinstance(self.pitch_step, (int, float)):
+        if not isinstance(self.pitch_step, int | float):
             raise TypeError("Pitch step must be a number")
         if self.pitch_step <= 0:
             raise ValueError("Pitch step must be greater than 0")
         if not isinstance(self.yaw_range, tuple) or len(self.yaw_range) != 2:
             raise ValueError("Yaw range must be a tuple of two elements")
-        if not all(isinstance(yr, (int, float)) for yr in self.yaw_range):
+        if not all(isinstance(yr, int | float) for yr in self.yaw_range):
             raise ValueError("Yaw range must contain two numbers")
-        if not isinstance(self.yaw_step, (int, float)):
+        if not isinstance(self.yaw_step, int | float):
             raise TypeError("Yaw step must be a number")
         if self.yaw_step <= 0:
             raise ValueError("Yaw step must be greater than 0")
-        if not isinstance(self.planefit_dyaw_extent, (int, float)):
+        if not isinstance(self.planefit_dyaw_extent, int | float):
             raise TypeError("Plane fit yaw extent must be a number")
         if self.planefit_dyaw_extent <= 0:
             raise ValueError("Plane fit yaw extent must be greater than 0")
-        if not isinstance(self.planefit_dyaw_step, (int, float)):
+        if not isinstance(self.planefit_dyaw_step, int | float):
             raise TypeError("Plane fit yaw step must be a number")
         if self.planefit_dyaw_step <= 0:
             raise ValueError("Plane fit yaw step must be greater than 0")
-        if not isinstance(self.planefit_dpitch_extent, (int, float)):
+        if not isinstance(self.planefit_dpitch_extent, int | float):
             raise TypeError("Plane fit pitch extent must be a number")
         if self.planefit_dpitch_extent <= 0:
             raise ValueError("Plane fit pitch extent must be greater than 0")
-        if not isinstance(self.planefit_dpitch_step, (int, float)):
+        if not isinstance(self.planefit_dpitch_step, int | float):
             raise TypeError("Plane fit pitch step must be a number")
 
     def to_units(self, target_units: str) -> VirtualFitOptions:

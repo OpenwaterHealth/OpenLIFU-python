@@ -69,7 +69,7 @@ class Element:
         if self.size.shape != (2,):
             raise ValueError("Size must be a 2-element array.")
         if self.impulse_response is not None:
-            if isinstance(self.impulse_response, (int, float)):
+            if isinstance(self.impulse_response, int | float):
                 self.impulse_response = np.array([self.impulse_response])
             self.impulse_response = np.array(self.impulse_response, dtype=np.float64)
             if self.impulse_response.ndim != 1:

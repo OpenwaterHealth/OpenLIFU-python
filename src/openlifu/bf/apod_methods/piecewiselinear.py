@@ -26,11 +26,11 @@ class PiecewiseLinear(ApodizationMethod):
     """Angle units"""
 
     def __post_init__(self):
-        if not isinstance(self.zero_angle, (int, float)):
+        if not isinstance(self.zero_angle, int | float):
             raise TypeError(f"Zero angle must be a number, got {type(self.zero_angle).__name__}.")
         if self.zero_angle < 0:
             raise ValueError(f"Zero angle must be non-negative, got {self.zero_angle}.")
-        if not isinstance(self.rolloff_angle, (int, float)):
+        if not isinstance(self.rolloff_angle, int | float):
             raise TypeError(f"Rolloff angle must be a number, got {type(self.rolloff_angle).__name__}.")
         if self.rolloff_angle < 0:
             raise ValueError(f"Rolloff angle must be non-negative, got {self.rolloff_angle}.")

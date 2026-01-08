@@ -64,7 +64,7 @@ class SimSetup(DictMixin):
             raise ValueError("z_extent must have length 2.")
         if self.z_extent[0] >= self.z_extent[1]:
             raise ValueError("z_extent must be in the form (min, max) with min < max.")
-        if not isinstance(self.spacing, (int, float)):
+        if not isinstance(self.spacing, int | float):
             raise TypeError("spacing must be a number.")
         if self.spacing <= 0:
             raise ValueError("spacing must be a positive number.")
@@ -72,19 +72,19 @@ class SimSetup(DictMixin):
             raise TypeError("units must be a string.")
         if getunittype(self.units) != 'distance':
             raise ValueError(f"units must be a length unit, got {self.units}.")
-        if not isinstance(self.c0, (int, float)):
+        if not isinstance(self.c0, int | float):
             raise TypeError("c0 must be a number.")
         if self.c0 <= 0:
             raise ValueError("c0 must be a positive number.")
-        if not isinstance(self.cfl, (int, float)):
+        if not isinstance(self.cfl, int | float):
             raise TypeError("cfl must be a number.")
         if self.cfl <= 0:
             raise ValueError("cfl must be a positive number.")
-        if not isinstance(self.dt, (int, float)):
+        if not isinstance(self.dt, int | float):
             raise TypeError("dt must be a number.")
         if self.dt < 0:
             raise ValueError("dt must be a non-negative number.")
-        if not isinstance(self.t_end, (int, float)):
+        if not isinstance(self.t_end, int | float):
             raise TypeError("t_end must be a number.")
         if self.t_end < 0:
             raise ValueError("t_end must be a non-negative number.")

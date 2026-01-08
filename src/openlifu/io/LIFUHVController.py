@@ -170,7 +170,7 @@ class HVController:
                 raise ValueError("Console Device  not connected")
 
             # Check if echo_data is a byte array
-            if echo_data is not None and not isinstance(echo_data, (bytes, bytearray)):
+            if echo_data is not None and not isinstance(echo_data, bytes | bytearray):
                 raise TypeError("echo_data must be a byte array")
 
             r = self.uart.send_packet(

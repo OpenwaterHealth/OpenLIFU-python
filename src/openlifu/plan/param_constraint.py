@@ -34,9 +34,9 @@ class ParameterConstraint(DictMixin):
             if self.error_value and (not isinstance(self.error_value, tuple) or len(self.error_value) != 2 or self.error_value[0] >= self.error_value[1]):
                 raise ValueError("Error value must be a sorted tuple of two numbers")
         elif self.operator in ['<', '<=', '>', '>=']:
-            if self.warning_value is not None and not isinstance(self.warning_value, (int, float)):
+            if self.warning_value is not None and not isinstance(self.warning_value, int | float):
                 raise ValueError("Warning value must be a single value")
-            if self.error_value is not None and not isinstance(self.error_value, (int, float)):
+            if self.error_value is not None and not isinstance(self.error_value, int | float):
                 raise ValueError("Error value must be a single value")
 
     @staticmethod

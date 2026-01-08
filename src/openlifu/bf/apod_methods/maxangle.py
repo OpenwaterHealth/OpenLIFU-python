@@ -23,7 +23,7 @@ class MaxAngle(ApodizationMethod):
     """Angle units"""
 
     def __post_init__(self):
-        if not isinstance(self.max_angle, (int, float)):
+        if not isinstance(self.max_angle, int | float):
             raise TypeError(f"Max angle must be a number, got {type(self.max_angle).__name__}.")
         if self.max_angle < 0:
             raise ValueError(f"Max angle must be non-negative, got {self.max_angle}.")
