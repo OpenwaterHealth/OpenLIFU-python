@@ -96,7 +96,9 @@ addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
 xfail_strict = true
 filterwarnings = [
   "error",
-  "ignore:Unsupported Windows version.*ONNX Runtime supports Windows 10 and above, only.:UserWarning"
+  "ignore:Unsupported Windows version.*ONNX Runtime supports Windows 10 and above, only.:UserWarning",
+  # pyparsing 3.x deprecated all camelCase methods in favor of snake_case
+  "ignore:'[a-zA-Z]+' deprecated - use '[a-z_]+':DeprecationWarning",
 ]
 log_cli_level = "INFO"
 testpaths = [
