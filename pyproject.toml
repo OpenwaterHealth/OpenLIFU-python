@@ -96,6 +96,9 @@ xfail_strict = true
 filterwarnings = [
   "error",
   "ignore:Unsupported Windows version.*ONNX Runtime supports Windows 10 and above, only.:UserWarning",
+  # kwave v0.4.0 has a bug where valid Windows binary names (with .exe) aren't recognized on
+  # subsequent property accesses, causing a spurious warning. The binary is still correctly selected.
+  "ignore:Custom binary name set.*:UserWarning",
   # pyparsing 3.x deprecated all camelCase methods in favor of snake_case
   "ignore:'[a-zA-Z]+' deprecated - use '[a-z_]+':DeprecationWarning",
 ]
