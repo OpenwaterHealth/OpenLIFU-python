@@ -30,7 +30,7 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
   "xarray[io]",
-  "numpy<2",
+  "numpy<3",
   "matplotlib",
   "pandas",
   "scipy",
