@@ -105,7 +105,7 @@ class Photoscan:
         with open(filename, 'w') as file:
             file.write(self.to_json(compact = False))
 
-def load_data_from_filepaths(model_abspath: str, texture_abspath: str) -> Tuple[vtk.vtkPolyData, vtk.vtkImageData]:
+def load_data_from_filepaths(model_abspath: str, texture_abspath: str | None) -> Tuple[vtk.vtkPolyData, vtk.vtkImageData | None]:
     """
     This function returns the data directly from the model and texture filepaths without requiring a photoscan object.
     param model_abspath: absolute filepath to model data
@@ -113,17 +113,21 @@ def load_data_from_filepaths(model_abspath: str, texture_abspath: str) -> Tuple[
     Returns: Photoscan data as (model_vtkpolydata, texture_vtkimagedata)
     """
     model_polydata  = load_model(model_abspath)
-    texture_imagedata = load_texture(texture_abspath)
+    texture_imagedata = None
+    if texture_abspath:
+        texture_imagedata = load_texture(texture_abspath)
 
     return (model_polydata, texture_imagedata)
 
-def load_data_from_photoscan(photoscan: Photoscan, parent_dir) -> Tuple[vtk.vtkPolyData, vtk.vtkImageData]:
+def load_data_from_photoscan(photoscan: Photoscan, parent_dir) -> Tuple[vtk.vtkPolyData, vtk.vtkImageData | None]:
     """
     param parent_dir: parent directory containing model and texture data filepaths
     Returns: Photoscan data as (model_vtkpolydata, texture_vtkimagedata)
     """
     model_polydata  = load_model(Path(parent_dir)/photoscan.model_filename)
-    texture_imagedata = load_texture(Path(parent_dir)/photoscan.texture_filename)
+    texture_imagedata = None
+    if photoscan.texture_filename:
+        texture_imagedata = load_texture(Path(parent_dir)/photoscan.texture_filename)
 
     return (model_polydata, texture_imagedata)
 

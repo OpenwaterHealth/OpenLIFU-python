@@ -474,9 +474,9 @@ class Database:
         self.logger.info(f"Added photocollection with reference number {reference_number} for session {session_id} to the database.")
 
     def write_photoscan(self, subject_id, session_id, photoscan: Photoscan, model_data_filepath: str | None = None, texture_data_filepath: str | None = None, mtl_data_filepath: str | None = None, on_conflict=OnConflictOpts.ERROR):
-        """ Writes a photoscan object to database and copies the associated model and texture data filepaths that are required for generating a photoscan into the database.
-        .mtl files are not required for generating a photoscan but can be provided if present.
-        When a photoscan that is already present in the database is being re-written,the associated model and texture files do not need to be provided """
+        """ Writes a photoscan object to database and copies the associated data filepaths into the database.
+        While the model data file is required, the associated texture and .mtl files are optional and can be provided if present.
+        When a photoscan that is already present in the database is being re-written,the associated data files do not need to be specified """
 
         photoscan_ids = self.get_photoscan_ids(subject_id, session_id)
         if photoscan.id in photoscan_ids:
@@ -512,7 +512,7 @@ class Database:
                 raise FileNotFoundError(f'Texture data filepath does not exist: {texture_data_filepath}')
             photoscan.texture_filename = texture_data_filepath.name
             shutil.copy(texture_data_filepath, photoscan_metadata_filepath.parent)
-        elif not photoscan.texture_filename or not (photoscan_parent_dir/photoscan.texture_filename).exists():
+        elif photoscan.texture_filename and not (photoscan_parent_dir/photoscan.texture_filename).exists():
             raise ValueError(f"Cannot find texture file associated with photoscan {photoscan.id}.")
 
         # Not necessarily required for a photoscan object
@@ -522,9 +522,8 @@ class Database:
                 raise FileNotFoundError(f'MTL filepath does not exist: {mtl_data_filepath}')
             photoscan.mtl_filename = mtl_data_filepath.name
             shutil.copy(mtl_data_filepath, photoscan_metadata_filepath.parent)
-        elif photoscan.mtl_filename:
-            if not (photoscan_parent_dir/photoscan.mtl_filename).exists():
-                raise ValueError(f"Cannot find photoscan materials file associated with photoscan {photoscan.id}.")
+        elif photoscan.mtl_filename and not (photoscan_parent_dir/photoscan.mtl_filename).exists():
+            raise ValueError(f"Cannot find photoscan materials file associated with photoscan {photoscan.id}.")
 
         #Save the photoscan metadata to a JSON file
         photoscan.to_file(photoscan_metadata_filepath)
@@ -814,7 +813,7 @@ class Database:
 
     def load_photoscan(self, subject_id, session_id, photoscan_id, load_data = False):
         """Returns a photoscan object and optionally, also returns the loaded model and texture
-        data as Tuple[vtkPolyData, vtkImageData] if load_data = True."""
+        data as Tuple[vtkPolyData, vtkImageData | None ] if load_data = True."""
 
         photoscan_metadata_filepath = self.get_photoscan_metadata_filepath(subject_id, session_id, photoscan_id)
         if not photoscan_metadata_filepath.exists() or not photoscan_metadata_filepath.is_file():
