@@ -327,6 +327,35 @@ def test_write_session_with_transducer_tracking_results(example_database: Databa
     session.transducer_tracking_results = [example_transducer_tracking_result]
     example_database.write_session(example_subject, session, on_conflict = OnConflictOpts.OVERWRITE)
 
+def test_delete_session(example_database: Database, example_subject: Subject):
+    # Write a session
+    session = Session(name="bleh", id='a_session',subject_id=example_subject.id)
+
+    session_id = session.id
+    subject_id = example_subject.id
+
+    # Can add a new session, and it loads back in correctly.
+    example_database.write_session(example_subject, session)
+
+    assert session.id in example_database.get_session_ids(example_subject.id)
+
+    # Session is deleted
+    example_database.delete_session(subject_id, session_id)
+    assert session.id not in example_database.get_session_ids(subject_id)
+    with pytest.raises(FileNotFoundError):
+        example_database.load_session(example_subject, session_id)
+
+    # Error option
+    with pytest.raises(ValueError, match="does not exist in the database"):
+        example_database.delete_session(subject_id, "non_existent_protocol", on_conflict=OnConflictOpts.ERROR)
+
+    # Skip option
+    example_database.delete_session(subject_id, "non_existent_protocol", on_conflict=OnConflictOpts.SKIP)
+
+    # Invalid option
+    with pytest.raises(ValueError, match="Invalid"):
+        example_database.delete_session(subject_id, "non_existent_protocol", on_conflict=OnConflictOpts.OVERWRITE)
+
 def test_write_run(example_database: Database, tmp_path:Path):
     subject_id = "example_subject"
     session_id = "example_session"
