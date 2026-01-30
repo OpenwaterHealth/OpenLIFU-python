@@ -52,6 +52,7 @@ dependencies = [
   "embreex; platform_machine=='x86_64' or platform_machine=='AMD64'",
   "onnxruntime==1.18.0",
   "pydicom",
+  "watchdog",
 ]
 
 [project.optional-dependencies]
