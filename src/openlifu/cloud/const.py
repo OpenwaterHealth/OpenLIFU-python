@@ -1,2 +1,2 @@
-API_URL = "https://api.nvpsoftware.com"
+API_URL = "https://api.openwater.health"
 DEBUG = False
