@@ -347,14 +347,14 @@ def test_delete_session(example_database: Database, example_subject: Subject):
 
     # Error option
     with pytest.raises(ValueError, match="does not exist in the database"):
-        example_database.delete_session(subject_id, "non_existent_protocol", on_conflict=OnConflictOpts.ERROR)
+        example_database.delete_session(subject_id, "non_existent_session", on_conflict=OnConflictOpts.ERROR)
 
     # Skip option
-    example_database.delete_session(subject_id, "non_existent_protocol", on_conflict=OnConflictOpts.SKIP)
+    example_database.delete_session(subject_id, "non_existent_session", on_conflict=OnConflictOpts.SKIP)
 
     # Invalid option
     with pytest.raises(ValueError, match="Invalid"):
-        example_database.delete_session(subject_id, "non_existent_protocol", on_conflict=OnConflictOpts.OVERWRITE)
+        example_database.delete_session(subject_id, "non_existent_session", on_conflict=OnConflictOpts.OVERWRITE)
 
 def test_write_run(example_database: Database, tmp_path:Path):
     subject_id = "example_subject"

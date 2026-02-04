@@ -220,7 +220,13 @@ class Database:
         self.logger.info(f"Added session with ID {session_id} for subject {subject.id} to the database.")
 
     def delete_session(self, subject_id: str, session_id: str, on_conflict: OnConflictOpts = OnConflictOpts.ERROR):
+        """Delete a session and its associated data from the database.
 
+        Args:
+            subject_id: ID of the subject the session belongs to
+            session_id: ID of the session to delete
+            on_conflict: Behavior when session doesn't exist ('error' or 'skip')
+        """
         # Check if the session ID exists in the database for this subject
         session_ids = self.get_session_ids(subject_id)
 
@@ -235,14 +241,13 @@ class Database:
 
         # Delete the session file
         session_filename = self.get_session_filename(subject_id, session_id)
-        if Path.is_file(session_filename):
+        if session_filename.parent.is_dir():
             shutil.rmtree(session_filename.parent)
 
-        if session_id in session_ids:
-            session_ids.remove(session_id)
-            self.write_session_ids(subject_id, session_ids)
+        session_ids.remove(session_id)
+        self.write_session_ids(subject_id, session_ids)
 
-        self.logger.info(f"Removed Session with ID {session_id} from the database.")
+        self.logger.info(f"Removed session with ID {session_id} from the database.")
 
     def write_run(self, run:Run, session:Session = None, protocol:Protocol = None, on_conflict=OnConflictOpts.ERROR):
         """Write a run with a snapshot of session and a snapshot of protocol if provided
