@@ -10,6 +10,8 @@ import json
 def to_isoformat(dt: datetime) -> str:
     return dt.isoformat(timespec="seconds").replace("+00:00", "")
 
+def from_isoformat(value: str) -> datetime:
+    return datetime.fromisoformat(value).replace(tzinfo=timezone.utc)
 
 def mtime(path: Path) -> datetime:
     stat = os.stat(path)
@@ -52,7 +54,7 @@ def _from_value(expected_type, value):
 
     # datetime
     if expected_type is datetime:
-        return datetime.fromisoformat(value).replace(tzinfo=timezone.utc)
+        return from_isoformat(value)
 
     # nested dataclass
     if is_dataclass(expected_type):

@@ -147,14 +147,27 @@ class SessionDto:
 
     config_file_size: Optional[int]
 
+    photocollections_sync_date: Optional[datetime]
+    photoscans_sync_date: Optional[datetime]
+    runs_sync_date: Optional[datetime]
+    solutions_sync_date: Optional[datetime]
+
     creation_date: Optional[datetime]
     modification_date: Optional[datetime]
 
 
 @dataclass
+class SessionSyncRequestDto:
+    photocollections_sync_date: Optional[datetime] = field(default=None)
+    photoscans_sync_date: Optional[datetime] = field(default=None)
+    runs_sync_date: Optional[datetime] = field(default=None)
+    solutions_sync_date: Optional[datetime] = field(default=None)
+
+
+@dataclass
 class CreateSolutionRequest:
-    local_id: str
     session_id: int
+    local_id: str
     protocol_id: int
     transducer_id: int
 
@@ -197,8 +210,17 @@ class SubjectDto:
 
     config_file_size: Optional[int]
 
+    sessions_sync_date: Optional[datetime]
+    volumes_sync_date: Optional[datetime]
+
     creation_date: Optional[datetime]
     modification_date: Optional[datetime]
+
+
+@dataclass
+class SubjectSyncRequestDto:
+    sessions_sync_date: Optional[datetime] = field(default=None)
+    volumes_sync_date: Optional[datetime] = field(default=None)
 
 
 @dataclass
@@ -246,3 +268,27 @@ class CreateUserRequest:
     name: Optional[str]
     password_hash: Optional[str]
     description: Optional[str]
+
+
+@dataclass
+class PhotoDto:
+    file_name: str
+    file_size: int
+    modification_date: datetime
+
+
+@dataclass
+class PhotocollectionDto:
+    id: int
+    account_id: str
+    session_id: Optional[int]
+    name: Optional[str]
+    photos: Optional[list[PhotoDto]]
+    creation_date: Optional[datetime]
+    modification_date: Optional[datetime]
+
+
+@dataclass
+class CreatePhotocollectionRequest:
+    session_id: int
+    name: str

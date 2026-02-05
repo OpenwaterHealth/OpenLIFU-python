@@ -3,6 +3,11 @@ import time
 from pathlib import Path
 from typing import List, Optional, Callable
 
+from openlifu.cloud.components.photocollections import Photocollections
+from openlifu.cloud.components.runs import Runs
+from openlifu.cloud.components.sessions import Sessions
+from openlifu.cloud.components.solutions import Solutions
+from openlifu.cloud.components.volumes import Volumes
 from openlifu.cloud.const import DEBUG
 from openlifu.cloud.components.abstract_component import AbstractComponent
 from openlifu.cloud.components.protocols import Protocols
@@ -15,7 +20,8 @@ from openlifu.cloud.components.transducers import Transducers
 from openlifu.cloud.components.users import Users
 from openlifu.cloud.status import Status
 from openlifu.cloud.sync_thread import SyncThread
-from openlifu.cloud.utils import get_mac_address
+from openlifu.cloud.utils import get_mac_address, from_isoformat
+from openlifu.cloud.ws import Websocket
 
 
 class Cloud:
@@ -23,6 +29,7 @@ class Cloud:
     def __init__(self):
         self._filesystem_observer = FilesystemObserver(self._on_path_changed)
         self._api = Api()
+        self._websocket = Websocket(self._on_websocket_update)
         self._components: List[AbstractComponent] = []
         self._sync_thread = SyncThread(self._on_status_changed)
         self._db_path = None
@@ -31,6 +38,7 @@ class Cloud:
 
     def set_access_token(self, token: str):
         self._api.authenticate(token)
+        self._websocket.authenticate(token)
 
     def set_status_callback(self, callback: Callable[[Status], None]):
         self._status_callback = callback
@@ -59,6 +67,8 @@ class Cloud:
             )
         )
 
+        self._websocket.connect(self._db.id)
+
         self._create_components()
         self._sync_thread.start()
 
@@ -66,6 +76,8 @@ class Cloud:
         self._sync_thread.stop()
         if self._db is not None:
             self._api.databases().release_database(self._db.id)
+
+        self._websocket.disconnect()
         self._api.logout()
         self.stop_background_sync()
         self._db_path = None
@@ -73,7 +85,7 @@ class Cloud:
 
     def sync(self):
         for component in self._components:
-            self._sync_thread.post(component)
+            self._sync_thread.post(component, None)
 
     def start_background_sync(self):
         if self._db_path is None:
@@ -91,13 +103,42 @@ class Cloud:
         if self._status_callback is not None:
             self._status_callback(status)
 
+    def _on_websocket_update(self, data: dict):
+        if self._db_path is None:
+            return
+        update_date = from_isoformat(data["update_date"])
+        updated_path = data["path"]
+        if updated_path == '/':
+            return
+
+        path = self._db_path / updated_path
+        for component in self._components:
+            component.on_update_from_cloud(path, update_date)
+
     def _create_components(self):
         self._components.clear()
         self._components.append(Users(self._api, self._db_path, self._db.id, self._sync_thread))
         self._components.append(Protocols(self._api, self._db_path, self._db.id, self._sync_thread))
         self._components.append(Systems(self._api, self._db_path, self._db.id, self._sync_thread))
         self._components.append(Transducers(self._api, self._db_path, self._db.id, self._sync_thread))
-        self._components.append(Subjects(self._api, self._db_path, self._db.id, self._sync_thread))
+        self._components.append(
+            Subjects(self._api, self._db_path, self._db.id, self._sync_thread)
+            .add_child(
+                Volumes(self._api, self._db_path, self._db.id, self._sync_thread)
+            )
+            .add_child(
+                Sessions(self._api, self._db_path, self._db.id, self._sync_thread)
+                .add_child(
+                    Photocollections(self._api, self._db_path, self._db.id, self._sync_thread)
+                )
+                .add_child(
+                    Runs(self._api, self._db_path, self._db.id, self._sync_thread)
+                )
+                .add_child(
+                    Solutions(self._api, self._db_path, self._db.id, self._sync_thread)
+                )
+            )
+        )
 
 
 if __name__ == "__main__":

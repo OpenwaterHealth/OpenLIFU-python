@@ -16,8 +16,8 @@ class Users(AbstractComponent):
     def __init__(self, api: Api, db_path: Path, database_id: int, sync_thread: SyncThread):
         super(Users, self).__init__(api, db_path, database_id, sync_thread)
 
-    def get_component_type(self) -> str:
-        return "user"
+    def get_config_ids_key(self) -> str:
+        return "user_ids"
 
     def get_component_type_plural(self) -> str:
         return "users"
@@ -29,8 +29,11 @@ class Users(AbstractComponent):
     def get_cloud_item_local_id(self, cloud_item) -> str:
         return cloud_item.uid
 
-    def get_cloud_modification_date(self) -> Optional[datetime]:
+    def get_sync_date_from_cloud(self) -> Optional[datetime]:
         return self.api.databases().get_database(self.db_id).users_sync_date
+
+    def send_sync_date_to_cloud(self, sync_date: datetime):
+        self.api.databases().update_database_sync_date(self.db_id, DatabaseSyncRequestDto(users_sync_date=sync_date))
 
     def upload_config(self, data: bytes, modification_date: datetime, local_id: str, remote_id: Optional[int]) -> int:
         data_dict = json.loads(data.decode())
@@ -73,9 +76,6 @@ class Users(AbstractComponent):
 
     def delete_on_cloud(self, local_id: str, remote_id: int):
         self.api.users().delete(self.db_id, local_id)
-
-    def create_sync_request(self, sync_date: datetime) -> DatabaseSyncRequestDto:
-        return DatabaseSyncRequestDto(users_sync_date=sync_date)
 
     def get_cloud_items(self) -> List[Any]:
         return self.api.users().get_all(self.db_id)

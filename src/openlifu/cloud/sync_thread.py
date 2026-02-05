@@ -1,7 +1,8 @@
 import threading
 import time
 import traceback
-from typing import Any, Callable
+from pathlib import Path
+from typing import Any, Callable, Optional
 
 from openlifu.cloud.const import DEBUG
 from openlifu.cloud.status import Status
@@ -11,14 +12,14 @@ class SyncThread:
     DEBOUNCE_SEC = 1.0
 
     def __init__(self, status_callback: Callable[[Status], None]):
-        self._pending_syncs: dict[Any, float] = {}
+        self._pending_syncs: dict[tuple[Any, Optional[Path]], float] = {}
         self._lock = threading.Lock()
         self._running = False
         self._worker_thread = None
         self._status_callback = status_callback
 
-    def post(self, item: Any):
-        self._pending_syncs[item] = time.time()
+    def post(self, item: Any, path: Optional[Path]):
+        self._pending_syncs[(item, path)] = time.time()
 
     def emit_status(self, status: Status):
         if self._status_callback is not None:
@@ -48,7 +49,7 @@ class SyncThread:
             now = time.time()
             with self._lock:
                 ready = [
-                    path for path, ts in self._pending_syncs.items()
+                    item for item, ts in self._pending_syncs.items()
                     if now - ts > self.DEBOUNCE_SEC
                 ]
                 if len(ready) == 0:
@@ -57,19 +58,18 @@ class SyncThread:
                     continue
 
                 item = ready[0]
-
-                self.emit_status(Status(Status.STATUS_SYNCHRONIZING, component_type=item.get_component_type_plural()))
-
+                component, path = item
                 del self._pending_syncs[item]
-                if isinstance(item, AbstractComponent):
+
+                if isinstance(component, AbstractComponent):
                     try:
-                        item.sync()
+                        component.sync(path)
                     except Exception as e:
                         if DEBUG:
                             traceback.print_exc()
 
                         self._pending_syncs.clear()
-                        self.emit_status(Status(Status.STATUS_ERROR, component_type=item.get_component_type_plural(), ex=e))
+                        self.emit_status(Status(Status.STATUS_ERROR, component_type=component.get_component_type_plural(), ex=e))
                         continue
 
                 idle = len(self._pending_syncs) == 0

@@ -1,6 +1,10 @@
 from openlifu.cloud.api.databases_api import DatabasesApi
+from openlifu.cloud.api.photocollections_api import PhotocollectionsApi
 from openlifu.cloud.api.protocols_api import ProtocolsApi
 from openlifu.cloud.api.request import Request
+from openlifu.cloud.api.runs_api import RunsApi
+from openlifu.cloud.api.sessions_api import SessionsApi
+from openlifu.cloud.api.solutions_api import SolutionsApi
 from openlifu.cloud.api.subjects_api import SubjectsApi
 from openlifu.cloud.api.systems_api import SystemsApi
 from openlifu.cloud.api.transducers_api import TransducersApi
@@ -20,6 +24,10 @@ class Api:
         self._transducers = TransducersApi(self._request)
         self._subjects = SubjectsApi(self._request)
         self._volumes = VolumesApi(self._request)
+        self._sessions = SessionsApi(self._request)
+        self._runs = RunsApi(self._request)
+        self._solutions = SolutionsApi(self._request)
+        self._photocollections = PhotocollectionsApi(self._request)
 
     def authenticate(self, token: str):
         self._request.headers = {
@@ -50,3 +58,15 @@ class Api:
 
     def volumes(self) -> VolumesApi:
         return self._volumes
+
+    def sessions(self) -> SessionsApi:
+        return self._sessions
+
+    def runs(self) -> RunsApi:
+        return self._runs
+
+    def solutions(self) -> SolutionsApi:
+        return self._solutions
+
+    def photocollections(self) -> PhotocollectionsApi:
+        return self._photocollections

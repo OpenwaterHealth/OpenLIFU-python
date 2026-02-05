@@ -7,9 +7,6 @@ from openlifu.cloud.utils import from_json, to_isoformat
 
 
 class TransducersApi:
-    CONFIG_FILE = "config"
-    BODY_DATA_FILE = "body_data"
-    SURFACE_DATA_FILE = "surface_data"
 
     def __init__(self, request: Request):
         self._request = request

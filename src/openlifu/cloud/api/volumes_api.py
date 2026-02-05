@@ -7,8 +7,6 @@ from openlifu.cloud.utils import from_json, to_isoformat
 
 
 class VolumesApi:
-    CONFIG_FILE = "config"
-    DATA_FILE = "data"
 
     def __init__(self, request: Request):
         self._request = request
