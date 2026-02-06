@@ -78,9 +78,6 @@ class Cloud:
 
     def stop(self):
         self._sync_thread.stop()
-        if self._db is not None:
-            self._api.databases().release_database(self._db.id)
-
         self._websocket.disconnect()
         self._api.logout()
         self.stop_background_sync()
