@@ -1,5 +1,6 @@
 from openlifu.cloud.api.databases_api import DatabasesApi
 from openlifu.cloud.api.photocollections_api import PhotocollectionsApi
+from openlifu.cloud.api.photoscans_api import PhotoscansApi
 from openlifu.cloud.api.protocols_api import ProtocolsApi
 from openlifu.cloud.api.request import Request
 from openlifu.cloud.api.runs_api import RunsApi
@@ -28,6 +29,7 @@ class Api:
         self._runs = RunsApi(self._request)
         self._solutions = SolutionsApi(self._request)
         self._photocollections = PhotocollectionsApi(self._request)
+        self._photoscans = PhotoscansApi(self._request)
 
     def authenticate(self, token: str):
         self._request.headers = {
@@ -70,3 +72,6 @@ class Api:
 
     def photocollections(self) -> PhotocollectionsApi:
         return self._photocollections
+
+    def photoscans(self) -> PhotoscansApi:
+        return self._photoscans

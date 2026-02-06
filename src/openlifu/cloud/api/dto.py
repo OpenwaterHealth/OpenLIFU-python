@@ -292,3 +292,31 @@ class PhotocollectionDto:
 class CreatePhotocollectionRequest:
     session_id: int
     name: str
+
+
+@dataclass
+class PhotoscanDto:
+    id: int
+    account_id: str
+    photocollection_id: int
+    session_id: Optional[int]
+    local_id: Optional[str]
+    creation_date: datetime
+    modification_date: datetime
+
+    status: Optional[str]
+    message: Optional[str]
+    progress: int
+    status_update_date: Optional[datetime]
+
+
+@dataclass
+class CreatePhotoscanRequest:
+    session_id: int
+    photocollection_id: int
+    local_id: str
+
+
+@dataclass
+class PagedPhotoscansResponse:
+    photoscans: List[PhotoscanDto]

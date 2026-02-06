@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import List, Optional, Callable, Dict
 
 from openlifu.cloud.components.photocollections import Photocollections
+from openlifu.cloud.components.photoscans import Photoscans
 from openlifu.cloud.components.runs import Runs
 from openlifu.cloud.components.sessions import Sessions
 from openlifu.cloud.components.solutions import Solutions
@@ -154,6 +155,9 @@ class Cloud:
                 Sessions(self._api, self._db_path, self._db.id, self._sync_thread)
                 .add_child(
                     Photocollections(self._api, self._db_path, self._db.id, self._sync_thread)
+                )
+                .add_child(
+                    Photoscans(self._api, self._db_path, self._db.id, self._sync_thread)
                 )
                 .add_child(
                     Runs(self._api, self._db_path, self._db.id, self._sync_thread)

@@ -39,19 +39,13 @@ class Transducers(AbstractComponent):
         return self.api.transducers().get_file(remote_id, CONFIG_FILE)
 
     def upload_data_files(self, local_id: str, remote_id: int, config: dict, modification_date: datetime) -> None:
-        body_file_path = self.get_directory_path() / local_id / f"{local_id}.body.obj"
-        surf_file_path = self.get_directory_path() / local_id / f"{local_id}.surf.obj"
-
-        for path, file_type in [
-            (body_file_path, BODY_DATA_FILE),
-            (surf_file_path, SURFACE_DATA_FILE)
-        ]:
+        for path, file_type in self._get_data_file_paths(local_id):
             if path.is_file():
                 data = path.read_bytes()
                 self.api.transducers().upload_file(remote_id, file_type, data, modification_date)
 
     def download_data_files(self, local_id: str, remote_id: int, config: dict):
-        for path, file_type in self.get_data_file_paths(local_id):
+        for path, file_type in self._get_data_file_paths(local_id):
             try:
                 self._sync_thread.add_path_to_ignore_list(path)
                 data = self.api.transducers().get_file(remote_id, file_type)
@@ -65,7 +59,7 @@ class Transducers(AbstractComponent):
     def get_cloud_items(self) -> List[Any]:
         return self.api.transducers().get_all(self.db_id)
 
-    def get_data_file_paths(self, local_id: str) -> List[Tuple[Path, str]]:
+    def _get_data_file_paths(self, local_id: str) -> List[Tuple[Path, str]]:
         body_file_path = self.get_directory_path() / local_id / f"{local_id}.body.obj"
         surf_file_path = self.get_directory_path() / local_id / f"{local_id}.surf.obj"
         return [
