@@ -37,6 +37,8 @@ class Photocollections(AbstractComponent):
     def sync_item(self, local_id: str, remote_id: int, remote_mtime: Optional[datetime]):
         dir_path = self.get_directory_path() / local_id
         if dir_path.exists():
+            self._sync_thread.add_path_to_ignore_list(dir_path)
+
             local_photos = [
                 PhotoDto(
                     file_name=p.name,
@@ -78,6 +80,7 @@ class Photocollections(AbstractComponent):
                     if (
                             local is None
                             or remote.modification_date > local.modification_date
+                            or remote.file_size != local.file_size
                     ):
                         photos_to_download.append(remote)
             else:
@@ -93,31 +96,31 @@ class Photocollections(AbstractComponent):
                     remote = remote_by_name.get(name)
                     if (
                             remote is None
-                            or local.modification_date > remote.modification_date
+                            or local.file_size != remote.file_size
                     ):
                         photos_to_upload.append(local)
 
             if len(photos_to_upload) > 0:
-                self._upload_photos(remote_id, [dir_path / p.file_name for p in photos_to_upload])
+                self._upload_photos(remote_id, local_id, [dir_path / p.file_name for p in photos_to_upload])
 
             if len(photos_to_download) > 0:
-                self._download_photos(remote_id, dir_path, [p.file_name for p in photos_to_download])
+                self._download_photos(remote_id, local_id, dir_path, [p.file_name for p in photos_to_download])
         else:
             self.download(local_id, remote_id)
 
     def upload(self, local_id: str, remote_id: Optional[int]):
+        self._sync_thread.add_path_to_ignore_list(self.get_directory_path() / local_id)
         paths = self._get_local_photo_paths(local_id)
         if len(paths) > 0:
-            self.emit_status(local_id, Status.STATUS_UPLOADING)
             if not remote_id:
                 remote_id = self.api.photocollections().create(
                     CreatePhotocollectionRequest(session_id=self.parent_id, name=local_id)
                 ).id
-            self._upload_photos(remote_id, list(paths))
+            self._upload_photos(remote_id, local_id, list(paths))
 
     def download(self, local_id: str, remote_id: int):
-        self.emit_status(local_id, Status.STATUS_DOWNLOADING)
         dir_path = self.get_directory_path() / local_id
+        self._sync_thread.add_path_to_ignore_list(dir_path)
 
         shutil.rmtree(dir_path, ignore_errors=True)
         dir_path.mkdir(parents=True)
@@ -125,7 +128,7 @@ class Photocollections(AbstractComponent):
         photocollection = self.api.photocollections().get_one(remote_id)
         if photocollection.photos is None:
             return
-        self._download_photos(remote_id, dir_path, [p.file_name for p in photocollection.photos])
+        self._download_photos(remote_id, local_id, dir_path, [p.file_name for p in photocollection.photos])
 
     def delete_on_cloud(self, local_id: str, remote_id: int):
         self.api.photocollections().delete(remote_id)
@@ -134,7 +137,8 @@ class Photocollections(AbstractComponent):
         self._raise_if_no_parent()
         return self.api.photocollections().get_all(self.parent_id)
 
-    def _upload_photos(self, photocollection_id: int, file_paths: List[Path]):
+    def _upload_photos(self, photocollection_id: int, local_id: str, file_paths: List[Path]):
+        self.emit_status(local_id, Status.STATUS_UPLOADING)
         def ul(photo_path):
             self.api.photocollections().upload_photo(
                 photocollection_id, photo_path.name, photo_path.read_bytes(), mtime(photo_path)
@@ -142,10 +146,13 @@ class Photocollections(AbstractComponent):
         with ThreadPoolExecutor(max_workers=16) as ex:
             ex.map(ul, file_paths)
 
-    def _download_photos(self, photocollection_id: int, dir_path: Path, file_names: List[str]):
+    def _download_photos(self, photocollection_id: int, local_id: str, dir_path: Path, file_names: List[str]):
+        self.emit_status(local_id, Status.STATUS_DOWNLOADING)
+
         def dl(file_name):
             data = self.api.photocollections().get_photo(photocollection_id, file_name)
             photo_path = dir_path / file_name
+            self._sync_thread.add_path_to_ignore_list(photo_path)
             photo_path.write_bytes(data)
 
         with ThreadPoolExecutor(max_workers=16) as ex:

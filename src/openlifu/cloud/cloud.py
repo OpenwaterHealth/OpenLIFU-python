@@ -1,7 +1,8 @@
 import os
 import time
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, Dict
 
 from openlifu.cloud.components.photocollections import Photocollections
 from openlifu.cloud.components.runs import Runs
@@ -27,14 +28,16 @@ from openlifu.cloud.ws import Websocket
 class Cloud:
 
     def __init__(self):
-        self._filesystem_observer = FilesystemObserver(self._on_path_changed)
+        self._filesystem_observer = FilesystemObserver(self._on_file_system_update)
         self._api = Api()
         self._websocket = Websocket(self._on_websocket_update)
         self._components: List[AbstractComponent] = []
         self._sync_thread = SyncThread(self._on_status_changed)
-        self._db_path = None
+        self._db_path: Optional[Path] = None
         self._db: Optional[DatabaseDto] = None
         self._status_callback: Optional[Callable[[Status], None]] = None
+        self._sync_idle = True
+        self._pending_updates: Dict[Path, datetime] = {}
 
     def set_access_token(self, token: str):
         self._api.authenticate(token)
@@ -95,13 +98,27 @@ class Cloud:
     def stop_background_sync(self):
         self._filesystem_observer.stop()
 
-    def _on_path_changed(self, path: Path):
-        for component in self._components:
-            component.on_filesystem_change(path)
-
     def _on_status_changed(self, status: Status):
+        self._sync_idle = status.status == Status.STATUS_IDLE
         if self._status_callback is not None:
             self._status_callback(status)
+
+        if self._sync_idle and len(self._pending_updates) > 0:
+            if DEBUG:
+                print(f"Syncing pending updates...")
+            for path, update_date in self._pending_updates.items():
+                for component in self._components:
+                    component.on_update_from_cloud(path, update_date)
+            self._pending_updates.clear()
+
+    def _on_file_system_update(self, path: Path):
+        if self._sync_thread.is_path_in_ignore_list(path) or path.name == '.DS_Store':
+            return
+        if self._sync_idle:
+            for component in self._components:
+                component.on_filesystem_change(path)
+        else:
+            self._pending_updates[path] = datetime.now(timezone.utc)
 
     def _on_websocket_update(self, data: dict):
         if self._db_path is None:
@@ -112,8 +129,15 @@ class Cloud:
             return
 
         path = self._db_path / updated_path
-        for component in self._components:
-            component.on_update_from_cloud(path, update_date)
+
+        if self._sync_thread.is_path_in_ignore_list(path):
+            return
+
+        if self._sync_idle:
+            for component in self._components:
+                component.on_update_from_cloud(path, update_date)
+        else:
+            self._pending_updates[path] = update_date
 
     def _create_components(self):
         self._components.clear()

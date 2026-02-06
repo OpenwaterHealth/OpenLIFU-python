@@ -72,6 +72,7 @@ class Solutions(AbstractComponent):
         file_name = local_id + '.nc'
         path = self.get_directory_path() / local_id / file_name
         try:
+            self._sync_thread.add_path_to_ignore_list(path)
             data = self.api.solutions().get_file(remote_id, DATA_FILE)
             path.write_bytes(data)
         except Exception as e:

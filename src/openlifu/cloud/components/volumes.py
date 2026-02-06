@@ -57,6 +57,7 @@ class Volumes(AbstractComponent):
         file_name = config["data_filename"]
         path = self.get_directory_path() / local_id / file_name
         try:
+            self._sync_thread.add_path_to_ignore_list(path)
             data = self.api.volumes().get_file(remote_id, DATA_FILE)
             path.write_bytes(data)
         except Exception as e:

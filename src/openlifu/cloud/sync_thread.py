@@ -2,7 +2,7 @@ import threading
 import time
 import traceback
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, List
 
 from openlifu.cloud.const import DEBUG
 from openlifu.cloud.status import Status
@@ -17,6 +17,13 @@ class SyncThread:
         self._running = False
         self._worker_thread = None
         self._status_callback = status_callback
+        self._ignore_paths: List[Path] = []
+
+    def add_path_to_ignore_list(self, path: Path):
+        self._ignore_paths.append(path)
+
+    def is_path_in_ignore_list(self, path: Path) -> bool:
+        return path in self._ignore_paths
 
     def post(self, item: Any, path: Optional[Path]):
         self._pending_syncs[(item, path)] = time.time()
@@ -75,6 +82,7 @@ class SyncThread:
                 idle = len(self._pending_syncs) == 0
 
                 if idle and len(ready) > 0:
+                    self._ignore_paths.clear()
                     self.emit_status(Status(Status.STATUS_IDLE))
 
                 if idle and not self._running:

@@ -53,6 +53,7 @@ class Transducers(AbstractComponent):
     def download_data_files(self, local_id: str, remote_id: int, config: dict):
         for path, file_type in self.get_data_file_paths(local_id):
             try:
+                self._sync_thread.add_path_to_ignore_list(path)
                 data = self.api.transducers().get_file(remote_id, file_type)
                 path.write_bytes(data)
             except Exception as e:

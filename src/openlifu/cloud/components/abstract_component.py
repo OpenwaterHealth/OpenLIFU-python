@@ -84,7 +84,7 @@ class AbstractComponent(ABC):
         pass
 
     def on_update_from_cloud(self, path: Path, update_date: datetime):
-        if self._last_sync_date == update_date:
+        if self._last_sync_date >= update_date:
             return
         self.on_filesystem_change(path)
 
@@ -115,6 +115,7 @@ class AbstractComponent(ABC):
     def upload(self, local_id: str, remote_id: Optional[int]):
         path = self.get_directory_path() / f"{local_id}/{local_id}.json"
         if path.is_file():
+            self._sync_thread.add_path_to_ignore_list(self.get_directory_path() / local_id)
             self.emit_status(local_id, Status.STATUS_UPLOADING)
             data = path.read_text()
             config_mtime = mtime(path)
@@ -125,11 +126,17 @@ class AbstractComponent(ABC):
     def download(self, local_id: str, remote_id: int):
         self.emit_status(local_id, Status.STATUS_DOWNLOADING)
         dir_path = self.get_directory_path() / local_id
+
+        self._sync_thread.add_path_to_ignore_list(dir_path)
+
         if not dir_path.exists():
             dir_path.mkdir(parents=True)
         data = self.download_config(local_id, remote_id).decode()
 
-        with open(dir_path / f"{local_id}.json", "w") as f:
+        file_path = dir_path / f"{local_id}.json"
+        self._sync_thread.add_path_to_ignore_list(file_path)
+
+        with open(file_path, "w") as f:
             f.write(data)
 
         self.download_data_files(local_id, remote_id, json.loads(data))
