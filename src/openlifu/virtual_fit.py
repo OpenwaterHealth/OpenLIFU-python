@@ -90,6 +90,9 @@ class VirtualFitOptions(DictMixin):
     planefit_dpitch_step: Annotated[float, OpenLIFUFieldData("Plane fit pitch step", "Local pitch axis step size to use when constructing plane fitting grids. In spatial units of `units`")] = 3
     """Local pitch axis step size to use when constructing plane fitting grids. In spatial units of `units`."""
 
+    top_n_candidates: Annotated[int, OpenLIFUFieldData("No. of candidates returned", "Sets the limit for the number of transducer transform candidates returned by the algorithm.")] = 4
+    """Sets the limit for the number of transducer transform candidates returned by the algorithm."""
+
     def __post_init__(self):
         if not isinstance(self.units, str):
             raise TypeError("Units must be a string")
@@ -135,6 +138,10 @@ class VirtualFitOptions(DictMixin):
             raise ValueError("Plane fit pitch extent must be greater than 0")
         if not isinstance(self.planefit_dpitch_step, int | float):
             raise TypeError("Plane fit pitch step must be a number")
+        if not isinstance(self.top_n_candidates, int ):
+            raise TypeError("Number of transducer transform candidates returned must be an integer")
+        if self.top_n_candidates <= 0:
+            raise TypeError("Number of transducer transform candidates returned must be greater than 0")
 
     def to_units(self, target_units: str) -> VirtualFitOptions:
         """Do unit conversion and return a version of this VirtualFitOptions that uses
@@ -152,6 +159,7 @@ class VirtualFitOptions(DictMixin):
             planefit_dyaw_step = conversion_factor * self.planefit_dyaw_step,
             planefit_dpitch_extent = conversion_factor * self.planefit_dpitch_extent,
             planefit_dpitch_step = conversion_factor * self.planefit_dpitch_step,
+            top_n_candidates = self.top_n_candidates,
         )
 
     @staticmethod
@@ -275,6 +283,7 @@ def run_virtual_fit(
     planefit_dyaw_step = options.planefit_dyaw_step
     planefit_dpitch_extent = options.planefit_dpitch_extent
     planefit_dpitch_step = options.planefit_dpitch_step
+    top_n_candidates = options.top_n_candidates
 
 
     if skin_mesh is None:
@@ -443,7 +452,7 @@ def run_virtual_fit(
 
         progress_callback(100, "Complete")
         return (
-            sorted_transforms,
+            sorted_transforms[:top_n_candidates],
             VirtualFitDebugInfo(
                 skin_mesh = skin_mesh,
                 spherically_interpolated_mesh = interpolator_mesh,
@@ -455,4 +464,4 @@ def run_virtual_fit(
         )
 
     progress_callback(100, "Complete")
-    return sorted_transforms
+    return sorted_transforms[:top_n_candidates]
