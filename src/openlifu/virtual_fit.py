@@ -141,7 +141,7 @@ class VirtualFitOptions(DictMixin):
         if not isinstance(self.top_n_candidates, int ):
             raise TypeError("Number of transducer transform candidates returned must be an integer")
         if self.top_n_candidates <= 0:
-            raise TypeError("Number of transducer transform candidates returned must be greater than 0")
+            raise ValueError("Number of transducer transform candidates returned must be greater than 0")
 
     def to_units(self, target_units: str) -> VirtualFitOptions:
         """Do unit conversion and return a version of this VirtualFitOptions that uses

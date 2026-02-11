@@ -443,11 +443,10 @@ def _spherical_interpolator_from_mesh_embree(surface_mesh : vtk.vtkPolyData) -> 
     vtk_points = surface_mesh.GetPoints()
     points_np = vtk_to_numpy(vtk_points.GetData()).astype(np.float64) # (N,3)
     polys = surface_mesh.GetPolys()
-    polys_np = vtk_to_numpy(polys.GetData()) # flat array [3,i0,i1,i2,3,i0,i1,i2,...]
-    if polys_np.size == 0:
+    connectivity_np = vtk_to_numpy(polys.GetConnectivityArray())
+    if connectivity_np.size == 0:
         raise RuntimeError("Input mesh has no polygons after transformation/triangulation.")
-    polys_np = polys_np.reshape(-1, 4) # (M, 4)
-    faces_np = polys_np[:, 1:4].astype(np.int64) # (M, 3)
+    faces_np = connectivity_np.reshape(-1, 3).astype(np.int64) # (M, 3)
 
     r_squared = np.sum(points_np**2, axis=1)
 
