@@ -332,7 +332,8 @@ class Protocol:
                     t_end=sim_options.t_end,
                     cfl=sim_options.cfl,
                     amplitude = self.pulse.amplitude * voltage,
-                    gpu = use_gpu
+                    gpu = use_gpu,
+                    **sim_options.options
                 )
             delays_to_stack.append(delays)
             apodizations_to_stack.append(apodization)

@@ -90,7 +90,11 @@ def run_simulation(arr: xdc.Transducer,
                    bli_tolerance: float = 0.05,
                    upsampling_rate: int = 5,
                    gpu: bool = True,
-                   ref_values_only: bool = False
+                   ref_values_only: bool = False,
+                   _crosstalk: bool = False,
+                   _crosstalk_frac: float = 0.0,
+                   _crosstalk_distance: float = 5.05e-3
+
 ):
     from kwave.kspaceFirstOrder3D import kspaceFirstOrder3D
     from kwave.options.simulation_execution_options import SimulationExecutionOptions
@@ -106,6 +110,22 @@ def run_simulation(arr: xdc.Transducer,
         raise ValueError("All dimensions must have the same units")
     scl = getunitconversion(units[0], 'm')
     array_offset =[-float(coord.mean())*scl for coord in params.coords.values()]
+    if _crosstalk:
+        crosstalk_arr = arr.copy()
+        crosstalk_mat = source_mat
+        positions = arr.get_positions(units="m")
+        for src_idx in range(arr.numelements()):
+             for dst_idx in range(arr.numelements()):
+                if src_idx == dst_idx:
+                    continue
+                src_pos = np.array(positions[src_idx])
+                dst_pos = np.array(positions[dst_idx])
+                dist = np.linalg.norm(src_pos - dst_pos)
+                if dist <= _crosstalk_distance:
+                    crosstalk_arr.elements += [arr.elements[dst_idx].copy()]
+                    crosstalk_mat = np.vstack((crosstalk_mat, _crosstalk_frac*source_mat[src_idx,:]))
+        arr = crosstalk_arr
+        source_mat = crosstalk_mat
     karray = get_karray(arr,
                         translation=array_offset,
                         bli_tolerance=bli_tolerance,
