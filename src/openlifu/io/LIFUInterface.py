@@ -17,7 +17,7 @@ from openlifu.plan.solution import Solution
 
 REF_MAX_SEQUENCE_TIMES = {
     "default": [2*60, 5*60, 10*60],    # users to use default values
-    "stress_test": [15*60, 15*60, 15*60] # QA to use stress test values
+    "stress_test": [60*60, 60*60, 60*60] # QA to use stress test values
 }
 
 REF_MAX_DUTY_CYCLES = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
