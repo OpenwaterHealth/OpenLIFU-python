@@ -17,6 +17,38 @@ env:
   FORCE_COLOR: 3
 
 jobs:
+  check-commit-messages:
+    name: Check commit messages
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check all PR commits reference a GitHub issue
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          pattern='(#[0-9]+|github\.com/[^/]+/[^/]+/issues/[0-9]+|^Bump |^Merge |^Revert |^fixup! |^squash! |^amend! )'
+          failed=0
+          for sha in $(git log --format="%H" "$BASE_SHA".."$HEAD_SHA"); do
+            msg=$(git log -1 --format="%B" "$sha")
+            first_line=$(git log -1 --format="%s" "$sha")
+            if ! printf '%s\n' "$msg" | grep -qP "$pattern"; then
+              echo "::error::Commit ${sha::7} missing issue reference: $first_line"
+              failed=1
+            fi
+          done
+
+          if [ "$failed" -eq 1 ]; then
+            echo ""
+            echo "Every commit must reference a GitHub issue (e.g., #123 or full issue URL)."
+            echo "Exceptions: Bump, Merge, Revert, fixup!, squash!, amend! commits."
+            exit 1
+          fi
+
   pre-commit:
     name: Format
     runs-on: ubuntu-latest
