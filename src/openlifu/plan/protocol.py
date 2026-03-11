@@ -21,7 +21,6 @@ from openlifu.plan.param_constraint import ParameterConstraint
 from openlifu.plan.solution import Solution
 from openlifu.plan.solution_analysis import SolutionAnalysis, SolutionAnalysisOptions
 from openlifu.plan.target_constraints import TargetConstraints
-from openlifu.sim import run_simulation
 from openlifu.util.annotations import OpenLIFUFieldData
 from openlifu.util.checkgpu import gpu_available
 from openlifu.util.json import PYFUSEncoder
@@ -319,32 +318,8 @@ class Protocol:
             self.logger.info(f"Beamform for focus {focus}...")
             delays, apodization = self.beamform(arr=transducer, target=focus, params=params)
             simulation_output_xarray = None
-            if simulate:
-                self.logger.info(f"Simulate for focus {focus}...")
-                simulation_output_xarray, _ = run_simulation(
-                    arr=transducer,
-                    params=params,
-                    delays=delays,
-                    apod= apodization,
-                    freq = self.pulse.frequency,
-                    cycles = simulation_cycles,
-                    dt=sim_options.dt,
-                    t_end=sim_options.t_end,
-                    cfl=sim_options.cfl,
-                    amplitude = self.pulse.amplitude * voltage,
-                    gpu = use_gpu
-                )
             delays_to_stack.append(delays)
             apodizations_to_stack.append(apodization)
-            simulation_outputs_to_stack.append(simulation_output_xarray)
-        if simulate:
-            simulation_output_stacked = xa.concat(
-                [
-                    sim.assign_coords(focal_point_index=i)
-                    for i, sim in enumerate(simulation_outputs_to_stack)
-                ],
-                dim='focal_point_index',
-            )
         # instantiate and return the solution
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         solution_id = timestamp
@@ -362,7 +337,7 @@ class Protocol:
             sequence=self.sequence,
             foci=foci,
             target=target,
-            simulation_result=simulation_output_stacked,
+            simulation_result=None,
             approved=False,
             description= (
                 f"A solution computed for the {self.name} protocol with transducer {transducer.name}"
@@ -370,6 +345,14 @@ class Protocol:
                 f" This solution was created for the session {session.id} for subject {session.subject_id}." if session is not None else ""
             )
         )
+        if simulate:
+            simulation_results = solution.simulate(
+                params=params,
+                sim_options=sim_options,
+                use_gpu=use_gpu,
+                voltage=voltage)
+            solution.simulation_result = simulation_results
+
         # optionally scale the solution with simulation result
         if scale:
             if not simulate:
