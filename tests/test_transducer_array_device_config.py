@@ -451,6 +451,54 @@ def test_to_device_config_has_independent_json_compatible_data():
     assert dataclasses_are_equal(array, original)
 
 
+@pytest.mark.parametrize("connected", [False, True])
+def test_device_config_round_trip_preserves_placements_with_duplicate_hwids(connected):
+    configs = [_module_user_config("ABCDEFGH"), _module_user_config("ABCDEFGH")]
+    transforms = [np.eye(4), np.eye(4)]
+    transforms[0][0, 3] = 25.0
+    transforms[1][0, 3] = -25.0
+    original = TransducerArray.from_module_user_configs(configs, module_transforms=transforms)
+    configs[0]["device"] = json.loads(json.dumps(original.to_device_config()))
+    if connected:
+        rebuilt = TransducerArray.get_connected(
+            interface=_FakeInterface(configs), use_default_template=False,
+        )
+    else:
+        rebuilt = TransducerArray.from_module_user_configs(configs)
+    assert arrays_structurally_equal(original, rebuilt)
+    np.testing.assert_allclose(rebuilt.to_transducer().get_positions(), original.to_transducer().get_positions())
+
+
+@pytest.mark.parametrize("connected", [False, True])
+@pytest.mark.parametrize(
+    ("recorded_hwids", "reported_hwids", "expected_indices"),
+    [
+        (["BBB", "AAA"], ["AAA", "BBB"], [1, 0]),
+        (["BBB", "DUP", "AAA", "DUP"], ["AAA", "DUP", "BBB", "DUP"], [2, 1, 0, 3]),
+        (["AAA", None], ["AAA", "AAA"], [0, 1]),
+        (["AAA", "AAA"], ["AAA", None], [0, 1]),
+    ],
+    ids=["unique-reordered", "mixed-unique-and-duplicate", "reported-duplicate", "recorded-duplicate"],
+)
+def test_device_transforms_match_only_unambiguous_hwids(connected, recorded_hwids, reported_hwids, expected_indices):
+    configs = [_module_user_config(hwid) for hwid in reported_hwids]
+    transforms = [np.eye(4) for _ in recorded_hwids]
+    for i, transform in enumerate(transforms):
+        transform[0, 3] = 10.0 * (i + 1)
+    configs[0]["device"] = {"modules": [
+        {"hwid": hwid, "transform": transform.tolist()}
+        for hwid, transform in zip(recorded_hwids, transforms)
+    ]}
+    original_configs = copy.deepcopy(configs)
+    if connected:
+        array = TransducerArray.get_connected(interface=_FakeInterface(configs), use_default_template=False)
+    else:
+        array = TransducerArray.from_module_user_configs(configs)
+    for module, expected_index in zip(array.modules, expected_indices):
+        np.testing.assert_array_equal(module.transform, transforms[expected_index])
+    assert configs == original_configs
+
+
 def test_connected_array_saves_loads_and_flattens_with_temporary_mesh_files(tmp_path):
     db = Database.initialize_empty_database(tmp_path / "db")
     configs = [_module_user_config("AAA"), _module_user_config("BBB")]
