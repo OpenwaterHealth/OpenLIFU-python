@@ -26,6 +26,7 @@ _DEFAULT_TEMPLATE_IDS: dict[tuple[int, int], str] = {
 # Locally-embedded per-module transforms and array-level standoff for
 # the canonical default templates. Used as a meshless fallback when no
 # database is provided to :py:meth:`TransducerArray.get_connected`.
+# Translations are in millimeters.
 # The 2x155 entries currently mirror the openlifu_2x180_evt1 template
 # as a stand-in until a dedicated 155 kHz template ships.
 _DEFAULT_TEMPLATE_DATA: dict[str, dict] = {
@@ -144,7 +145,7 @@ def _build_meshless_default_template(template_id: str) -> TransducerArray:
     spec = _DEFAULT_TEMPLATE_DATA[template_id]
     modules: list[TransformedTransducer] = []
     for tform in spec["module_transforms"]:
-        t = Transducer(id=template_id, elements=[])
+        t = Transducer(id=template_id, elements=[], units="mm")
         modules.append(TransformedTransducer.from_transducer(t, transform=np.array(tform, dtype=float)))
     attrs = {"standoff_transform": np.array(spec["standoff_transform"], dtype=float)}
     return TransducerArray(id=template_id, name=spec["name"], modules=modules, attrs=attrs)
@@ -391,6 +392,13 @@ class TransducerArray(DictMixin):
         reported HWIDs. A metadata-only block without module entries fails
         count validation; an absent or empty block is valid.
 
+        Inherited placement and standoff translations are converted from each
+        template module's units to the corresponding configuration's units.
+        Array-level standoff uses the first module's units in each array.
+        A translated array standoff requires a template module to establish its
+        units. Device and explicit transforms already use the destination
+        units and are not rescaled.
+
         Args:
             user_configs: ordered list of user_config dicts. Order corresponds
                 to module index as reported by the device.
@@ -424,13 +432,14 @@ class TransducerArray(DictMixin):
             arr_attrs = copy.deepcopy(template.attrs)
 
         device_cfg = user_configs[0].get("device") or None
+        device_attrs = (device_cfg or {}).get("attrs") or {}
         device_modules_in_order: list = []
         device_modules_by_hwid: dict = {}
         if device_cfg:
             _validate_device_config_against_connected(device_cfg, user_configs)
             resolved_id = device_cfg.get("id", resolved_id)
             resolved_name = device_cfg.get("name", resolved_name)
-            for k, v in (device_cfg.get("attrs") or {}).items():
+            for k, v in device_attrs.items():
                 arr_attrs[k] = copy.deepcopy(v)
             device_modules_in_order = list(device_cfg.get("modules") or [])
             reported_hwid_counts = Counter(cfg.get("hwid") for cfg in user_configs)
@@ -450,10 +459,6 @@ class TransducerArray(DictMixin):
         if arr_name is not None:
             resolved_name = arr_name
 
-        st = arr_attrs.get("standoff_transform")
-        if st is not None and not isinstance(st, np.ndarray):
-            arr_attrs["standoff_transform"] = np.array(st, dtype=float)
-
         template_modules: list = list(template.modules) if template is not None else []
         modules: list[TransformedTransducer] = []
         for i, cfg in enumerate(user_configs):
@@ -464,14 +469,16 @@ class TransducerArray(DictMixin):
                 t.registration_surface_filename = template_mod.registration_surface_filename
                 t.transducer_body_filename = template_mod.transducer_body_filename
                 if template_mod.standoff_transform is not None:
-                    t.standoff_transform = np.array(template_mod.standoff_transform, dtype=float)
+                    t.standoff_transform = t.convert_transform(
+                        np.array(template_mod.standoff_transform, dtype=float), template_mod.units,
+                    )
                 if template_mod.module_invert:
                     t.module_invert = list(template_mod.module_invert)
 
             # Resolve transform: template < device < explicit override
             transform = np.eye(4)
             if template_mod is not None:
-                transform = np.array(template_mod.transform, dtype=float)
+                transform = t.convert_transform(np.array(template_mod.transform, dtype=float), template_mod.units)
 
             hwid = cfg.get("hwid")
             device_mod: dict | None = None
@@ -488,6 +495,16 @@ class TransducerArray(DictMixin):
                 transform = np.array(module_transforms[i], dtype=float)
 
             modules.append(TransformedTransducer.from_transducer(t, transform=transform))
+
+        st = arr_attrs.get("standoff_transform")
+        if st is not None:
+            st = np.array(st, dtype=float)
+            if template is not None and "standoff_transform" not in device_attrs:
+                if template_modules:
+                    st = modules[0].convert_transform(st, template_modules[0].units)
+                elif np.any(st[:3, 3]):
+                    raise ValueError("Cannot infer standoff units from a template without modules.")
+            arr_attrs["standoff_transform"] = st
 
         return cls(id=resolved_id, name=resolved_name, modules=modules, attrs=arr_attrs)
 

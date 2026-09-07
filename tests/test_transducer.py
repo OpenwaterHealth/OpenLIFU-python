@@ -10,6 +10,7 @@ from helpers import dataclasses_are_equal
 
 from openlifu.xdc import DeviceConfigMismatchError, Element, Transducer, TransducerArray
 from openlifu.xdc.transducerarray import (
+    _build_meshless_default_template,
     get_angle_from_gap,
     get_gap_from_angle,
     get_roc_from_angle,
@@ -844,3 +845,118 @@ def test_transducer_array_dict_serialization_does_not_alias_inputs():
     serialized["modules"][0]["attrs"]["calibration"]["values"].append(2)
     serialized["modules"][0]["module_invert"][0] = True
     assert dataclasses_are_equal(array, original)
+
+
+def _physical_module_configs(units):
+    mm_per_unit = {"mm": 1, "cm": 10, "m": 1000}
+    configs = [_example_module_user_config(f"HW{i}") for i in range(len(units))]
+    for cfg, unit in zip(configs, units):
+        cfg["module"].update(
+            nx=2, ny=1, pitch=4 / mm_per_unit[unit], kerf=0.2 / mm_per_unit[unit], units=unit,
+        )
+    return configs
+
+
+@pytest.mark.parametrize("template_units", [("mm", "mm"), ("cm", "cm"), ("mm", "cm")])
+@pytest.mark.parametrize("module_units", [("mm", "mm"), ("cm", "cm"), ("cm", "mm")])
+@pytest.mark.parametrize("as_lists", [False, True])
+def test_template_geometry_preserves_physical_units(template_units, module_units, as_lists):
+    template = TransducerArray.from_module_user_configs(_physical_module_configs(template_units))
+    standoff = np.array([[1, 0, 0, 2], [0, 0, -1, 4], [0, 1, 0, 8], [0, 0, 0, 1]], dtype=float)
+    array_standoff = standoff.copy()
+    array_standoff[2, 3] = 18
+    array_standoff[:3, 3] /= 1 if template_units[0] == "mm" else 10
+    template.attrs["standoff_transform"] = array_standoff
+    for i, module in enumerate(template.modules):
+        mm_per_template_unit = 1 if module.units == "mm" else 10
+        module.transform = np.array(
+            [[0, -1, 0, 10 * (-1) ** i], [1, 0, 0, 4], [0, 0, 1, 6], [0, 0, 0, 1]], dtype=float,
+        )
+        module.transform[:3, 3] /= mm_per_template_unit
+        module.standoff_transform = standoff.copy()
+        module.standoff_transform[:3, 3] /= mm_per_template_unit
+    reference = copy.deepcopy(template)
+    if as_lists:
+        template.attrs["standoff_transform"] = array_standoff.tolist()
+        for module in template.modules:
+            module.transform = module.transform.tolist()
+            module.standoff_transform = module.standoff_transform.tolist()
+    original_template = copy.deepcopy(template)
+    configs = _physical_module_configs(module_units)
+    original_configs = copy.deepcopy(configs)
+
+    array = TransducerArray.from_module_user_configs(configs, template=template)
+
+    for module, expected in zip(array.modules, reference.modules):
+        np.testing.assert_allclose(module.bake().get_positions(units="mm"), expected.bake().get_positions(units="mm"))
+        np.testing.assert_allclose(module.get_standoff_transform_in_units("mm"), expected.get_standoff_transform_in_units("mm"))
+        np.testing.assert_array_equal(module.transform[:3, :3], expected.transform[:3, :3])
+        assert module.frequency == expected.frequency
+        assert module.sensitivity == expected.sensitivity
+    assert [module.units for module in array.modules] == list(module_units)
+    flattened = array.to_transducer()
+    expected_flattened = reference.to_transducer()
+    np.testing.assert_allclose(flattened.get_positions(units="mm"), expected_flattened.get_positions(units="mm"))
+    np.testing.assert_allclose(flattened.get_standoff_transform_in_units("mm"), expected_flattened.get_standoff_transform_in_units("mm"))
+    replay_configs = copy.deepcopy(configs)
+    replay_configs[0]["device"] = array.to_device_config()
+    replay = TransducerArray.from_module_user_configs(replay_configs, template=template)
+    np.testing.assert_allclose(replay.to_transducer().get_positions(units="mm"), flattened.get_positions(units="mm"))
+    np.testing.assert_allclose(replay.attrs["standoff_transform"], array.attrs["standoff_transform"])
+    assert configs == original_configs
+    assert dataclasses_are_equal(template, original_template)
+
+
+@pytest.mark.parametrize("standoff_override", [None, _translation(3).tolist()])
+def test_template_unit_conversion_preserves_device_and_explicit_overrides(standoff_override):
+    template = TransducerArray.from_module_user_configs(_physical_module_configs(["mm"]))
+    template.modules[0].transform = _translation(10)
+    template.modules[0].standoff_transform = _translation(8)
+    template.attrs["standoff_transform"] = _translation(8)
+    configs = _physical_module_configs(["cm"])
+    configs[0]["device"] = {
+        "modules": [{"hwid": "HW0", "transform": _translation(2).tolist()}],
+        "attrs": {"standoff_transform": standoff_override},
+    }
+    original_configs = copy.deepcopy(configs)
+    array = TransducerArray.from_module_user_configs(configs, template=template)
+    explicit_transform = _translation(4)
+    explicit = TransducerArray.from_module_user_configs(configs, template=template, module_transforms=[explicit_transform])
+    np.testing.assert_array_equal(array.modules[0].transform, _translation(2))
+    np.testing.assert_array_equal(explicit.modules[0].transform, explicit_transform)
+    for result in (array, explicit):
+        np.testing.assert_array_equal(result.modules[0].standoff_transform, _translation(0.8))
+        if standoff_override is None:
+            assert result.attrs["standoff_transform"] is None
+        else:
+            np.testing.assert_array_equal(result.attrs["standoff_transform"], standoff_override)
+    assert configs == original_configs
+
+
+def test_translated_array_standoff_requires_template_units():
+    template = TransducerArray(attrs={"standoff_transform": _translation(8)})
+    configs = _physical_module_configs(["cm"])
+    with pytest.raises(ValueError, match="standoff.*template.*module"):
+        TransducerArray.from_module_user_configs(configs, template=template)
+    template.attrs["standoff_transform"] = np.eye(4)
+    array = TransducerArray.from_module_user_configs(configs, template=template)
+    np.testing.assert_array_equal(array.attrs["standoff_transform"], np.eye(4))
+
+
+@pytest.mark.parametrize("frequency", [155, 400])
+def test_embedded_template_translations_are_in_millimeters(frequency):
+    template = _build_meshless_default_template(f"openlifu_2x{frequency}")
+    assert [module.units for module in template.modules] == ["mm", "mm"]
+    array = TransducerArray.from_module_user_configs(_physical_module_configs(["cm", "cm"]), template=template)
+    for module, template_module in zip(array.modules, template.modules):
+        np.testing.assert_allclose(module.transform[:3, 3] * 10, template_module.transform[:3, 3])
+        np.testing.assert_array_equal(module.transform[:3, :3], template_module.transform[:3, :3])
+    assert array.modules[0].transform[0, 3] == pytest.approx(2.584571998794554)
+    assert array.to_transducer().get_standoff_transform_in_units("mm")[2, 3] == pytest.approx(-8)
+
+
+def test_template_geometry_rejects_incompatible_units():
+    template = TransducerArray.from_module_user_configs(_physical_module_configs(["mm"]))
+    template.modules[0].units = "s"
+    with pytest.raises(ValueError, match="Unit type mismatch"):
+        TransducerArray.from_module_user_configs(_physical_module_configs(["cm"]), template=template)
