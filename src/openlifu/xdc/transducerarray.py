@@ -4,6 +4,7 @@ import copy
 import json
 import os
 import warnings
+from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
@@ -373,8 +374,8 @@ class TransducerArray(DictMixin):
            positionally.
         2. ``user_configs[0]["device"]`` (if present): overrides ``id``,
            ``name``, merges into ``attrs``, and supplies per-module transforms
-           keyed by ``hwid`` (falling back to positional matching when
-           no matching HWID entry is found).
+           keyed by ``hwid`` when unique in both the configs and device
+           entries, falling back to positional matching otherwise.
         3. ``module_transforms`` (if given): per-module 4x4 transforms that
            override everything else. Length must match ``user_configs``.
         4. ``arr_id`` / ``arr_name`` (if given): explicit array id/name that
@@ -432,10 +433,16 @@ class TransducerArray(DictMixin):
             for k, v in (device_cfg.get("attrs") or {}).items():
                 arr_attrs[k] = copy.deepcopy(v)
             device_modules_in_order = list(device_cfg.get("modules") or [])
+            reported_hwid_counts = Counter(cfg.get("hwid") for cfg in user_configs)
+            recorded_hwid_counts = Counter(
+                m.get("hwid") for m in device_modules_in_order if isinstance(m, dict)
+            )
             device_modules_by_hwid = {
                 m["hwid"]: m
                 for m in device_modules_in_order
                 if isinstance(m, dict) and m.get("hwid")
+                and reported_hwid_counts[m["hwid"]] == 1
+                and recorded_hwid_counts[m["hwid"]] == 1
             }
 
         if arr_id is not None:
