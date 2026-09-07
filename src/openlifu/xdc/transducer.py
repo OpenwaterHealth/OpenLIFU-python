@@ -95,10 +95,16 @@ class Transducer:
     module_invert: Annotated[List[bool], OpenLIFUFieldData("Invert polarity", "Whether to invert the polarity of the transducer output, per module")] = field(default_factory=lambda: [False])
     """Whether to invert the polarity of the transducer output"""
 
+    def _normalize_standoff_transform(self) -> None:
+        self.standoff_transform = np.array(self.standoff_transform, dtype=float)
+        if self.standoff_transform.shape != (4, 4):
+            raise ValueError("standoff_transform must be a 4x4 matrix.")
+
     def __post_init__(self):
         logging.info("Initializing transducer array")
         if self.name == "":
             self.name = self.id
+        self._normalize_standoff_transform()
         for element in self.elements:
             element.rescale(self.units)
         if self.sensitivity is None:
@@ -288,6 +294,7 @@ class Transducer:
             merged_array.module_invert += xform_array.module_invert
         for k, v in merged_attrs.items():
             merged_array.__setattr__(k, v)
+        merged_array._normalize_standoff_transform()  # pylint: disable=protected-access
         return merged_array
 
     def numelements(self):
@@ -312,7 +319,7 @@ class Transducer:
     def to_dict(self):
         d = self.__dict__.copy()
         d["elements"] = [element.to_dict() for element in d["elements"]]
-        d["standoff_transform"] =  d["standoff_transform"].tolist()
+        d["standoff_transform"] = np.array(d["standoff_transform"], dtype=float).tolist()
         return d
 
     def to_file(self, filename):
@@ -392,6 +399,27 @@ class Transducer:
             return json.dumps(self.to_dict(), separators=(',', ':'))
         else:
             return json.dumps(self.to_dict(), indent=4)
+
+    @classmethod
+    def from_module_user_config(cls, user_config: dict) -> Transducer:
+        """Build a module from its SDK user configuration.
+
+        The nonempty ``module`` dictionary supplies the geometry and calibration
+        arguments to :py:meth:`gen_matrix_array`. The top-level ``hwid`` is
+        preserved in the resulting transducer's ``attrs``. Mutable configuration
+        values are copied so the module can be edited independently.
+
+        A template supplied to :py:meth:`TransducerArray.from_module_user_configs`
+        provides array placement and mesh metadata.
+        """
+        module_cfg = user_config.get("module")
+        if not isinstance(module_cfg, dict) or not module_cfg:
+            raise ValueError("user_config has no 'module' sub-dict (expected a nonempty dictionary)")
+        transducer = cls.gen_matrix_array(**copy.deepcopy(module_cfg))
+        hwid = user_config.get("hwid")
+        if hwid is not None:
+            transducer.attrs["hwid"] = copy.deepcopy(hwid)
+        return transducer
 
     @staticmethod
     def gen_matrix_array(nx=2, ny=2, pitch=1, kerf=0, units="mm", **kwargs):
