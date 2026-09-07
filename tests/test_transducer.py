@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import copy
+import json
 from pathlib import Path
 
 import numpy as np
 import pytest
 from helpers import dataclasses_are_equal
 
-from openlifu.xdc import Element, Transducer, TransducerArray
+from openlifu.xdc import DeviceConfigMismatchError, Element, Transducer, TransducerArray
 from openlifu.xdc.transducerarray import (
     get_angle_from_gap,
     get_gap_from_angle,
@@ -395,3 +397,450 @@ def test_element_in_transducer_sensitivity_from_json_is_list_of_tuples():
     assert all(isinstance(pair, tuple) for pair in el_sensitivity)
     assert all(isinstance(f, float) and isinstance(v, float) for f, v in el_sensitivity)
     assert el_sensitivity == [(100e3, 5.0), (300e3, 9.0)]
+
+
+def _example_module_user_config(hwid: str = "ABCD1234") -> dict:
+    return {
+        "sn": "EVT2B-400K-TEST",
+        "hwid": hwid,
+        "freq": 400,
+        "module": {
+            "id": f"txm_400_{hwid.lower()}",
+            "name": f"TXM 400kHz ({hwid})",
+            "nx": 8,
+            "ny": 8,
+            "pitch": 5,
+            "frequency": 400000.0,
+            "kerf": 0.3,
+            "crosstalk_frac": 0.12,
+            "crosstalk_dist": 0.00505,
+            "sensitivity": [(400e3, 2800.0), (405e3, 1950.0)],
+        },
+        "device": {},
+    }
+
+
+def test_transducer_from_module_user_config():
+    cfg = _example_module_user_config(hwid="HW1")
+    t = Transducer.from_module_user_config(cfg)
+    assert isinstance(t, Transducer)
+    assert t.numelements() == 64
+    assert t.id == "txm_400_hw1"
+    assert t.frequency == 400000.0
+    assert t.attrs["hwid"] == "HW1"
+    assert t.sensitivity == [(400e3, 2800.0), (405e3, 1950.0)]
+
+
+def test_transducer_from_module_user_config_missing_module():
+    with pytest.raises(ValueError, match="no 'module'"):
+        Transducer.from_module_user_config({"hwid": "X"})
+
+
+def test_transducer_array_from_module_user_configs_bare():
+    cfgs = [_example_module_user_config("HW1"), _example_module_user_config("HW2")]
+    arr = TransducerArray.from_module_user_configs(cfgs)
+    assert isinstance(arr, TransducerArray)
+    assert len(arr.modules) == 2
+    assert arr.id == "transducer_array"
+    for m in arr.modules:
+        np.testing.assert_allclose(m.transform, np.eye(4))
+    assert {m.attrs.get("hwid") for m in arr.modules} == {"HW1", "HW2"}
+
+
+def test_transducer_array_from_module_user_configs_with_device_field():
+    cfg1 = _example_module_user_config("HW1")
+    cfg2 = _example_module_user_config("HW2")
+    cfg1["device"] = {
+        "id": "test_array",
+        "name": "Test Array",
+        "modules": [
+            {"hwid": "HW2", "transform": np.diag([1, 1, 1, 1]).tolist()},
+            {"hwid": "HW1",
+             "transform": [[1, 0, 0, 10.0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]},
+        ],
+        "attrs": {"registration_surface_filename": "x.obj"},
+    }
+    arr = TransducerArray.from_module_user_configs([cfg1, cfg2])
+    assert arr.id == "test_array"
+    assert arr.name == "Test Array"
+    assert arr.attrs["registration_surface_filename"] == "x.obj"
+    np.testing.assert_allclose(arr.modules[0].transform[0, 3], 10.0)
+    np.testing.assert_allclose(arr.modules[1].transform, np.eye(4))
+
+
+def test_transducer_array_from_module_user_configs_with_template():
+    cfgs = [_example_module_user_config("HW1"), _example_module_user_config("HW2")]
+    base_template = TransducerArray.get_concave_cylinder(
+        Transducer.gen_matrix_array(nx=8, ny=8, pitch=5, kerf=0.3, units="mm"),
+        rows=1, cols=2, width=40, gap=0.0, units="mm",
+        id="template_array", name="Template Array",
+        attrs={"registration_surface_filename": "tpl.obj"},
+    )
+    for m in base_template.modules:
+        m.registration_surface_filename = "module.surf.obj"
+        m.transducer_body_filename = "module.body.obj"
+
+    arr = TransducerArray.from_module_user_configs(cfgs, template=base_template)
+    assert arr.id == "template_array"
+    assert arr.attrs["registration_surface_filename"] == "tpl.obj"
+    for m in arr.modules:
+        assert m.registration_surface_filename == "module.surf.obj"
+        assert m.transducer_body_filename == "module.body.obj"
+    np.testing.assert_allclose(arr.modules[0].transform, base_template.modules[0].transform)
+
+
+def test_transducer_array_from_module_user_configs_module_transforms_override():
+    cfgs = [_example_module_user_config("HW1"), _example_module_user_config("HW2")]
+    cfgs[0]["device"] = {
+        "id": "x",
+        "name": "x",
+        "modules": [
+            {"hwid": "HW1", "transform": np.eye(4).tolist()},
+            {"hwid": "HW2", "transform": np.eye(4).tolist()},
+        ],
+        "attrs": {},
+    }
+    overrides = [
+        np.array([[1, 0, 0, 1.0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype=float),
+        np.array([[1, 0, 0, 2.0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype=float),
+    ]
+    arr = TransducerArray.from_module_user_configs(cfgs, module_transforms=overrides)
+    np.testing.assert_allclose(arr.modules[0].transform[0, 3], 1.0)
+    np.testing.assert_allclose(arr.modules[1].transform[0, 3], 2.0)
+
+
+def test_transducer_array_from_module_user_configs_empty_raises():
+    with pytest.raises(ValueError, match="at least one user_config"):
+        TransducerArray.from_module_user_configs([])
+
+
+def test_transducer_array_from_module_user_configs_length_mismatch_raises():
+    cfgs = [_example_module_user_config("HW1")]
+    with pytest.raises(ValueError, match="module_transforms length"):
+        TransducerArray.from_module_user_configs(cfgs, module_transforms=[np.eye(4), np.eye(4)])
+
+
+def test_transducer_array_from_module_user_configs_explicit_arr_id_name_override():
+    cfg1 = _example_module_user_config("HW1")
+    cfg2 = _example_module_user_config("HW2")
+    cfg1["device"] = {
+        "id": "from_device",
+        "name": "From Device",
+        "modules": [
+            {"hwid": "HW1", "transform": np.eye(4).tolist()},
+            {"hwid": "HW2", "transform": np.eye(4).tolist()},
+        ],
+        "attrs": {},
+    }
+    arr = TransducerArray.from_module_user_configs(
+        [cfg1, cfg2], arr_id="explicit_id", arr_name="Explicit Name",
+    )
+    assert arr.id == "explicit_id"
+    assert arr.name == "Explicit Name"
+
+
+def test_transducer_array_from_module_user_configs_arr_id_falls_through():
+    cfgs = [_example_module_user_config("HW1"), _example_module_user_config("HW2")]
+    template = TransducerArray.get_concave_cylinder(
+        Transducer.gen_matrix_array(nx=8, ny=8, pitch=5, kerf=0.3, units="mm"),
+        rows=1, cols=2, width=40, gap=0.0, units="mm",
+        id="tpl_id", name="Tpl Name",
+    )
+    arr = TransducerArray.from_module_user_configs(cfgs, template=template)
+    assert arr.id == "tpl_id"
+    assert arr.name == "Tpl Name"
+
+
+@pytest.mark.parametrize("module", [None, {}, [], [1], "module"])
+def test_transducer_from_module_user_config_requires_nonempty_dict(module):
+    with pytest.raises(ValueError, match="no 'module'"):
+        Transducer.from_module_user_config({"module": module})
+
+
+def test_transducer_from_module_user_config_geometry_and_independence():
+    cfg = _example_module_user_config("HW1")
+    cfg["module"].update({
+        "nx": 3,
+        "ny": 2,
+        "pitch": 2,
+        "kerf": 0.5,
+        "units": "cm",
+        "attrs": {"calibration": {"values": [1, 2]}, "hwid": "OLD"},
+        "module_invert": [True],
+    })
+    original = copy.deepcopy(cfg)
+
+    transducer = Transducer.from_module_user_config(cfg)
+
+    assert transducer.numelements() == 6
+    assert transducer.units == "cm"
+    assert transducer.name == cfg["module"]["name"]
+    assert transducer.frequency == 400e3
+    assert transducer.crosstalk_frac == 0.12
+    assert transducer.crosstalk_dist == 0.00505
+    assert transducer.attrs["hwid"] == "HW1"
+    np.testing.assert_allclose(transducer.elements[0].get_position(), [-2, 1, 0])
+    np.testing.assert_allclose(transducer.elements[-1].get_position(), [2, -1, 0])
+    np.testing.assert_allclose(transducer.elements[0].get_size(), [1.5, 1.5])
+    assert [el.pin for el in transducer.elements] == list(range(1, 7))
+    assert [el.index for el in transducer.elements] == list(range(1, 7))
+    assert transducer.registration_surface_filename is None
+    assert transducer.transducer_body_filename is None
+    np.testing.assert_array_equal(transducer.standoff_transform, np.eye(4))
+    transducer.to_json()
+    transducer.attrs["calibration"]["values"].append(3)
+    transducer.module_invert[0] = False
+    assert cfg == original
+    cfg["module"]["sensitivity"].append((410e3, 1000.0))
+    assert transducer.sensitivity == original["module"]["sensitivity"]
+
+
+def test_transducer_from_module_user_config_without_hwid():
+    cfg = _example_module_user_config()
+    cfg.pop("hwid")
+    assert "hwid" not in Transducer.from_module_user_config(cfg).attrs
+
+
+def _translation(x):
+    transform = np.eye(4)
+    transform[0, 3] = x
+    return transform
+
+
+def test_transducer_array_from_module_user_configs_precedence_and_independence():
+    cfgs = [_example_module_user_config("HW1"), _example_module_user_config("HW2")]
+    cfgs[0]["module"]["attrs"] = {"calibration": {"values": [1, 2]}}
+    template = TransducerArray.get_concave_cylinder(
+        Transducer.gen_matrix_array(nx=1, ny=1, frequency=155e3, sensitivity=10),
+        cols=2, id="template", name="Template",
+        attrs={
+            "registration_surface_filename": "template.obj",
+            "retained": {"values": [1]},
+            "overridden": "template",
+            "standoff_transform": _translation(3),
+        },
+    )
+    for i, module in enumerate(template.modules):
+        module.registration_surface_filename = f"module{i}.surface.obj"
+        module.transducer_body_filename = f"module{i}.body.obj"
+        module.standoff_transform = _translation(i + 1)
+        module.module_invert = [True]
+    cfgs[0]["device"] = {
+        "id": "device", "name": "Device",
+        "attrs": {"overridden": {"values": [2]}, "standoff_transform": _translation(7).tolist()},
+        "modules": [
+            {"hwid": "HW2", "transform": _translation(20).tolist()},
+            {"hwid": "HW1", "transform": _translation(10).tolist()},
+        ],
+    }
+    cfgs[1]["device"] = {"id": "ignored", "name": "Ignored"}
+    original_cfgs = copy.deepcopy(cfgs)
+    original_template = copy.deepcopy(template)
+    overrides = [_translation(100), _translation(200)]
+
+    array = TransducerArray.from_module_user_configs(cfgs, template=template)
+    explicit = TransducerArray.from_module_user_configs(
+        cfgs, template=template, module_transforms=overrides,
+        arr_id="explicit", arr_name="Explicit",
+    )
+
+    assert (array.id, array.name) == ("device", "Device")
+    assert (explicit.id, explicit.name) == ("explicit", "Explicit")
+    assert array.attrs["registration_surface_filename"] == "template.obj"
+    assert array.attrs["overridden"] == {"values": [2]}
+    np.testing.assert_array_equal(array.attrs["standoff_transform"], _translation(7))
+    for i, module in enumerate(array.modules):
+        assert module.numelements() == 64
+        assert module.frequency == 400e3
+        assert module.sensitivity == [(400e3, 2800.0), (405e3, 1950.0)]
+        assert module.crosstalk_frac == 0.12
+        assert module.crosstalk_dist == 0.00505
+        assert module.attrs["hwid"] == f"HW{i + 1}"
+        assert module.registration_surface_filename == f"module{i}.surface.obj"
+        assert module.transducer_body_filename == f"module{i}.body.obj"
+        assert module.module_invert == [True]
+        np.testing.assert_array_equal(module.standoff_transform, _translation(i + 1))
+        np.testing.assert_array_equal(module.transform, _translation((i + 1) * 10))
+        np.testing.assert_array_equal(explicit.modules[i].transform, overrides[i])
+
+    array.to_json()
+    array.attrs["retained"]["values"].append(9)
+    array.attrs["overridden"]["values"].append(9)
+    array.attrs["standoff_transform"][0, 3] = 9
+    array.modules[0].attrs["calibration"]["values"].append(9)
+    array.modules[0].module_invert[0] = False
+    array.modules[0].standoff_transform[0, 3] = 9
+    array.modules[0].transform[0, 3] = 9
+    explicit.modules[0].transform[0, 3] = 9
+    assert cfgs == original_cfgs
+    assert dataclasses_are_equal(template, original_template)
+    np.testing.assert_array_equal(overrides[0], _translation(100))
+
+
+def test_transducer_array_device_transforms_use_position_without_hwids():
+    cfgs = [_example_module_user_config("HW1"), _example_module_user_config("HW2")]
+    cfgs[0]["device"] = {"modules": [
+        {"transform": _translation(1).tolist()},
+        {"transform": _translation(2).tolist()},
+    ]}
+    array = TransducerArray.from_module_user_configs(cfgs)
+    for i, module in enumerate(array.modules):
+        np.testing.assert_array_equal(module.transform, _translation(i + 1))
+
+
+@pytest.mark.parametrize(
+    ("recorded_hwids", "connected_hwids", "valid"),
+    [
+        (["HW1", "HW2"], ["HW1", "HW2"], True),
+        (["HW2", "HW1"], ["HW1", "HW2"], True),
+        (["HW1"], ["HW1", "HW2"], False),
+        (["HW1", "HW2"], ["HW1", "OTHER"], False),
+        (["HW1", "HW2"], ["HW1", None], False),
+        ([None, None], ["HW1", "HW2"], True),
+        ([None, None], [None, None], True),
+        (["HW1", None], ["HW1", "HW2"], False),
+        (["HW1", None], ["HW1", None], True),
+        (["HW1", "HW1"], ["HW1", "HW1"], True),
+        (["HW1", "HW1"], ["HW1", "HW2"], False),
+        (["HW1", None], ["HW1", "HW1"], True),
+    ],
+)
+def test_transducer_array_pure_constructor_validates_device_identity(recorded_hwids, connected_hwids, valid):
+    cfgs = [_example_module_user_config(str(i)) for i in range(len(connected_hwids))]
+    for cfg, hwid in zip(cfgs, connected_hwids):
+        if hwid is None:
+            cfg.pop("hwid")
+        else:
+            cfg["hwid"] = hwid
+    cfgs[0]["device"] = {"modules": [
+        {"hwid": hwid} if hwid is not None else {} for hwid in recorded_hwids
+    ]}
+    if valid:
+        array = TransducerArray.from_module_user_configs(cfgs)
+        assert [m.attrs.get("hwid") for m in array.modules] == connected_hwids
+    else:
+        with pytest.raises(DeviceConfigMismatchError):
+            TransducerArray.from_module_user_configs(cfgs)
+
+
+@pytest.mark.parametrize("device", [None, {}])
+def test_transducer_array_pure_constructor_accepts_no_device_metadata(device):
+    cfg = _example_module_user_config()
+    cfg["device"] = device
+    assert len(TransducerArray.from_module_user_configs([cfg]).modules) == 1
+
+
+@pytest.mark.parametrize("device", [{"id": "metadata_only"}, {"modules": []}])
+def test_transducer_array_pure_constructor_rejects_device_without_modules(device):
+    cfg = _example_module_user_config()
+    cfg["device"] = device
+    with pytest.raises(DeviceConfigMismatchError, match="lists 0 module"):
+        TransducerArray.from_module_user_configs([cfg])
+
+
+@pytest.mark.parametrize("as_list", [True, False])
+def test_standoff_construction_merge_and_roundtrips(as_list):
+    expected = _translation(8)
+    value = expected.tolist() if as_list else expected.copy()
+    transducer = Transducer.gen_matrix_array(nx=1, ny=1, standoff_transform=value)
+    assert isinstance(transducer.standoff_transform, np.ndarray)
+    np.testing.assert_array_equal(transducer.standoff_transform, expected)
+
+    merged = Transducer.merge([transducer], merged_attrs={"standoff_transform": value})
+    assert isinstance(merged.standoff_transform, np.ndarray)
+    np.testing.assert_array_equal(merged.standoff_transform, expected)
+    merged.standoff_transform[0, 3] = 99
+    np.testing.assert_array_equal(value, expected)
+
+    transducer.standoff_transform = value
+    serialized = transducer.to_dict()
+    assert isinstance(serialized["standoff_transform"], list)
+    for restored in [Transducer.from_dict(serialized), Transducer.from_json(transducer.to_json())]:
+        assert isinstance(restored.standoff_transform, np.ndarray)
+        np.testing.assert_array_equal(restored.standoff_transform, expected)
+
+    array = TransducerArray.from_module_user_configs([_example_module_user_config()])
+    array.attrs["standoff_transform"] = value
+    for restored in [array, TransducerArray.from_dict(json.loads(array.to_json()))]:
+        flattened = restored.to_transducer()
+        assert isinstance(flattened.standoff_transform, np.ndarray)
+        np.testing.assert_array_equal(flattened.standoff_transform, expected)
+        assert flattened.numelements() == 64
+
+
+@pytest.mark.parametrize("standoff", [None, [], np.eye(3), np.ones((4, 3))])
+def test_transducer_rejects_invalid_standoff_shape(standoff):
+    with pytest.raises(ValueError, match="4x4"):
+        Transducer(standoff_transform=standoff)
+    with pytest.raises(ValueError, match="4x4"):
+        Transducer.merge([Transducer()], merged_attrs={"standoff_transform": standoff})
+
+
+def test_transducer_array_to_device_config_shape_and_independence():
+    cfgs = [_example_module_user_config("HW2"), _example_module_user_config("HW1")]
+    transforms = [_translation(2), _translation(1)]
+    array = TransducerArray.from_module_user_configs(
+        cfgs, arr_id="custom_array", arr_name="Custom Array", module_transforms=transforms,
+    )
+    array.attrs = {
+        "standoff_transform": _translation(8),
+        "weights": np.array([1.0, 2.0]),
+        "metadata": {"labels": ["custom"]},
+        "registration_surface_filename": "surface.obj",
+    }
+    original = copy.deepcopy(array)
+
+    device = array.to_device_config()
+
+    assert set(device) == {"id", "name", "modules", "attrs"}
+    assert (device["id"], device["name"]) == ("custom_array", "Custom Array")
+    assert device["modules"] == [
+        {"hwid": "HW2", "transform": transforms[0].tolist()},
+        {"hwid": "HW1", "transform": transforms[1].tolist()},
+    ]
+    assert device["attrs"]["standoff_transform"] == _translation(8).tolist()
+    assert device["attrs"]["weights"] == [1.0, 2.0]
+    assert device["attrs"]["registration_surface_filename"] == "surface.obj"
+    assert json.loads(json.dumps(device)) == device
+    assert dataclasses_are_equal(array, original)
+
+    reconstructed_cfgs = copy.deepcopy(cfgs)
+    reconstructed_cfgs[0]["device"] = device
+    reconstructed = TransducerArray.from_module_user_configs(reconstructed_cfgs)
+    assert reconstructed.to_device_config() == device
+    original_reconstructed = copy.deepcopy(reconstructed)
+    device["modules"][0]["transform"][0][3] = 99
+    device["attrs"]["standoff_transform"][0][3] = 99
+    device["attrs"]["metadata"]["labels"].append("changed")
+    assert dataclasses_are_equal(array, original)
+    assert dataclasses_are_equal(reconstructed, original_reconstructed)
+
+
+def test_transducer_array_dict_serialization_does_not_alias_inputs():
+    cfg = _example_module_user_config()
+    cfg["module"]["attrs"] = {"calibration": {"values": [1]}}
+    array = TransducerArray.from_module_user_configs([cfg])
+    array.attrs = {"standoff_transform": _translation(8), "metadata": {"labels": ["custom"]}}
+    original = copy.deepcopy(array)
+    serialized = array.to_dict()
+    assert dataclasses_are_equal(array, original)
+    assert isinstance(serialized["attrs"]["standoff_transform"], list)
+    serialized["attrs"]["impulse_response"] = [1, 2]
+    serialized["attrs"]["impulse_dt"] = 1e-6
+    original_serialized = copy.deepcopy(serialized)
+
+    restored = TransducerArray.from_dict(serialized)
+
+    assert serialized == original_serialized
+    assert "impulse_response" not in restored.attrs
+    assert "impulse_dt" not in restored.attrs
+    assert isinstance(restored.attrs["standoff_transform"], np.ndarray)
+    restored.attrs["metadata"]["labels"].append("changed")
+    restored.modules[0].attrs["calibration"]["values"].append(2)
+    restored.modules[0].module_invert[0] = True
+    assert serialized == original_serialized
+    serialized["attrs"]["standoff_transform"][0][3] = 99
+    serialized["attrs"]["metadata"]["labels"].append("changed")
+    serialized["modules"][0]["attrs"]["calibration"]["values"].append(2)
+    serialized["modules"][0]["module_invert"][0] = True
+    assert dataclasses_are_equal(array, original)
