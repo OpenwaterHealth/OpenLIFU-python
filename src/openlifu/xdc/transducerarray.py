@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import copy
 import json
+import os
+import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
@@ -10,6 +12,79 @@ import numpy as np
 from openlifu.util.dict_conversion import DictMixin
 from openlifu.util.units import getunitconversion
 from openlifu.xdc import Transducer, TransformedTransducer
+
+# Mapping from (num_connected_modules, freq_khz) to the canonical
+# template id consumed by :py:meth:`TransducerArray.get_connected`.
+_DEFAULT_TEMPLATE_IDS: dict[tuple[int, int], str] = {
+    (1, 155): "openlifu_1x155",
+    (1, 400): "openlifu_1x400",
+    (2, 155): "openlifu_2x155",
+    (2, 400): "openlifu_2x400",
+}
+
+# Locally-embedded per-module transforms and array-level standoff for
+# the canonical default templates. Used as a meshless fallback when no
+# database is provided to :py:meth:`TransducerArray.get_connected`.
+# The 2x155 entries currently mirror the openlifu_2x180_evt1 template
+# as a stand-in until a dedicated 155 kHz template ships.
+_DEFAULT_TEMPLATE_DATA: dict[str, dict] = {
+    "openlifu_1x155": {
+        "name": "OpenLIFU 1x 155kHz",
+        "module_transforms": [np.eye(4, dtype=float)],
+        "standoff_transform": np.eye(4, dtype=float),
+    },
+    "openlifu_1x400": {
+        "name": "OpenLIFU 1x 400kHz",
+        "module_transforms": [np.eye(4, dtype=float)],
+        "standoff_transform": np.eye(4, dtype=float),
+    },
+    "openlifu_2x155": {
+        "name": "OpenLIFU 2x 155kHz",
+        "module_transforms": [
+            np.array([
+                [0.9697859993972769, 0.0, -0.2439571998794554, 25.84571998794554],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.24395719987945538, 0.0, 0.9697859993972772, 3.20098197421292],
+                [0.0, 0.0, 0.0, 1.0],
+            ], dtype=float),
+            np.array([
+                [0.9697859993972769, 0.0, 0.2439571998794554, -25.84571998794554],
+                [0.0, 1.0, 0.0, 0.0],
+                [-0.24395719987945538, 0.0, 0.9697859993972772, 3.20098197421292],
+                [0.0, 0.0, 0.0, 1.0],
+            ], dtype=float),
+        ],
+        "standoff_transform": np.array([
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 0.997684, -0.0680153, 0.0],
+            [0.0, 0.0680153, 0.997684, -8.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ], dtype=float),
+    },
+    "openlifu_2x400": {
+        "name": "OpenLIFU 2x 400kHz",
+        "module_transforms": [
+            np.array([
+                [0.9659258262890683, 0.0, -0.25881904510252074, 25.84571998794554],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.25881904510252074, 0.0, 0.9659258262890683, 3.20098197421292],
+                [0.0, 0.0, 0.0, 1.0],
+            ], dtype=float),
+            np.array([
+                [0.9659258262890683, 0.0, 0.25881904510252074, -25.84571998794554],
+                [0.0, 1.0, 0.0, 0.0],
+                [-0.25881904510252074, 0.0, 0.9659258262890683, 3.20098197421292],
+                [0.0, 0.0, 0.0, 1.0],
+            ], dtype=float),
+        ],
+        "standoff_transform": np.array([
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, -8.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ], dtype=float),
+    },
+}
 
 
 class DeviceConfigMismatchError(ValueError):
@@ -61,6 +136,72 @@ def _validate_device_config_against_connected(
             f"hardware. Missing from connected: {sorted(missing)!r}; "
             f"unexpected on connected: {sorted(extra)!r}."
         )
+
+
+def _build_meshless_default_template(template_id: str) -> TransducerArray:
+    """Build a meshless template :class:`TransducerArray` from embedded transforms."""
+    spec = _DEFAULT_TEMPLATE_DATA[template_id]
+    modules: list[TransformedTransducer] = []
+    for tform in spec["module_transforms"]:
+        t = Transducer(id=template_id, elements=[])
+        modules.append(TransformedTransducer.from_transducer(t, transform=np.array(tform, dtype=float)))
+    attrs = {"standoff_transform": np.array(spec["standoff_transform"], dtype=float)}
+    return TransducerArray(id=template_id, name=spec["name"], modules=modules, attrs=attrs)
+
+
+def _canonicalize_array_for_compare(arr: TransducerArray) -> dict:
+    """Produce a structure suitable for equality-comparing two :class:`TransducerArray`.
+
+    Normalizations applied:
+
+    * NumPy arrays are converted to nested lists and rounded so trivial
+      floating-point noise does not trigger spurious mismatches.
+    * Mesh filename fields (``registration_surface_filename``,
+      ``transducer_body_filename``) are reduced to their basename so absolute
+      vs database-relative paths are treated as equivalent.
+    * Fields that legitimately vary between a reconstructed array and a
+      database-stored one (e.g. ``impulse_response`` / ``impulse_dt`` from
+      calibration) are dropped.
+
+    Used by :py:meth:`TransducerArray.get_connected` to warn when the array
+    assembled from connected hardware disagrees with the same-id array in
+    the supplied database.
+    """
+    def _norm(obj):
+        if isinstance(obj, np.ndarray):
+            return _norm(obj.tolist())
+        if isinstance(obj, list | tuple):
+            return [_norm(x) for x in obj]
+        if isinstance(obj, dict):
+            return {k: _norm(v) for k, v in obj.items()}
+        if isinstance(obj, float):
+            return round(obj, 6)
+        return obj
+
+    raw = _norm(arr.to_dict())
+    # Strip per-module fields that do not need to round-trip identically.
+    for m in raw.get("modules", []):
+        for k in ("registration_surface_filename", "transducer_body_filename"):
+            v = m.get(k)
+            if isinstance(v, str) and v:
+                m[k] = os.path.basename(v)
+        attrs = m.get("attrs") or {}
+        attrs.pop("impulse_response", None)
+        attrs.pop("impulse_dt", None)
+    # Strip array-level mesh paths likewise.
+    arr_attrs = raw.get("attrs") or {}
+    for k in ("registration_surface_filename", "transducer_body_filename"):
+        v = arr_attrs.get(k)
+        if isinstance(v, str) and v:
+            arr_attrs[k] = os.path.basename(v)
+    arr_attrs.pop("impulse_response", None)
+    arr_attrs.pop("impulse_dt", None)
+    return raw
+
+
+def arrays_structurally_equal(a: TransducerArray, b: TransducerArray) -> bool:
+    """Return ``True`` if two arrays are equal after :func:`_canonicalize_array_for_compare`."""
+    return _canonicalize_array_for_compare(a) == _canonicalize_array_for_compare(b)
 
 
 def get_angle_from_gap(width, gap, roc):
@@ -342,6 +483,168 @@ class TransducerArray(DictMixin):
             modules.append(TransformedTransducer.from_transducer(t, transform=transform))
 
         return cls(id=resolved_id, name=resolved_name, modules=modules, attrs=arr_attrs)
+
+    @classmethod
+    def get_connected(
+        cls,
+        interface=None,
+        db=None,
+        arr_id: str | None = None,
+        arr_name: str | None = None,
+        module_transforms: Sequence[np.ndarray] | None = None,
+        use_default_template: bool = True,
+    ) -> TransducerArray:
+        """Read ``user_config`` from every connected TX module and build a :class:`TransducerArray`.
+
+        If the lead module's ``user_config`` contains a nonempty ``device``
+        block, it is validated before template selection: the number of
+        modules listed must match the
+        number of connected modules, and the recorded base58 ``hwid`` values
+        must match the reported HWID set when any expected HWIDs are recorded.
+        Without expected HWIDs, only the module count is checked. A mismatch
+        raises :class:`DeviceConfigMismatchError`. When the ``device`` block
+        carries a ``"template"`` field, that template id is preferred for the
+        ``db`` lookup over the default ``(n_modules, freq)`` mapping below.
+
+        Otherwise, picks a default template based on the number of connected
+        modules and the per-module ``freq`` value (which must agree across
+        modules when more than one is connected). The mapping is:
+
+        ====================== =====================
+        ``(n_modules, freq)``  template id
+        ====================== =====================
+        ``(1, 155)``           ``openlifu_1x155``
+        ``(1, 400)``           ``openlifu_1x400``
+        ``(2, 155)``           ``openlifu_2x155``
+        ``(2, 400)``           ``openlifu_2x400``
+        ====================== =====================
+
+        When ``db`` is provided, the template (with its meshes) is loaded
+        from the database via ``db.load_transducer(template_id, convert_array=False)``.
+        If no database is provided (or the lookup fails) and
+        ``use_default_template`` is ``True``, a meshless fallback template
+        is constructed from the transforms embedded in this module, without
+        mesh filenames. The 2x155 fallback uses stand-in geometry from the
+        2x180 EVT1 template.
+
+        Args:
+            interface: an :py:class:`openlifu_sdk.io.LIFUInterface`-like
+                object exposing ``txdevice.get_tx_module_count()`` and
+                ``txdevice.read_config(module=i)``. A fresh
+                :py:class:`LIFUInterface` is constructed when omitted
+                (requires ``openlifu_sdk`` to be installed). An interface
+                created here is closed on success or failure; an injected
+                interface remains open.
+            db: optional :py:class:`openlifu.db.Database` used to load the
+                template by id (so the resulting array references the
+                database's mesh files).
+            arr_id: optional explicit override for the resulting array id.
+            arr_name: optional explicit override for the resulting array name.
+            module_transforms: optional explicit per-module 4x4 transforms
+                (e.g. from a per-module calibration step) that override
+                both the template and any device-config transforms.
+            use_default_template: when ``True`` (default), fall back to a
+                meshless embedded template if no database template can be
+                found. ``False`` skips only the embedded fallback: a database
+                template can still be used, or construction can proceed
+                without a template.
+
+        Returns:
+            A :class:`TransducerArray` representing the connected device.
+        """
+        owns_interface = interface is None
+        if owns_interface:
+            try:
+                from openlifu_sdk.io import LIFUInterface
+            except ModuleNotFoundError as exc:
+                if exc.name != "openlifu_sdk":
+                    raise
+                raise ImportError(
+                    "openlifu_sdk is required to auto-create a LIFUInterface; "
+                    "install it or pass an explicit `interface=` argument."
+                ) from exc
+            interface = LIFUInterface()
+
+        try:
+            txdevice = interface.txdevice
+            count = int(txdevice.get_tx_module_count())
+            if count <= 0:
+                raise RuntimeError("No TX modules are connected.")
+
+            user_configs: list[dict] = []
+            for i in range(count):
+                cfg = txdevice.read_config(module=i)
+                if cfg is None:
+                    raise RuntimeError(f"Failed to read user_config from module {i}.")
+                user_configs.append(json.loads(cfg.get_json_str()))
+
+            # All connected modules must report the same frequency for the
+            # template lookup to be unambiguous.
+            freqs = {c.get("freq") for c in user_configs}
+            if len(freqs) > 1:
+                raise ValueError(
+                    f"Connected modules have mismatched frequencies: "
+                    f"{sorted(f for f in freqs if f is not None)}"
+                )
+            freq = next(iter(freqs)) if freqs else None
+
+            # Validate recorded identity before loading its template.
+            device_cfg = user_configs[0].get("device") or None
+            device_template_id: str | None = None
+            if device_cfg:
+                _validate_device_config_against_connected(device_cfg, user_configs)
+                tid = device_cfg.get("template")
+                if isinstance(tid, str) and tid:
+                    device_template_id = tid
+
+            # Resolve a template: prefer db lookup, fall back to embedded transforms.
+            template: TransducerArray | None = None
+            template_id: str | None = device_template_id
+            if template_id is None and freq is not None:
+                template_id = _DEFAULT_TEMPLATE_IDS.get((count, int(freq)))
+            if template_id is not None:
+                if db is not None:
+                    try:
+                        loaded = db.load_transducer(template_id, convert_array=False)
+                    except Exception:  # pylint: disable=broad-exception-caught
+                        # The optional database is only a source of template geometry.
+                        # If it cannot supply one, use the configured fallback below.
+                        loaded = None
+                    if isinstance(loaded, TransducerArray):
+                        template = loaded
+                if template is None and use_default_template and template_id in _DEFAULT_TEMPLATE_DATA:
+                    template = _build_meshless_default_template(template_id)
+
+            arr = cls.from_module_user_configs(
+                user_configs,
+                template=template,
+                module_transforms=module_transforms,
+                arr_id=arr_id,
+                arr_name=arr_name,
+            )
+
+            # Callers use this warning to ask about database overwrites.
+            if db is not None:
+                try:
+                    known_ids = list(db.get_transducer_ids() or [])
+                except Exception:  # pylint: disable=broad-exception-caught
+                    known_ids = []
+                if arr.id in known_ids:
+                    try:
+                        db_arr = db.load_transducer(arr.id, convert_array=False)
+                    except Exception:  # pylint: disable=broad-exception-caught
+                        db_arr = None
+                    if isinstance(db_arr, TransducerArray) and not arrays_structurally_equal(arr, db_arr):
+                        warnings.warn(
+                            f"Connected transducer '{arr.id}' differs from the version "
+                            f"stored in the database. The database version was not used.",
+                            stacklevel=2,
+                        )
+
+            return arr
+        finally:
+            if owns_interface:
+                interface.close()
 
     def to_device_config(self) -> dict:
         """Serialize array-level info to a ``device`` dict for the lead module's user_config.
