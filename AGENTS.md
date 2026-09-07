@@ -83,6 +83,8 @@ Every commit must reference a relevant GitHub issue number in the title or body
 (e.g. `Fix target placement crash (#42)` or `Fixes #42` in the body). CI
 enforces this on PRs.
 
+Commits should also be signed off (`git commit -s`).
+
 ## Architecture
 
 ### Subpackages
