@@ -475,10 +475,11 @@ def test_device_config_round_trip_preserves_placements_with_duplicate_hwids(conn
     [
         (["BBB", "AAA"], ["AAA", "BBB"], [1, 0]),
         (["BBB", "DUP", "AAA", "DUP"], ["AAA", "DUP", "BBB", "DUP"], [2, 1, 0, 3]),
+        (["AAA", None], [None, "AAA"], [1, 0]),
         (["AAA", None], ["AAA", "AAA"], [0, 1]),
         (["AAA", "AAA"], ["AAA", None], [0, 1]),
     ],
-    ids=["unique-reordered", "mixed-unique-and-duplicate", "reported-duplicate", "recorded-duplicate"],
+    ids=["unique-reordered", "mixed-unique-and-duplicate", "missing-id-reordered", "reported-duplicate", "recorded-duplicate"],
 )
 def test_device_transforms_match_only_unambiguous_hwids(connected, recorded_hwids, reported_hwids, expected_indices):
     configs = [_module_user_config(hwid) for hwid in reported_hwids]
@@ -497,6 +498,196 @@ def test_device_transforms_match_only_unambiguous_hwids(connected, recorded_hwid
     for module, expected_index in zip(array.modules, expected_indices):
         np.testing.assert_array_equal(module.transform, transforms[expected_index])
     assert configs == original_configs
+
+
+@pytest.mark.parametrize("connected", [False, True])
+def test_device_transform_matching_reserves_entries_before_duplicate_fallback(connected):
+    configs = [_module_user_config(hwid) for hwid in ["DUP", "DUP", "AAA"]]
+    transforms = [np.eye(4) for _ in configs]
+    for i, transform in enumerate(transforms):
+        transform[0, 3] = 10.0 * (i + 1)
+    configs[0]["device"] = {"modules": [
+        {"hwid": hwid, "transform": transform.tolist()}
+        for hwid, transform in zip(["AAA", "DUP", "DUP"], transforms)
+    ]}
+    if connected:
+        array = TransducerArray.get_connected(interface=_FakeInterface(configs), use_default_template=False)
+    else:
+        array = TransducerArray.from_module_user_configs(configs)
+
+    assert sorted(module.transform[0, 3] for module in array.modules[:2]) == [20, 30]
+    np.testing.assert_array_equal(array.modules[2].transform, transforms[0])
+
+
+@pytest.mark.parametrize("connected", [False, True])
+def test_device_transform_matching_rejects_incompatible_id_multiplicities(connected):
+    configs = [_module_user_config(hwid) for hwid in ["AAA", "BBB", "BBB"]]
+    configs[0]["device"] = {"modules": [
+        {"hwid": hwid, "transform": np.eye(4).tolist()}
+        for hwid in ["AAA", "AAA", "BBB"]
+    ]}
+    if connected:
+        with pytest.raises(DeviceConfigMismatchError, match="(?i)associate|match"):
+            TransducerArray.get_connected(interface=_FakeInterface(configs), use_default_template=False)
+    else:
+        with pytest.raises(DeviceConfigMismatchError, match="(?i)associate|match"):
+            TransducerArray.from_module_user_configs(configs)
+
+
+def test_translated_device_placements_reject_ambiguous_mixed_units():
+    configs = [_module_user_config("DUP"), _module_user_config("DUP")]
+    configs[1]["module"].update(units="cm", pitch=0.1)
+    transforms = [np.eye(4), np.eye(4)]
+    transforms[0][0, 3] = 10
+    transforms[1][0, 3] = -2
+    configs[0]["device"] = {"modules": [
+        {"hwid": "DUP", "transform": transform.tolist()} for transform in transforms
+    ]}
+
+    with pytest.raises(DeviceConfigMismatchError, match="(?i)ambiguous.*units"):
+        TransducerArray.from_module_user_configs(configs)
+
+
+def test_explicit_placements_override_ambiguous_mixed_unit_device_placements():
+    configs = [_module_user_config("DUP"), _module_user_config("DUP")]
+    configs[1]["module"].update(units="cm", pitch=0.1)
+    stored_transforms = [np.eye(4), np.eye(4)]
+    stored_transforms[0][0, 3] = 10
+    stored_transforms[1][0, 3] = -2
+    configs[0]["device"] = {"modules": [
+        {"hwid": "DUP", "transform": transform.tolist()} for transform in stored_transforms
+    ]}
+    explicit_transforms = [np.eye(4), np.eye(4)]
+    explicit_transforms[0][0, 3] = 25
+    explicit_transforms[1][0, 3] = -2.5
+    original_configs = copy.deepcopy(configs)
+
+    array = TransducerArray.from_module_user_configs(configs, module_transforms=explicit_transforms)
+
+    for module, transform in zip(array.modules, explicit_transforms):
+        np.testing.assert_array_equal(module.transform, transform)
+    positions = array.to_transducer().get_positions(units="mm")
+    assert positions[:4, 0].mean() == pytest.approx(-25)
+    assert positions[4:, 0].mean() == pytest.approx(25)
+    assert configs == original_configs
+
+
+@pytest.mark.parametrize("entry", [None, "AAA", []])
+def test_device_transform_matching_rejects_non_dictionary_entry(entry):
+    configs = [_module_user_config("AAA")]
+    configs[0]["device"] = {"modules": [entry]}
+
+    with pytest.raises(DeviceConfigMismatchError, match="(?i)associate.*dictionaries"):
+        TransducerArray.from_module_user_configs(configs)
+
+
+@pytest.mark.parametrize("connected", [False, True])
+@pytest.mark.parametrize("reordered", [False, True])
+def test_device_standoff_preserves_units_when_modules_are_reordered(connected, reordered):
+    configs = [_module_user_config("AAA"), _module_user_config("BBB")]
+    configs[1]["module"].update(units="cm", pitch=0.1)
+    transforms = [np.eye(4), np.eye(4)]
+    transforms[0][0, 3] = 10
+    transforms[1][0, 3] = -2
+    original = TransducerArray.from_module_user_configs(configs, module_transforms=transforms)
+    original.attrs["standoff_transform"] = np.array(
+        [[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 8], [0, 0, 0, 1]], dtype=float,
+    )
+    serialized = json.loads(json.dumps(original.to_device_config()))
+    if reordered:
+        configs.reverse()
+    configs[0]["device"] = serialized
+    original_configs = copy.deepcopy(configs)
+
+    if connected:
+        rebuilt = TransducerArray.get_connected(interface=_FakeInterface(configs), use_default_template=False)
+    else:
+        rebuilt = TransducerArray.from_module_user_configs(configs)
+
+    assert rebuilt.attrs["standoff_transform"][2, 3] == pytest.approx(0.8 if reordered else 8)
+    expected = original.to_transducer()
+    flattened = rebuilt.to_transducer()
+    np.testing.assert_allclose(
+        flattened.get_standoff_transform_in_units("mm"), expected.get_standoff_transform_in_units("mm"),
+    )
+    expected_modules = original.modules[::-1] if reordered else original.modules
+    for module, expected_module in zip(rebuilt.modules, expected_modules):
+        np.testing.assert_allclose(module.bake().get_positions(units="mm"), expected_module.bake().get_positions(units="mm"))
+    assert configs == original_configs
+
+
+@pytest.mark.parametrize("recorded_hwids", [["AAA", "AAA"], [None, None]])
+@pytest.mark.parametrize("connected", [False, True])
+def test_translated_device_standoff_rejects_ambiguous_mixed_units(recorded_hwids, connected):
+    configs = [_module_user_config("AAA"), _module_user_config("AAA")]
+    configs[1]["module"].update(units="cm", pitch=0.1)
+    standoff = np.eye(4)
+    standoff[2, 3] = 8
+    configs[0]["device"] = {
+        "modules": [{"hwid": hwid} for hwid in recorded_hwids],
+        "attrs": {"standoff_transform": standoff.tolist()},
+    }
+    if connected:
+        with pytest.raises(DeviceConfigMismatchError, match="(?i)ambiguous|units"):
+            TransducerArray.get_connected(interface=_FakeInterface(configs), use_default_template=False)
+    else:
+        with pytest.raises(DeviceConfigMismatchError, match="(?i)ambiguous|units"):
+            TransducerArray.from_module_user_configs(configs)
+
+
+@pytest.mark.parametrize("mixed_units", [False, True])
+def test_device_standoff_allows_ambiguous_ids_when_unit_conversion_is_unnecessary(mixed_units):
+    configs = [_module_user_config("AAA"), _module_user_config("AAA")]
+    standoff = np.eye(4)
+    if mixed_units:
+        configs[1]["module"].update(units="cm", pitch=0.1)
+    else:
+        standoff[2, 3] = 8
+    configs[0]["device"] = {
+        "modules": [{"hwid": "AAA"}, {"hwid": "AAA"}],
+        "attrs": {"standoff_transform": standoff.tolist()},
+    }
+
+    array = TransducerArray.from_module_user_configs(configs)
+
+    np.testing.assert_array_equal(array.attrs["standoff_transform"], standoff)
+    np.testing.assert_array_equal(array.to_transducer().get_standoff_transform_in_units("mm"), standoff)
+
+
+def test_device_standoff_infers_missing_recorded_id_units_from_remaining_module():
+    configs = [_module_user_config(None), _module_user_config("AAA"), _module_user_config("BBB")]
+    configs[0]["module"].update(units="m", pitch=0.001)
+    configs[2]["module"].update(units="cm", pitch=0.1)
+    original = TransducerArray.from_module_user_configs(configs)
+    original.attrs["standoff_transform"] = np.eye(4)
+    original.attrs["standoff_transform"][2, 3] = 0.008
+    configs = [configs[1], configs[2], configs[0]]
+    configs[0]["device"] = original.to_device_config()
+
+    rebuilt = TransducerArray.from_module_user_configs(configs)
+
+    assert rebuilt.modules[0].units == "mm"
+    assert rebuilt.attrs["standoff_transform"][2, 3] == pytest.approx(8)
+    np.testing.assert_allclose(
+        rebuilt.to_transducer().get_standoff_transform_in_units("mm"),
+        original.to_transducer().get_standoff_transform_in_units("mm"),
+    )
+
+
+def test_device_standoff_accepts_matching_origin_units_in_otherwise_mixed_array():
+    configs = [_module_user_config(hwid) for hwid in ["AAA", "DUP", "DUP"]]
+    configs[0]["module"].update(units="cm", pitch=0.1)
+    standoff = np.eye(4)
+    standoff[2, 3] = 8
+    configs[0]["device"] = {
+        "modules": [{"hwid": hwid} for hwid in ["DUP", "AAA", "DUP"]],
+        "attrs": {"standoff_transform": standoff.tolist()},
+    }
+
+    array = TransducerArray.from_module_user_configs(configs)
+
+    assert array.attrs["standoff_transform"][2, 3] == pytest.approx(0.8)
+    np.testing.assert_allclose(array.to_transducer().get_standoff_transform_in_units("mm"), standoff)
 
 
 def test_connected_array_saves_loads_and_flattens_with_temporary_mesh_files(tmp_path):

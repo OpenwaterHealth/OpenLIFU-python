@@ -140,6 +140,115 @@ def _validate_device_config_against_connected(
         )
 
 
+def _validate_template_mesh_units(
+    template: TransducerArray | None,
+    modules: Sequence[TransformedTransducer],
+    attrs: dict,
+) -> None:
+    """Reject inherited mesh coordinates that would require rescaling."""
+    if template is None:
+        return
+    mesh_fields = ("registration_surface_filename", "transducer_body_filename")
+    for index, (source, destination) in enumerate(zip(template.modules, modules)):
+        for mesh_field in mesh_fields:
+            if getattr(source, mesh_field) and getunitconversion(source.units, destination.units) != 1:
+                raise ValueError(
+                    f"Mesh {mesh_field} for module {index} cannot be inherited across units "
+                    f"({source.units} to {destination.units}); mesh rescaling is not supported."
+                )
+    for mesh_field in mesh_fields:
+        if not template.attrs.get(mesh_field) or not attrs.get(mesh_field):
+            continue
+        if not template.modules:
+            raise ValueError(f"Mesh {mesh_field} units require a template module.")
+        source_units = template.modules[0].units
+        destination_units = modules[0].units
+        if getunitconversion(source_units, destination_units) != 1:
+            raise ValueError(
+                f"Mesh {mesh_field} for the array cannot be inherited across units "
+                f"({source_units} to {destination_units}); mesh rescaling is not supported."
+            )
+
+
+def _find_module_matching(candidates: list[list[int]], fixed: dict[int, int]) -> list[int] | None:
+    """Find a one-to-one reported-to-recorded assignment, retaining fixed pairs."""
+    if len(set(fixed.values())) != len(fixed):
+        return None
+    if any(recorded not in candidates[reported] for reported, recorded in fixed.items()):
+        return None
+    owners = {recorded: reported for reported, recorded in fixed.items()}
+
+    def assign(reported, visited):
+        available = candidates[reported]
+        for recorded in available:
+            if recorded not in visited and recorded not in owners:
+                owners[recorded] = reported
+                return True
+        for recorded in available:
+            if recorded in visited:
+                continue
+            visited.add(recorded)
+            owner = owners[recorded]
+            if owner not in fixed and assign(owner, visited):
+                owners[recorded] = reported
+                return True
+        return False
+
+    for reported in range(len(candidates)):
+        if reported not in fixed and not assign(reported, set()):
+            return None
+    matches = [0] * len(candidates)
+    for recorded, reported in owners.items():
+        matches[reported] = recorded
+    return matches
+
+
+def _associate_device_modules(device_modules: list[dict], user_configs: Sequence[dict]) -> tuple[list[int], list[list[int]]]:
+    """Return an assignment and every feasible origin of each recorded module.
+
+    Known IDs must agree; absent IDs permit positional fallback. IDs unique in
+    both lists are reserved before assigning other entries. Candidate order
+    prefers the same position, but no recorded entry may be assigned twice.
+    """
+    if any(not isinstance(module, dict) for module in device_modules):
+        raise DeviceConfigMismatchError("Cannot associate device modules: entries must be dictionaries.")
+    reported_ids = [cfg.get("hwid") for cfg in user_configs]
+    recorded_ids = [module.get("hwid") for module in device_modules]
+    reported_counts, recorded_counts = Counter(reported_ids), Counter(recorded_ids)
+    fixed = {
+        i: recorded_ids.index(hwid)
+        for i, hwid in enumerate(reported_ids)
+        if hwid and reported_counts[hwid] == 1 and recorded_counts[hwid] == 1
+    }
+    candidates = [
+        sorted(
+            [j for j, recorded in enumerate(recorded_ids) if not reported or not recorded or reported == recorded],
+            key=lambda j, i=i: (j != i, j),
+        )
+        for i, reported in enumerate(reported_ids)
+    ]
+    matches = _find_module_matching(candidates, fixed)
+    if matches is None:
+        raise DeviceConfigMismatchError("Cannot associate device modules without reusing entries or mismatching hardware IDs.")
+
+    origins: list[list[int]] = [[] for _ in device_modules]
+    for recorded in range(len(device_modules)):
+        for reported, possible in enumerate(candidates):
+            if recorded not in possible or (reported in fixed and fixed[reported] != recorded):
+                continue
+            if _find_module_matching(candidates, {**fixed, reported: recorded}) is not None:
+                origins[recorded].append(reported)
+    return matches, origins
+
+
+def _recorded_module_units(recorded: int, origins: list[list[int]], modules: list[TransformedTransducer]) -> str:
+    """Resolve units only when all feasible origins use the same scale."""
+    units = modules[origins[recorded][0]].units
+    if any(getunitconversion(modules[i].units, units) != 1 for i in origins[recorded]):
+        raise DeviceConfigMismatchError(f"Ambiguous units for recorded device module {recorded}.")
+    return units
+
+
 def _build_meshless_default_template(template_id: str) -> TransducerArray:
     """Build a meshless template :class:`TransducerArray` from embedded transforms."""
     spec = _DEFAULT_TEMPLATE_DATA[template_id]
@@ -376,7 +485,8 @@ class TransducerArray(DictMixin):
         2. ``user_configs[0]["device"]`` (if present): overrides ``id``,
            ``name``, merges into ``attrs``, and supplies per-module transforms
            keyed by ``hwid`` when unique in both the configs and device
-           entries, falling back to positional matching otherwise.
+           entries. Remaining entries are matched one-to-one, preferring
+           position when IDs agree or either ID is absent.
         3. ``module_transforms`` (if given): per-module 4x4 transforms that
            override everything else. Length must match ``user_configs``.
         4. ``arr_id`` / ``arr_name`` (if given): explicit array id/name that
@@ -390,14 +500,23 @@ class TransducerArray(DictMixin):
         A nonempty lead-module ``device`` block must record a matching module
         count. If any expected HWIDs are recorded, their set must match all
         reported HWIDs. A metadata-only block without module entries fails
-        count validation; an absent or empty block is valid.
+        count validation; an absent or empty block is valid. Associations that
+        require reusing an entry or pairing different known IDs are rejected.
 
         Inherited placement and standoff translations are converted from each
         template module's units to the corresponding configuration's units.
         Array-level standoff uses the first module's units in each array.
-        A translated array standoff requires a template module to establish its
-        units. Device and explicit transforms already use the destination
-        units and are not rescaled.
+        A translated template array standoff requires a template module to
+        establish its units. Device array standoff uses the recorded first
+        module's units, inferred from its possible matches. Ambiguous stored
+        translations with possible origins in different units are rejected.
+        Each physical module must retain its units since the device block was
+        recorded; explicit transforms use the destination module units.
+
+        Mesh references cannot be inherited across different unit scales
+        because their coordinates are not rescaled. Renaming a template array
+        mesh through device attributes does not bypass this check. An explicit
+        ``None`` array standoff means identity and overrides any template standoff.
 
         Args:
             user_configs: ordered list of user_config dicts. Order corresponds
@@ -434,7 +553,8 @@ class TransducerArray(DictMixin):
         device_cfg = user_configs[0].get("device") or None
         device_attrs = (device_cfg or {}).get("attrs") or {}
         device_modules_in_order: list = []
-        device_modules_by_hwid: dict = {}
+        device_module_indices: list[int] = []
+        device_module_origins: list[list[int]] = []
         if device_cfg:
             _validate_device_config_against_connected(device_cfg, user_configs)
             resolved_id = device_cfg.get("id", resolved_id)
@@ -442,17 +562,7 @@ class TransducerArray(DictMixin):
             for k, v in device_attrs.items():
                 arr_attrs[k] = copy.deepcopy(v)
             device_modules_in_order = list(device_cfg.get("modules") or [])
-            reported_hwid_counts = Counter(cfg.get("hwid") for cfg in user_configs)
-            recorded_hwid_counts = Counter(
-                m.get("hwid") for m in device_modules_in_order if isinstance(m, dict)
-            )
-            device_modules_by_hwid = {
-                m["hwid"]: m
-                for m in device_modules_in_order
-                if isinstance(m, dict) and m.get("hwid")
-                and reported_hwid_counts[m["hwid"]] == 1
-                and recorded_hwid_counts[m["hwid"]] == 1
-            }
+            device_module_indices, device_module_origins = _associate_device_modules(device_modules_in_order, user_configs)
 
         if arr_id is not None:
             resolved_id = arr_id
@@ -480,14 +590,7 @@ class TransducerArray(DictMixin):
             if template_mod is not None:
                 transform = t.convert_transform(np.array(template_mod.transform, dtype=float), template_mod.units)
 
-            hwid = cfg.get("hwid")
-            device_mod: dict | None = None
-            if hwid and hwid in device_modules_by_hwid:
-                device_mod = device_modules_by_hwid[hwid]
-            elif device_modules_in_order and i < len(device_modules_in_order):
-                candidate = device_modules_in_order[i]
-                if isinstance(candidate, dict):
-                    device_mod = candidate
+            device_mod = device_modules_in_order[device_module_indices[i]] if device_cfg else None
             if device_mod is not None and device_mod.get("transform") is not None:
                 transform = np.array(device_mod["transform"], dtype=float)
 
@@ -496,10 +599,29 @@ class TransducerArray(DictMixin):
 
             modules.append(TransformedTransducer.from_transducer(t, transform=transform))
 
-        st = arr_attrs.get("standoff_transform")
-        if st is not None:
-            st = np.array(st, dtype=float)
-            if template is not None and "standoff_transform" not in device_attrs:
+        _validate_template_mesh_units(template, modules, arr_attrs)
+
+        if device_cfg:
+            if module_transforms is None:
+                for recorded, entry in enumerate(device_modules_in_order):
+                    transform = entry.get("transform")
+                    if transform is not None and np.any(np.asarray(transform)[:3, 3]):
+                        _recorded_module_units(recorded, device_module_origins, modules)
+            if any(device_attrs.get(key) for key in ("registration_surface_filename", "transducer_body_filename")):
+                mesh_units = _recorded_module_units(0, device_module_origins, modules)
+                if getunitconversion(mesh_units, modules[0].units) != 1:
+                    raise ValueError("Cannot inherit device mesh references across different units.")
+
+        if "standoff_transform" in arr_attrs:
+            st = arr_attrs["standoff_transform"]
+            st = np.eye(4) if st is None else np.array(st, dtype=float)
+            if st.shape != (4, 4):
+                raise ValueError("standoff_transform must be a 4x4 matrix.")
+            if "standoff_transform" in device_attrs:
+                if np.any(st[:3, 3]):
+                    units = _recorded_module_units(0, device_module_origins, modules)
+                    st = modules[0].convert_transform(st, units)
+            elif template is not None:
                 if template_modules:
                     st = modules[0].convert_transform(st, template_modules[0].units)
                 elif np.any(st[:3, 3]):
