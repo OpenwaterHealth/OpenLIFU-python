@@ -14,6 +14,16 @@
 treatments. It generally replicates the functionality developed in the MATLAB
 [open-TFUS toolbox](https://github.com/OpenwaterHealth/opw_neuromod_sw).
 
+## Supported Versions
+
+![openlifu-python maintenance by release line](docs/support-schedule.svg)
+
+Versions may fall to a lower support tier every six months or so, each time the
+downstream
+[desktop application](https://github.com/OpenwaterHealth/openlifu-desktop-application/tree/main)
+selects a newer version of openlifu. See the [support schedule](SUPPORT.md) for
+details.
+
 ## Installation
 
 ### Requirements
