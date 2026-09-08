@@ -926,10 +926,12 @@ def test_template_unit_conversion_preserves_device_and_explicit_overrides(stando
     np.testing.assert_array_equal(explicit.modules[0].transform, explicit_transform)
     for result in (array, explicit):
         np.testing.assert_array_equal(result.modules[0].standoff_transform, _translation(0.8))
-        if standoff_override is None:
-            assert result.attrs["standoff_transform"] is None
-        else:
-            np.testing.assert_array_equal(result.attrs["standoff_transform"], standoff_override)
+        expected_standoff = np.eye(4) if standoff_override is None else np.array(standoff_override)
+        for restored in (result, TransducerArray.from_dict(result.to_dict()), TransducerArray.from_dict(json.loads(result.to_json()))):
+            np.testing.assert_array_equal(restored.attrs["standoff_transform"], expected_standoff)
+            flattened = restored.to_transducer()
+            np.testing.assert_array_equal(flattened.standoff_transform, expected_standoff)
+            np.testing.assert_allclose(flattened.get_positions(units="mm"), result.modules[0].bake().get_positions(units="mm"))
     assert configs == original_configs
 
 
