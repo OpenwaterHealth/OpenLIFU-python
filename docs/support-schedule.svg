@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="768" height="136" viewBox="0 0 768 136" role="img" aria-labelledby="title description">
+  <title id="title">openlifu-python: support by component and release line</title>
+  <desc id="description">Release lines for openlifu-python, grouped by maintenance status.</desc>
+  <rect x="1" y="1" width="766" height="134" rx="12" fill="#ffffff" stroke="#d0d7de"/>
+  <g font-family="Arial, Helvetica, sans-serif">
+    <g text-anchor="middle" font-size="15" font-weight="600">
+      <text x="277" y="32" fill="#424a53">Unsupported</text>
+      <text x="467" y="32" fill="#633c01">Critical Maintenance</text>
+      <text x="657" y="32" fill="#116329">Full Maintenance</text>
+    </g>
+    <g>
+      <text x="24" y="91" font-size="16" font-weight="600" fill="#24292f">openlifu-python</text>
+      <g text-anchor="middle" font-size="18" font-weight="600">
+        <rect x="190" y="52" width="174" height="64" rx="8" fill="#eaeef2" stroke="#6e7781" stroke-dasharray="5 5"/>
+        <text x="277" y="91" fill="#424a53">v0.19 and older</text>
+        <rect x="380" y="52" width="174" height="64" rx="8" fill="#fff8c5" stroke="#9a6700"/>
+        <text x="467" y="91" fill="#633c01">(none)</text>
+        <rect x="570" y="52" width="174" height="64" rx="8" fill="#dafbe1" stroke="#1a7f37"/>
+        <text x="657" y="80" fill="#116329">v0.20 - v0.21</text>
+        <text x="657" y="102" font-size="13" font-weight="400" fill="#116329">+ v0.20 legacy IO</text>
+      </g>
+    </g>
+  </g>
+</svg>
