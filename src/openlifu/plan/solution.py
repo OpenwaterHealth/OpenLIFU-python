@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from copy import deepcopy
 import json
 import logging
 import tempfile
@@ -15,6 +16,7 @@ import xarray as xa
 from openlifu.bf import Pulse, Sequence
 from openlifu.bf.focal_patterns import FocalPattern
 from openlifu.geo.point import Point
+from openlifu.plan import solution
 from openlifu.plan.param_constraint import ParameterConstraint
 from openlifu.plan.solution_analysis import (
     SolutionAnalysis,
@@ -567,6 +569,28 @@ class Solution:
         )
         solution_analysis.param_constraints = param_constraints
         return solution_analysis
+
+    def scale_simulation_result(self, scaling_factor: float) -> xa.Dataset:
+        if self.simulation_result is None or len(self.simulation_result) == 0:
+            raise ValueError("No simulation result found in the Solution. Call `simulate()` first.")
+        scaled_simulation_result = deepcopy(self.simulation_result)
+        scaled_simulation_result['p_min'].data *= scaling_factor
+        scaled_simulation_result['p_max'].data *= scaling_factor
+        scaled_simulation_result['intensity'].data *= scaling_factor**2
+        return scaled_simulation_result
+    
+    def aggregate_simulation_result(self) -> xa.Dataset:
+        if self.simulation_result is None or len(self.simulation_result) == 0:
+            raise ValueError("No simulation result found in the Solution. Call `simulate()` first.")
+        pnp_aggregated = self.simulation_result['p_min'].max(dim="focal_point_index", keep_attrs=True)
+        ppp_aggregated = self.simulation_result['p_max'].max(dim="focal_point_index", keep_attrs=True)
+        intensity_aggregated = self.get_ita(self.simulation_result['intensity'])
+        simulation_result_aggregated = deepcopy(self.simulation_result)
+        simulation_result_aggregated = simulation_result_aggregated.drop_dims("focal_point_index")
+        simulation_result_aggregated['p_min'] = pnp_aggregated
+        simulation_result_aggregated['p_max'] = ppp_aggregated
+        simulation_result_aggregated['intensity'] = intensity_aggregated
+        return simulation_result_aggregated
 
     def estimate_tx_temperature_rise(self,
                                   t_sec: float,
