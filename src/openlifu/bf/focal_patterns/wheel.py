@@ -106,7 +106,7 @@ class Wheel(FocalPattern):
         if self.center:
             targets = [target.copy()]
             targets[0].id = f"{target.id}_01"
-            targets[0].id = f"{target.id} (1/{n_points}, Center)"
+            targets[0].name = f"{target.name} (1/{n_points}, Center)"
         else:
             targets = []
 
